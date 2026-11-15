@@ -595,3 +595,20 @@ It must return PRE_MIGRATION, POST_MIGRATION, PARTIAL_DRIFT, or UNKNOWN_DRIFT, a
 - No production migration, ledger update, grant, role, secret, deployment, service or data change occurred.
 - Untracked local backup remains database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak; preserve it and do not stage or delete it.
 - PR #285 remains OPEN / DRAFT; exact observed branch head was cf5487f5ab097df43d9546c88eded3507f2d7ac3.
+
+## 26. Repository-side migration-4 drift classifier implementation (2026-11-15 22:19 UTC)
+
+Following the corrected section 25 assessment, a read-only classifier has been added to PR #285:
+
+- `scripts/storage-migration-drift-classifier.mjs` classifies catalog evidence as `PRE_MIGRATION`, `POST_MIGRATION`, `PARTIAL_DRIFT`, or `UNKNOWN_DRIFT`.
+- `scripts/storage-migration-drift-classifier.test.mjs` covers exact pre-migration state, exact migration-4 state, SECURITY DEFINER-only partial drift, constraint/function mismatch, unexpected gateway/PUBLIC execution ACLs, and missing/unknown catalog state.
+- `scripts/preflight-first-four-production-migrations-readonly.mjs` now includes `migration_4_schema_state` in its JSON report and warns that `PARTIAL_DRIFT` / `UNKNOWN_DRIFT` are hard stops. The script remains `BEGIN READ ONLY`, enforces client TLS verification, and never applies migrations or repairs the ledger.
+- `package.json` test command now runs the classifier's Node test file.
+
+Important: `POST_MIGRATION` is only a structural schema classification. It does not mean the migration ledger is correct, establish provenance, or authorize manual ledger insertion. `PRE_MIGRATION` is likewise not execution authorization; all other migration/gateway/recovery gates remain.
+
+Latest code commit at this checkpoint: 77986c3659031de215132f4b60e4b37c3aae749b. CI run 43768580042 (run 5011) was queued at handover update time; no pass is claimed. The prior read-only production observation is classified as `PARTIAL_DRIFT` by design because the function is SECURITY DEFINER but retains the old available-only body and old lifecycle constraint.
+
+No production SQL, migration ledger, grant, role, secret, Render service, deployment or application data was changed. Preserve the untracked local `.bak` file.
+
+Next: wait for exact-head CI on the classifier and test wiring. Once green, fetch the exact branch head and rerun the read-only preflight only to verify it reports `PARTIAL_DRIFT` for the current production state. Then investigate provenance from backups/audit logs and continue the separate storage gateway cutover design; do not run production migrations.
