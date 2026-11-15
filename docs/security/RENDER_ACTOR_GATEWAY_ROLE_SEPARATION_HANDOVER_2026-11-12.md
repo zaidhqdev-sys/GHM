@@ -1813,3 +1813,73 @@ This indicates the exact ledger-recorded source for these nine migrations is not
 The archive is closer to a reconstructable baseline: 96 of 105 ledger rows now have exact source provenance (86 current-main matches + 10 recovered historical matches). Nine remain unresolved. Do not yet certify the archive as a fully verified production-replay baseline or begin the replay.
 
 No migration files were changed, no branches were updated, and no production database/Render operation was performed.
+
+
+## 2026-11-15 — archive ledger fully classified against merged production provenance manifests
+
+### Recheck of repository state before continuing
+
+- Mainline at start of this continuation: `f5031ce70d269b067851f406176feb575d063ae4`.
+- Open PRs rechecked: #282, #264, #244, #243, #233 and #201. No PR was merged or modified in this continuation.
+- PR #239 (`fix/migration-provenance-reconciliation-20261109`) is **merged** into main (merged 2026-11-09 19:15:25Z). Its provenance manifests and policy are therefore canonical mainline records, not merely draft-branch proposals.
+- Historical branch inventory was rechecked (173 branches across four API pages); existing migration, identity, project, QuoteFlow and founder branches were inspected before proceeding. No branch was created, pushed, or updated.
+- Amanda's Render support conversation remains referenced in the preceding handover entries; this work did not change the support escalation or claim the role-membership issue is resolved.
+
+### Exact 105-row snapshot classification
+
+The November 14 archive's 105 ledger rows are now fully accounted for by the canonical mainline migration provenance policy:
+
+| Classification | Count | Verification |
+|---|---:|---|
+| Current repository source matches exact ledger checksum | 86 | Direct normalized-LF / legacy-CRLF comparison |
+| Historical applied checksum preserved as explicit exception | 9 | Every one of the nine exact ledger hashes appears under the same version in `config/historical-migration-provenance-exceptions.production.json` |
+| Retained historical migration absent from active migration directory | 10 | Every version/name/checksum appears in `config/retained-historical-migrations.production.json` |
+| Total snapshot ledger rows classified | **105** | 86 + 9 + 10 |
+
+The nine historical exception versions are:
+
+- `20260911030000`
+- `20260911210000`
+- `20260911211500`
+- `20260912030000`
+- `20260914120000`
+- `20260914130000`
+- `20260914220000`
+- `20260915193000`
+- `20261005211000`
+
+The ten retained-history versions are the ten listed in the immediately preceding historical-source recovery section. All ten names and checksums in the production retained-history manifest exactly match the November 14 archive ledger.
+
+**Important distinction:** the nine exception records preserve the exact historical applied checksums, but do not provide the original SQL bodies. Their status is `HISTORICAL_PROVENANCE_RETAINED`, not “historical SQL source recovered”. The ten retained-history entries preserve ledger provenance; five of their original SQL files were also independently located and checksum-verified on historical refs, while the production manifest is the canonical record used by the current migration audit. Do not copy retired historical files back into the active migration directory.
+
+### Critical next gate — 42 repository files after snapshot vs production pending allowlist
+
+The November 14 snapshot ledger ends at `20261109210000`. Current main has 42 migration files whose versions are absent from that snapshot ledger.
+
+The current `config/pending-migrations.production.json` contains only seven entries:
+
+- `20261110100000_create_account_onboarding_progress`
+- `20261110120000_create_business_relationship_outcome_read_models`
+- `20261110140000_allow_pending_storage_object_cleanup`
+- `20261110210000_add_actor_gateway_principal_guard`
+- `20261110220000_add_actor_gateway_self_identity_read`
+- `20261110230000_add_gateway_business_registration_identity_read`
+- `20261110233000_add_gateway_business_registration_identity_write`
+
+Therefore 35 of the 42 post-snapshot repository migrations are **not named in the current production pending allowlist**. This is a release/readiness boundary, not a checksum discrepancy. The current production audit's `--allow-pending` logic requires the actual missing repository migrations to equal the allowlist exactly; it does not silently approve an arbitrary subset or automatically apply only those seven.
+
+Before any replay or migration execution:
+1. Reconcile the complete 42-file suffix against the already-recorded migration source review and existing PR/branch status; do not repeat the 42-file SQL review from scratch.
+2. For each of the 35 not allowlisted, retain its existing status/reason (e.g. construction-only, not production-cutover-approved, or separately gated) from the prior source review. Do not add them to the allowlist merely to make counts match.
+3. Verify that the seven allowlisted entries are still the intended production pre-deploy set for this archive baseline and that no intervening mainline/manifest change invalidates that selection.
+4. Only then can a production-baseline replay plan be defined. The archive remains an inspected candidate dump; it has not been restored to a disposable database.
+
+### Revised archive decision
+
+- Ledger provenance classification: **PASS — all 105 rows accounted for by exact source match, explicit historical exception, or retained-history record**.
+- Archive physical/schema equivalence to production: **NOT YET VERIFIED**; TOC/ledger inventory is not a restore test.
+- Post-snapshot migration suffix: **42 files; only 7 in the production pending allowlist; 35 require existing readiness classification before any replay plan**.
+- Production-equivalent PostgreSQL 18 replay: **NOT RUN**.
+- No production SQL, restore, migration execution, Render change, deployment, role/grant/secret change, allowlist change, PR merge, or branch update was performed.
+
+Do not repeat the November 14 archive extraction, TOC inventory, 105-row ledger extraction, 137-file count, nine-exception comparison, or ten-retained-history comparison unless the archive or mainline manifests change.
