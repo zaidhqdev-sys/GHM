@@ -1335,3 +1335,15 @@ The forensic audit now enforces certificate verification, but `src/db/migrate.ts
 - Migrations 5–7 (self identity and registration gateway): their unsigned function signatures are incompatible with current source and unsafe to replay ahead of already-applied signed-wrapper migrations.
 
 **No production migration was applied.** No ledger row, role, grant, data, secret, Render setting, deployment or traffic was changed. Next gate: retrieve the exact applied ledger rows for `20261110210000` through `20261112070000`, inspect the actual signed/unsigned function catalog and storage row compatibility under the migrator/schema-owner read-only session, then prepare a corrective forward-only migration plan. The normal migration command remains blocked.
+
+
+## 2026-11-15 — production storage compatibility verified read-only
+
+Using the already-verified `ghm_migrator` connection with strict TLS, `BEGIN READ ONLY`, and `SET ROLE ghm_schema_owner`, the live storage lifecycle inventory returned:
+- `deleted`: 2 rows; 0 rows incompatible with the proposed pending-cleanup check.
+- `pending`: 2 rows; both correctly have `available_at IS NULL` and `deleted_at IS NULL`; 0 incompatible rows.
+- No `available` or `deletion_pending` rows were present.
+
+The current `storage_object_lifecycle_check` requires `available_at IS NOT NULL` for `deletion_pending`. The pending migration removes only that requirement while preserving the pending/available/deleted state invariants. Existing rows are compatible with the proposed replacement check. This validates data compatibility, not the migration's complete execution/rollback safety.
+
+The same read-only query returned no rows for the attempted ledger filter `version >= '20261110210000'`, despite the preceding full forensic reconciliation having read 105 ledger rows. This filtered result is not interpreted as an empty ledger or as proof that later versions are absent. Repeat the ledger read without a version predicate, using the exact query used by `scripts/forensic-migration-reconciliation.mjs` (`SELECT version, name, checksum, applied_at FROM ghm.ghm_schema_migrations ORDER BY version`) and inspect the tail locally. No change to production was made.
