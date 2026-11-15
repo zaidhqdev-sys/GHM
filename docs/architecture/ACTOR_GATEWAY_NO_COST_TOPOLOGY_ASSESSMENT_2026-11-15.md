@@ -187,3 +187,31 @@ The no-go decision is unchanged. Do not create Cloudflare resources, set `GHM_AC
 - Do not replace the zero Hyperdrive ID with a guessed value, enable `workers_dev`, add a custom route, provision secrets, or deploy as a local workaround.
 - No source code, Worker configuration, production DB, Render service, environment variable, Cloudflare resource, secret, route, deployment, migration, grant, or role was changed during this source/configuration inspection.
 - The current main head after the handover update is `3026460b8f379f0ad6ab08a338b3f6c84cf616cf`. The source/configuration review is documentation-only. Continue with non-production source/test inspection only while the connector-host, backup, and production role-model gates remain unresolved.
+
+
+## 2026-11-15 follow-up — signed assertion replay and timestamp qualification
+
+### Existing coverage reviewed
+
+- Reconciled main, Actor Gateway-related branches, and open PRs before making changes. No duplicate Actor Gateway implementation PR existed. Existing construction/qualification branches were left untouched.
+- The disposable PostgreSQL Actor Gateway principal qualification already checks distinct \`ghm_runtime\`, \`ghm_actor_gateway\`, and \`ghm_migrator\` identities; least-privilege login attributes; the bounded Render administrator membership; exact function/relation ACLs; no direct account/authentication-table access; signed self-identity and registration reads/writes; forged signatures; context/business transplantation; altered payloads; disabled-account denials; legacy RPC revocation; and role-assumption denials.
+- Existing migration contract tests already pinned one-use nonce storage/replay rejection, signed request-context equality, constant-time signature comparison, 60-second assertion validity, nonce retention, and context size bounds. The gap was that the main disposable principal qualification did not explicitly exercise a valid assertion replay and the expired/future timestamp rejection paths end-to-end against PostgreSQL.
+- Existing Worker app tests cover missing/invalid bearer tokens, verified actor derivation, database failure, registration and other gateway routes, and account-scoped rate limiting. Worker static contract tests and the CI local Wrangler smoke test separately cover adapter/startup order, disabled public routes, \`/healthz\`, malformed JSON and oversized-body handling.
+
+### PR #284 — qualification-only change
+
+- Created draft PR #284: \`test: qualify Actor Gateway assertion replay and timestamp boundaries\`.
+- Branch: \`test/actor-gateway-assertion-replay-boundaries-20261115\`.
+- Final exact head: \`4c5710f50bc61a611e07f5ef904d319019bf1782\`.
+- Added explicit disposable-PostgreSQL checks that reuse the same signed nonce and require replay denial, and that signed assertions 61+ seconds in the past/future are rejected. The future fixture uses a 65-second offset because the database compares integer-rounded epoch seconds; a 61-second offset proved boundary-sensitive under CI timing.
+- Extended the migration contract test to pin the database's absolute 60-second timestamp acceptance window.
+- CI initially caught two editing errors before qualification: a malformed helper replacement (syntax check) and then a too-tight future timestamp fixture (integer epoch rounding). Both were corrected. Do not treat those failed attempts as passing evidence.
+- Final exact-head GitHub Actions run \`43752492009\`: \`quality\` PASS, \`web-quality\` PASS, and Cloudflare Pages check PASS. The quality job's disposable PostgreSQL Actor Gateway principal qualification passed, including the new replay, expired and future-dated assertion cases. The local Cloudflare Workers smoke test also passed. All remaining migration, database-boundary, test-suite, gateway cutover and issuer qualification steps in that CI run passed.
+- PR #284 remains OPEN and DRAFT, mergeable/clean at the last read. It has not been merged. Do not merge it automatically; retain the draft pending the normal owner review/merge decision.
+
+### Safety and production boundary
+
+- CI used its isolated PostgreSQL 18 disposable service and local Wrangler runtime. It did not connect to production \`ghm_db\`.
+- No production DB role/grant/migration/data, Render service or environment variable, Cloudflare resource, Worker route, Hyperdrive configuration, Tunnel, secret, or deployment was changed by this qualification.
+- The Pages check is a CI status for the existing Pages integration; it is not evidence that the Actor Gateway Worker was deployed.
+- Production rollout remains blocked by the missing suitable isolated always-on connector host, missing VPC Service/Tunnel/Hyperdrive provisioning, unresolved Amanda/Render role-administration remediation, and lack of a fresh independently verified production backup/recovery point.
