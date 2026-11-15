@@ -190,7 +190,7 @@ test('Admin commercial launch state is restricted to authenticated system admins
   const rows = await service.getAdminCommercialLaunchState(admin, 100);
   assert.equal(rows[0]?.businessName, 'Test Business');
   assert.deepEqual(repository.adminLaunchCalls, [{ context: admin, limit: 100 }]);
-  await assert.rejects(() => service.getAdminCommercialLaunchState(context(), 100), /Insufficient role/);
-  await assert.rejects(() => service.getAdminCommercialLaunchState(admin, 251), /limit must be between 1 and 250/);
+  assert.throws(() => service.getAdminCommercialLaunchState(context, 100), /Insufficient role/);
+  assert.throws(() => service.getAdminCommercialLaunchState(admin, 251), /limit must be between 1 and 250/);
 });
 
