@@ -397,3 +397,19 @@ A cross-check against the existing authoritative storage handover and the exact 
 - The read-only preflight configures the PostgreSQL client with `ssl: { rejectUnauthorized: true }`, so TLS is enforced by the client connection itself.
 - Removed the server-side `ssl` GUC check because it reports server capability/configuration, not the encryption state of an individual client connection. The report now states `tls_enforced_by_client: true` based on the explicit verified client configuration.
 - Latest code commit for this correction: `dfc0b1400f6b1cc94b43a8c94e67363d9f473120`. Exact-head CI has not yet been observed for this SHA. Do not claim the new first-four qualification passes until the quality job reaches and completes that step.
+
+
+## 21. Exact-head CI completed successfully (2026-11-15 21:20 UTC)
+
+- Exact branch head `e8bddb05c23a3719d00a33e7db62c0fb16c28d28` completed GitHub Actions run `43762783722` (CI run number 4987) with overall conclusion `success`.
+- All three required checks passed: `quality`, `web-quality`, and `Cloudflare Pages`. The PR remains open and draft; CI success does not merge or authorize production execution.
+- The quality job's new first-four post-apply qualification ran successfully against the isolated disposable PostgreSQL 18 database. Captured output:
+  - `MIGRATION 2 ONBOARDING EFFECTIVE ACLS + VALIDATED CONSTRAINTS: PASS`
+  - `MIGRATION 3 READ-ONLY EFFECTIVE ACLS + SEED DATA + VALIDATED CONSTRAINTS: PASS`
+  - `MIGRATION 4 STORAGE ROW COMPATIBILITY + VALIDATED CONSTRAINT + FUNCTION ACL: PASS`
+  - `DISPOSABLE FIRST-FOUR MIGRATION POST-APPLY QUALIFICATION: PASS`
+- The same quality job passed the full migration application to disposable PostgreSQL, bounded batch guard/rollback qualification, full test suite, migration audit policy tests, runtime boundary verification, and the existing Actor Gateway/auth issuer/storage/capability/security qualification steps.
+- The production preflight script received syntax validation only. It has not been run against `ghm_db`; no production inventory, status distribution, constraint or grant has yet been observed by this script.
+- Important boundary: these are disposable-database qualification results, not production compatibility evidence. Migration 4 remains blocked on the signed storage gateway production deployment, provider-attestation secret, end-to-end lifecycle smoke tests, and a separately reviewed five-function legacy grant cutover/rollback plan. Do not interpret its disposable pass as production approval.
+- PR #285 remains OPEN / DRAFT / mergeable at the time of this checkpoint. No merge, deployment, production migration, grant change, secret change, Render configuration change or production data mutation occurred.
+- Next action: run the prepared read-only preflight from the PR branch against production `ghm_db` using the existing `ghm_migrator` connection and TLS verification. Capture the complete output in the handover, then select only the earliest eligible migration(s). The backup and Render role-administration gates remain independent requirements for production DDL.
