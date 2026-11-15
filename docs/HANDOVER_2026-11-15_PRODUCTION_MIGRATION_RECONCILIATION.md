@@ -751,3 +751,26 @@ The owner explicitly stated that the proposed command was not run because CI fai
 - PR #285 remains open and draft; no merge.
 - This CI success qualifies the corrected classifier/test code only. It does not authorize production migration execution, ledger repair, grant changes, or deployment.
 - Next owner action may now be limited to fetching the exact qualified branch head and rerunning the read-only production preflight. Preserve the untracked local `.bak` file. If the corrected preflight reports `PRE_MIGRATION`, continue with read-only migration ledger/checksum and provenance reconciliation; do not execute a migration until all independent production gates are cleared.
+
+
+## 33. Corrected production preflight confirms exact October baseline (2026-11-15 22:54 UTC)
+
+The owner fetched and checked out the CI-qualified branch, verified HEAD `09c4d485d642ceb3c1c1805467fb4128c08065f5`, and reran the read-only production preflight. The untracked local backup `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` remains present and untouched.
+
+Observed result:
+- Verdict `READ_ONLY_PREFLIGHT_ONLY`; exit code 0.
+- Classifier: **`PRE_MIGRATION`**. This supersedes the initial false `PARTIAL_DRIFT` result from the earlier classifier.
+- Identity: database `ghm_db`, session user `ghm_migrator`, current user `ghm_schema_owner`; transaction read-only is on and client TLS verification is enforced.
+- The existing `storage_mark_deletion_pending(bigint)` body, lifecycle constraint, owner, pinned search path and exact owner/runtime ACL match the October baseline.
+- Other six expected-create objects are absent with no unexpected name collisions.
+- Two pending and two deleted storage rows; zero incompatible rows under the proposed lifecycle constraint.
+- Supplier-classification function is absent.
+- No production DDL/DML, migration, ledger repair, grant/role change, secret, Render configuration, deployment or application data was changed.
+
+### Next read-only gate: full production migration ledger/provenance reconciliation
+
+The repository already contains the dedicated, TLS-verified, `BEGIN READ ONLY` forensic audit. Its production pending allowlist is `config/pending-migrations.production.json` (42 entries in the checked branch); retained-history and historical-checksum provenance are in the corresponding production config files. Run the existing `npm run audit:migrations:predeploy` command only after the owner fetches the latest handover-updated branch head. This audit permits the explicitly allowlisted pending set but does not apply migrations. Capture the full JSON output and exit code. A PASS_WITH_PENDING verdict is an audit result only—not authorization to execute pending migrations.
+
+The standalone legacy `audit-applied-migration-checksums.cjs` script uses an unverified TLS configuration and is not the preferred production audit; use the forensic reconciliation command with verified TLS instead.
+
+Production migration execution remains blocked pending exact ledger/provenance PASS, a fresh verified production backup/recovery point, resolution of Render role-authority with Amanda's support guidance, deployed and verified signed Actor Gateway/storage path, and a separately qualified small-batch/rollback plan. Keep all five legacy storage grants unchanged until the gateway cutover is proven and explicitly planned.
