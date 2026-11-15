@@ -185,6 +185,7 @@ Branch commit sequence:
 - Version-regex correction: `db92ac3ee3904d38b64cfe64b0ee193f426b8d6c`
 - Generic selector signature correction: `2e7c37fcbf2db88d917c49b3dcc197adf4960001`
 - Generic selector return type correction (preserves full SQL-bearing migration records): `0dbfb6405c385340ca1ea1c78fae37a9c7b8a221`
+- Corrected parser/selector return annotations: `010abc386b4461cb8df1500e4c958a92400778cc`
 
 ### Qualification and operational limits
 
