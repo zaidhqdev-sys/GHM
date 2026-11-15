@@ -1512,3 +1512,39 @@ Source-level observations:
 ### Current stop condition
 
 Keep the production pending allowlist at seven entries and unchanged. Keep the migration runner fail-closed. Do not run the production migration executor, apply manual cutovers, change roles/grants/secrets, modify Render, deploy, or switch traffic until the complete migration suffix and its separate service cutovers have been qualified and documented.
+
+
+### Next ten migrations — source review checkpoint (continued)
+
+Reviewed the next ten timestamp-ordered files on current main `c5a54db9084fc4c55a440c8ce4fa0bd91287db05`:
+
+1. `20261111100000_add_signed_saved_business_gateway.sql`
+2. `20261111130000_add_signed_business_hours_gateway.sql`
+3. `20261111140000_add_business_hours_read_projections.sql`
+4. `20261111150000_add_signed_trust_score_gateway.sql`
+5. `20261111160000_add_signed_business_logo_gateway.sql`
+6. `20261111170000_add_trust_score_read_projections.sql`
+7. `20261111210000_revoke_runtime_account_external_identity_table_access.sql`
+8. `20261111220000_revoke_unused_auth_runtime_entry_points.sql`
+9. `20261111230000_add_token_bound_recovery_revocation_result.sql`
+10. `20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql`
+
+Source-level observations:
+
+- The saved-business, business-hours, trust-score and Business Logo migrations add SECURITY DEFINER Actor Gateway wrappers using the context-bound assertion helper. Their wrappers are assigned to `ghm_schema_owner`, revoked from PUBLIC/runtime/migrator, and granted to `ghm_actor_gateway`.
+- The public business-hours and trust-score projections deliberately remain callable by `ghm_runtime` while PUBLIC and migrator execution are revoked. This is a separate read-only public projection path; it must be preserved in any effective function-ACL inventory.
+- The saved-business and business-hours gateway wrappers perform lifecycle writes/reads through the existing domain functions; no standalone data backfill was identified in the migration bodies.
+- The account external-identity cutover revokes direct runtime access to the identity table and sequence while explicitly granting runtime execution to the four auth lifecycle functions for lookup, link, bootstrap and migration-account provisioning. The effective function dependencies and route call paths must be checked before this cutover.
+- The unused-auth-entry-point migration revokes runtime execution from session revocation, password change and account disable functions. This is operationally sensitive: confirm every production route has moved to the intended trusted issuer/actor boundary before application.
+- The token-bound recovery migration changes recovery redemption to return a revoked-session count and revokes a legacy all-sessions helper from runtime. It updates the recovery credential state inside the function; verify callers consume the changed result contract and that all existing overloads/clients are reconciled.
+- The QuoteFlow migration provisioning migration revokes runtime execution from `auth_provision_migration_account(text,text,text,text)`. This must be checked against the existing migration/recovery workflows and the documented user-migration decision; do not infer that revoking it is harmless solely because user migration is not a current blocker.
+
+### Additional stop conditions
+
+1. Do not apply auth entry-point or identity-table revocations until source-to-production route mapping proves which service principal executes each route and the replacement route is deployed and verified.
+2. The production API deployment remains recorded as the older `c7cf1eb` snapshot, auto-deploy OFF. Mainline wrappers and tests do not prove that the deployed API calls them.
+3. Preserve runtime EXECUTE on the explicitly intended public read projections and auth lifecycle functions; verify exact overload signatures, owner and ACL rather than relying on function names alone.
+4. Verify the recovery redemption return-shape against all TypeScript callers, tests, and any SQL wrappers before treating the change as compatible.
+5. The source review remains non-executing. No disposable PostgreSQL qualification of these ten migrations was performed in this continuation, and no production SQL or cutover was run.
+
+The overall 42-migration suffix remains unqualified. The allowlist is unchanged at seven entries. Production remains read-only and no Render/deployment/secret/role/grant changes were made.
