@@ -153,3 +153,36 @@ test('production migration allowlist rejects duplicate versions', () => {
     /contains duplicate version/,
   );
 });
+
+import { parseProductionMigrationBatch, selectProductionMigrationBatch } from './production-migration-batch';
+
+test('production batch parser requires explicit valid JSON and caps batch size', () => {
+  assert.throws(() => parseProductionMigrationBatch(undefined), /set GHM_PRODUCTION_MIGRATION_BATCH/);
+  assert.throws(() => parseProductionMigrationBatch('{bad'), /valid JSON/);
+  assert.throws(() => parseProductionMigrationBatch('[]'), /between 1 and 5/);
+  assert.throws(() => parseProductionMigrationBatch(JSON.stringify(Array.from({ length: 6 }, (_, i) => ({ version: String(20261110100000 + i), name: 'migration_' + i })))), /between 1 and 5/);
+  assert.deepEqual(parseProductionMigrationBatch('[{"version":"20261110100000","name":"first"}]'), [{ version: '20261110100000', name: 'first' }]);
+});
+
+test('production batch selects only the exact next pending prefix', () => {
+  const migrations = [
+    { version: '20261110100000', name: 'first' },
+    { version: '20261110120000', name: 'second' },
+    { version: '20261110140000', name: 'third' },
+  ];
+  assert.deepEqual(selectProductionMigrationBatch(migrations, new Set(), migrations.slice(0, 2)), migrations.slice(0, 2));
+  assert.deepEqual(selectProductionMigrationBatch(migrations, new Set(['20261110100000']), migrations.slice(1, 2)), migrations.slice(1, 2));
+});
+
+test('production batch refuses skipped, reordered, duplicate, unknown and mismatched entries', () => {
+  const migrations = [
+    { version: '20261110100000', name: 'first' },
+    { version: '20261110120000', name: 'second' },
+    { version: '20261110140000', name: 'third' },
+  ];
+  assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [migrations[1]]), /next pending prefix/);
+  assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [migrations[1], migrations[0]]), /next pending prefix/);
+  assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [migrations[0], migrations[0]]), /duplicate batch version/);
+  assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [{ version: '20261110100000', name: 'wrong' }]), /next pending prefix/);
+  assert.throws(() => selectProductionMigrationBatch(migrations, new Set(migrations.map(x => x.version)), [migrations[0]]), /no further pending migration/);
+});
