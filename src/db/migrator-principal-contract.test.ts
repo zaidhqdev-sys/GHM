@@ -43,3 +43,12 @@ test('production migration runner enforces verified TLS and strips URL-level SSL
   assert.match(migrationRunner, /ssl: databaseSsl \? \{ rejectUnauthorized: true \} : false/);
   assert.doesNotMatch(migrationRunner, /rejectUnauthorized:\s*false/);
 });
+
+
+test('migration runner rejects missing migrations that precede applied repository versions', () => {
+  assert.match(migrationRunner, /findOutOfOrderPendingMigration\(/);
+  assert.match(migrationRunner, /Migration history gap: refusing to replay pending/);
+  const guard = migrationRunner.indexOf('findOutOfOrderPendingMigration(');
+  const execution = migrationRunner.indexOf('normalizeMigrationSqlForExecution(migration.sql)');
+  assert.ok(guard >= 0 && execution > guard, 'migration ordering guard must run before any migration SQL');
+});
