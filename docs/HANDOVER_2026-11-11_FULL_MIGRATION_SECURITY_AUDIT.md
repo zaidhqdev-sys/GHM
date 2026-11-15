@@ -3093,3 +3093,43 @@ This supersedes the earlier broad-copy approach for these three files. The prior
 The CI workflow fixture in #276/#277 has also been narrowed to the current Render administrator boundary: the dashboard administrator has ADMIN OPTION only over `ghm_actor_gateway`, with INHERIT and SET false. It is not granted membership in `ghm_runtime`, `ghm_auth_issuer` or `ghm_payment_provider`. Issuer, runtime, migrator and payment-provider service principals remain separate.
 
 No exact-head CI result yet qualifies these reconciliation commits. Do not merge, deploy, apply migrations, execute manual cutover SQL, or change production role grants based on historic CI runs. The next required evidence is full disposable PostgreSQL qualification and exact-head CI on the final #272/#276/#277 heads.
+
+
+## 2026-11-15 — Actor Gateway, Authentication Issuer and Worker stack merged
+
+The existing three-PR stack has now been merged into main in dependency order after exact-source CI passed:
+
+| PR | Component | Merge commit | Exact PR CI |
+|---|---|---|---|
+| #272 | Unified Actor Gateway | \`4463bbb989f9d1173596f5371663b3e9e7afc0a9\` | Run \`43655697931\` passed |
+| #276 | Isolated Authentication Issuer | \`1d78d2b992acf92f1359b396f3ccc759c1ff6bd6\` | Run \`43655714468\` passed |
+| #277 | Actor Gateway Worker hardening | \`fd629ea4148a69a0600d8424ed37580b83a59058\` | Run \`43655730945\` passed |
+
+Current main head is \`fd629ea4148a69a0600d8424ed37580b83a59058\`.
+
+### Qualification evidence
+
+- #272 quality and web-quality passed on exact source tree \`81b0a90f762772ca745fbca122f9848968d4f234\`; the main suite reported 888 passed, 0 failed, plus 15/15 additional contract tests.
+- #276 quality and web-quality passed on exact source tree \`c3c39f2e73260dc221d58f58d7bed606dc02b223\`; all 72 quality steps passed, including disposable PostgreSQL migration/role/ACL checks, issuer pre-cutover grants, guarded disposable issuer cutover, issuer lifecycle/runtime denial qualification, and pre/post SECURITY DEFINER inventory comparison.
+- #277 quality and web-quality passed on exact source tree \`628ae4518fe626b2790c6c24c07446c466da62db\`; quality 73/73 and web-quality 11/11 passed. Worker local-runtime oversized-body rejection and startup behavior passed, as did the combined Actor Gateway/Issuer disposable PostgreSQL qualification.
+- The latest merge commits after the tested source trees were ancestry-only/tree-preserving merges. The final PR merge commits are recorded above.
+
+The earlier two failed #272 CI attempts were caused by stale SQL regular-expression expectations in the migration contract test. The test was corrected to accept both equivalent PostgreSQL boolean predicate forms. The final exact-source PR run passed; the migration security checks were not weakened.
+
+### Merge is not deployment
+
+No Render or Cloudflare deployment was performed. The existing production GHM internal runtime remains the only approved production API target; auto-deploy remains OFF. Do not deploy this merged stack as-is.
+
+Production remains blocked by:
+1. No qualified $0 hosting path for the isolated issuer/Actor Gateway services. Cloudflare Workers Free Argon2id feasibility failed the current GHM password-hashing CPU budget; do not weaken Argon2id or create paid compute.
+2. No production Actor Gateway or Authentication Issuer service/network/secret configuration. Disposable CI qualification does not prove live Cloudflare-to-Render Hyperdrive connectivity.
+3. Production \`ghm_actor_gateway\` role/function ACL and migration ledger remain unverified/incomplete through the existing production query identity; no manual grants or migrations have been applied.
+4. Existing production Render database allowlist \`0.0.0.0/0\` requires a separate validated network/TLS plan. The current \`rejectUnauthorized:false\` database TLS setting does not authenticate the server certificate.
+5. Fresh verified production backup/restore evidence, full ownership/grant/default-privilege/SECURITY DEFINER/runtime dependency map, approved migration authority, secret custody and reversible cutover plan remain required.
+6. Production API environment variables still require review against the current non-sandbox-only runtime contract before any manual deployment. Do not repoint or rotate credentials by guesswork.
+
+### Immediate next phase
+
+Begin production deployment-readiness work only: re-inventory current Render services, production environment variable names/targets, current live deployment SHA, database role/ACL state, migration ledger authority, and $0 service options. Keep all checks read-only. Produce a deployment matrix and cutover/rollback runbook before any Render setting, production database, secret, deployment or traffic change.
+
+PayFast remains paused pending sandbox access. Legal-document publication remains paused. No production data, role/grant, secret, credential, Render environment/service, Cloudflare resource, DNS, route or traffic was changed during the PR merges.
