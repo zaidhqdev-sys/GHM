@@ -72,14 +72,14 @@ try {
       await expectPrivilege(runtime, 'ghm_runtime', table, privilege, false);
     }
   }
-  const seeds = await migrator.query(`
+  const seeds = await inspection.query(`
     SELECT
       (SELECT count(*)::int FROM ghm.relationship_type WHERE code IN ('supplier','customer','partner','subcontractor','referral') AND version = 1) AS relationship_seed_count,
       (SELECT count(*)::int FROM ghm.outcome_type WHERE code IN ('response','acceptance','completion','cancellation','dispute','repeat_engagement') AND version = 1) AS outcome_seed_count
   `);
   assert.equal(seeds.rows[0].relationship_seed_count, 5);
   assert.equal(seeds.rows[0].outcome_seed_count, 6);
-  const modelConstraints = await migrator.query(`
+  const modelConstraints = await inspection.query(`
     SELECT conrelid::regclass::text AS table_name, conname
       FROM pg_constraint
      WHERE conrelid IN (
@@ -108,7 +108,7 @@ try {
   console.log('MIGRATION 3 READ-ONLY EFFECTIVE ACLS + SEED DATA + VALIDATED CONSTRAINTS: PASS');
 
   // Migration 4: inspect every existing disposable storage row against the new lifecycle predicate.
-  const storage = await migrator.query(`
+  const storage = await inspection.query(`
     SELECT status, count(*)::int AS row_count,
            count(*) FILTER (WHERE NOT (
              (status = 'pending' AND available_at IS NULL AND deleted_at IS NULL)
@@ -120,7 +120,7 @@ try {
      GROUP BY status ORDER BY status
   `);
   assert.ok(storage.rows.every(row => row.invalid_count === 0), 'existing storage rows violate the new lifecycle predicate');
-  const storageConstraint = await migrator.query(`
+  const storageConstraint = await inspection.query(`
     SELECT c.convalidated, pg_get_constraintdef(c.oid) AS definition
       FROM pg_constraint c
      WHERE c.conrelid = 'ghm.storage_object'::regclass
@@ -129,7 +129,7 @@ try {
   assert.equal(storageConstraint.rows.length, 1, 'expected exactly one storage lifecycle constraint');
   assert.equal(storageConstraint.rows[0].convalidated, true);
   assert.match(storageConstraint.rows[0].definition, /deletion_pending/);
-  const fn = await migrator.query(`
+  const fn = await inspection.query(`
     SELECT p.prosecdef, pg_get_userbyid(p.proowner) AS owner,
            p.proconfig, has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute
       FROM pg_proc p
