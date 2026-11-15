@@ -165,3 +165,32 @@ Migration-related branches were also checked:
 ## 8. Change record
 
 This handover records source review and the user's supplied read-only audit. It does not claim a new production audit was run. No production SQL, migration, role/grant, secret, environment variable, Render service, Cloudflare resource, deployment or application data was changed.
+
+
+## 9. Incremental production migration runner implementation (2026-11-15)
+
+The user chose an incremental rollout model: apply one migration at a time, or a small tightly coupled batch, verify the result, and only then select the next batch. This is now represented in code on branch `feat/production-migration-batch-execution-20261115` (not merged/deployed):
+
+- `src/db/production-migration-batch.ts` parses the explicit `GHM_PRODUCTION_MIGRATION_BATCH` JSON environment value and selects only the exact next pending prefix.
+- Production batches must contain 1–5 ordered `{version,name}` entries. Missing/invalid JSON, empty or oversized batches, duplicates, name/version mismatch, skipped earlier pending migrations, reordering, unknown migrations and attempts to execute an already-complete batch are rejected.
+- The migration runner validates the complete production pending inventory first, then executes only the selected batch. The selected batch remains inside the runner's existing single transaction and advisory lock; a failed migration rolls back the whole batch. Non-production migration behavior remains unchanged.
+- `config/pending-migrations.production.json` now records all 42 exact pending version/name entries from the user's 2026-11-15 read-only audit. This file is an inventory/allowlist check, not an execution authorization: the separate explicit batch variable is required to execute anything against `ghm_db`.
+- The existing migration-checksum test file now includes parser/selection tests for the batch boundary. The normal `npm test` command already includes this test file.
+
+Branch commit sequence:
+- Runner change: `e59f59f6067f217362c06b85174af30862b90959`
+- Batch selector: `a04930bb141c596fb18baf7e54c269d0ce80fc36`
+- Full 42-entry inventory: `570ac466b0ed324429d1fa2cd458e61ae4a986c7`
+- Batch tests: `d2691389544060ce5fff7cdc90b192ab93fa1a4d`
+- Version-regex correction: `db92ac3ee3904d38b64cfe64b0ee193f426b8d6c`
+
+### Qualification and operational limits
+
+- This is implementation on an isolated feature branch only. It has not been merged, deployed, or run against production. CI/build qualification is still required.
+- Do not set `GHM_PRODUCTION_MIGRATION_BATCH` in Render yet. Do not run `npm run migrate` against production.
+- The exact first migration and first batch still require migration-by-migration dependency and effect review, including current production schema/ACL evidence and matching application routes. The helper intentionally insists on the earliest pending prefix, so the first batch cannot skip the earlier supplier-classification migration.
+- The transaction boundary is the complete selected batch, not one transaction per migration. Keep independent migrations in one-entry batches; group migrations only when a demonstrated dependency requires atomicity.
+- The prior production gates remain: Amanda/Render administrator-role separation issue unresolved, fresh verified production backup/recovery point not confirmed, and dedicated Actor Gateway service/credentials/secret not provisioned. This code does not bypass those gates.
+- The latest production inventory remains the user-supplied audit summarized above; no new production audit was run during this implementation.
+
+No production SQL, migration, role/grant, secret, environment variable, service, deployment, or application data was changed.
