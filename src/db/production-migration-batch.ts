@@ -20,7 +20,7 @@ export const parseProductionMigrationBatch = (raw: string | undefined): Producti
       throw new Error(`Production migration refused: invalid batch entry at index ${index}`);
     }
     const candidate = entry as Record<string, unknown>;
-    if (typeof candidate.version !== 'string' || !/^\\d{14}$/.test(candidate.version) ||
+    if (typeof candidate.version !== 'string' || !/^\d{14}$/.test(candidate.version) ||
         typeof candidate.name !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(candidate.name)) {
       throw new Error(`Production migration refused: invalid version/name at batch index ${index}`);
     }
