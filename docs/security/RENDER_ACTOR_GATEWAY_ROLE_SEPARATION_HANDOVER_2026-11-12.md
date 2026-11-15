@@ -2579,3 +2579,13 @@ Amanda's Render support recommendation remains unchanged: retain the Dashboard-m
 - No Render service, environment variable, secret, role, grant, production data, deployment, traffic, or migration allowlist was changed.
 - The production migration execution gate remains closed. Do not expand the seven-entry allowlist to include the 35 unapproved pending migrations.
 - Amanda's Render support recommendation and the unresolved sensitive-role ADMIN OPTION issue remain documented and unchanged.
+
+
+### 2026-11-15 18:16Z — post-sync CI progress correction
+The initial commit-associated workflow lookup returned an empty list, but a direct Actions-run lookup subsequently found the expected exact-head PR run:
+- Run `43734074745`, head `f1d06bcf6f4603f38c779c9dc45ed5689151c648`, event `pull_request`.
+- `web-quality`: **PASS**.
+- `quality`: **IN PROGRESS**, 36 of 72 reported job steps completed at the latest poll; Actor Gateway local Worker smoke test and Argon2id evidence stages have progressed without a reported failure.
+- Overall workflow: **IN PROGRESS**; no failure reported.
+- GitHub recalculated PR #282 as `mergeable=true`. This is not merge authorization; wait for all required checks to finish and inspect their final conclusions.
+- This replaces the immediately preceding note that no new run was visible: the run exists and is progressing normally.
