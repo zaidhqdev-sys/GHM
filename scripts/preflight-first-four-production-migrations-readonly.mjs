@@ -98,6 +98,8 @@ try {
     const storageFunction = await client.query(`
       SELECT p.oid::regprocedure::text AS signature,
              pg_get_function_result(p.oid) AS return_type,
+             pg_get_functiondef(p.oid) AS definition,
+             p.proacl AS acl,
              p.prosecdef AS security_definer,
              pg_get_userbyid(p.proowner) AS owner,
              has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
@@ -129,7 +131,7 @@ try {
       supplier_classification_function: supplierFunction.rows,
       warnings: [
         'This script does not authorize or execute any migration.',
-        'Migration 4 replaces the existing SECURITY DEFINER storage_mark_deletion_pending(bigint) function and retains ghm_runtime EXECUTE while expanding deletion-pending eligibility to pending uploads. Confirm its exact return type, owner, search_path, row compatibility and the signed storage gateway/five-function legacy grant cutover before applying it.',
+        'Production currently reports the post-migration-4 storage constraint and a SECURITY DEFINER storage_mark_deletion_pending(bigint) function while the migration ledger still lists migration 4 as pending. Capture and reconcile the exact function definition/ACL and constraint provenance before any rerun; do not blindly reapply or repair the ledger.',
         'Migration 1 creates a SECURITY DEFINER supplier-classification function that accepts a caller-supplied account ID. It must revoke EXECUTE from PUBLIC, ghm_runtime and ghm_migrator; only the later signed gateway wrapper may call it as schema owner. Verify effective ACLs and exact-head disposable PostgreSQL qualification before execution.',
       ],
     };
