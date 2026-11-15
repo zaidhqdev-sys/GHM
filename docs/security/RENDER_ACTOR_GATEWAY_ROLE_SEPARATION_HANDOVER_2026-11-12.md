@@ -2485,3 +2485,30 @@ The helper also refuses stale allowlist entries that do not exactly match a curr
 ### Amanda / Render support continuity
 
 Amanda's support conversation remains the documented basis for retaining the Dashboard-managed default credential for controlled administration while using SQL-created restricted login identities for normal application execution. The sensitive-role ADMIN OPTION issue remains unresolved and is not addressed by this migration-runner change.
+
+
+## 2026-11-15 16:08Z — PR #282 exact-head CI failure diagnosed and regression assertion corrected
+
+### Recheck and CI diagnosis
+- Re-fetched the canonical handover from the default branch before this update (blob SHA: `4965dc23826d12308d5d5fb4ad1aa85ed577a9d5`).
+- Rechecked the six open PRs. #282 remains the migration-runner hardening PR; #264, #244, #243, #233 and #201 remain open. PayFast and legal-document work remain paused as already documented.
+- Compared `main` to the #282 branch merge base. The 23 commits on main since the merge base modify only this canonical handover file; the PR branch is 13 commits ahead and 23 behind. The branch has not yet been synchronized; do not mistake the handover-only divergence for source-code drift.
+- Inspected exact-head CI run `43733125686` for `ba8cffc6933e8bf1e780a678af554ee7148c6147`. Build, disposable PostgreSQL migration application, Worker smoke checks, and web-quality passed. The main `quality` job failed in the test suite: 1,012 passed, 1 failed out of 1,013.
+- Downloaded and inspected the test-suite diagnostic artifact. The sole failure was the newly added test `production migration allowlist permits only its configured pending suffix`. The helper correctly rejected exactly one unapproved pending migration, but the test incorrectly expected two. This was a test expectation defect, not a production migration execution or application regression.
+- No live production connection, migration, restore, deployment, role/grant change, or Render setting change occurred during CI investigation.
+
+### Correction on existing PR #282 branch
+- Corrected the expected rejection count from 2 to 1 in `src/db/migration-checksum.test.ts`.
+- Commit: `9622807fd1a9168b843186aad86b397fda56997c` — `test(db): correct pending allowlist rejection count`.
+- No new branch or PR created.
+- Fresh exact-head CI run `43733524314` started for this commit. At handover time, both `quality` and `web-quality` were still running; results are not yet confirmed.
+- PR #282 is not ready to merge. Keep the production migration runner blocked until exact-head CI passes and the branch is reconciled with main. The seven-entry production allowlist remains unchanged; do not add the 35 unapproved pending migrations.
+
+### Amanda / Render continuity
+Amanda's Render support recommendation remains unchanged: retain the Dashboard-managed default credential for controlled administration and use SQL-created restricted login identities for normal application execution. The sensitive-role ADMIN OPTION membership concern remains unresolved and is not changed by this PR.
+
+### Current state
+- PR #282 head: `9622807fd1a9168b843186aad86b397fda56997c`.
+- Exact-head CI: running; awaiting final results.
+- #282 branch vs main: 13 commits ahead / 23 behind, with main-side commits since merge base limited to this handover document.
+- Production migration execution / deployment: not performed.
