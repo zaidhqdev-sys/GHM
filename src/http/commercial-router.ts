@@ -57,7 +57,16 @@ export const registerCommercialRoutes = (
     const context = req.authContext as AuthContext;
     try {
       const rows = await service.getAdminCommercialLaunchState(context, limit);
-      res.status(200).json({ rows });
+      res.status(200).json(rows.map(row => ({
+        business_id: row.businessId,
+        business_name: row.businessName,
+        plan_code: row.planCode,
+        trial_status: row.trialStatus,
+        subscription_status: row.subscriptionStatus,
+        founding_sequence: row.foundingSequence,
+        cancel_at_period_end: row.cancelAtPeriodEnd,
+        current_period_end: row.currentPeriodEnd,
+      })));
     } catch (error) {
       if (error instanceof Error && /Insufficient role/.test(error.message)) {
         res.status(403).json({ error: 'forbidden' });
