@@ -995,3 +995,56 @@ Therefore do not set `GHM_PRODUCTION_MIGRATION_BATCH`, do not run `npm run migra
 - Resolve onboarding direct-runtime tenant isolation and relationship/outcome visibility/verification semantics before treating migrations 2 and 3 as application-ready.
 
 No production SQL, DDL/DML, ledger repair, grant/role change, secret, Render/Cloudflare configuration, deployment, or application data was changed during this review. Preserve the untracked local `.bak` file.
+
+
+
+## 40. Correction: reconcile first-four findings with authoritative storage and tenant-isolation handovers (2026-11-15 23:58 UTC)
+
+### Exact-head CI
+
+- Commit `1755535a2377a2ef2ed42be13eb9e614759ccf2c` passed workflow #5033, run ID `43777265390`.
+- Jobs `quality` and `web-quality` both completed SUCCESS.
+- PR #285 remains open, draft and unmerged.
+
+### Important correction to section 39 — storage gateway implementation status
+
+Section 39's wording that the signed Storage Metadata Gateway/provider-attestation implementation is incomplete was too broad and conflicts with the authoritative `docs/HANDOVER_2026-11-12_STORAGE_METADATA_GATEWAY.md`. That storage handover is authoritative for storage implementation status and supersedes older historical paragraphs within itself.
+
+The signed storage gateway source implementation **already exists and has been qualified on disposable PostgreSQL 18**:
+- Actor v2 assertions cover pending creation, metadata read and deletion-pending request.
+- Availability and deletion completion require the separate Resource API provider-workflow HMAC attestation, independently verified by PostgreSQL.
+- Five signed database wrappers, Actor Gateway reader, HTTP routes, Resource API gateway client, fail-closed production mode and adversarial tests exist.
+- The five-function legacy grant revocation and rollback have a localhost-only disposable rehearsal. It denies direct calls by runtime, migrator and Actor Gateway login during the rehearsal, verifies replacement wrapper grants, then restores original ACLs.
+- This is not a production cutover. The five legacy grants remain in the production pre-cutover state. The external provider end-to-end deployed Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ R2 journey remains outstanding and must use a dedicated non-production bucket; do not mutate `zaid-ghm-production`.
+
+The new migration `20261110140000_allow_pending_storage_object_cleanup` modifies one of the legacy functions and grants its EXECUTE to `ghm_runtime`. This is an additional direct-call path to include in the same legacy storage grant review/cutover. The signed gateway wrapper can use the function under its SECURITY DEFINER owner context, but the direct runtime grant must not be treated as safe merely because the Resource API uses the gateway in production mode. Keep the five-function (and migration-4 ACL) production cutover blocked until the supported Render role authority, backup/recovery and deployed non-production end-to-end gates are satisfied.
+
+The production Resource API source wiring was verified at this PR head:
+- `src/http/app.ts` sets `storageMetadataGatewayRequired = config.isProduction || ...`.
+- When production storage is enabled, startup requires `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`.
+- It constructs `HttpStorageMetadataGatewayClient` and injects it into storage routes.
+- If the gateway is absent in production, the storage route fails closed (503); it does not silently fall back to `src/storage/repository.ts`.
+- The deployed production runtime SHA `c7cf1eb...` is older than this source wiring, and no production service/secret deployment has been performed. Thus source implementation is present; live production deployment/readiness is not established.
+
+### Migration 2 — onboarding tenant boundary: refine, do not overstate
+
+The migration grants `ghm_runtime` table SELECT/INSERT/UPDATE and does not define RLS. The application repository scopes all reads/writes to the authenticated `context.userId`; HTTP input rejects account IDs, and the service requires authenticated context. The existing tenant-isolation qualification script demonstrates runtime role identity and tenant membership resolution through the application helper.
+
+A direct SQL session using the shared `ghm_runtime` credential can query arbitrary account IDs because the database does not receive an independently authenticated per-request actor assertion for this table. This is a real limitation of the shared runtime credential boundary, but adding RLS without a non-forgeable database actor context would not by itself solve it. Do not add a caller-settable GUC and call that secure. Treat this as an explicit threat-model decision: either onboarding remains inside the trusted Resource API boundary with query-level account scoping, or a future signed database actor boundary is designed and qualified. Section 39's wording that this is automatically a production blocker is not a settled architecture decision.
+
+### Migration 3 — relationship/outcome visibility: policy decision required
+
+The current repository enforces active membership in the requested Business and scopes the query to that Business. The schema stores `visibility` and `verification_status`, but the current read query does not filter those fields. This is not yet proof of a cross-tenant disclosure: the endpoint is Business-member-only, and the intended semantics of `private`, `participants`, `authenticated`, `public`, and each verification state have not been established by the migration alone.
+
+Before broadening this endpoint or treating the fields as enforcement, reconcile the product policy with the relationship/outcome governance contract. At minimum, document whether member-visible records may include unverified assertions, and whether a member of either participating Business can see records marked private. Add tests for the selected policy. Until then, keep the endpoint's existing active-membership gate and do not describe the schema fields as independently enforced access controls.
+
+### Revised ordered-prefix decision
+
+- Migration 1: function ACL/source contract is restricted; supplier write remains gated on the signed gateway and final context-bound wrapper sequence, plus production service deployment.
+- Migration 2: application-level account scoping is implemented. Direct shared-runtime SQL is a known trust-boundary limitation requiring explicit architecture treatment; no superficial RLS/GUC patch.
+- Migration 3: active Business membership is enforced in the repository; visibility/verification semantics need policy reconciliation before expanding exposure.
+- Migration 4: signed storage gateway implementation is already present and disposable-qualified, but its new direct runtime grant and the legacy function grants still require the separate manual production ACL cutover. Deployed provider end-to-end validation is outstanding.
+
+No migration batch is approved for production by this section. Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset and do not run `npm run migrate`. The fresh verified production backup, Amanda/Render administrator-role separation, production Actor Gateway/Resource API deployment and secrets, dedicated non-production provider end-to-end test, and exact storage ACL cutover/rollback remain independent gates.
+
+No production database, role/grant, secret, Render/Cloudflare setting, service, deployment, bucket, object, or application data was changed during this correction. Preserve the untracked local `.bak` file.
