@@ -1347,3 +1347,60 @@ Using the already-verified `ghm_migrator` connection with strict TLS, `BEGIN REA
 The current `storage_object_lifecycle_check` requires `available_at IS NOT NULL` for `deletion_pending`. The pending migration removes only that requirement while preserving the pending/available/deleted state invariants. Existing rows are compatible with the proposed replacement check. This validates data compatibility, not the migration's complete execution/rollback safety.
 
 The same read-only query returned no rows for the attempted ledger filter `version >= '20261110210000'`, despite the preceding full forensic reconciliation having read 105 ledger rows. This filtered result is not interpreted as an empty ledger or as proof that later versions are absent. Repeat the ledger read without a version predicate, using the exact query used by `scripts/forensic-migration-reconciliation.mjs` (`SELECT version, name, checksum, applied_at FROM ghm.ghm_schema_migrations ORDER BY version`) and inspect the tail locally. No change to production was made.
+
+
+## 2026-11-15 — full production ledger compared with current main migration inventory
+
+The complete read-only production ledger query returned 105 rows. Its final recorded row is:
+- version `20261109210000`
+- name `deactivate_unrecognized_public_directory_records`
+- applied_at `2026-11-09T20:50:23.763Z`
+
+The current `main` Git tree was then enumerated directly (not inferred from the earlier audit output):
+- Current repository migration files: **137**
+- Repository migration versions later than the latest production ledger version: **42**
+- Current `config/pending-migrations.production.json` entries: **7**
+- Later repository migrations not covered by that pending allowlist: **35**
+
+This establishes that the prior 2026-11-15 forensic audit result (`repository_count=102`, `missing_count=7`, `PASS_WITH_PENDING`) is stale relative to the current main migration inventory. It must not be used as authorization to apply migrations from current main.
+
+The 35 unallowlisted later migrations are:
+- `20261110010000_add_business_supplier_classification`
+- `20261110160000_add_admin_capability_catalogue_governance`
+- `20261110240000_enforce_capability_catalogue_cross_row_invariants`
+- `20261110250000_add_gateway_capability_governance`
+- `20261110260000_gateway_supplier_classification_cutover`
+- `20261110265000_reconcile_business_profile_legacy_contract`
+- `20261110270000_gateway_business_profile_update`
+- `20261111020000_bind_capability_gateway_actor_to_signed_assertion`
+- `20261111030000_bind_supplier_gateway_actor_to_signed_assertion`
+- `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion`
+- `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor`
+- `20261111060000_bind_gateway_assertions_to_request_context`
+- `20261111070000_add_signed_business_capability_mutations`
+- `20261111100000_add_signed_saved_business_gateway`
+- `20261111130000_add_signed_business_hours_gateway`
+- `20261111140000_add_business_hours_read_projections`
+- `20261111150000_add_signed_trust_score_gateway`
+- `20261111160000_add_signed_business_logo_gateway`
+- `20261111170000_add_trust_score_read_projections`
+- `20261111210000_revoke_runtime_account_external_identity_table_access`
+- `20261111220000_revoke_unused_auth_runtime_entry_points`
+- `20261111230000_add_token_bound_recovery_revocation_result`
+- `20261111240000_revoke_runtime_quoteflow_migration_provisioning`
+- `20261111250000_revoke_runtime_external_identity_link`
+- `20261111260000_revoke_runtime_external_identity_bootstrap`
+- `20261112020000_add_token_bound_password_recovery_reset`
+- `20261112030000_add_conditional_password_rehash`
+- `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration`
+- `20261112050000_revoke_public_default_function_execution`
+- `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads`
+- `20261112080000_signed_connect_business_provisioning_gateway`
+- `20261112090000_pin_security_definer_search_path`
+- `20261112140000_add_signed_storage_metadata_actor_gateway`
+- `20261112150000_add_storage_provider_workflow_attestation`
+- `20261112170000_revoke_redundant_migrator_business_mapping_lookup`
+
+The 7 allowlisted entries remain the previously recorded onboarding/read-model/storage-cleanup/initial actor-gateway migrations from 20261110100000 through 20261110233000. The 35 additional migrations are not authorized by that allowlist. No production migration was executed. Do not run the migration runner or deploy the runtime until a fresh read-only forensic audit is run against this exact current main tree, the complete 42-migration suffix is reviewed, and the production pending allowlist/provenance is reconciled deliberately. In particular, the signed actor-gateway migration chain is absent from the live ledger; the earlier concern about a later signed migration already being applied is not supported by this ledger snapshot, but the unsigned predecessor chain and subsequent signed replacements still require ordered review before execution.
+
+PR #282 (`bd22404e9dcbc3a63b30a2f2edb091fd8b41e095`) CI run `43660195197` completed successfully: `quality` and `web-quality` both passed. PR remains open and unmerged pending review against the now-established migration inventory. No production writes, migration execution, or deployment occurred.
