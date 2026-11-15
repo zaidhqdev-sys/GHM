@@ -26,7 +26,7 @@ test('supplier classification writes require active owner or administrator membe
   assert.match(migration, /membership_status = 'active'/);
   assert.match(migration, /membership_role IN \('owner', 'administrator'\)/);
   assert.match(migration, /SET search_path = pg_catalog, ghm/);
-  assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM PUBLIC/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM PUBLIC, ghm_runtime, ghm_migrator/);
   assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
   assert.match(gatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) TO ghm_actor_gateway/);
   assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
