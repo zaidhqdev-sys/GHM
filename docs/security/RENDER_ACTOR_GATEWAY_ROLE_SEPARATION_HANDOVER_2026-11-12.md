@@ -1962,3 +1962,42 @@ PR #282 remains open/unmerged. Its strict verified TLS and out-of-order guard ar
 - Current mainline audit after #272/#276: **REQUIRED — NOT YET RUN**.
 - Migration execution: **BLOCKED**.
 - No archive restore, production migration, production write, Render environment change, deployment, role/grant/secret change, allowlist edit, PR merge, or branch update was performed.
+
+
+## 2026-11-15 03:33Z — fresh current-main production migration audit
+
+### Current checkout and audit execution
+
+- Local `C:\GHM-main` was fast-forwarded from `cb4c8d27934a8f73c43194e791e7e3b01ed37262` to current main `bb1307e35270eda35b6c3d2301f4d09926bda326`.
+- The untracked forensic backup `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` was preserved. SHA-256 before and after fast-forward: `6D05EA92B1F3376C92C23526716B8D46866B72174382F2B7F806636083B668B9`.
+- Audit was run from current main using the existing `C:\GHM\.env` via `DOTENV_CONFIG_PATH`; no credential value was printed.
+- Command: `npm run audit:migrations:predeploy`.
+- This is the forensic audit path, which opens a read-only transaction and rolls it back. No migration executor, SQL migration, restore, or production write was run.
+
+### Fresh audit result and interpretation
+
+- Verdict: **`INVESTIGATE`** (exit code 2).
+- The current-main inventory remains **137 repository migration files**; the live ledger remains **105 rows**; the pending set is **42 migrations**.
+- The pending list consists of the seven versions already present in `config/pending-migrations.production.json` plus the 35 migrations previously classified as not in the production pending allowlist.
+- The first unallowlisted pending version is `20261110010000_add_business_supplier_classification`. This is not a newly discovered or unclassified migration: it is already listed as the first of the 35 unallowlisted migrations in the preceding inventory section.
+- The allowlist currently contains exactly seven entries. The audit compares the complete sorted list of actual pending `{version,name}` pairs against the complete allowlist. `pending_allowlist_mismatch_count: 1` is a boolean mismatch indicator (one failed equality check), **not** a statement that only one migration is missing or unapproved.
+- `pending_allowlist_match` is false, so the expected verdict is `INVESTIGATE`; do not add the 35 withheld migrations to the allowlist merely to force a pass.
+- Audit output reports no unexplained checksum mismatches and no name mismatches. All ten retained historical ledger entries are `VERIFIED_RETAINED_HISTORY`; no unrecognized extra ledger rows are reported. Historical exception entries are classified as retained provenance or redundant, not unexplained checksum failures.
+- The detailed pending list and the existing 35-item readiness review remain the authoritative inventory. Do not repeat the full SQL review without a specific evidence gap.
+
+### PR and branch reconciliation for the newly visible first pending migration
+
+- PR **#243** (`feat(directory): add governed supplier classification for Connect Marketplace`) is still **open/unmerged** on branch `feat/connect-marketplace-supplier-contract-ghm-20261110`.
+- Its diff contains `20261110010000_add_business_supplier_classification.sql` and the associated supplier-classification implementation and qualification. The migration is therefore pending production work associated with an unmerged feature PR; it is not approved for production cutover by virtue of appearing on main.
+- PR **#244** (Business engagement/Analytics) remains open and stacked on PR #243; it is not independently merge-ready until its dependency is resolved.
+- PR **#282** remains open/unmerged. Its TLS and out-of-order protections do not enforce the production pending allowlist and do not authorize execution.
+- Other open PRs rechecked: #264 (gateway registration identity documentation), #201 (QuoteFlow legal acceptance), and #233 (PayFast timezone handling). PayFast remains paused pending restored sandbox access; no PayFast action was taken.
+- No branches were created or changed in this audit/reconciliation.
+
+### Corrected current gate
+
+- Current-main production ledger reconciliation: **completed read-only; `INVESTIGATE` because the exact pending set (42) does not equal the seven-entry production pending allowlist**.
+- Migration checksum/history classification: no unexplained mismatches; retained historical ledger rows verified.
+- Production migration execution, Render deployment invoking migrations, production SQL, archive restore, and allowlist changes: **BLOCKED**.
+- Next work is to preserve the existing 35-migration readiness classifications and reconcile the seven-entry allowlist's intended scope against the 42 actual pending migrations. The executor must enforce an explicit production release gate before any migration execution; the forensic allowlist alone is not an execution gate.
+- Existing Render support escalation and Amanda's guidance on production role-membership authority remain unchanged. The `ghm_db_user` sensitive-role ADMIN OPTION issue remains unresolved; this audit did not alter or re-test role memberships.
