@@ -554,3 +554,44 @@ The fact that the four observed rows satisfy the target predicate does not resol
 ### Next operator step
 
 Fetch the exact PR #285 head locally, preserving the untracked .bak file, and run only npm run preflight:first-four-production-migrations with DOTENV_CONFIG_PATH=C:\GHM\.env and the existing read-only acknowledgement. Capture the complete JSON, especially storage_mark_deletion_pending.definition and storage_mark_deletion_pending.acl. Do not run npm run migrate, set GHM_PRODUCTION_MIGRATION_BATCH, or change any production role/grant.
+
+## 25. Corrected production migration-4 drift assessment — exact function/constraint output (2026-11-15 22:15 UTC)
+
+The owner's latest read-only preflight at branch HEAD cf5487f5ab097df43d9546c88eded3507f2d7ac3 returned the exact function definition and ACL. This supersedes the earlier preliminary interpretation in section 24.
+
+### Exact live state observed
+
+- ghm.storage_mark_deletion_pending(bigint) exists, returns ghm.storage_object, is SECURITY DEFINER, owned by ghm_schema_owner, and has search_path=pg_catalog, ghm.
+- Its body updates only rows where status = 'available'. It does not support status = 'pending'; its exception text is the older 'not available' wording.
+- Its ACL is {ghm_schema_owner=X/ghm_schema_owner,ghm_runtime=X/ghm_schema_owner}. Thus runtime EXECUTE is present; gateway EXECUTE is absent. The function has not been cut over to the signed storage gateway.
+- The live validated storage_object_lifecycle_check still requires available_at IS NOT NULL for deletion_pending.
+- The repository migration 20261110140000_allow_pending_storage_object_cleanup.sql instead changes the constraint to allow deletion_pending without requiring available_at, changes the function predicate to status IN ('pending', 'available'), changes the exception text to 'not pending or available', revokes PUBLIC and ghm_migrator, and grants ghm_runtime.
+- The observed function body and constraint therefore do not match migration 4's intended post-migration state. The observed SECURITY DEFINER attribute, owner, search_path and runtime grant are only overlapping attributes, not proof of migration application.
+- The four observed storage rows (two pending, two deleted) are compatible with the existing constraint. They do not prove that pending-upload deletion is supported.
+
+### Corrected conclusion
+
+Production has a partial schema/security overlap with migration 4, not a demonstrated completed application of migration 4. The migration ledger still lists it pending. The precise provenance of the SECURITY DEFINER conversion and existing runtime grant is unknown. Do not execute migration 4 merely because it is pending, and do not mark it applied manually. First identify the source of the partial function change and reconcile it with the repository migration and signed gateway cutover design.
+
+The earlier section 24 statement that the live constraint already matched migration 4 is superseded by this section. The live constraint definition in the owner's latest output is explicit and retains available_at IS NOT NULL for deletion_pending.
+
+### Repository correction versus production correction
+
+Repository changes can and should make future execution safer: detect this exact partial state, stop with a clear drift verdict, and require an explicit reconciliation path. Repository code cannot retroactively establish who changed production, nor can a code fix safely infer that a pending migration should be recorded as applied. Any production repair or migration-ledger reconciliation is a separate controlled database operation, after provenance and recovery are established.
+
+### Next safe implementation
+
+Add a read-only migration-4 drift classifier/contract test to the branch. It should compare the live constraint expression, function definition, owner, prosecdef, proconfig, and ACL against:
+1. the exact pre-migration state from migrations 20261004220000 and 20261004221000;
+2. the exact intended migration-4 state;
+3. known partial/unknown states.
+
+It must return PRE_MIGRATION, POST_MIGRATION, PARTIAL_DRIFT, or UNKNOWN_DRIFT, and must fail closed for the last two. Do not alter production or auto-repair the ledger. Add disposable PostgreSQL 18 tests for each classification and for refusing migration 4 when production-shaped partial drift is simulated.
+
+### Operator evidence / safety
+
+- Exact production read-only identity: session_user=ghm_migrator, current_user=ghm_schema_owner, transaction_read_only=on, client TLS verification enforced.
+- The revised preflight exited 0 and made no DDL/DML changes.
+- No production migration, ledger update, grant, role, secret, deployment, service or data change occurred.
+- Untracked local backup remains database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak; preserve it and do not stage or delete it.
+- PR #285 remains OPEN / DRAFT; exact observed branch head was cf5487f5ab097df43d9546c88eded3507f2d7ac3.
