@@ -2956,3 +2956,18 @@ Therefore the runtime grants in the two pending migrations are part of the **pre
 #### Implementation status wording reconciliation
 
 ADR-001's original status line ("Implementation status: Not implemented") predates the later merged implementation. The Actor Gateway and Authentication Issuer code now exists on main because PRs #272 and #276 merged, with #277 worker hardening merged as well. This is **code implementation/qualification**, not production service provisioning or operational cutover. The ADR's no-production-provisioning/credential-change gate remains in force. The current Worker config still contains placeholder Hyperdrive configuration; no production service credentials or secrets were provisioned by these merges.
+
+
+#### Mainline auth-route and issuer caller inspection
+
+Read-only source inspection of current `main` establishes the intended split:
+
+- `src/server.ts` constructs the Resource API with `createApp({ authRoutesEnabled: false })`.
+- `src/http/app.ts` retains optional auth route registration for tests/embedded fixtures, but comments explicitly state auth lifecycle routes belong to the isolated Authentication Issuer.
+- `src/auth-issuer/server.ts` creates its own pool from required `GHM_AUTH_ISSUER_DATABASE_URL`, loads issuer signing keys, constructs the auth/password-reset services, and enforces the dedicated issuer database identity and exact function ACL allowlist at startup/readiness.
+- `src/auth-issuer/app.ts` registers auth routes on the isolated issuer app.
+- Shared persistence code calls the token-bound recovery/reset and conditional password rehash functions. The separate manual cutover transfers the reviewed function EXECUTE allowlist from `ghm_runtime` to `ghm_auth_issuer`; this resolves the apparent SQL-grant contradiction described above.
+
+**Deployment qualification:** this is source-code intent on current `main`, not evidence that production is already running this source. The GHM Internal Runtime auto-deploy remains OFF and no deployment/configuration change was made in this review. Do not assume the production binary has `authRoutesEnabled:false` or that Connect/web/QuoteFlow clients are routed to a live issuer until the deployed commit and client configuration are separately verified. The manual issuer privilege cutover remains blocked until the issuer service and client routing are live and end-to-end qualified.
+
+The issuer cutover qualification script is restricted to local disposable PostgreSQL (`ghm_disposable_test`) with issuer, runtime, gateway and migrator URLs all required. It is not a production execution tool and must not be pointed at `ghm_db`.
