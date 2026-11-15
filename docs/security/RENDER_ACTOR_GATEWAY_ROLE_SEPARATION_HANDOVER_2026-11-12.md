@@ -1245,3 +1245,53 @@ Authoritative documentation checked:
 The existing local `.env` has not yet been re-inspected for SSL query parameters, and no local strict-TLS connection has been attempted. Render's public docs do not establish that the default Node trust store validates this particular database certificate chain. The next gate remains a local credential-safe inspection of the existing `GHM_MIGRATOR_DATABASE_URL`, followed by a strict TLS connection preflight only after checking any CA/client-certificate URL options. Do not infer certificate verification from Render's statement that TLS is enabled. Do not use `rejectUnauthorized:false` or run the migration audit until server certificate and hostname verification have succeeded.
 
 No production SQL, migrations, roles, grants, secrets, Render environment variables, deployment, or traffic was changed. The production migration ledger remains unaudited.
+
+
+## 2026-11-15 — production migration reconciliation completed (read-only)
+
+The strict production migrator connection preflight succeeded using the existing local `C:\\GHM\\.env` configuration. The inspected connection URL contained no SSL-related query parameters (`sslmode`, `sslrootcert`, `sslcert`, or `sslkey`). A real connection using the audit's explicit `ssl: { rejectUnauthorized: true }` policy then succeeded and returned:
+- `current_user=ghm_migrator`
+- `session_user=ghm_migrator`
+- `current_database=ghm_db`
+- `pg_stat_ssl.ssl=true`
+- TLS 1.3, cipher `TLS_AES_256_GCM_SHA384`
+
+The production command `npm run audit:migrations:predeploy` was then run with `--allow-pending`. It completed with verdict **PASS_WITH_PENDING**. The authority check passed and confirmed:
+- Expected database: `ghm_db`.
+- Transaction is read-only.
+- Connection begins as `ghm_migrator` for both current and session user.
+- The migrator can SET ROLE to `ghm_schema_owner`.
+- After the role switch, `current_user=ghm_schema_owner` while `session_user=ghm_migrator`.
+
+Migration reconciliation results:
+- Repository migrations: **102**.
+- Live production ledger rows: **105**.
+- Canonical checksum matches: **24**.
+- Supported legacy CRLF checksum matches: **62**.
+- Approved historical checksum matches: **9**.
+- Expected missing migrations: **7**.
+- Unexplained checksum mismatches: **0**.
+- Migration-name mismatches: **0**.
+- Extra ledger rows: **10**, all classified as approved retained historical migrations.
+- Unrecognized extras: **0**.
+- Orphaned historical exceptions: **0**.
+- Redundant historical exceptions: **7** (their registered hashes now match current repository bytes; cleanup is a separate metadata-only follow-up and is not required to explain the production ledger).
+- Invalid retained-history records: **0**.
+- Pending allowlist mismatches: **0**.
+
+The seven pending migrations exactly match the production pending allowlist:
+1. `20261110100000_create_account_onboarding_progress`
+2. `20261110120000_create_business_relationship_outcome_read_models`
+3. `20261110140000_allow_pending_storage_object_cleanup`
+4. `20261110210000_add_actor_gateway_principal_guard`
+5. `20261110220000_add_actor_gateway_self_identity_read`
+6. `20261110230000_add_gateway_business_registration_identity_read`
+7. `20261110233000_add_gateway_business_registration_identity_write`
+
+The ten retained historical ledger rows were all verified against registered provenance. The nine approved historical checksum matches are provenance exceptions, not unexplained checksum drift. The ten extra ledger rows are not unrecognized orphans.
+
+**Interpretation and safety boundary:** production migration history is now reconciled without unexplained drift. The seven listed migrations are genuinely absent from the live ledger according to this read-only audit; the allowlist match only authorizes the audit to report them as pending. It does not apply or approve their SQL for execution. No migration was applied, no ledger row was written, and no role, grant, production data, secret, Render setting, deployment, or traffic was changed. The audit's `BEGIN READ ONLY` authority check passed.
+
+**Next work:** inspect the seven pending SQL files in dependency order, assess their effects and compatibility against the live production schema and runtime, and prepare a separately gated migration execution plan. Do not run migrations or deploy until that review is complete. The seven redundant historical exception entries can be reviewed for later cleanup independently; do not conflate that cleanup with production ledger correctness.
+
+This result supersedes the earlier notes in this handover that said the production audit had not yet been run. Amanda's support-resolution history remains preserved and unchanged.
