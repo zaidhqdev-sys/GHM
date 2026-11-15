@@ -194,24 +194,57 @@ The no-go decision is unchanged. Do not create Cloudflare resources, set `GHM_AC
 ### Existing coverage reviewed
 
 - Reconciled main, Actor Gateway-related branches, and open PRs before making changes. No duplicate Actor Gateway implementation PR existed. Existing construction/qualification branches were left untouched.
-- The disposable PostgreSQL Actor Gateway principal qualification already checks distinct \`ghm_runtime\`, \`ghm_actor_gateway\`, and \`ghm_migrator\` identities; least-privilege login attributes; the bounded Render administrator membership; exact function/relation ACLs; no direct account/authentication-table access; signed self-identity and registration reads/writes; forged signatures; context/business transplantation; altered payloads; disabled-account denials; legacy RPC revocation; and role-assumption denials.
+- The disposable PostgreSQL Actor Gateway principal qualification already checks distinct `ghm_runtime`, `ghm_actor_gateway`, and `ghm_migrator` identities; least-privilege login attributes; the bounded Render administrator membership; exact function/relation ACLs; no direct account/authentication-table access; signed self-identity and registration reads/writes; forged signatures; context/business transplantation; altered payloads; disabled-account denials; legacy RPC revocation; and role-assumption denials.
 - Existing migration contract tests already pinned one-use nonce storage/replay rejection, signed request-context equality, constant-time signature comparison, 60-second assertion validity, nonce retention, and context size bounds. The gap was that the main disposable principal qualification did not explicitly exercise a valid assertion replay and the expired/future timestamp rejection paths end-to-end against PostgreSQL.
-- Existing Worker app tests cover missing/invalid bearer tokens, verified actor derivation, database failure, registration and other gateway routes, and account-scoped rate limiting. Worker static contract tests and the CI local Wrangler smoke test separately cover adapter/startup order, disabled public routes, \`/healthz\`, malformed JSON and oversized-body handling.
+- Existing Worker app tests cover missing/invalid bearer tokens, verified actor derivation, database failure, registration and other gateway routes, and account-scoped rate limiting. Worker static contract tests and the CI local Wrangler smoke test separately cover adapter/startup order, disabled public routes, `/healthz`, malformed JSON and oversized-body handling.
 
 ### PR #284 — qualification-only change
 
-- Created draft PR #284: \`test: qualify Actor Gateway assertion replay and timestamp boundaries\`.
-- Branch: \`test/actor-gateway-assertion-replay-boundaries-20261115\`.
-- Final exact head: \`4c5710f50bc61a611e07f5ef904d319019bf1782\`.
+- Created draft PR #284: `test: qualify Actor Gateway assertion replay and timestamp boundaries`.
+- Branch: `test/actor-gateway-assertion-replay-boundaries-20261115`.
+- Final exact head: `4c5710f50bc61a611e07f5ef904d319019bf1782`.
 - Added explicit disposable-PostgreSQL checks that reuse the same signed nonce and require replay denial, and that signed assertions 61+ seconds in the past/future are rejected. The future fixture uses a 65-second offset because the database compares integer-rounded epoch seconds; a 61-second offset proved boundary-sensitive under CI timing.
 - Extended the migration contract test to pin the database's absolute 60-second timestamp acceptance window.
 - CI initially caught two editing errors before qualification: a malformed helper replacement (syntax check) and then a too-tight future timestamp fixture (integer epoch rounding). Both were corrected. Do not treat those failed attempts as passing evidence.
-- Final exact-head GitHub Actions run \`43752492009\`: \`quality\` PASS, \`web-quality\` PASS, and Cloudflare Pages check PASS. The quality job's disposable PostgreSQL Actor Gateway principal qualification passed, including the new replay, expired and future-dated assertion cases. The local Cloudflare Workers smoke test also passed. All remaining migration, database-boundary, test-suite, gateway cutover and issuer qualification steps in that CI run passed.
+- Final exact-head GitHub Actions run `43752492009`: `quality` PASS, `web-quality` PASS, and Cloudflare Pages check PASS. The quality job's disposable PostgreSQL Actor Gateway principal qualification passed, including the new replay, expired and future-dated assertion cases. The local Cloudflare Workers smoke test also passed. All remaining migration, database-boundary, test-suite, gateway cutover and issuer qualification steps in that CI run passed.
 - PR #284 remains OPEN and DRAFT, mergeable/clean at the last read. It has not been merged. Do not merge it automatically; retain the draft pending the normal owner review/merge decision.
 
 ### Safety and production boundary
 
-- CI used its isolated PostgreSQL 18 disposable service and local Wrangler runtime. It did not connect to production \`ghm_db\`.
+- CI used its isolated PostgreSQL 18 disposable service and local Wrangler runtime. It did not connect to production `ghm_db`.
 - No production DB role/grant/migration/data, Render service or environment variable, Cloudflare resource, Worker route, Hyperdrive configuration, Tunnel, secret, or deployment was changed by this qualification.
 - The Pages check is a CI status for the existing Pages integration; it is not evidence that the Actor Gateway Worker was deployed.
 - Production rollout remains blocked by the missing suitable isolated always-on connector host, missing VPC Service/Tunnel/Hyperdrive provisioning, unresolved Amanda/Render role-administration remediation, and lack of a fresh independently verified production backup/recovery point.
+
+
+## 2026-11-15 follow-up — Render compute inventory and connector-host decision
+
+### Inventory rechecked against the connected Render workspace
+
+- The production environment contains:
+  - `GHM-Internal-Runtime`: Node web service, Frankfurt, Free plan, auto-deploy OFF.
+  - `zaid-ai-workforce`: Node web service, Frankfurt, Free plan, separate repository.
+  - `ghm-db`: PostgreSQL 18 primary, Frankfurt, paid plan, database `ghm_db`.
+- The Render API also returned the separate legacy/sandbox environment:
+  - `ghm-payfast-sandbox-runtime`: Free web service, auto-deploy OFF.
+  - `ghm-payfast-callback-sandbox`: Free web service, auto-deploy OFF.
+  - `ghm-identity-qualification`: Free web service, on its qualification branch.
+  - `ghm-payfast-sandbox-db`: suspended by billing.
+- A separate PostgreSQL 18 database named `ghm-identity-qualification-20261018` is still reported as available on a Basic 256 MB plan. It is a database, not a compute host, and is not approved for reuse.
+- The three production services shown in the user's Render dashboard are consistent with the production environment inventory. The additional services above belong to the separate legacy/sandbox environment; their presence in the account-wide API listing does not make them production resources or approved candidates.
+- All listed web services are Free. The only production compute services are GHM-Internal-Runtime and the separate AI Workforce application. Neither is an isolated, always-on connector host. GHM-Internal-Runtime is the production API itself; co-hosting a tunnel there would couple the private DB connector lifecycle to the API process and Free-instance sleep/restart behaviour. AI Workforce is a separate application/repository and is not approved to become a database-network bridge.
+- The sandbox/qualification services and database must not be repurposed. PayFast remains paused. No existing service in this inventory qualifies as the required isolated, continuously running tunnel host.
+
+### Decision
+
+- **No eligible existing tunnel host was found.** Cloudflare's existing Mesh network has no connected nodes; its VPC Networks page only showed the Cloudflare Mesh network, and its VPC Services page was empty. Hyperdrive has no configurations and Tunnels reports zero configured tunnels.
+- Do not add `cloudflared` to GHM-Internal-Runtime or AI Workforce, do not revive/reuse sandbox resources, and do not use the qualification database as a workaround.
+- No new Render service, plan upgrade, database, schedule, tunnel, VPC Service, Hyperdrive configuration, Worker, secret, route, environment variable, deploy, database change, or role/grant change was made.
+- This leaves the connector-host prerequisite unresolved under the current no-additional-cost constraint. The safe next step is a design-only review of whether the Cloudflare Workers VPC TCP Service can be connected to the Render Postgres endpoint through a separately operated host already under the user's control. A personal workstation can be used for a temporary lab proof only while online; it is not an acceptable production connector because availability depends on the workstation remaining powered on and connected.
+
+### Cross-checks and handover continuity
+
+- Rechecked current main at `7564011219208cbae582cc26965f304200bb711f`, open PR inventory, and Actor Gateway-related branches before this assessment.
+- PR #284 remains open/draft at `4c5710f50bc61a611e07f5ef904d319019bf1782`; no merge or branch changes were made.
+- Existing role-separation handover continues to preserve Amanda/Render support guidance, unresolved production role-administration remediation, and the missing fresh verified production backup/recovery point. These remain independent production gates.
+- This update records account-wide Render inventory findings without copying any environment-variable values or secrets.
