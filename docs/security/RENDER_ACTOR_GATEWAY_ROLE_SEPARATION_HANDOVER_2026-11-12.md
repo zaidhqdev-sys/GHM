@@ -2551,3 +2551,31 @@ Amanda's Render support recommendation remains unchanged: retain the Dashboard-m
 - Branch synchronization: **NOT YET PERFORMED**.
 - Post-synchronization exact-head CI: **PENDING**.
 - Production migrations / deployment / role or credential changes: **NOT PERFORMED**.
+
+
+## 2026-11-15 18:14Z — PR #282 synchronized with main; post-sync CI awaiting confirmation
+
+### Synchronization method and evidence
+- Rechecked current canonical handover, PR #282, branch head and commit ancestry before synchronization.
+- Corrected exact-head CI on `9622807fd1a9168b843186aad86b397fda56997c` passed in run `43733524314` (quality and web-quality both successful).
+- Main at synchronization: `101e05bf18c6c639ea6008e81bb2ad704e7bc126`.
+- PR branch before synchronization: `9622807fd1a9168b843186aad86b397fda56997c`.
+- Verified the divergence: main-only changes since merge base touched only this canonical handover file; PR-only changes touched the six migration-runner source/test files listed below. No overlapping changed paths were present.
+- Created a two-parent merge commit preserving the latest main tree and overlaying the six exact PR-branch file blobs:
+  - `f1d06bcf6f4603f38c779c9dc45ed5689151c648` — `merge: synchronize migration runner hardening with main`.
+  - First parent: `101e05bf18c6c639ea6008e81bb2ad704e7bc126` (main).
+  - Second parent: `9622807fd1a9168b843186aad86b397fda56997c` (previous PR head).
+- Updated the existing PR branch with a non-force, expected-head-checked ref update. The operation succeeded.
+- Post-sync comparison: branch is **15 commits ahead / 0 behind** main. The PR's six source/test files remain the only branch diff paths; the mainline handover history is now included.
+- PR #282 remains open and unmerged. GitHub's mergeability field had not yet recalculated at the time of this check; do not treat its stale `mergeable=false` value as a source conflict.
+
+### Post-synchronization CI
+- Queried commit-associated PR workflow runs immediately after updating the branch; no new run was visible in that first response.
+- Post-sync exact-head CI is therefore **PENDING / NOT YET CONFIRMED** for `f1d06bcf6f4603f38c779c9dc45ed5689151c648`. Recheck Actions and PR checks; do not rely on the pre-sync run as a substitute.
+- No merge was performed.
+
+### Scope and production safety
+- No production database connection or migration was run.
+- No Render service, environment variable, secret, role, grant, production data, deployment, traffic, or migration allowlist was changed.
+- The production migration execution gate remains closed. Do not expand the seven-entry allowlist to include the 35 unapproved pending migrations.
+- Amanda's Render support recommendation and the unresolved sensitive-role ADMIN OPTION issue remain documented and unchanged.
