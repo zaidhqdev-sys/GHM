@@ -673,3 +673,46 @@ No production migration, DDL/DML, ledger repair, role/grant change, secret, Rend
 ### Next step
 
 Continue with a read-only provenance investigation of the migration-4 function/constraint and the five legacy storage metadata function grants. Use the storage gateway handover and Amanda's Render support guidance; do not make production changes while the backup, role-authority, and gateway cutover gates remain open.
+
+
+## 30. Migration-4 provenance traced to October baseline; classifier corrected (2026-11-15 22:41 UTC)
+
+### Provenance findings
+
+Repository history establishes that the production SECURITY DEFINER function attributes are part of the original, intended storage persistence boundary—not evidence by themselves of a partial November migration:
+
+- `20261004220000_create_storage_object.sql` creates `ghm.storage_object` with the original lifecycle CHECK requiring `available_at IS NOT NULL` when status is `deletion_pending`.
+- `20261004221000_establish_storage_persistence_boundary.sql` creates the five legacy storage metadata functions and grants the intended runtime function EXECUTE privileges.
+- `20261004222000_harden_storage_persistence_function_authority.sql` explicitly converts the legacy functions, including `storage_mark_deletion_pending(bigint)`, to SECURITY DEFINER; pins `search_path=pg_catalog, ghm`; and grants EXECUTE to `ghm_runtime`. This is the documented baseline that matches the observed production function owner/search path/SECURITY DEFINER/runtime ACL.
+- The original November 10 migration commit `bd69850693f75da6e3a5d98462ed436323662ad5` initially added the function replacement (pending + available predicate) and authority statements. It did **not** initially replace the lifecycle constraint.
+- PR #279, merged 2026-11-14 as commit `20a873af736ea19554021414f65d37cb68a02b64`, amended that same migration to replace the lifecycle constraint while preserving `available_at` and `deleted_at`. The merged migration now changes both the function predicate and constraint. Its PR body explicitly records that no production migration was run.
+
+This is strong repository provenance for the older function attributes, but does not prove when/how the current production function was last changed. The live body and constraint still match the October baseline; the current production migration ledger and exact migration checksum must still be reconciled before any execution decision.
+
+### Classifier defect corrected
+
+The prior classifier incorrectly treated SECURITY DEFINER as a migration-4-only signal and expected SECURITY INVOKER in the pre-migration state. That contradicted the October migration history and caused a false `PARTIAL_DRIFT` classification for a production-shaped October baseline.
+
+The classifier now recognizes the exact pre-migration baseline as:
+- the validated original lifecycle constraint;
+- the old available-only function body;
+- SECURITY DEFINER, owner `ghm_schema_owner`, pinned `pg_catalog, ghm` search path;
+- exactly the schema-owner and runtime EXECUTE ACL entries, with no gateway/PUBLIC/migrator/extra grants.
+
+Unexpected authority changes still fail closed. The test fixture now models the actual October SECURITY DEFINER baseline and tests unexpected ACL/security-mode deviations. Code commits:
+- `3d0852eaee692259c04c8868dceb9fa0bd253d52` — classifier correction.
+- `ad073358e3327c45d0a6ef48b38e20418d43e976` — baseline authority tests.
+
+The current branch HEAD is `ad073358e3327c45d0a6ef48b38e20418d43e976`. Exact-head CI for this correction is pending/not yet verified. Do not rely on the classifier correction until CI passes and the owner reruns the read-only production preflight.
+
+### Updated production interpretation and next actions
+
+The previous `PARTIAL_DRIFT` finding is superseded as a classifier conclusion: based on the repository's October baseline, the supplied live function/constraint/ACL output appears to match **PRE_MIGRATION**, not partial migration-4 application. The original production output remains read-only evidence and has not changed.
+
+1. Fetch the exact new branch head, preserve the untracked local `.bak`, and wait for exact-head CI.
+2. Once CI passes, rerun only `npm run preflight:first-four-production-migrations` against `ghm_db`; confirm `PRE_MIGRATION` and inspect exact catalog output again.
+3. Independently reconcile the migration ledger row/checksum and the exact canonical migration file against the live ledger before planning execution.
+4. Keep the five legacy storage function grants unchanged until the signed Actor Gateway cutover is deployed, verified and separately approved. The storage gateway design and disposable cutover rehearsal do not authorize production grant revocation.
+5. Amanda's Render support conversation and `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` remain authoritative for the Dashboard-managed admin / SQL-created restricted-login separation. The Render role-authority issue and a fresh verified production backup/recovery point remain independent hard gates.
+
+No production migration, ledger repair, DDL/DML, grant/role change, secret, Render configuration, deployment or application data was changed during this investigation. Preserve the untracked local `.bak`.
