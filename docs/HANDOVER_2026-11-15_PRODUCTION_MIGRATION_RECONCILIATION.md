@@ -280,3 +280,16 @@ This qualifies the current implementation on disposable CI infrastructure only. 
 - Migration 5 is not in this provisional first-four set. Stop there until the gateway deployment, capability API route verification, and manual cutover conditions are met.
 - The first four are not yet approved for production execution. The fresh verified production backup/recovery point and Amanda/Render role-administration issue remain unresolved; the production Actor Gateway has no verified deployed endpoint/DB connection/credentials. No production migration may be run while these gates remain open.
 - The production pending inventory remains based on the user's supplied read-only audit (137 repository migrations, 105 ledger rows, 42 pending, INVESTIGATE). No new full production ledger audit was performed in this review.
+
+
+## 11. Disposable PostgreSQL qualification added for the first migration guard (2026-11-15)
+
+- Added `scripts/qualify-production-migration-batch-guards-postgres.mjs` and package command `npm run qualify:production-migration-batch-guards`.
+- The script is hard-restricted to `NODE_ENV=test`, database `ghm_disposable_test`, localhost connections, and distinct `ghm_runtime` / `ghm_migrator` credentials. It refuses any other database name or host before opening connections.
+- It executes the exact first pending migration SQL through the same BEGIN/COMMIT stripping helper used by the runner, observes the historical grant to `ghm_runtime`, applies the exact production post-batch REVOKE, and verifies `has_function_privilege(..., 'EXECUTE') = false` while still in the transaction.
+- It then rolls back and checks the runtime function privilege has returned to its exact pre-qualification state. This exercises the SQL and transaction semantics, unlike the existing helper-string unit assertion.
+- It does not apply the production migration ledger row, does not call the production runner, and has no production URL path accepted by its safety guards.
+- Source-level review of the first four migrations found existing app integration for #2 (onboarding routes/repository) and #3 (read-only relationship/outcome routes/repository); #4 has existing storage metadata repository/service calling `storage_mark_deletion_pending`. Their current contract tests cover SQL shape and grants, but migration-specific disposable PostgreSQL behavior and production data compatibility still need qualification.
+- #4 changes a CHECK constraint on `ghm.storage_object`; before any production application, inspect live status counts and confirm all existing rows satisfy the new lifecycle predicate. No production data distribution was queried in this review.
+- The new script and package command are code additions only. They have not yet been executed in this environment because no approved disposable PostgreSQL connection details are available here. Exact-head CI must run after these commits, and the script should be run by the user against the disposable PostgreSQL 18 qualification database before considering migration 1 production-ready.
+- The earlier independent production gates remain unchanged: verified fresh backup/recovery point, Amanda/Render role-administration resolution, and deployed/verified Actor Gateway prerequisites before the capability cutover at migration 5.
