@@ -716,3 +716,28 @@ The previous `PARTIAL_DRIFT` finding is superseded as a classifier conclusion: b
 5. Amanda's Render support conversation and `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` remain authoritative for the Dashboard-managed admin / SQL-created restricted-login separation. The Render role-authority issue and a fresh verified production backup/recovery point remain independent hard gates.
 
 No production migration, ledger repair, DDL/DML, grant/role change, secret, Render configuration, deployment or application data was changed during this investigation. Preserve the untracked local `.bak`.
+
+
+## 31. Exact-head CI failure diagnosed and fixture corrected (2026-11-15 22:44 UTC)
+
+The owner correctly did not run the proposed PowerShell preflight command because exact-head CI had failed. No local fetch/checkout or production preflight is assumed after that point.
+
+### Failed workflow #5023
+
+- Run: `43770662196`; head at time of run: `126565f19675d7e677e235f2986ea2046f760e3d`.
+- `web-quality`: PASS.
+- `quality`: FAIL at `Test suite`.
+- The full suite reported 1,019 passing tests; the focused storage classifier test file reported 7 passing and 1 failing.
+- Failing case: `fails closed when post-migration function has unexpected gateway or PUBLIC execute` expected `PARTIAL_DRIFT`, actual `UNKNOWN_DRIFT`.
+- Root cause was a malformed test fixture: its function definition did not contain the SQL predicate pattern required to establish the post-migration function shape. The classifier therefore correctly returned UNKNOWN_DRIFT before evaluating the unexpected grant assertion. This was a test-fixture defect, not evidence of a production or database failure.
+- The fixture also accidentally retained `SECURITY INVOKER` in the October baseline function text even though the separate securityDefiner catalog flag was true. Corrected the fixture to SECURITY DEFINER so it matches the October migration source.
+
+### Correction
+
+- Commit `f6eaa1265c4d2f2e7df10c5e73ba9abc5eeadb41` corrects the fixture to use SECURITY DEFINER and a realistic pending/available UPDATE predicate.
+- The exact-head CI for this correction must pass before asking the owner to fetch the branch or run any preflight.
+- No production action is authorized by this test correction. The production state remains as last observed; only read-only inspection has been performed.
+
+### Owner instruction / next gate
+
+The owner explicitly stated that the proposed command was not run because CI failed. Respect that: do not ask them to run the preflight again until the latest exact branch HEAD has successful `quality` and `web-quality` checks. Keep the untracked local `.bak` preserved. Continue to treat production backup/recovery, Render role-authority (Amanda support conversation), signed Actor Gateway cutover, and migration-ledger/checksum reconciliation as separate gates.
