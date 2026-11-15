@@ -247,8 +247,8 @@ jobs:
 
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
-      - name: Qualify production migration batch guard and rollback on disposable PostgreSQL
-        run: npm run qualify:production-migration-batch-guards
+      - name: Qualify supplier classification migration ACL and rollback on disposable PostgreSQL
+        run: npm run qualify:supplier-classification-migration-acl
       - name: Qualify first four pending migrations and effective privileges on disposable PostgreSQL
         run: npm run qualify:first-four-pending-migrations
 
