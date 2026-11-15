@@ -741,3 +741,13 @@ The owner correctly did not run the proposed PowerShell preflight command becaus
 ### Owner instruction / next gate
 
 The owner explicitly stated that the proposed command was not run because CI failed. Respect that: do not ask them to run the preflight again until the latest exact branch HEAD has successful `quality` and `web-quality` checks. Keep the untracked local `.bak` preserved. Continue to treat production backup/recovery, Render role-authority (Amanda support conversation), signed Actor Gateway cutover, and migration-ledger/checksum reconciliation as separate gates.
+
+
+## 32. Corrected storage classifier exact-head CI passed (2026-11-15 22:49 UTC)
+
+- Owner reported CI passed. Verified latest branch workflow **#5025**, run ID `43771069353`, completed with conclusion `success` against branch HEAD `89d2fe11a88a955286cb63e39ff6d06a3280a1a1`.
+- Both required jobs passed: `quality` and `web-quality`.
+- Workflow #5024 (`43771045550`) for code commit `f6eaa1265c4d2f2e7df10c5e73ba9abc5eeadb41` was cancelled by the subsequent workflow; do not interpret it as the successful run. The later #5025 run includes the corrected code at the same branch state plus the handover record and is the verified successful exact-head run.
+- PR #285 remains open and draft; no merge.
+- This CI success qualifies the corrected classifier/test code only. It does not authorize production migration execution, ledger repair, grant changes, or deployment.
+- Next owner action may now be limited to fetching the exact qualified branch head and rerunning the read-only production preflight. Preserve the untracked local `.bak` file. If the corrected preflight reports `PRE_MIGRATION`, continue with read-only migration ledger/checksum and provenance reconciliation; do not execute a migration until all independent production gates are cleared.
