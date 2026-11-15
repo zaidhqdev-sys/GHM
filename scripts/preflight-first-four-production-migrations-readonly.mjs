@@ -44,21 +44,36 @@ try {
     }
 
     const objects = await client.query(`
-      SELECT kind, schema_name, object_name, object_exists
-      FROM (
-        SELECT 'table'::text AS kind, 'ghm'::text AS schema_name, name AS object_name,
-               to_regclass(format('%I.%I', 'ghm', name)) IS NOT NULL AS object_exists
-        FROM unnest($1::text[]) AS name
-        UNION ALL
-        SELECT 'function', 'ghm', name,
-               EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-                        WHERE n.nspname='ghm' AND p.proname=name)
-        FROM unnest($2::text[]) AS name
-      ) q ORDER BY kind, object_name
-    `, [
-      ['account_onboarding_progress','relationship_type','business_relationship','outcome_type','outcome'],
-      ['update_business_supplier_classification','storage_mark_deletion_pending'],
-    ]);
+      WITH expected_objects(kind, schema_name, object_name, expected_operation) AS (
+        VALUES
+          ('table'::text, 'ghm'::text, 'account_onboarding_progress'::text, 'create'::text),
+          ('table', 'ghm', 'relationship_type', 'create'),
+          ('table', 'ghm', 'business_relationship', 'create'),
+          ('table', 'ghm', 'outcome_type', 'create'),
+          ('table', 'ghm', 'outcome', 'create'),
+          ('function', 'ghm', 'update_business_supplier_classification', 'create'),
+          ('function', 'ghm', 'storage_mark_deletion_pending', 'replace')
+      ),
+      actual_objects AS (
+        SELECT e.*,
+               CASE WHEN e.kind = 'table'
+                 THEN to_regclass(format('%I.%I', e.schema_name, e.object_name)) IS NOT NULL
+                 ELSE EXISTS (
+                   SELECT 1 FROM pg_proc p
+                   JOIN pg_namespace n ON n.oid = p.pronamespace
+                   WHERE n.nspname = e.schema_name AND p.proname = e.object_name
+                 )
+               END AS object_exists
+          FROM expected_objects e
+      )
+      SELECT kind, schema_name, object_name, expected_operation, object_exists,
+             CASE expected_operation
+               WHEN 'create' THEN object_exists
+               WHEN 'replace' THEN NOT object_exists
+             END AS unexpected_collision
+        FROM actual_objects
+       ORDER BY kind, object_name
+    `);
 
     const storage = await client.query(`
       SELECT status,
@@ -82,6 +97,7 @@ try {
     `);
     const storageFunction = await client.query(`
       SELECT p.oid::regprocedure::text AS signature,
+             pg_get_function_result(p.oid) AS return_type,
              p.prosecdef AS security_definer,
              pg_get_userbyid(p.proowner) AS owner,
              has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
@@ -106,15 +122,15 @@ try {
       verdict: 'READ_ONLY_PREFLIGHT_ONLY',
       identity: who,
       tls_enforced_by_client: true,
-      object_name_collisions: objects.rows,
+      object_name_checks: objects.rows,
       storage_status_distribution: storage.rows,
       storage_constraint: storageConstraint.rows,
       storage_mark_deletion_pending: storageFunction.rows,
       supplier_classification_function: supplierFunction.rows,
       warnings: [
         'This script does not authorize or execute any migration.',
-        'Migration 4 adds a SECURITY DEFINER storage function with a direct ghm_runtime EXECUTE grant; do not apply it before the signed storage gateway path and five-function legacy grant cutover are deployed and verified.',
-        'Migration 1 adds a caller-supplied actor identity function; the incremental runner guard must be present and qualified.',
+        'Migration 4 replaces the existing SECURITY DEFINER storage_mark_deletion_pending(bigint) function and retains ghm_runtime EXECUTE while expanding deletion-pending eligibility to pending uploads. Confirm its exact return type, owner, search_path, row compatibility and the signed storage gateway/five-function legacy grant cutover before applying it.',
+        'Migration 1 creates a legacy supplier-classification function that accepts a caller-supplied account ID. The production runner must revoke ghm_runtime EXECUTE in the same transaction; its disposable PostgreSQL qualification must pass.',
       ],
     };
     console.log(JSON.stringify(report, null, 2));
