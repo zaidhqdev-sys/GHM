@@ -2659,3 +2659,23 @@ The initial commit-associated workflow lookup returned an empty list, but a dire
 - This is the post-merge main pipeline; the PR-head run `43734441282` had already passed both required jobs before merge. Do not report the main push-triggered quality job as green until it completes.
 - Canonical handover update commit `307f628e41013ee970e1349910919e1227866883` was added after merge and triggers a separate documentation-only Cloudflare Pages check; that check was in progress at the latest poll. It does not alter application source.
 - No production DB connection, migration, data change, Render runtime configuration, credential, role, grant, deployment or traffic change occurred. Production migration and Project↔Opportunity reconciliation gates remain outstanding; PayFast remains paused.
+
+
+### 2026-11-15 18:30Z — post-merge main CI completed; next gate prepared
+- Post-merge main workflow `43734868071` for merge commit `29e7b4b5246d7119561b4878b54475a621da1c47` completed **SUCCESS**:
+  - `quality`: PASS, 73/73 steps.
+  - `web-quality`: PASS, 11/11 steps.
+  - `Cloudflare Pages`: PASS.
+- PR #282 remains verified closed/merged. Recent PR inventory and branch inventory were reviewed before choosing next work:
+  - Open PRs currently include #264, #244, #243, #233 and #201. None is the production migration audit or Project↔Opportunity reconciliation task; do not duplicate or stack onto these unrelated PRs.
+  - Existing Project↔Opportunity feature branch `feature/atomic-project-opportunity-create-20261106` was identified as prior work, not a new implementation target. The atomic Project+Opportunity creation and project.opportunity_id relation are already in main via the previously merged work; do not recreate them.
+  - Existing migration-audit branches and PRs #280/#281/#282 were reviewed; strict verified TLS, URL-option stripping, read-only forensic audit and fail-closed production allowlist enforcement are now on main.
+- Current main production migration controls:
+  - `scripts/forensic-migration-reconciliation.mjs` uses `GHM_MIGRATOR_DATABASE_URL`, requires `DATABASE_SSL=true`, strips connection-string SSL overrides, connects with `rejectUnauthorized: true`, opens `BEGIN READ ONLY`, verifies `ghm_migrator` → `ghm_schema_owner`, and rolls back.
+  - `npm run audit:migrations:predeploy` runs this forensic audit with the exact pending set permitted for comparison; it does not execute migrations.
+  - `npm run migrate` is not authorized. The production migration runner now requires verified TLS, exact seven-entry pending allowlist, and fail-closed migration ordering; the known historical production checkpoint had 35 unapproved pending migrations outside the seven-entry allowlist. Do not widen that allowlist to force a pass.
+  - Latest source allowlist is exactly seven migrations: 20261110100000, 20261110120000, 20261110140000, 20261110210000, 20261110220000, 20261110230000, 20261110233000. This is source configuration, not proof of the live pending set.
+- Next action is a fresh read-only production forensic audit against `ghm-db / ghm_db` using the approved `GHM_MIGRATOR_DATABASE_URL` identity. Capture complete output and compare current ledger/repository counts, missing migrations, retained historical rows, checksum/name mismatches and authority evidence against the prior checkpoint (105 ledger rows, 137 repository files, 35 pending was a dated prior observation, not a current assertion).
+- Only after the live audit is captured should we run a separate read-only Project↔Opportunity reconciliation against production. The schema relation was introduced by `20261106200000_link_project_to_opportunity.sql`; Project creation must remain atomic with its canonical project-type Opportunity. The audit must quantify null/missing/mismatched/duplicate relationships and verify FK/unique-index presence without changing data. Do not invent or apply backfill SQL before inspecting actual production rows and constraints.
+- Amanda / Render support continuity: the support recommendation remains to retain the Dashboard-managed default credential for controlled administration and use SQL-created restricted login identities for normal application execution. The sensitive-role ADMIN OPTION membership issue remains unresolved; do not attempt role/grant changes or expose credentials.
+- No production query or write was performed in this continuation. No migration, data/ledger change, role/grant/secret change, Render configuration change, deployment or traffic change occurred. PayFast remains paused.
