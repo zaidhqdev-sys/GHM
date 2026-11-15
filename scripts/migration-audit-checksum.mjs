@@ -1,5 +1,18 @@
 import crypto from 'node:crypto';
 
+/**
+ * node-postgres replaces an explicitly supplied ssl object when SSL options
+ * are present in connectionString. Strip those URL options so the caller's
+ * verified TLS policy (including rejectUnauthorized) remains authoritative.
+ */
+export const stripPostgresSslConnectionStringOptions = (connectionString) => {
+  const url = new URL(connectionString);
+  for (const key of [...url.searchParams.keys()]) {
+    if (/^ssl/i.test(key) || key.toLowerCase() === 'uselibpqcompat') url.searchParams.delete(key);
+  }
+  return url.toString();
+};
+
 export const normalizeMigrationSqlForChecksum = (sql) => sql.replace(/\r\n?/g, '\n');
 
 export const migrationChecksum = (sql) =>
