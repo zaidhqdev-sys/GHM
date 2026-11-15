@@ -2,7 +2,9 @@ const includes = (value, pattern) => pattern.test(String(value ?? ''));
 
 export const classifyStorageMigrationFourState = ({
   constraintDefinition,
+  constraintValidated,
   functionDefinition,
+  returnType,
   securityDefiner,
   owner,
   configuration,
@@ -27,14 +29,18 @@ export const classifyStorageMigrationFourState = ({
   const hasGateway = gatewayExecute === true || /ghm_actor_gateway=x/.test(aclText);
   const hasPublic = /(^|[,{])=x\//.test(aclText);
   const hasMigrator = /ghm_migrator=x/.test(aclText);
+  const aclEntries = aclText.replace(/^\\{|\\}$/g, '').split(',').filter(Boolean).sort();
+  const exactPostAcl = aclEntries.length === 2 &&
+    aclEntries[0] === 'ghm_runtime=x/ghm_schema_owner' &&
+    aclEntries[1] === 'ghm_schema_owner=x/ghm_schema_owner';
 
-  const preMigration = hasLifecycle && deletionRequiresAvailable &&
+  const preMigration = constraintValidated === true && returnType === 'ghm.storage_object' && hasLifecycle && deletionRequiresAvailable &&
     functionAvailableOnly && securityDefiner === false && hasRuntime && !hasGateway;
   if (preMigration) return 'PRE_MIGRATION';
 
-  const postMigration = hasLifecycle && !deletionRequiresAvailable &&
+  const postMigration = constraintValidated === true && returnType === 'ghm.storage_object' && hasLifecycle && !deletionRequiresAvailable &&
     functionPendingAndAvailable && securityDefiner === true && expectedOwner &&
-    expectedSearchPath && hasRuntime && !hasGateway && !hasPublic && !hasMigrator;
+    expectedSearchPath && hasRuntime && !hasGateway && !hasPublic && !hasMigrator && exactPostAcl;
   if (postMigration) return 'POST_MIGRATION';
 
   if (hasLifecycle && (functionAvailableOnly || functionPendingAndAvailable || securityDefiner === true)) {
