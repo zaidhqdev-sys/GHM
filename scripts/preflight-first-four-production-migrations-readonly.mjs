@@ -23,16 +23,6 @@ const pool = new Pool({
   query_timeout: 20_000,
 });
 
-const requiredObjects = [
-  ['table', 'ghm', 'account_onboarding_progress'],
-  ['table', 'ghm', 'relationship_type'],
-  ['table', 'ghm', 'business_relationship'],
-  ['table', 'ghm', 'outcome_type'],
-  ['table', 'ghm', 'outcome'],
-  ['function', 'ghm', 'update_business_supplier_classification'],
-  ['function', 'ghm', 'storage_mark_deletion_pending'],
-];
-
 try {
   const client = await pool.connect();
   try {
