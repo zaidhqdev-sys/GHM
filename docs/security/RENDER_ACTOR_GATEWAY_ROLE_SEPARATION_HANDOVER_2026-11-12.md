@@ -2001,3 +2001,53 @@ PR #282 remains open/unmerged. Its strict verified TLS and out-of-order guard ar
 - Production migration execution, Render deployment invoking migrations, production SQL, archive restore, and allowlist changes: **BLOCKED**.
 - Next work is to preserve the existing 35-migration readiness classifications and reconcile the seven-entry allowlist's intended scope against the 42 actual pending migrations. The executor must enforce an explicit production release gate before any migration execution; the forensic allowlist alone is not an execution gate.
 - Existing Render support escalation and Amanda's guidance on production role-membership authority remain unchanged. The `ghm_db_user` sensitive-role ADMIN OPTION issue remains unresolved; this audit did not alter or re-test role memberships.
+
+
+---
+
+## Backup inventory and archive-candidate triage — 2026-11-15 03:39 UTC
+
+A user-run, non-destructive local inventory was completed. No backup was restored, no database was opened for mutation, and no production connection or deployment was used.
+
+### Verified local file metadata
+
+| Artifact | Size | Last modified | Signature / classification | Disposition |
+|---|---:|---|---|---|
+| `C:\Users\zaidh\Downloads\2026-11-04T20_42Zghm-db.dir.tar.gz` | 71,488 bytes | 2026-11-04 22:46:02 | gzip signature `1F-8B-08` | GHM archive candidate; inspect archive structure and embedded ledger metadata only. Not yet established as a production-equivalent baseline. |
+| `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz` | 81,507 bytes | 2026-11-14 16:35:39 | gzip signature `1F-8B-08` | Previously inspected; ledger endpoint differs from live production audit; forensic evidence only, not production baseline. |
+| `C:\Users\zaidh\Downloads\db_cluster-23-09-2026@08-37-12-quoteflow.backup.gz` | 60,536 bytes | 2026-10-18 23:59:46 | gzip signature `1F-8B-08` | Filename identifies QuoteFlow; not evidence of GHM production baseline. |
+| `C:\Users\zaidh\Downloads\db_cluster-23-09-2026@08-37-26.backup.gz` | 228,100 bytes | 2026-10-12 02:30:15 | gzip signature `1F-8B-08` | Database identity and contents unknown; inspect archive metadata before assigning relevance. |
+| `C:\GHM\ghm.db` | 20,480 bytes | 2026-09-08 05:44:58 | SQLite header `SQLite format 3` | Not a PostgreSQL backup. |
+| `C:\GHM-main\ghm.db` | 20,480 bytes | 2026-10-24 16:13:52 | SQLite header `SQLite format 3` | Not a PostgreSQL backup. |
+| `C:\Users\zaidh\Desktop\QuoteFlow-RKStorage-backup` | 20,480 bytes | 2026-10-30 02:06:09 | SQLite header `SQLite format 3` | File, not directory; not a PostgreSQL backup. |
+
+The earlier recursive inventory also found configuration backup files under `C:\GHM`. These are sensitive environment/configuration artifacts, not database backups. Do not print their contents, commit them, or use them as a database recovery source.
+
+### Backup search result
+
+- The November 4 GHM archive is the next candidate for read-only archive-structure and ledger inspection.
+- The October 12 compressed archive is a secondary unknown candidate; first identify its archive format/database metadata before treating it as relevant.
+- The September QuoteFlow archive is outside the GHM production-baseline question.
+- The November 14 archive remains excluded as a production baseline because its 105-row ledger ended at `20261109210000`, while the live production read-only audit reported 105 rows ending at `20261020140000`. Equal row counts do not establish equivalent database state.
+- The user-reported `QuoteFlow-RKStorage-backup` path resolves to a 20 KB SQLite file, not a directory. No directory contents were inspected.
+
+### Repository / PR / branch recheck before handover update
+
+The canonical handover was fetched from current `main` before this append (blob SHA `e3db71ef2dfdfe5399a82e40c14084021de4fcea`). Current PR metadata rechecked:
+
+- #243 remains open, unmerged; supplier-classification work. Its branch is `feat/connect-marketplace-supplier-contract-ghm-20261110`.
+- #244 remains open, unmerged, stacked on #243; Business engagement / Analytics.
+- #282 remains open, unmerged; migration runner TLS/out-of-order guard. It is not a substitute for the production pending-migration allowlist gate.
+- #264 remains open, unmerged; gateway registration identity documentation.
+- #201 remains open, unmerged; QuoteFlow legal acceptance. Legal documents remain paused.
+- #233 remains open, unmerged; PayFast timezone handling. PayFast remains paused pending restored sandbox access.
+- #270 is closed without merge; unified Actor Gateway integration PR #272 is merged.
+- #272, #276, #277 and #279 are merged.
+- Existing construction, docs, feature and fix branches were inventoried from GitHub; no branch was created, deleted, rebased or modified during this check.
+
+Current open-PR search snapshot (GitHub search, repository-scoped) is recorded in the session evidence. Relevant PRs above were individually checked for state, head/base branch and SHA. Do not treat a branch's existence as authorization to merge or deploy it.
+
+### Next safe action
+
+Inspect the November 4 archive without restoring it: list its gzip/tar contents, identify PostgreSQL directory-archive metadata and TOC, and if present extract only the migration-ledger data to a temporary inspection file. Compare its database identity, snapshot timestamp, ledger count, final version and checksums against the live production audit. No restore, `pg_restore` into a database, production write, migration, deployment, role change, or allowlist change is authorized.
+
