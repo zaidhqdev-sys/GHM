@@ -2971,3 +2971,19 @@ Read-only source inspection of current `main` establishes the intended split:
 **Deployment qualification:** this is source-code intent on current `main`, not evidence that production is already running this source. The GHM Internal Runtime auto-deploy remains OFF and no deployment/configuration change was made in this review. Do not assume the production binary has `authRoutesEnabled:false` or that Connect/web/QuoteFlow clients are routed to a live issuer until the deployed commit and client configuration are separately verified. The manual issuer privilege cutover remains blocked until the issuer service and client routing are live and end-to-end qualified.
 
 The issuer cutover qualification script is restricted to local disposable PostgreSQL (`ghm_disposable_test`) with issuer, runtime, gateway and migrator URLs all required. It is not a production execution tool and must not be pointed at `ghm_db`.
+
+
+#### Resource API / Authentication Issuer caller inventory — source-level checkpoint
+
+Current `main` caller inspection confirms:
+
+- `src/server.ts` explicitly starts the ordinary Resource API with `authRoutesEnabled: false`.
+- `src/auth-issuer/server.ts` constructs the auth service and shared `PostgresAuthPersistence` using the dedicated `GHM_AUTH_ISSUER_DATABASE_URL`; issuer startup verifies role identity and exact database function ACLs.
+- `src/auth/foundation/persistence.ts` calls account creation, password lookup, conditional rehash, session creation/refresh rotation, recovery issuance, token-bound password reset, QuoteFlow reset enrollment lookup/completion, external identity lookup, and refresh-token revocation. These methods are used by the issuer-side auth service. The exact runtime/issuer grant split is enforced only after the separate manual issuer cutover.
+- The current issuer privilege verifier expects the Resource API runtime to retain only `ghm.auth_lookup_external_identity(text,text)` and `ghm.auth_lookup_business_external_mapping(text,text)` from the auth function family after cutover; issuer-only functions are separately allow-listed.
+- The ordinary Resource API app still contains optional auth route wiring for tests/embedded fixtures, but the production entry point disables it. Do not interpret optional test wiring as an active production route.
+- The current auth persistence adapter does not call `auth_link_external_identity`, `auth_bootstrap_external_identity`, or `auth_provision_migration_account`. QuoteFlow migration reconciliation/provisioning modules define narrow interfaces and explicitly use provider `supabase`, but no concrete active runtime store caller was established in this source inspection. Before revoking or migrating those operations, identify any separately invoked migration/operator tooling and retain the documented no-user-migration-blocker decision.
+- The current auth persistence adapter does not call the old account-ID administration functions `auth_revoke_session`, `auth_change_password`, `auth_disable_account`, or `auth_revoke_all_sessions_for_account` directly. Internal SECURITY DEFINER routines may still call the owner-executed session revocation helper; that is distinct from granting the runtime direct execution.
+- QuoteFlow migration reset enrollment registration is a migration/operator action. The issuer-side flow reads an approved enrollment and completes it; the manual issuer cutover also explicitly denies the registration function to runtime and issuer.
+
+**Scope of this checkpoint:** source-level references and intended privilege architecture only. It is not proof that all external consumers, deployed clients, scripts, or production binaries have been exhaustively inventoried. The production deployment still has not been updated to current main during this audit. Preserve the requirement for a complete route/client and operational caller inventory before the manual issuer cutover or auth privilege revocations.
