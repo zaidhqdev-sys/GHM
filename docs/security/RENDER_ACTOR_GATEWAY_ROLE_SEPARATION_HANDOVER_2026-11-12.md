@@ -1763,3 +1763,53 @@ After recording the November 14 archive reconciliation, the next step was narrow
 4. Record per-version evidence (branch/ref, commit/blob, filename, normalized checksum, match result) before deciding whether the archive can qualify as an exact baseline.
 
 This is a targeted provenance recovery task. Do not repeat the archive extraction, TOC inventory, 105-row count or 137-file count unless the archive or repository baseline changes.
+
+
+## 2026-11-15 — exact checksum recovery of all ten missing historical migration files
+
+The five files first located on `fix/migration-bom-crlf-checksum-20261018` and five files located on their respective historical feature/migration branches have now been checked using the repository's normalized-LF SHA-256 and legacy-CRLF SHA-256 rules against the exact 105-row archive ledger.
+
+**All ten of ten missing migration files are now recovered and their normalized-LF SHA-256 exactly matches the archive ledger.** This closes the earlier “ledger row without repository file” category for this archive snapshot, but does not yet close the nine same-name checksum mismatches.
+
+| Version | Historical source ref | Git blob | Ledger checksum |
+|---|---|---|---|
+| 20261016100000 | `fix/migration-bom-crlf-checksum-20261018` | `515f44712381d086294440a7d2fe84222daba0b3` | Exact LF match |
+| 20261016120000 | `fix/migration-bom-crlf-checksum-20261018` | `57d5f499a57f72cfb7a9cd049aa4c55a923f694a` | Exact LF match |
+| 20261016170000 | `fix/migration-bom-crlf-checksum-20261018` | `bd0af0b906a10d37a2566f28299d3e44201a5b92` | Exact LF match |
+| 20261016180000 | `fix/migration-bom-crlf-checksum-20261018` | `5700437baab8860dd1ac913eebc9a4e0adc68708` | Exact LF match |
+| 20261016190000 | `fix/migration-bom-crlf-checksum-20261018` | `520afa18eee7a53a7912e1156f565d59ae0178ae` | Exact LF match |
+| 20261018210000 | `fix/runtime-account-profile-column-grants-20261018` | `6b276318d2bba5ef0a8174ee71972a7cbfc0735e` | Exact LF match |
+| 20261019190000 | `migration/business-engagement-events-20261019` | `c83965ce74347cc7ca3799e9b0f3f4f9460dcd2d` | Exact LF match |
+| 20261019210000 | `migration/ghm-business-registration-identity-20261019` | `c1c3e4d9b4148376109177cf3106aa3519e15df6` | Exact LF match |
+| 20261020130000 | `feat/quoteflow-business-provisioning-20261020` | `620efa57ac35d494f1aa506f26a7ad810c821d9a` | Exact LF match |
+| 20261020140000 | `fix/quoteflow-business-provisioning-canonical-status-20261020` | `ca266d14810c487affb5456bcaf151f731b245a4` | Exact LF match |
+
+The historical source refs and blob SHAs above are provenance evidence only. The recovered contents have not been copied into main or rewritten into migration files.
+
+### Nine same-name checksum mismatches — initial Git history search
+
+The GitHub path history for all nine mismatched migration filenames was inspected. The commits returned by the path-history endpoint for the following files did not produce the ledger checksum when their file contents were hashed using the supported normalized-LF or legacy-CRLF rules. The current mainline files also remain non-matching, as already recorded. Therefore the first reachable path-history candidates are not accepted as the applied source:
+
+- `20260911030000_create_project_public_projection.sql` — initial path commit `d35a49d456752bea4b9bc5f7a2132b4b1671d8f8`.
+- `20260911210000_reconcile_business_verification_state.sql` — path commits `49b73b5e7867f2daeaefd20f365c58a35261bd95` and `15b756004032efa68a285a317abbf4714463dd83`; neither matched.
+- `20260911211500_reconcile_business_verification_default.sql` — path commits `52792fa03f17ce137f088e0ff6ff9488cb7c6bbf`, `2c2fa6c735d1c7aebf6e99698e1b4647ca36a409`, and `2cc79eb5215161ab8083e12b09d2b0761e60b14a`; none matched.
+- `20260912030000_grant_review_runtime_access.sql` — initial path commit `1f423f89bcc032425a3890bc0ffb04b97e094845); did not match.
+- `20260914120000_create_project_quote.sql` and `20260914130000_reconcile_project_quote_transition_privilege.sql` — path commit `f2b041e27af6b2666d023794c296b2bd085a9c3e`; neither matched.
+- `20260914220000_create_opportunity_capability_requirements.sql` — initial path commit `b03cd8ef82e38fe7b874ad6f443a78e9407ac5d4`; did not match.
+- `20260915193000_reconcile_commercial_payment_transaction.sql` — initial path commit `bd0d13d0ec53b163b180d274fd2a56f37cf69a49`; did not match.
+- `20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql` — initial path commit `e9ed3a056ccc101b44babfe07be7b85e0933a540`; did not match.
+
+This indicates the exact ledger-recorded source for these nine migrations is not present in the first commit snapshots returned by ordinary path history. Continue searching historical PR refs, earlier trees, alternate historical refs, and any preserved migration artifacts. Do not treat these initial commits as provenance matches.
+
+### Updated reconciliation status
+
+| Category | Previous | Current |
+|---|---:|---:|
+| Exact current repository filename + checksum matches | 86 | 86 |
+| Same-name checksum mismatches | 9 | 9 |
+| Ledger rows with no matching source file | 10 | 0 (all ten recovered and checksum-verified from historical refs) |
+| Repository migrations after the snapshot | 42 | 42 |
+
+The archive is closer to a reconstructable baseline: 96 of 105 ledger rows now have exact source provenance (86 current-main matches + 10 recovered historical matches). Nine remain unresolved. Do not yet certify the archive as a fully verified production-replay baseline or begin the replay.
+
+No migration files were changed, no branches were updated, and no production database/Render operation was performed.
