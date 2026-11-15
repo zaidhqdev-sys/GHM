@@ -2072,3 +2072,67 @@ Observed structure:
 This is strong evidence that the November 4 artifact is a gzip-wrapped tar containing a PostgreSQL directory-format archive for database `ghm_db`. It remains only a candidate: the TOC must be read with PostgreSQL's `pg_restore --list` (no database connection) to establish archive metadata, dump version, database name, and whether the migration ledger table/data are present. The ledger data itself must then be inspected from a temporary local extraction/stream, without restoring to any database. Compare its row count, latest version, timestamps and checksums against the live read-only production audit before deciding whether it can represent a useful historical baseline.
 
 No archive extraction to a database, `pg_restore` execution against a database, production SQL, migration, deployment, role change, or pending-allowlist change occurred. No backup file was modified.
+
+
+## November 4 archive ledger comparison — 2026-11-15 03:48 UTC
+
+### Targeted extraction result
+
+The November 4 wrapped archive was inspected locally only. The outer tar contains a nested PostgreSQL directory-format archive at:
+
+`C:\Users\zaidh\AppData\Local\Temp\GHM-Nov04-Archive-Inspection\2026-11-04T20:42Z\ghm_db`
+
+The archive TOC includes table-data entry `4678; 0 16789 TABLE DATA ghm ghm_schema_migrations ghm_schema_owner`.
+
+The first targeted extraction used a combined `--table=ghm.ghm_schema_migrations` selector and produced a 720-byte header-only SQL file. That file was retained as forensic evidence; it was not interpreted as ledger data. A corrected extraction using separate `--schema=ghm` and `--table=ghm_schema_migrations` selectors succeeded. The resulting local SQL file is:
+
+`C:\Users\zaidh\AppData\Local\Temp\GHM-Nov04-Archive-Inspection\ghm-schema-migrations-data-v2.sql`
+
+It is 13,977 bytes and contains a PostgreSQL COPY block for columns `version`, `name`, `checksum`, and `applied_at`. No SQL was executed and no database was restored.
+
+### Parsed archive ledger
+
+The COPY data was parsed locally after correcting the PowerShell parser to remove quoted identifiers from the COPY header. Result:
+
+- Rows: **89**.
+- Blank version values: **0**.
+- Duplicate version groups: **0**.
+- Earliest version: `00000000000000` (`create_migration_ledger`).
+- Latest version: **`20261026120000`** (`scope_storage_metadata_lookup`).
+- Latest `applied_at`: `2026-10-28 00:29:53.60121+00`.
+
+### Comparison with live production read-only audit
+
+The 2026-11-15 03:33Z live production audit recorded **105 rows**, latest version **`20261020140000`**, applied at `2026-10-28T00:29:52.877Z`.
+
+The November 4 archive therefore has **16 fewer rows** than the live production ledger but contains a version later than the live production endpoint. Its latest applied timestamp is also approximately 0.724 seconds later than the live endpoint's latest timestamp. These are material differences.
+
+**Disposition: November 4 archive is NOT VERIFIED as a production baseline or production-equivalent replay source.** Do not infer that it represents live production from the database name `ghm_db`, the archive date, or shared ledger entries. Its provenance remains unresolved. Preserve it as forensic evidence only. Do not restore it to production or any other database as part of this investigation.
+
+A full row-by-row comparison of all 89 archive entries against the live 105-row ledger has not yet been completed. The endpoint comparison is sufficient to reject the archive as an exact production-ledger match; it is not sufficient to classify every row-level difference.
+
+### Repository / PR / branch recheck before this handover update
+
+The canonical handover was fetched from current `main` at blob SHA `3ca0b606746b4484b803d2aa30361a9a61de7433` before this append. The repository-scoped open-PR search and individual PR metadata checks confirmed:
+
+- #282 open, non-draft; head `fix/migration-runner-strict-tls-20261115`, head SHA `5e13c479c79e7e9518a0b78445eae927812682b5`.
+- #243 open, draft; head `feat/connect-marketplace-supplier-contract-ghm-20261110`, head SHA `1246ed74a81b3fc607e6f65f3cd8036bc081ab1b`.
+- #244 open, draft and stacked on #243; head `feat/ghm-business-analytics-engagement-20261110`, head SHA `f418407bface1146e4cf0147424fb91bff81328a`.
+- #264 open, non-draft; head `docs/gateway-registration-identity-checkpoint-20261110`, head SHA `b2f7f1d514dd380db1579c907cf06efa9ff48fa1`.
+- #201 open, draft; head `feature/quoteflow-legal-acceptance-20261030`, head SHA `dd0cfb5bb5564b0d7fb560530533fd77a4573d5a`.
+- #233 open, draft; head `fix/payfast-payment-date-timezone-20261108`, head SHA `ea028a20967b686e90ea0fbe451a8e4b9dee57ef`.
+
+Branch searches also confirmed the existence of relevant migration-audit/allowlist branches (`fix/exact-production-pending-migration-allowlist`, `fix/migration-audit-ssl-url-override-20261115`, `fix/production-migration-audit-tls-verification-20261115`, and `fix/migration-runner-strict-tls-20261115`), plus the existing Actor Gateway, supplier-classification and Analytics branches. No branch was created, deleted, rebased, or modified during this inspection. Branch existence alone is not approval to merge or deploy.
+
+### Render support / role-separation continuity
+
+The existing Amanda support record and her confirmation remain the governing support context: retain the Dashboard-managed default credential for controlled administration and use SQL-created restricted login identities for normal application execution. This archive inspection did not alter or re-test any production role, membership, credential, service environment variable, or deployment. The sensitive-role ADMIN OPTION concern remains unresolved and the role-separation cutover remains unstarted.
+
+### Current gates after this inspection
+
+- November 4 archive as exact production baseline: **REJECTED / NOT VERIFIED**.
+- November 14 archive as exact production baseline: **REJECTED / NOT VERIFIED** (prior evidence unchanged).
+- Live production ledger: **105 rows / latest `20261020140000`**, based on the 2026-11-15 03:33Z read-only audit.
+- November 4 archive ledger: **89 rows / latest `20261026120000`**.
+- Production migration execution, archive restore, production SQL writes, role/grant/secret changes, Render environment changes, deployments and allowlist edits: **BLOCKED**.
+- Next safe work: find and verify the provenance of a backup that actually matches the live production state, or produce a complete read-only row-level comparison using a fresh live ledger export. Do not repeat the archive extraction or source review already completed.
