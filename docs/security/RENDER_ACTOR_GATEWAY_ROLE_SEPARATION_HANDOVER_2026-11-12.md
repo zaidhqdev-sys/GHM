@@ -2679,3 +2679,56 @@ The initial commit-associated workflow lookup returned an empty list, but a dire
 - Only after the live audit is captured should we run a separate read-only Project↔Opportunity reconciliation against production. The schema relation was introduced by `20261106200000_link_project_to_opportunity.sql`; Project creation must remain atomic with its canonical project-type Opportunity. The audit must quantify null/missing/mismatched/duplicate relationships and verify FK/unique-index presence without changing data. Do not invent or apply backfill SQL before inspecting actual production rows and constraints.
 - Amanda / Render support continuity: the support recommendation remains to retain the Dashboard-managed default credential for controlled administration and use SQL-created restricted login identities for normal application execution. The sensitive-role ADMIN OPTION membership issue remains unresolved; do not attempt role/grant changes or expose credentials.
 - No production query or write was performed in this continuation. No migration, data/ledger change, role/grant/secret change, Render configuration change, deployment or traffic change occurred. PayFast remains paused.
+
+
+### 2026-11-15 — Production migration audit: post-allowlist mainline inventory reconciliation
+
+**Checkpoint:** current main at `ae0017eac2c80c9975859eda9b38dbea08156848`; working tree in the user's `C:\\GHM-main` has no tracked modifications. The pre-existing untracked recovery file `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` remains present and must not be modified, moved, staged, deleted, or overwritten.
+
+#### Read-only production audit result
+
+- `npm run audit:migrations:predeploy` was run against production `ghm_db` using the read-only forensic audit path. The connection was verified as `ghm_migrator`, the transaction was read-only, and it rolled back; no migration was executed.
+- Verdict: **INVESTIGATE**.
+- The failing condition is the exact pending-migration allowlist comparison (`pending_allowlist_mismatch_count: 1`). The audit reported no unexplained checksum mismatches, no migration name mismatches, no unrecognized ledger extras, no orphaned provenance exceptions, and no invalid retained-history entries.
+- The audit's actual pending list is materially larger than the seven-entry allowlist. The earlier seven-entry inventory is not a complete current pending inventory. The full live pending list from the 2026-11-15 audit output must be retained with the session transcript; do not infer approval from presence in the repository.
+- No production migration, data change, ledger write, role/grant change, Render configuration change, deployment, or traffic change occurred.
+
+#### Exact allowlist and enforcement contract
+
+The production allowlist at `config/pending-migrations.production.json` contains exactly these seven records:
+
+1. `20261110100000_create_account_onboarding_progress`
+2. `20261110120000_create_business_relationship_outcome_read_models`
+3. `20261110140000_allow_pending_storage_object_cleanup`
+4. `20261110210000_add_actor_gateway_principal_guard`
+5. `20261110220000_add_actor_gateway_self_identity_read`
+6. `20261110230000_add_gateway_business_registration_identity_read`
+7. `20261110233000_add_gateway_business_registration_identity_write`
+
+- `src/db/migrate.ts` imports this JSON and calls `assertProductionPendingMigrationAllowlist` for `ghm_db` before applying any migration.
+- The TypeScript guard rejects every unapplied repository migration not present by exact version/name in the allowlist. This is a production execution safety gate, not a mechanism to classify all repository migrations as approved.
+- The forensic audit resolves the production target in `scripts/migration-audit-checksum.mjs`. For `ghm_db`, its `pendingPath` is also `config/pending-migrations.production.json`. Thus the audit and runner use the same seven-entry source file, but the audit reports the mismatch while the runner would refuse execution.
+- The target resolver is in `scripts/migration-audit-checksum.mjs`, not a file under `src/db`; previous searches limited to `src/db` therefore did not locate it.
+
+#### Provenance and mainline chronology
+
+- Allowlist alignment commit: `0c65eb1fcce287d82f895a234193691ef114943a` (`fix(migrations): align production pending audit allowlist`). This commit is an ancestor of current main (`git merge-base --is-ancestor` returned exit code 0).
+- All seven allowlisted migration files were already present in the tree at `0c65eb1f`. The commit replaced the former single pending entry `20261109210000_deactivate_unrecognized_public_directory_records` with the seven entries above.
+- The first-parent-only history after that commit identified later migration-affecting mainline commits:
+  - `4463bbb9` — `chore(security): qualify unified Actor Gateway integration stack`.
+  - `1d78d2b9` — `feat(security): isolate GHM Authentication Issuer`.
+  - `20a873af` — `fix(storage): preserve pending upload lifecycle during deletion cleanup (#279)`, which changed the already-allowlisted storage cleanup migration.
+- The later Actor Gateway / Authentication Issuer integrations expanded the migration inventory after the seven-entry allowlist had been pinned. The earlier `git log --all` output included side-branch histories and must not be used as mainline attribution; use first-parent mainline history for this comparison.
+- The exact current mainline migration inventory observed after the allowlist point includes, among others, supplier classification, capability catalogue governance and invariants, gateway supplier/profile cutovers, signed assertion bindings and signed gateway operations, business hours/trust/logo projections, authentication runtime revocations and token-bound recovery, signed Connect business provisioning, security-definer search-path hardening, and signed storage gateway/attestation work. These are not automatically production-approved merely because they are in main.
+
+#### Decision and next qualification steps
+
+- **Do not expand or rewrite the seven-entry allowlist to make the audit pass.**
+- Do not run `npm run migrate` or deploy migration changes.
+- Classify each currently pending migration against its originating PR/branch, mainline merge/reconciliation, runtime consumer, and dependency. Distinguish at least: the seven previously approved pending migrations; Actor Gateway / Authentication Issuer dependent migrations; and other later mainline migrations whose production intent and preconditions remain to be established.
+- Recheck the existing handover and PR/branch state before investigating each group. Preserve the existing Actor Gateway → Authentication Issuer → Worker stack and do not create duplicate implementations or new branches/PRs without first checking current state.
+- No-cost hosting remains a hard constraint. No gateway-dependent migration is eligible for production while the required secure gateway/issuer hosting and runtime cutover are unavailable.
+- Continue to retain Amanda's complete Render support conversation and the confirmed recommendation already recorded above: keep the Dashboard-managed credential for controlled administration and use SQL-created restricted logins for normal runtime. This audit does not alter that decision or authorize role/credential changes.
+- PayFast remains paused; no PayFast activation work is part of this audit.
+
+**Handover rule:** before every further implementation or production step, read this document and the relevant PR/branch history first; append new findings here before moving to a different workstream. This entry records the 2026-11-15 audit investigation so the same allowlist provenance and mainline chronology are not repeated.
