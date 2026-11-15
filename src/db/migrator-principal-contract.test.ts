@@ -35,3 +35,20 @@ test('migration runner verifies schema-owner database CREATE and GHM schema owne
   assert.match(migrationRunner, /has_database_privilege\('ghm_schema_owner', current_database\(\), 'CREATE'\) AS schema_owner_database_create_privilege/);
   assert.match(migrationRunner, /owned_schema\.nspowner = schema_owner\.oid/);
 });
+
+
+test('production migration runner enforces verified TLS and strips URL-level SSL overrides', () => {
+  assert.match(migrationRunner, /Production migrations require DATABASE_SSL=true with certificate verification enabled/);
+  assert.match(migrationRunner, /stripPostgresSslConnectionStringOptions\(databaseUrl\)/);
+  assert.match(migrationRunner, /ssl: databaseSsl \? \{ rejectUnauthorized: true \} : false/);
+  assert.doesNotMatch(migrationRunner, /rejectUnauthorized:\s*false/);
+});
+
+
+test('migration runner rejects missing migrations that precede applied repository versions', () => {
+  assert.match(migrationRunner, /findOutOfOrderPendingMigration\(/);
+  assert.match(migrationRunner, /Migration history gap: refusing to replay pending/);
+  const guard = migrationRunner.indexOf('findOutOfOrderPendingMigration(');
+  const execution = migrationRunner.indexOf('normalizeMigrationSqlForExecution(migration.sql)');
+  assert.ok(guard >= 0 && execution > guard, 'migration ordering guard must run before any migration SQL');
+});
