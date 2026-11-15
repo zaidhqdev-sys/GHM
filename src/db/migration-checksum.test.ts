@@ -115,7 +115,7 @@ test('production migration allowlist permits only its configured pending suffix'
         { version: '20261110120000', name: 'approved_second' },
       ],
     ),
-    /Production migration allowlist mismatch: refusing to execute 2 unapproved pending migration\(s\)/,
+    /Production migration allowlist mismatch: refusing to execute 1 unapproved pending migration\(s\)/,
   );
 });
 
