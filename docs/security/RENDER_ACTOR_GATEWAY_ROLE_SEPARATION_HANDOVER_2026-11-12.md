@@ -3110,3 +3110,33 @@ Inspected the exact PR #244 migration, routers and repositories against current 
 
 Do not create a new Analytics/Engagement branch or port PR #244 yet. First settle the event actor-proof design (prefer the existing signed Actor Gateway contract if a supported no-cost runtime topology can be established), canonical entitlement reuse, and product metric semantics. If the gateway cannot be hosted securely at $0, keep engagement capture unavailable rather than reintroducing direct runtime actor assertions. A read-only analytics endpoint may be considered separately after entitlement and metric semantics are approved, but it must not claim event metrics that have no trusted source.
 
+
+#### Connect active-versus-dormant Supabase caller audit — 2026-11-15
+
+Reviewed current PR #68 branch source and app/route wiring. Code search was used to distinguish mounted screens from orphaned exports.
+
+**Confirmed active remaining Supabase paths:**
+
+- AdminCommercialLaunchPanel is imported and rendered by AdministrationScreen when commercialAdminVisibility is enabled (currently true). It calls commercialLaunchAdminService.getState(), which still calls Supabase RPC get_admin_commercial_launch_state. Current GHM main has only user-scoped commercial offer/access/subscription read routes and an internal service-asserted router; there is no equivalent browser-safe, GHM-admin-authorized launch-state read endpoint. This is a real remaining active Supabase dependency. Do not expose the internal service route to browsers or loosen its assertion boundary. A GHM-native admin read contract needs explicit admin/founder authority, bounded pagination, safe projection and audit coverage.
+- AIQuoteAnalyzerScreen is lazy-loaded and routed by ZaidConnectApp. It still imports quoteAnalyzerService from the Supabase facade, whose implementation reads a quote through the legacy projectQuoteService path and writes/reads quote_analyses in Supabase. This is a separate persistence dependency from external AI provider invocation. Do not activate paid AI; determine whether quote analysis should be retired for the free-directory phase or replaced with a GHM-owned deterministic analysis/read contract before removing its facade methods.
+- The active AnalyticsScreen uses ghmBusinessAnalyticsService, but its required GHM analytics/engagement routers and migration exist only on stale PR #244, not current GHM main. Treat this as a broken/incomplete backend dependency on PR #68, not a completed migration.
+- OnboardingPanel uses ghmOnboardingService and has guidedOnboarding=true. Its API exists in current GHM main, but migration 20261110100000 is pending in production. Do not call it production-ready until the schema migration and deployed API are aligned.
+- BusinessWorkspaceScreen mounts useBusinessWorkspace, which now imports leadService from the GHM directory service; this is migrated on PR #68 and does not require the dormant hooks_index useLeads path.
+
+**Confirmed dormant or unmounted legacy modules (do not prioritize as active callers without new route evidence):**
+
+- src/hooks/hooks_index.js has no active source import found in the Connect PR branch; its old useAuth/useBusinesses/useOwnedBusiness/useLeads implementations still import the Supabase facade, and useLeads opens Supabase Realtime, but no caller of those exports was found. BusinessWorkspaceScreen uses the separate migrated GHM hook. Treat hooks_index as legacy/dead-code cleanup candidate after a complete import graph/build scan, not as proof of mounted Supabase Realtime use.
+- src/lib/lib_notifications.js exports subscribeToPush and persists to Supabase push_subscriptions, but no active source caller was found. Push subscription/delivery is not a current active migration blocker based on the inspected app tree.
+- ReferralSystem in src/components/components_index.jsx still accepts a Supabase client and queries referrals, but no import or mounted usage was found. The referral programme is dormant legacy UI; no GHM referral backend should be built unless product scope reactivates it.
+- AdminVerificationScreen is exported from the Administration feature index but is not imported/rendered by current AdministrationScreen or app route wiring. Its old Supabase calls are dormant in the inspected runtime.
+- VerificationWorkflow in components_index.jsx is a simulated placeholder (local state and timeout) and is not an active GHM/Supabase integration path. Do not build a backend migration around this mock.
+- AISupportScreen is routed, but the external provider call is guarded by isAIProviderAuthorized and milestone38Approved is false in the current release configuration. Local static responses remain available; do not mistake the gated client code/config reference for an authorized live provider call.
+
+#### Prioritized Connect next work
+
+1. Resolve the active AdminCommercialLaunchPanel Supabase RPC with a dedicated GHM admin-read endpoint and client contract; preserve server-side administrator authority and do not reuse internal service assertions in browser code.
+2. Decide whether AIQuoteAnalyzerScreen is retired for the current free-directory launch or receives a GHM-owned non-provider analysis persistence contract; keep provider invocation disabled.
+3. Keep Analytics/engagement client blocked until a secure actor-proof event write design, canonical entitlement evaluation and approved metric semantics are implemented on current GHM main. Do not port stale PR #244 direct-runtime event grants.
+4. Keep onboarding client behind production schema/deployment qualification until pending migration 20261110100000 is reconciled.
+5. After the active callers are resolved, run a complete import/route/build scan and remove dead hooks, dormant referral/push/verification modules only with evidence and separate review. Then remove Supabase SDK/config/facade and lockfile entries.
+
