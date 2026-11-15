@@ -1596,3 +1596,52 @@ The main blockers remain:
 7. Preserve the seven-entry production pending allowlist unchanged until the disposable execution and production dependency evidence supports an exact reviewed update.
 
 No production SQL, migration, cutover, role/grant, secret, Render setting, deployment or traffic change was performed during this source review. The production database remains read-only for this work.
+
+
+## 2026-11-15 — PostgreSQL 18 clean-install qualification evidence and production-baseline gate
+
+### Repository recheck before qualification
+
+- Main at start of this continuation: `646b0581a8155ea4bad7f5e2b6b01c6fb26ffae1`.
+- The open PR inventory still contains #282, #264, #243, #244, #233 and #201.
+- PR #282 remains open/unmerged at `5e13c479c79e7e9518a0b78445eae927812682b5`.
+- Current comparison of PR #282 branch against main: 9 commits ahead / 7 behind; merge base `4b144e3d44568141ab44d2f3131f55b14a0db40b`. GitHub reports mergeable=true, but no merge or branch update was performed.
+- The 10 commits after the latest successful full main CI commit `c6b2f663b45174716a67ff999242ed2ca3220d80` change only this handover file. The comparison reports no migration, runner, config, or test source changes after that CI-tested tree.
+- Historical branches `integration/capability-gateway-qualification-20261110` (370 commits behind main), `ci/qualify-integration-candidate-20261018` (5 ahead / 749 behind), and `construction/ci-postgres-auth-qualification-20261016` (5 ahead / 750 behind) are stale. Do not use them as a current qualification base.
+
+### Existing PostgreSQL 18 CI evidence recovered
+
+Mainline CI run `43658584367` on commit `c6b2f663b45174716a67ff999242ed2ca3220d80` completed successfully on 2026-11-15. Both jobs passed: `quality` and `web-quality`.
+
+The quality job used a disposable PostgreSQL 18 service and completed all 69 substantive steps. Specifically:
+
+- Created isolated least-privilege database roles.
+- Ran `npm run migrate` against the disposable PostgreSQL 18 database; the step **Apply all migrations to disposable PostgreSQL** passed.
+- Ran the complete test suite.
+- Ran targeted signed Actor Gateway, Business Capability, supplier classification, Business profile, Saved Business, Business Hours, Trust Score, Business Logo, storage metadata and provider-attestation qualification scripts.
+- Ran the guarded Authentication Issuer manual cutover against disposable PostgreSQL only, then qualified issuer lifecycle/runtime denials and compared pre/post SECURITY DEFINER authority inventories.
+- The workflow also qualified the separate storage provider dual-proof and legacy storage metadata revocation/rollback paths.
+
+The current mainline migration SQL and runtime/test source tree are identical to the CI-tested `c6b2f663` tree; the only intervening changes are documentation. Therefore this CI run is valid evidence that the complete current repository migration chain (including the 42-file suffix) applies successfully to a fresh PostgreSQL 18 database and that the listed targeted disposable-DB qualification steps pass.
+
+### What this evidence does not establish
+
+This is a **clean-install qualification**, not the requested production-baseline replay. It does not prove that the 42 missing migrations apply safely over the exact live `ghm_db` schema, its legacy retained objects, its existing 105-row ledger, or any production-only drift/manual cutovers.
+
+The current handover's backup inventory identifies only the 2026-11-04 database archive; no newer verified production backup/restore artifact has been established. That archive predates the 2026-11-09 production ledger endpoint and cannot be treated as an exact snapshot of the current 105-row production baseline without a documented forward reconstruction and validation. No backup restore was attempted.
+
+### Next qualification input required
+
+Before any production-baseline replay, identify an already-existing local backup/archive that is demonstrably current enough to reconstruct the production schema at the 2026-11-09 ledger endpoint, or establish that no such artifact exists. Inventory only: do not restore over an existing database, start/stop services, create a new database, or expose credentials.
+
+If no suitable backup exists, stop the production-equivalent replay and record the blocker. Do not spend money, relaunch the expired sandbox, create a hosted database, or substitute the 2026-11-04 archive as if it were current.
+
+### Current status
+
+- Clean PostgreSQL 18 install: **PASS** on CI-tested current source tree.
+- Targeted gateway/auth/storage disposable qualifications: **PASS** on that CI run.
+- Exact production-baseline replay: **NOT RUN — current verified backup baseline unavailable**.
+- Production database: unchanged; no migration/cutover/role/grant/secret change.
+- Pending migration allowlist: unchanged at seven entries.
+- PR #282: open/unmerged; no branch update or merge.
+- Render and deployments: unchanged.
