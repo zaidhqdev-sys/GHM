@@ -183,6 +183,7 @@ Branch commit sequence:
 - Full 42-entry inventory: `570ac466b0ed324429d1fa2cd458e61ae4a986c7`
 - Batch tests: `d2691389544060ce5fff7cdc90b192ab93fa1a4d`
 - Version-regex correction: `db92ac3ee3904d38b64cfe64b0ee193f426b8d6c`
+- Generic return typing correction (preserves full SQL-bearing migration records): `2e7c37fcbf2db88d917c49b3dcc197adf4960001`
 
 ### Qualification and operational limits
 
