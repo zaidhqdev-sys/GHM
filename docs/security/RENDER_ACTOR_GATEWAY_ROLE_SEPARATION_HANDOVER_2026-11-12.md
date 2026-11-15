@@ -1548,3 +1548,51 @@ Source-level observations:
 5. The source review remains non-executing. No disposable PostgreSQL qualification of these ten migrations was performed in this continuation, and no production SQL or cutover was run.
 
 The overall 42-migration suffix remains unqualified. The allowlist is unchanged at seven entries. Production remains read-only and no Render/deployment/secret/role/grant changes were made.
+
+
+### Final twelve migrations — source review checkpoint
+
+Reviewed the remaining twelve files in the 42-migration production suffix:
+
+1. `20261111250000_revoke_runtime_external_identity_link.sql`
+2. `20261111260000_revoke_runtime_external_identity_bootstrap.sql`
+3. `20261112020000_add_token_bound_password_recovery_reset.sql`
+4. `20261112030000_add_conditional_password_rehash.sql`
+5. `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql`
+6. `20261112050000_revoke_public_default_function_execution.sql`
+7. `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql`
+8. `20261112080000_signed_connect_business_provisioning_gateway.sql`
+9. `20261112090000_pin_security_definer_search_path.sql`
+10. `20261112140000_add_signed_storage_metadata_actor_gateway.sql`
+11. `20261112150000_add_storage_provider_workflow_attestation.sql`
+12. `20261112170000_revoke_redundant_migrator_business_mapping_lookup.sql`
+
+Source-level findings:
+
+- The two external identity migrations revoke runtime EXECUTE on the legacy identity-link and bootstrap functions. They are auth cutover-sensitive; verify the replacement issuer/Actor Gateway call graph and service principal before applying.
+- The token-bound password recovery reset requires the recovery token and normalized login email to belong to the same active account, consumes the token, updates the existing password credential and revokes sessions atomically. It returns both account ID and revoked-session count. Caller/result-contract compatibility must be verified.
+- Conditional password rehash updates the password hash only if it still equals the hash verified by the login request, protecting a concurrent password reset/change from stale overwrite.
+- QuoteFlow reset-enrollment registration runtime EXECUTE is revoked; reconcile with the documented migration/recovery state before applying.
+- The default-privilege migration revokes future PUBLIC function EXECUTE for objects created by `ghm_schema_owner`. This is a broad forward-looking privilege policy change; verify every intended public/runtime/gateway function grant is explicit and test new-function defaults.
+- The legacy unsigned Actor Gateway assertion overload is revoked from PUBLIC/runtime/migrator. Verify all old overload call sites and grants are accounted for.
+- The signed Connect Business provisioning function performs Business creation, owner membership creation and external mapping in one SECURITY DEFINER transaction, binds the full request context to a v2 actor assertion, and grants only the Actor Gateway wrapper. The wrapper retains the historical `provider='supabase'` mapping namespace as an external identity label; this is not by itself evidence of a live Supabase service dependency, but confirm the retained mapping namespace is intentional and required for idempotent historical mapping resolution.
+- The SECURITY DEFINER search-path migration first fails if any GHM SECURITY DEFINER function is not owned by `ghm_schema_owner`, then pins every such function to `pg_catalog, ghm, pg_temp`. This is a database-wide assertion and dynamic ALTER loop; qualify it against the complete disposable schema/function inventory.
+- The signed storage metadata gateway migration adds actor-bound pending-create/read/deletion-request operations, enforces Business owner/administrator membership, restricts public reads to available Business Logos, and pins wrappers to `pg_catalog, ghm, pg_temp`.
+- The provider-workflow attestation migration creates a separate owner-only secret/nonce store and requires both user actor proof and Resource API provider attestation for availability/deletion completion. The secret table is empty after migration and needs a separate secure provisioning step. It deliberately keeps the provider proof distinct from the Actor Gateway actor assertion.
+- The final migrator mapping migration revokes a redundant migrator lookup function grant. Confirm the exact production call graph and the earlier grant/owner rationale before applying.
+
+### Full suffix review status and remaining qualification boundary
+
+The 42 missing migration SQL files have now been enumerated and source-screened in timestamp order across the preceding checkpoint and this continuation. This is a source review, not a successful execution qualification. It does not prove all SQL succeeds against the actual production schema or that deployed callers are ready for privilege changes.
+
+The main blockers remain:
+
+1. Complete disposable PostgreSQL 18 application of the exact 42-migration suffix against a schema/ledger baseline matching production, with object/overload/grant/owner preconditions checked before and after each migration.
+2. Confirm the production API and auth route-to-principal map against the currently deployed code, not merely current mainline. Production is still recorded on `c7cf1eb`, auto-deploy OFF.
+3. Provision and verify the Actor Gateway assertion HMAC secret and separate storage provider attestation secret only through controlled secret handling; never place values in Git or handover.
+4. Confirm `pgcrypto` extension schema/function resolution and all SECURITY DEFINER ownership/search-path preconditions.
+5. Keep the eleven manual cutovers separate, especially issuer, campaign/directory review and legacy runtime privilege revocations.
+6. Reconcile PR #282 with current main (its recorded head is 9 ahead / 4 behind) and rerun exact-head CI after reconciliation. Its earlier green run does not qualify the 42 SQL files.
+7. Preserve the seven-entry production pending allowlist unchanged until the disposable execution and production dependency evidence supports an exact reviewed update.
+
+No production SQL, migration, cutover, role/grant, secret, Render setting, deployment or traffic change was performed during this source review. The production database remains read-only for this work.
