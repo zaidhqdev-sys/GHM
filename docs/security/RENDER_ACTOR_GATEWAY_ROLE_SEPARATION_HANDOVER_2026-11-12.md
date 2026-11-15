@@ -2609,3 +2609,18 @@ The initial commit-associated workflow lookup returned an empty list, but a dire
 - One attempt to fetch the in-progress job log returned GitHub's transient `BlobNotFound` response; job status and step progression remain available through the Actions API. No test failure was indicated by that response.
 - Earlier historical status lines in this handover that say synchronization was not performed or post-sync CI was pending are superseded by the later dated entries documenting merge commit `f1d06bcf6f4603f38c779c9dc45ed5689151c648` and run `43734074745`.
 - No production database, migrations, data, roles, grants, secrets, Render settings, deployment or traffic were changed.
+
+
+### 2026-11-15 18:22Z — post-sync CI passed; handover-only updates synchronized
+- Exact-head post-sync run `43734074745` completed with overall conclusion **SUCCESS** on `f1d06bcf6f4603f38c779c9dc45ed5689151c648`.
+- Both required workflow jobs passed: `quality` and `web-quality`. The quality job completed all reported qualification stages, including disposable PostgreSQL migration application, Worker smoke tests, Argon2id interoperability, storage lifecycle/tenant authorization, signed Gateway cutovers, full test suite, migration audit policy, runtime boundary checks, and disposable issuer cutover/authority comparison. No failed steps were reported.
+- Cloudflare Pages check also completed successfully.
+- After that successful run, the only mainline commits not in the PR branch were handover-only updates. To avoid leaving documentation drift, a second controlled two-parent synchronization was made:
+  - Latest main parent: `096003a751948966a146a9d23541eec7b2eb4eca`.
+  - Previous PR head parent: `f1d06bcf6f4603f38c779c9dc45ed5689151c648`.
+  - New branch head: `a90a7873407b3f1f3fe942ed1b572c3c85f15740`.
+  - Ref update was non-force and expected-head checked; it succeeded.
+- Post-sync comparison now reports **16 ahead / 0 behind** main. The six migration-runner source/test files remain the only PR diff paths.
+- A new Actions run for the new head was not yet visible at the first poll; exact-head CI for `a90a7873407b3f1f3fe942ed1b572c3c85f15740` is **PENDING** and must be confirmed before merge. Do not treat the successful prior run as validating this new merge commit.
+- PR #282 remains open and unmerged. Do not merge until the new head's required checks pass and GitHub's mergeability/check state is refreshed.
+- Production remains untouched: no production DB access, migration, data or ledger change; no Render setting, role, grant, credential, deployment or traffic change. PayFast remains paused and the 35 unapproved pending migrations remain outside the seven-entry allowlist.
