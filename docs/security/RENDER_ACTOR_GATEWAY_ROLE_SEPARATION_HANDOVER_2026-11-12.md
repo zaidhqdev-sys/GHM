@@ -2051,3 +2051,24 @@ Current open-PR search snapshot (GitHub search, repository-scoped) is recorded i
 
 Inspect the November 4 archive without restoring it: list its gzip/tar contents, identify PostgreSQL directory-archive metadata and TOC, and if present extract only the migration-ledger data to a temporary inspection file. Compare its database identity, snapshot timestamp, ledger count, final version and checksums against the live production audit. No restore, `pg_restore` into a database, production write, migration, deployment, role change, or allowlist change is authorized.
 
+
+
+## November 4 archive structure inspection — 2026-11-15 03:41 UTC
+
+User synchronized local `C:\GHM-main` to handover commit `1ac606ef848d223bb056d733a55ceb51f116b9c1`; worktree remained `main...origin/main` with only the previously preserved untracked file `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`. Its contents were not changed.
+
+The attempted `gzip -t` check did not execute because `gzip` is not installed/on PATH in the user's PowerShell environment. This is a tooling absence, not an archive integrity failure. Windows `tar -tzvf` successfully listed the gzip-wrapped archive contents.
+
+Archive inspected by listing only:
+`C:\Users\zaidh\Downloads\2026-11-04T20_42Zghm-db.dir.tar.gz`
+
+Observed structure:
+- Root `./2026-11-04T20:42Z/`
+- Database directory `./2026-11-04T20:42Z/ghm_db/`
+- PostgreSQL directory-archive TOC at `./2026-11-04T20:42Z/ghm_db/toc.dat`, size 432,907 bytes
+- Numerous numbered `.dat` members alongside `toc.dat`
+- Tar listing timestamps shown as Nov 04 22:44
+
+This is strong evidence that the November 4 artifact is a gzip-wrapped tar containing a PostgreSQL directory-format archive for database `ghm_db`. It remains only a candidate: the TOC must be read with PostgreSQL's `pg_restore --list` (no database connection) to establish archive metadata, dump version, database name, and whether the migration ledger table/data are present. The ledger data itself must then be inspected from a temporary local extraction/stream, without restoring to any database. Compare its row count, latest version, timestamps and checksums against the live read-only production audit before deciding whether it can represent a useful historical baseline.
+
+No archive extraction to a database, `pg_restore` execution against a database, production SQL, migration, deployment, role change, or pending-allowlist change occurred. No backup file was modified.
