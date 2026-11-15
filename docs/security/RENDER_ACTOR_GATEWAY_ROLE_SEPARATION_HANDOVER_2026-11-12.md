@@ -1883,3 +1883,82 @@ Before any replay or migration execution:
 - No production SQL, restore, migration execution, Render change, deployment, role/grant/secret change, allowlist change, PR merge, or branch update was performed.
 
 Do not repeat the November 14 archive extraction, TOC inventory, 105-row ledger extraction, 137-file count, nine-exception comparison, or ten-retained-history comparison unless the archive or mainline manifests change.
+
+
+## 2026-11-15 — correction: November 14 archive is not the live production ledger baseline
+
+This correction supersedes the earlier wording that described the November 14 archive as a strong candidate for the live production replay baseline. The row-count coincidence was insufficient and the two ledgers have different version histories.
+
+### Authoritative live production audit evidence (read-only)
+
+The user's earlier read-only audit against production `ghm_db` (2026-11-14 22:42:09Z) reported:
+
+- Repository migration count at that audit's mainline: **102**.
+- Live production ledger count: **105**.
+- Missing/pending repository migrations: **7**, exactly matching the then-current production pending allowlist:
+  - `20261110100000`
+  - `20261110120000`
+  - `20261110140000`
+  - `20261110210000`
+  - `20261110220000`
+  - `20261110230000`
+  - `20261110233000`
+- Latest live production ledger version: **`20261020140000`**, applied at `2026-10-28T00:29:52.877Z`.
+- Canonical checksum matches: 24; supported legacy-CRLF matches: 62; approved historical exception matches: 9.
+- Approved retained historical rows: 10; total extra ledger rows: 10; all ten were approved retained history.
+- Unrecognized extras: 0; unexplained checksum mismatches: 0; name mismatches: 0; invalid retained-history records: 0.
+- Audit verdict: `PASS_WITH_PENDING`; the transaction was read-only and rolled back.
+
+### November 14 archive ledger is different
+
+The separately inspected archive `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz` also has 105 ledger rows, but its last row is `20261109210000_deactivate_unrecognized_public_directory_records`, applied at `2026-11-09 20:50:23.763528+00`.
+
+That differs from the live production audit's latest version `20261020140000` applied 2026-10-28. Therefore:
+
+- The matching count of 105 rows **does not mean the archive ledger is the live production ledger**.
+- The archive's 105-row ledger is not accepted as a production baseline or production-equivalent replay source.
+- Its actual source/instance provenance is unresolved. Do not guess whether it came from sandbox, another environment, or another database instance based only on the database name `ghm_db`.
+- Keep the archive and extracted files as forensic evidence only. Do not restore it over production or treat its ledger as the authoritative live ledger.
+- The previous archive-specific 86 + 9 + 10 classification remains valid only for that archive's own ledger, not as a substitute for the live production ledger audit.
+
+### Mainline has since expanded — pending allowlist is now stale relative to current source tree
+
+After the 2026-11-14 22:42Z live audit, PR #272 and PR #276 were merged into main. They introduced the unified Actor Gateway / Authentication Issuer migration stack. PR #277 and #279 also merged. Current main at the time of this checkpoint has **137** migration files, versus 102 at the earlier production audit.
+
+The 35 additional migration files introduced by the merged #272/#276 integration are not represented in the seven-entry production pending allowlist. The earlier seven pending entries remain part of the 42-file post-snapshot suffix. Thus the earlier `PASS_WITH_PENDING` result must not be reused as a current-main audit result.
+
+- Current main migration files: 137.
+- Earlier live audit's mainline migration files: 102.
+- Current production pending allowlist: 7 entries.
+- New migration source added by #272/#276 since that audit: 35 files.
+- The current mainline/live-ledger comparison therefore needs a **fresh read-only audit on current main** before any release or replay decision. The actual pending set and allowlist match must be read from that fresh output; do not assume the older seven-item pass still applies.
+
+### Migration executor safety finding — do not run migrations
+
+The current #282 branch's proposed `src/db/migrate.ts`:
+- loads all numbered SQL files from `database/migrations`;
+- checks the historical checksum exception manifest;
+- rejects an out-of-order missing migration only when a later migration version is already applied;
+- then executes every remaining unapplied repository migration in ascending version order.
+
+It does **not** read or enforce `config/pending-migrations.production.json`. Its ordering helper explicitly allows a contiguous append-only pending suffix. Therefore the seven-entry forensic audit allowlist is not an execution allowlist for `npm run migrate`.
+
+With current main expanded to 137 migration files, running the migration executor before reconciling the current production pending set could execute migrations that have not been included in the seven-entry production allowlist. **Do not run `npm run migrate`, a Render deploy that invokes it, or any production SQL until the current-main read-only audit and the full migration release gate are reconciled.**
+
+PR #282 remains open/unmerged. Its strict verified TLS and out-of-order guard are useful protections, but they do not solve production allowlist enforcement or authorize migration execution. No change to #282 was made in this checkpoint.
+
+### Exact next step
+
+1. Update the user's existing `C:\GHM-main` checkout to the latest `main` with a clean working tree and fast-forward only.
+2. Run `npm run audit:migrations:predeploy` against the existing production `ghm_db` connection. This command uses the forensic audit's read-only transaction and rollback; it does not execute migrations.
+3. Capture the complete JSON result, including repository count, live ledger count, missing list, pending allowlist match, approved retained history, historical matches, and verdict.
+4. Compare that fresh current-main result with the 7-entry production pending allowlist and the already-reviewed #272/#276 migration set. Do not add the 35 files to the allowlist merely to force a pass.
+5. Only after the exact pending set and release approvals are established should the migration executor be changed/reviewed to enforce the production allowlist at execution time.
+
+### Current safety status
+
+- November 14 archive as production baseline: **REJECTED / NOT VERIFIED**.
+- Earlier live production audit: **PASS_WITH_PENDING at 102 repository files / 105 ledger rows / 7 pending**, valid only for that earlier mainline.
+- Current mainline audit after #272/#276: **REQUIRED — NOT YET RUN**.
+- Migration execution: **BLOCKED**.
+- No archive restore, production migration, production write, Render environment change, deployment, role/grant/secret change, allowlist edit, PR merge, or branch update was performed.
