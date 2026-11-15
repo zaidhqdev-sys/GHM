@@ -3164,3 +3164,14 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 - After PR #283 passes exact-head CI and is reviewed, the Connect client change must replace `commercialLaunchAdminService.getState()` with this endpoint, preserve the existing panel's snake_case row contract, and remove only that specific RPC dependency. Do not remove the Supabase SDK/facade until the separately documented active callers are resolved.
 - Amanda's Render support guidance remains the source-of-truth operational constraint: retain Dashboard-managed admin, separate `ghm_runtime` and `ghm_migrator`, preserve the SET-only schema-owner path, and do not improvise grants or new paid infrastructure. This read endpoint uses existing grants and does not alter that role separation.
 
+
+## Connect admin commercial launch read integration — 2026-11-15
+
+- Connect PR #68 (`zaidhqdev-sys/zaid-connect`, branch `feat/ghm-opportunity-runtime-migration-20261110`) has now been updated to consume the read-only admin commercial launch endpoint introduced by GHM PR #283.
+- Connect uses the authenticated browser GHM client and calls `GET /api/v1/admin/commercial/launch-state?limit=...`; the previous Supabase RPC `get_admin_commercial_launch_state` facade has been removed from the Connect panel path.
+- Connect added response/limit/authorization contract coverage and wired it into its quality workflow. Its exact-head CI remains a qualification gate.
+- PR #283 remains draft/unmerged at this checkpoint. Do not merge or release Connect PR #68 until the GHM endpoint is merged, deployed through the existing approved GHM runtime process, and the Connect exact-head checks pass. No production deployment, database change, migration, payment activation, or provider change is authorized by this integration.
+- This does not unblock commercial trial activation or checkout. PayFast remains paused; no payment write path is included.
+
+- Connect exact-head CI for the new admin commercial launch consumer passed on Connect PR #68 head `5f421abffa4133d94be746627f3b622f57f0adce` (run `43742147332`): GHM admin commercial launch client contract, existing analytics/engagement/commercial contracts, typecheck, lint and production build all passed. The Connect handover records this result.
+- This is client-side qualification only. GHM PR #283 is still draft/unmerged; Connect PR #68 remains draft. No production deployment, database change, migration, or commercial payment activation was performed.
