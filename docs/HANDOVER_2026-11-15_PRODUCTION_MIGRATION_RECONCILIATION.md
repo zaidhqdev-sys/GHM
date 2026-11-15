@@ -774,3 +774,42 @@ The repository already contains the dedicated, TLS-verified, `BEGIN READ ONLY` f
 The standalone legacy `audit-applied-migration-checksums.cjs` script uses an unverified TLS configuration and is not the preferred production audit; use the forensic reconciliation command with verified TLS instead.
 
 Production migration execution remains blocked pending exact ledger/provenance PASS, a fresh verified production backup/recovery point, resolution of Render role-authority with Amanda's support guidance, deployed and verified signed Actor Gateway/storage path, and a separately qualified small-batch/rollback plan. Keep all five legacy storage grants unchanged until the gateway cutover is proven and explicitly planned.
+
+
+## 34. Production ledger/provenance audit passed with pending migrations (2026-11-15 23:04 UTC)
+
+The owner supplied the complete tail of the existing production forensic audit output after the read-only storage preflight.
+
+Observed audit result:
+- Verdict: **`PASS_WITH_PENDING`**; exit code 0.
+- `unexplained_mismatches`: empty.
+- `name_mismatches`: empty.
+- `unrecognized_extra`: empty.
+- `pending_allowlist_mismatch_count`: 0.
+- All 10 `approved_retained_historical` entries were reported as `VERIFIED_RETAINED_HISTORY`.
+- The audit reports the expected pending migration inventory (42 entries in this branch's production allowlist); these remain pending and unapplied.
+- Historical exception audit retained provenance-only entries and marked repository-identical historical hashes as redundant, without treating them as current-ledger mismatches.
+
+This is the required ledger/name/checksum/allowlist reconciliation result. It is not production migration authorization and does not establish that any pending migration is safe to execute without its independent dependency, privilege, gateway and rollback gates.
+
+### Latest PR/CI state after the owner's audit
+
+- PR #285 remains **open, draft, unmerged**.
+- The PR branch advanced beyond the owner's checked-out audit head `09c4d485d642ceb3c1c1805467fb4128c08065f5` to `4c6260c0c4d80a13c61af3bfd7b20c7e0789c6fb`.
+- Exact-head workflow **#5027**, run ID `43772180560`, completed successfully on `4c6260c0c4d80a13c61af3bfd7b20c7e0789c6fb`.
+- Both `quality` and `web-quality` passed. The quality job also completed disposable PostgreSQL qualification for the first four pending migrations, supplier-classification ACL/rollback, storage lifecycle and gateway qualification; this is disposable-environment evidence only, not production execution.
+- The owner's local untracked `.bak` remains a preservation requirement; do not add, delete, overwrite or stage it.
+
+### Next action
+
+Fetch and inspect the current PR branch head before any further command. Then rerun only the TLS-verified read-only `npm run audit:migrations:predeploy` on that exact current head and capture its verdict/exit code. Do not run the production migration runner, set `GHM_PRODUCTION_MIGRATION_BATCH`, repair the ledger, change grants/roles, or deploy.
+
+### Independent execution blockers remain
+
+1. A fresh, verified production backup/recovery point has not been established; the previously located November 4 archive is not proof of a current recoverable backup.
+2. Render's database role-authority / delegated CREATEROLE membership issue remains with Render support. Amanda's support conversation and `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` remain the reference; do not assume SQL-level revocation is effective until Dashboard-managed role authority is resolved and verified.
+3. Signed Actor Gateway and storage-provider attestation path must be deployed/configured and smoke-tested in the production topology before storage legacy grant cutover.
+4. Keep all five legacy storage metadata grants unchanged until the signed gateway path and separately rehearsed grant-cutover/rollback plan are proven.
+5. Review each next pending migration's production dependencies, effective privileges, application compatibility and rollback separately; execute only small, verified contiguous batches after all gates are cleared.
+
+No production migration, ledger repair, DDL/DML, role/grant change, secret, Render configuration, deployment or application data was changed by the audit.
