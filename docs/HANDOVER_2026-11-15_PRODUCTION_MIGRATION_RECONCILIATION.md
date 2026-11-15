@@ -378,3 +378,15 @@ A cross-check against the existing authoritative storage handover and the exact 
 - Fixed the qualification to use its existing permitted `SET ROLE ghm_schema_owner` membership inside a transaction for catalog/data inspection, while preserving the separate real `ghm_runtime` connection for effective ACL checks. This is test-only and the next exact-head CI must confirm the fix.
 - Exact failed run: `43762264142`, quality job `132959478036`; the first migration's actual-runner guard/rollback qualification passed before the new first-four qualification encountered the schema permission error. Web quality passed. Overall quality failed, so do not treat that head as green.
 - Current production remains untouched. No migration, grant, secret, deployment, Render setting or application data was changed.
+
+
+## 18. Qualification least-privilege correction and final review checkpoint (2026-11-15)
+
+- The first-four PostgreSQL qualification initially attempted catalog/seed/storage reads directly as `ghm_migrator` and failed with `permission denied for schema ghm`. This confirms the migration's intended least-privilege boundary.
+- Corrected the script to open a migrator connection, start a transaction, `SET LOCAL ROLE ghm_schema_owner`, verify `session_user=ghm_migrator` and `current_user=ghm_schema_owner`, then perform catalog and fixture inspection through that scoped owner context. Effective privileges remain queried explicitly for `ghm_runtime` using the separate runtime login.
+- A follow-up review found several later seed/constraint/storage queries still used the raw migrator pool; all were changed to the scoped schema-owner inspection client. The next exact-head CI must confirm this full correction.
+- The production preflight utility now uses the same operator identity pattern inside `BEGIN READ ONLY`: migrator session, schema-owner current role, TLS required, exact `ghm_db` database, and explicit read-only acknowledgement. Object collision results use the unambiguous `object_exists` field.
+- Added a CI syntax check for the production preflight script. The preflight itself is intentionally not executed in CI because it targets production and must never be given a production URL in CI.
+- Storage handover cross-check confirms the three actor-authorized signed wrappers plus two dual-proof provider transition wrappers are implemented in source, and the Resource API fails closed in gateway-required mode. However, the five legacy metadata function grants are only rehearsed for revoke/rollback on disposable PostgreSQL; there is no production cutover script or verified deployed service/secret. This is why migration 4 remains a hard stop.
+- Latest code/CI workflow change at this checkpoint: `f6127003d7310d5bd00b1f8c0e7b588eb79c04bf`. Exact-head CI for this SHA has not yet been observed. Previous failed quality run `43762264142` remains superseded by the scoped-role fix; do not report it as a pass.
+- PR #285 remains OPEN, DRAFT and mergeable. No reviews/threads were present at the last check. No production migration, role/grant, secret, Render configuration, service deployment or application data was changed.
