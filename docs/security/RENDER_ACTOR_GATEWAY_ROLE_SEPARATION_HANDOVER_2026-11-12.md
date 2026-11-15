@@ -1415,3 +1415,35 @@ Review found the PR had a redundant production TLS condition and scoped enforcem
 A targeted SQL review of the first ten post-ledger migrations found the sequence is intentionally transitional: supplier classification and capability governance functions are introduced, legacy gateway wrappers are created, then later migrations replace those wrappers with signed assertions. The initial signed assertion chain is one-use HMAC v1; subsequent migrations extend allowed operations and then bind assertions to request context. This chain must be executed in exact timestamp order as one reviewed suffix; do not cherry-pick or reorder individual SQL files. The signed-assertion secret tables are created empty by migrations and require a separate secure provisioning process before the gateway can function. No secret value is stored in migrations or handover.
 
 The full 42-migration suffix remains unqualified. The forensic audit must now be run against current `main` (after synchronizing the local checkout) using `npm run audit:migrations:predeploy`. Expected safe behavior is a read-only `INVESTIGATE` result because the production pending allowlist still contains only seven records while current main has 42 missing migrations. Do not modify the allowlist merely to make the audit pass. Capture the complete fresh output, then review all object preconditions, existing function overloads, extension/secret dependencies, role grants, and data transformations before considering any production change. No production writes, migration execution, role/grant/secret change, or deployment occurred during this review.
+
+
+## 2026-11-15 01:07Z — exact-main production reconciliation
+
+The local checkout was fast-forwarded from `03aadb6fd84b0bff665b9ea34c8cdfde3895df69` to the then-current `origin/main` commit `cb4c8d27934a8f73c43194e791e7e3b01ed37262`. The tracked working tree was clean. The untracked recovery artifact `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` was confirmed present before and after the fast-forward; it was not staged, moved, deleted, or overwritten.
+
+A fresh read-only production reconciliation was run from that exact main revision using `C:\\GHM\\.env` and the verified strict-TLS migrator connection. The audit confirmed:
+- authority pass; `session_user=ghm_migrator`, `current_user=ghm_migrator`, database `ghm_db`;
+- after `SET ROLE`, `current_user=ghm_schema_owner`, `session_user=ghm_migrator`;
+- `read_only_transaction=true`;
+- repository migrations 137; live ledger rows 105;
+- canonical matches 24; supported legacy-CRLF matches 62; approved historical matches 9;
+- missing repository migrations 42;
+- unexplained checksum mismatches 0; name mismatches 0;
+- extra ledger rows 10, all 10 approved retained historical; unrecognized extras 0;
+- orphaned historical exceptions 0; invalid retained-history records 0;
+- redundant historical exceptions 7;
+- pending allowlist currently contains 7 entries and does not exactly match the 42 missing migrations.
+
+Final verdict: `INVESTIGATE`, exit code 2. The forensic script's verdict expression does not treat redundant historical exceptions as a failure. In this run, the failed condition is the exact pending-allowlist comparison. This is not evidence of checksum corruption: all 42 missing versions are after the latest production ledger row (`20261109210000`), and all other listed mismatch/extra/history checks are clean. Do not expand or rewrite the allowlist merely to force a passing verdict.
+
+The 42 missing migrations are the seven already recorded in the existing allowlist plus the 35 additional migrations listed in the preceding 2026-11-15 inventory section. All 42 remain unqualified for production execution. Review must establish each migration's object preconditions, overload dependencies, grants/owners, data transformations, secret provisioning prerequisites, and exact order. The signed Actor Gateway migration chain must be treated as one timestamp-ordered suffix; do not cherry-pick or reorder it.
+
+Separate files under `database/cutovers/` are explicitly marked manual cutover only and are not part of the 137 automatic migration inventory. Initial inspection reconfirmed their gates are operationally significant:
+- the authentication-issuer privilege cutover explicitly warns that applying it before all auth routes have moved to the isolated issuer will break registration/login/refresh/logout/password reset;
+- the campaign/directory-review cutover requires coordinated Resource API / Actor Gateway release and old Resource API instances out of traffic;
+- legacy runtime privilege revocations require gateway deployment and end-to-end qualification first.
+These cutovers must not be run as a shortcut to resolve the migration audit. Each needs its own deployment, principal, backup, rollback and end-to-end gates.
+
+PR #282 remains open and unmerged. Its latest head is `5e13c479c79e7e9518a0b78445eae927812682b5`; exact-head CI run `43660933075` completed successfully with both `quality` and `web-quality` jobs passing. This validates the runner code/tests only; it does not qualify or authorize production migrations. The migration-order guard is intended to stop before migration SQL if an older missing migration precedes a later applied version. The current ledger shows a contiguous missing suffix, but all 42 migration bodies still require review.
+
+No production migrations, cutovers, role/grant changes, secret provisioning, environment-variable changes, or deployments were performed. The production database transaction was read-only. Render support history and Amanda's explicit recommendation to keep the Dashboard-managed credential for administration while moving normal app execution to SQL-created logins remain preserved earlier in this handover.
