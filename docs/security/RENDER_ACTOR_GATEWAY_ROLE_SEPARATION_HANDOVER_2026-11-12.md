@@ -1230,3 +1230,18 @@ A follow-up hardening change is in progress on branch `fix/migration-audit-ssl-u
 Render documentation confirms external DB endpoints are TLS-encrypted using Render-managed certificates and require TLS 1.2+. It documents `sslmode=require` as the baseline, not server-certificate identity verification. Node's default CA trust and hostname verification still need to succeed in the actual existing local environment. No live connection has yet been made, no CA verification has been waived, and no production SQL or Render setting has changed.
 
 Next gate: exact-head CI for the URL-sanitization change, then a credential-safe local connection preflight with the existing `GHM_MIGRATOR_DATABASE_URL`. If strict Node certificate verification fails, stop and establish a valid CA/hostname verification path; never fall back to `rejectUnauthorized:false`.
+
+
+## 2026-11-15 — follow-up TLS hardening merged and mainline CI passed
+
+Correction to the preceding progress note: PR #281 is now merged. Exact-head pull-request CI run `43658138745` completed successfully (quality 73/73, web-quality 11/11). Merge commit: `c6b2f663b45174716a67ff999242ed2ca3220d80`. Mainline push CI run `43658584367` also completed successfully (quality 73/73, web-quality 11/11).
+
+The merged helper `stripPostgresSslConnectionStringOptions` removes SSL-related URL query parameters and `uselibpqcompat` before node-postgres receives the connection string. The client retains explicit `ssl: { rejectUnauthorized: true }`. Regression coverage confirms URL sanitization and preservation of the host, database, credentials and unrelated query options. No deployment was triggered.
+
+Authoritative documentation checked:
+- Render's current PostgreSQL connection docs state that external connections are encrypted using Render-managed TLS certificates and require TLS 1.2+; `sslmode=require` enforces encryption, but is not equivalent to certificate identity verification.
+- node-postgres's SSL docs explicitly state that `sslmode`, `sslrootcert`, `sslcert` and `sslkey` in a connection string replace the separately supplied `ssl` object.
+
+The existing local `.env` has not yet been re-inspected for SSL query parameters, and no local strict-TLS connection has been attempted. Render's public docs do not establish that the default Node trust store validates this particular database certificate chain. The next gate remains a local credential-safe inspection of the existing `GHM_MIGRATOR_DATABASE_URL`, followed by a strict TLS connection preflight only after checking any CA/client-certificate URL options. Do not infer certificate verification from Render's statement that TLS is enabled. Do not use `rejectUnauthorized:false` or run the migration audit until server certificate and hostname verification have succeeded.
+
+No production SQL, migrations, roles, grants, secrets, Render environment variables, deployment, or traffic was changed. The production migration ledger remains unaudited.
