@@ -2938,3 +2938,21 @@ This list is now preserved in the handover so it does not need to be re-captured
 - Then review the ordered runtime privilege revocations against all current Connect/QuoteFlow callers.
 - Finally establish the storage secret provisioning/custody blocker and storage lifecycle preconditions.
 - Do not run migrations, widen the allowlist, alter production secrets/grants, deploy, or change Render settings in these review steps.
+
+
+#### Follow-up clarification — Authentication Issuer pre-cutover grants are intentional, not yet a production cutover
+
+The static review's observation that migrations `20261112020000` and `20261112030000` grant selected recovery/rehash functions to `ghm_runtime` must be read together with the separate manual cutover contract:
+
+- `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql` is explicitly **MANUAL CUTOVER ONLY** and is not part of the automatic migration directory.
+- It explicitly warns that applying it before all auth routes move will break registration/login/refresh/logout/password reset.
+- It requires `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, a provisioned restricted `ghm_auth_issuer` login, and completed service/client/backup/approval gates.
+- It revokes the reviewed auth lifecycle functions from `ghm_runtime`, then grants the issuer its exact reviewed function allowlist, including password reset and conditional password rehash.
+- `src/auth-issuer/database-privileges.ts` and `scripts/qualify-auth-issuer-cutover.mjs` implement startup ACL verification and disposable-only cutover qualification. The qualification script explicitly requires local `ghm_disposable_test` connections for issuer, runtime, gateway and migrator identities.
+- The paired rollback file is also manual-only and does not restore old binaries, secrets or routing by itself.
+
+Therefore the runtime grants in the two pending migrations are part of the **pre-cutover compatibility state**, not proof that the design intends permanent Resource API ownership. The outstanding issue is operational readiness: the isolated issuer service, dedicated credentials/secrets, client routing, backup/rollback plan and end-to-end qualification are not established in production. Do not execute the manual cutover or its rollback during this migration inventory exercise.
+
+#### Implementation status wording reconciliation
+
+ADR-001's original status line ("Implementation status: Not implemented") predates the later merged implementation. The Actor Gateway and Authentication Issuer code now exists on main because PRs #272 and #276 merged, with #277 worker hardening merged as well. This is **code implementation/qualification**, not production service provisioning or operational cutover. The ADR's no-production-provisioning/credential-change gate remains in force. The current Worker config still contains placeholder Hyperdrive configuration; no production service credentials or secrets were provisioned by these merges.
