@@ -885,3 +885,52 @@ Preserve the untracked local `.bak` file:
 `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`.
 
 No production migration, ledger repair, DDL/DML, role/grant change, secret, Render configuration, deployment, or application data was changed for this CI verification.
+
+
+
+## 38. First supplier-classification migration and gateway route review (2026-11-15 23:46 UTC)
+
+### Exact branch and CI recheck
+
+- PR #285 remains open, draft and unmerged on branch `feat/production-migration-batch-execution-20261115`.
+- Current PR head is `d86783327f83ca9379135e3ba1e5a678203d9e58`, the handover-only commit recorded in section 37.
+- Exact-head CI workflow **#5031**, run ID `43776315934`, completed successfully on `d86783327f83ca9379135e3ba1e5a678203d9e58`. Both reported jobs, `quality` and `web-quality`, passed.
+- PR #272 (unified Actor Gateway integration) is merged; its historical PR body contains pre-merge wording and must not be treated as current PR state. The merged Actor Gateway, isolated Authentication Issuer and Worker source are in mainline, but production services have not been deployed.
+
+### Migration 1 — source and ACL findings
+
+Reviewed `database/migrations/20261110010000_add_business_supplier_classification.sql`:
+
+- Adds `ghm.business.is_supplier boolean NOT NULL DEFAULT false`, normalizes legacy NULL values to false, and records that this is descriptive Marketplace metadata—not verified capability or Trust evidence.
+- Creates `ghm.update_business_supplier_classification(bigint,bigint,boolean)` as SECURITY DEFINER, owned by `ghm_schema_owner`, with pinned `search_path = pg_catalog, ghm`.
+- The function checks an active owner/administrator membership before changing the Business row.
+- It explicitly revokes all execution from `PUBLIC`, `ghm_runtime`, and `ghm_migrator`. The owner retains its inherent owner execution authority; there is no direct grant to `ghm_actor_gateway` on this legacy implementation.
+- The PR #285 runner has an additional exact-version post-batch guard that repeats the runtime EXECUTE revocation in the same transaction after this migration. The full runner still validates all applied migration checksums and holds the existing advisory lock/transaction for the selected batch.
+- Existing migration contract tests assert the absence of a runtime grant and the exact revocation. The disposable PostgreSQL supplier qualification tests runtime denial, gateway-only denial to runtime, inability to SET ROLE to the gateway, forged/expired/replayed/context-substituted assertion rejection, owner success and ordinary-member denial.
+
+### Supplier gateway and application route compatibility
+
+Reviewed the supplier cutover and signed-assertion sequence:
+
+- `20261110260000_gateway_supplier_classification_cutover` creates the initial gateway wrapper using the earlier `assert_actor_gateway` session-user check and grants the wrapper to `ghm_actor_gateway`; it also revokes runtime execution on the legacy function.
+- `20261111030000_bind_supplier_gateway_actor_to_signed_assertion` upgrades the wrapper to a short-lived signed HMAC assertion (v1).
+- `20261111060000_bind_gateway_assertions_to_request_context` replaces that interface with the context-bound v2 assertion. It binds the signature to the exact `businessId` and `isSupplier` arguments and recreates the supplier wrapper with the final seven-argument contract.
+- Current `src/actor-gateway/supplier-classification-reader.ts` creates the v2 assertion and calls that seven-argument wrapper. The Worker wires this reader into the authenticated Actor Gateway app.
+- Current Actor Gateway app route is `PUT /v1/businesses/:businessId/supplier-classification`; it derives the actor from the verified bearer token, validates the body to the single boolean `isSupplier`, and returns a fail-closed error when the reader is unavailable.
+- Resource API `HttpSupplierClassificationGatewayClient` calls that exact HTTPS route, forwards only the bearer token and `{isSupplier}`, rejects redirects, and has no legacy SQL fallback. The Business PATCH handler permits the supplier-only update and routes it through this client; mixed profile/supplier updates are rejected.
+- The current Business Identity repository contains no direct call to the legacy supplier function. Public Business/Directory projections expose the canonical boolean, and the historic Connect Marketplace handover confirms supplier/contractor remains classification only.
+- The deployed production GHM runtime SHA `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` was inspected: its `src/http/app.ts` and Business Identity repository do not contain the supplier gateway client or supplier classification function call. It is older than the merged gateway integration. The currently deployed app therefore does not provide the new supplier gateway route. The new source path returns 503 when no gateway client is configured; it does not fall back to direct database execution.
+
+### Sequencing conclusion
+
+1. Migration 1's ACL design is fail-closed for the new legacy SECURITY DEFINER function, and the exact-version post-batch guard reinforces the runtime revocation.
+2. The final deployed supplier route expects the context-bound v2 database wrapper introduced at migration `20261111060000`. Do **not** deploy the Actor Gateway Worker or enable supplier writes during the intermediate unsigned/v1 wrapper states. The Worker/client source and final SQL contract must be released as a compatible unit.
+3. The production Actor Gateway, Authentication Issuer and Resource API deployment topology remains unresolved under the existing zero-additional-spend constraint. No production gateway URL, DB credential, assertion secret or issuer secret has been provisioned; the existing live runtime is not a substitute for the isolated gateway/issuer.
+4. The runner requires the exact contiguous pending prefix. Reaching migration 110600 means all earlier pending migrations—including storage migration 4 and the intervening gateway/identity changes—must be qualified in order. Do not skip migration 4 or use an out-of-order/manual ledger adjustment. The separate storage gateway and five-function legacy grant cutover remain independent gates.
+5. The current production backup/recovery point and Amanda/Render administrator-role separation remain unresolved hard gates. The historical issuer handover also records the lack of a qualified zero-cost isolated issuer/gateway hosting path and the production role/ACL/network/TLS gaps. Do not treat merged source or disposable CI as production readiness.
+
+### Decision
+
+Source review confirms the supplier-classification SQL and current gateway client/Worker route are designed to meet at the final context-bound signed assertion contract. It does **not** establish that the live production app can currently serve the feature or that any migration batch is ready for production. Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset, keep all production roles/grants/secrets/services unchanged, and do not run `npm run migrate`.
+
+No production SQL, migration, ledger repair, DDL/DML, role/grant change, secret, Render/Cloudflare configuration, deployment, or application data was changed during this review. Preserve the untracked local `.bak` file.
