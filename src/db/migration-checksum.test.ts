@@ -6,6 +6,7 @@ import {
   matchesMigrationSqlChecksum,
   normalizeMigrationSqlForChecksum,
   normalizeMigrationSqlForExecution,
+  stripPostgresSslConnectionStringOptions,
 } from './migration-checksum';
 
 const sqlLf = 'SELECT 1;\nREVOKE SELECT ON TABLE ghm.example FROM ghm_runtime;\n';
@@ -42,4 +43,25 @@ test('strips only outer BEGIN and COMMIT for runner execution', () => {
 test('does not strip transaction keywords inside migration statements', () => {
   const sql = "SELECT 'BEGIN;';\nSELECT 'COMMIT;';\n";
   assert.equal(normalizeMigrationSqlForExecution(sql), sql);
+});
+
+
+test('strips URL SSL options so the explicit verified TLS policy cannot be overridden', () => {
+  const input = 'postgresql://user:pass@db.example/ghm_db?sslmode=require&sslrootcert=%2Ftmp%2Fca.pem&sslcert=%2Ftmp%2Fclient.pem&sslkey=%2Ftmp%2Fclient.key&uselibpqcompat=true&application_name=ghm-migrator';
+  const output = new URL(stripPostgresSslConnectionStringOptions(input));
+  assert.equal(output.searchParams.has('sslmode'), false);
+  assert.equal(output.searchParams.has('sslrootcert'), false);
+  assert.equal(output.searchParams.has('sslcert'), false);
+  assert.equal(output.searchParams.has('sslkey'), false);
+  assert.equal(output.searchParams.has('uselibpqcompat'), false);
+  assert.equal(output.searchParams.get('application_name'), 'ghm-migrator');
+  assert.equal(output.hostname, 'db.example');
+  assert.equal(output.pathname, '/ghm_db');
+  assert.equal(output.username, 'user');
+  assert.equal(output.password, 'pass');
+});
+
+test('preserves a clean PostgreSQL URL unchanged apart from URL canonicalization', () => {
+  const output = new URL(stripPostgresSslConnectionStringOptions('postgresql://user:pass@db.example/ghm_db?application_name=ghm-migrator'));
+  assert.equal(output.searchParams.get('application_name'), 'ghm-migrator');
 });
