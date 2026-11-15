@@ -2,7 +2,7 @@ import type { ProductionMigrationVersion } from './production-pending-migration-
 
 export const MAX_PRODUCTION_MIGRATION_BATCH_SIZE = 5;
 
-export const parseProductionMigrationBatch = (raw: string | undefined): ProductionMigrationVersion[] => {
+export const parseProductionMigrationBatch = (raw: string | undefined): T[] => {
   if (!raw?.trim()) {
     throw new Error('Production migration refused: set GHM_PRODUCTION_MIGRATION_BATCH to an explicit JSON array of ordered {version,name} entries');
   }
