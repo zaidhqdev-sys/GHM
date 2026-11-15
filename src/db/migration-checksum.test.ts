@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 import { findOutOfOrderPendingMigration } from './migration-order';
+import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 import {
   migrationSqlChecksum,
   matchesMigrationSqlChecksum,
@@ -96,4 +97,59 @@ test('allows a fully applied migration history', () => {
     { version: '20261110220000', name: 'second' },
   ];
   assert.equal(findOutOfOrderPendingMigration(migrations, new Set(migrations.map((item) => item.version))), null);
+});
+
+
+test('production migration allowlist permits only its configured pending suffix', () => {
+  const migrations = [
+    { version: '20261110100000', name: 'approved_first' },
+    { version: '20261110120000', name: 'approved_second' },
+    { version: '20261110140000', name: 'unapproved_third' },
+  ];
+  assert.throws(
+    () => assertProductionPendingMigrationAllowlist(
+      migrations,
+      new Set(['20261110100000']),
+      [
+        { version: '20261110100000', name: 'approved_first' },
+        { version: '20261110120000', name: 'approved_second' },
+      ],
+    ),
+    /Production migration allowlist mismatch: refusing to execute 2 unapproved pending migration\(s\)/,
+  );
+});
+
+test('production migration allowlist accepts a pending subset after earlier entries were applied', () => {
+  const migrations = [
+    { version: '20261110100000', name: 'approved_first' },
+    { version: '20261110120000', name: 'approved_second' },
+  ];
+  assert.doesNotThrow(() => assertProductionPendingMigrationAllowlist(
+    migrations,
+    new Set(['20261110100000']),
+    migrations,
+  ));
+});
+
+test('production migration allowlist rejects stale or mismatched entries', () => {
+  assert.throws(
+    () => assertProductionPendingMigrationAllowlist(
+      [{ version: '20261110100000', name: 'approved_first' }],
+      new Set(),
+      [{ version: '20261110100000', name: 'wrong_name' }],
+    ),
+    /does not match repository migration/,
+  );
+});
+
+test('production migration allowlist rejects duplicate versions', () => {
+  const migration = { version: '20261110100000', name: 'approved_first' };
+  assert.throws(
+    () => assertProductionPendingMigrationAllowlist(
+      [migration],
+      new Set(),
+      [migration, migration],
+    ),
+    /contains duplicate version/,
+  );
 });
