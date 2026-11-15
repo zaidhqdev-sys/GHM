@@ -307,7 +307,7 @@ try {
     '42501',
     'EXPIRED SIGNED ACTOR ASSERTION IS DENIED',
   );
-  const futureAssertion=signAssertion(activeAccountId,'actor.identity.read',{},Math.floor(Date.now()/1000)+61);
+  const futureAssertion=signAssertion(activeAccountId,'actor.identity.read',{},Math.floor(Date.now()/1000)+65);
   await expectSqlState(
     () => gatewayCallWithAssertion(activeAccountId,futureAssertion,
       'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)'),
