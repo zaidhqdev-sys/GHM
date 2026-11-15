@@ -8,6 +8,7 @@ import {
   migrationChecksum,
   legacyCrlfMigrationChecksum,
   resolveMigrationAuditTarget,
+  stripPostgresSslConnectionStringOptions,
 } from './migration-audit-checksum.mjs';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
@@ -28,7 +29,7 @@ if (process.env.DATABASE_SSL !== 'true') {
 }
 
 const client = new Client({
-  connectionString: databaseUrl,
+  connectionString: stripPostgresSslConnectionStringOptions(databaseUrl),
   ssl: { rejectUnauthorized: true },
 });
 if (allowPending && auditTarget.target !== 'production') fail('Pending-migration allowance is restricted to the explicitly audited production pre-deploy target');
