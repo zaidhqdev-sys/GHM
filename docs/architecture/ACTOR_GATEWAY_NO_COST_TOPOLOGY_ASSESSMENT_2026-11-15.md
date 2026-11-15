@@ -106,3 +106,27 @@ Even a working network path does not resolve the database role model:
 ## Authorization boundary
 
 This document records repository and dashboard inventory only. No Cloudflare resources, tunnels, VPC services, Hyperdrive configurations, secrets, DNS routes, Render services, database settings, roles, grants, migrations, deployments, or product cutovers were created or changed.
+
+
+## 2026-11-15 follow-up — vendor documentation and guard-source reconciliation
+
+### Cloudflare connectivity and cost facts
+
+- Cloudflare Workers VPC documentation (last updated 29-Oct-2026) explicitly says it is in beta and free across all Workers plans during beta. It supports TCP VPC Services for PostgreSQL through Hyperdrive.
+- Cloudflare's private-database guide (last updated 30-Apr-2026) explicitly requires a running `cloudflared` tunnel in the private network where the database is reachable. It recommends a TCP VPC Service with `--app-protocol postgresql`, then a Hyperdrive configuration using the service ID. VPC Services default to TLS `verify_full`; do not lower this to `verify_ca` or `disabled` without certificate evidence and review.
+- Hyperdrive Free limits currently document 10 database configurations per account and approximately 20 origin DB connections per configuration. These are service limits, not proof of the user's Cloudflare account entitlement or remaining quota.
+- Cloudflare documentation: Workers VPC overview https://developers.cloudflare.com/workers-vpc/ ; get started https://developers.cloudflare.com/workers-vpc/get-started/ ; private DB via VPC https://developers.cloudflare.com/hyperdrive/configuration/connect-to-private-database-vpc/ ; Hyperdrive limits https://developers.cloudflare.com/hyperdrive/platform/limits/.
+- Render's private-network documentation confirms Free web services can initiate private-network requests to data stores and paid services in the same region, but cannot receive private-network traffic. This means a tunnel agent in the Frankfurt Free runtime can technically initiate the outbound path to the Frankfurt Render Postgres internal hostname. It does not make that host production-suitable.
+- Render's Free docs explicitly state not to use Free instances for production, describe 15-minute idle spin-down, possible restarts, ephemeral filesystem, 750 free instance-hours/month, and possible suspension for uncommonly high service-initiated public traffic. A persistent outbound tunnel does not itself establish a reliable inbound keepalive or availability guarantee. A periodic keepalive would be an operational workaround, not a production availability design, and is not authorized under the user's no-extra-schedule constraint.
+- Render references: https://render.com/docs/free ; https://render.com/docs/private-network ; https://render.com/docs/faq. Render's FAQ also recommends separate services rather than combining multiple apps in one service for security and performance isolation.
+
+### Exact source-level role guard
+
+- Re-read current `main` source for `database/migrations/20261110210000_add_actor_gateway_principal_guard.sql` and `workers/actor-gateway/index.ts`. Both implement the same membership rule: reject any membership where `ghm_actor_gateway` is the member; when `ghm_actor_gateway` is the granted role, permit only `ghm_db_user` as the member with ADMIN OPTION=true, INHERIT=false, SET=false; reject all other member roles and option combinations.
+- The older 11-Nov readiness text saying the current guard rejects every membership involving `ghm_actor_gateway` is stale relative to the current migration and Worker startup code. The source-level rule does not inspect `pg_auth_members.grantor`; do not infer that a postgres grantor is itself accepted/rejected beyond the explicit checks above.
+- This source rule is not approval of the production role model. The wider `ghm_db_user` CREATEROLE/ADMIN OPTION exposure recorded in the readiness handover remains a separate serious blocker. In particular, the intended trusted-administrator role cannot be treated as an effective security boundary while it is also the application effective role with role-administration authority. Render support's Amanda-guided remediation and a fresh verified backup remain prerequisites.
+- PR #272 was independently rechecked through GitHub: merged 14-Nov-2026, head `81b0a90f762772ca745fbca122f9848968d4f234`. Its merge does not resolve production DB privileges, host availability, tunnel deployment, or secret custody.
+
+### Decision
+
+No newly discovered vendor feature changes the no-go result. Cloudflare networking is free during beta, but a continuously available and sufficiently isolated tunnel host is still missing. The only existing candidate is explicitly not for production. Do not use keepalive pings to disguise that limitation, combine security boundaries without proving ADR-001 equivalence, or weaken the guard. The production endpoint and Connect cutover remain blocked.
