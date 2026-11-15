@@ -245,6 +245,8 @@ jobs:
 
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
+      - name: Qualify production migration batch guard and rollback on disposable PostgreSQL
+        run: npm run qualify:production-migration-batch-guards
 
       - name: Check whole-database SECURITY DEFINER inventory script syntax
         run: node --check scripts/audit-security-definer-authority.mjs
