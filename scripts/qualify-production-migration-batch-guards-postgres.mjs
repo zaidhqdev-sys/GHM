@@ -31,7 +31,6 @@ const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
 const functionSignature = 'ghm.update_business_supplier_classification(bigint,bigint,boolean)';
 const migrationPath = path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql');
 
-
 const runtimePrivilege = async (pool) => {
   const result = await pool.query(
     'SELECT has_function_privilege($1, $2::regprocedure, \'EXECUTE\') AS can_execute',
