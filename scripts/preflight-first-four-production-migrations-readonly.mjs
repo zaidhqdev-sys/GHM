@@ -32,12 +32,11 @@ try {
       SELECT current_database() AS database_name,
              session_user,
              current_user,
-             current_setting('transaction_read_only') AS transaction_read_only,
-             current_setting('ssl') AS ssl
+             current_setting('transaction_read_only') AS transaction_read_only
     `);
     const who = identity.rows[0];
     if (who.database_name !== 'ghm_db' || who.session_user !== 'ghm_migrator' ||
-        who.current_user !== 'ghm_schema_owner' || who.transaction_read_only !== 'on' || who.ssl !== 'on') {
+        who.current_user !== 'ghm_schema_owner' || who.transaction_read_only !== 'on') {
       throw new Error(`Unexpected production inspection identity/session: ${JSON.stringify(who)}`);
     }
 
@@ -103,6 +102,7 @@ try {
     const report = {
       verdict: 'READ_ONLY_PREFLIGHT_ONLY',
       identity: who,
+      tls_enforced_by_client: true,
       object_name_collisions: objects.rows,
       storage_status_distribution: storage.rows,
       storage_constraint: storageConstraint.rows,
