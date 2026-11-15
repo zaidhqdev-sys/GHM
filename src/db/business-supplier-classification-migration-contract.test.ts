@@ -16,7 +16,7 @@ test('supplier classification is a canonical GHM Business field with a determini
   assert.match(migration, /ADD COLUMN IF NOT EXISTS is_supplier boolean NOT NULL DEFAULT false/);
   assert.match(migration, /UPDATE ghm\.business\s+SET is_supplier = false\s+WHERE is_supplier IS NULL/);
   assert.match(migration, /ALTER COLUMN is_supplier SET NOT NULL/);
-  assert.doesNotMatch(migration, /GRANT EXECUTE ON FUNCTION ghm\\.update_business_supplier_classification\\(bigint, bigint, boolean\\) TO ghm_runtime/);
+  assert.doesNotMatch(migration, /GRANT EXECUTE ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) TO ghm_runtime/);
   assert.match(repository, /is_supplier/);
   assert.match(identityContracts, /isSupplier\?: boolean/);
 });
