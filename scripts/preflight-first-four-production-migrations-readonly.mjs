@@ -27,6 +27,7 @@ try {
   const client = await pool.connect();
   try {
     await client.query('BEGIN READ ONLY');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
     const identity = await client.query(`
       SELECT current_database() AS database_name,
              session_user,
@@ -36,15 +37,15 @@ try {
     `);
     const who = identity.rows[0];
     if (who.database_name !== 'ghm_db' || who.session_user !== 'ghm_migrator' ||
-        who.transaction_read_only !== 'on' || who.ssl !== 'on') {
+        who.current_user !== 'ghm_schema_owner' || who.transaction_read_only !== 'on' || who.ssl !== 'on') {
       throw new Error(`Unexpected production inspection identity/session: ${JSON.stringify(who)}`);
     }
 
     const objects = await client.query(`
-      SELECT kind, schema_name, object_name, exists
+      SELECT kind, schema_name, object_name, object_exists
       FROM (
         SELECT 'table'::text AS kind, 'ghm'::text AS schema_name, name AS object_name,
-               to_regclass(format('%I.%I', 'ghm', name)) IS NOT NULL AS exists
+               to_regclass(format('%I.%I', 'ghm', name)) IS NOT NULL AS object_exists
         FROM unnest($1::text[]) AS name
         UNION ALL
         SELECT 'function', 'ghm', name,
