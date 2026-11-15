@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
+import { findOutOfOrderPendingMigration } from './migration-order';
 import {
   migrationSqlChecksum,
   matchesMigrationSqlChecksum,
@@ -64,4 +65,35 @@ test('strips URL SSL options so the explicit verified TLS policy cannot be overr
 test('preserves a clean PostgreSQL URL unchanged apart from URL canonicalization', () => {
   const output = new URL(stripPostgresSslConnectionStringOptions('postgresql://user:pass@db.example/ghm_db?application_name=ghm-migrator'));
   assert.equal(output.searchParams.get('application_name'), 'ghm-migrator');
+});
+
+
+test('detects a missing migration before a later applied migration', () => {
+  const migrations = [
+    { version: '20261110210000', name: 'legacy_gateway_guard' },
+    { version: '20261110220000', name: 'legacy_identity_read' },
+    { version: '20261111050000', name: 'signed_identity_gateway' },
+  ];
+  const result = findOutOfOrderPendingMigration(migrations, new Set(['20261111050000']));
+  assert.deepEqual(result, {
+    pending: migrations[0],
+    laterApplied: migrations[2],
+  });
+});
+
+test('allows a contiguous append-only pending migration suffix', () => {
+  const migrations = [
+    { version: '20261110210000', name: 'first' },
+    { version: '20261110220000', name: 'second' },
+    { version: '20261110230000', name: 'third' },
+  ];
+  assert.equal(findOutOfOrderPendingMigration(migrations, new Set(['20261110210000'])), null);
+});
+
+test('allows a fully applied migration history', () => {
+  const migrations = [
+    { version: '20261110210000', name: 'first' },
+    { version: '20261110220000', name: 'second' },
+  ];
+  assert.equal(findOutOfOrderPendingMigration(migrations, new Set(migrations.map((item) => item.version))), null);
 });
