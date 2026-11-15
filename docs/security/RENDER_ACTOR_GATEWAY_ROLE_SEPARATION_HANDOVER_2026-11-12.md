@@ -2244,3 +2244,44 @@ Amanda's Render support conversation and her guidance remain preserved above. Th
 - Legacy Supabase cluster archives: **USER-CONFIRMED LEGACY SUPABASE**, excluded from Render production-backup search.
 - Existing Render Recovery export listing: **NOT YET INSPECTED**.
 - No export created, no PITR initiated, no restore, no SQL query, no database mutation, no service/environment change, no migration, no deployment, no credential change, and no branch/PR change occurred.
+
+
+## 2026-11-15 04:01Z — owner recollection and Recovery-page confirmation for November 4 export
+
+### Current Render Recovery page — user-provided evidence
+
+The user inspected the Recovery page for production `ghm-db` and supplied:
+- Point-in-Time Recovery permits restore from any timestamp in the past **3 days**.
+- A Pro workspace would increase the recovery window to 7 days. No upgrade is authorized or proposed.
+- Logical exports are retained for **at least 7 days**.
+- The current export listing contains one item: created **November 14, 2026 at 4:26 PM**, suffix `.dir.tar.gz`.
+- No restore, export creation, upgrade, or other Recovery action was performed.
+
+### November 4 export — owner recollection and local artifact correlation
+
+The user is confident that a logical export was also created from this Render `ghm-db` Recovery page on **November 4, 2026**. This owner recollection is recorded as evidence of the export event. The current page's seven-day minimum retention explains why a November 4 item would no longer necessarily appear in the November 15 listing; its absence is not evidence that it was never created.
+
+A local file already inspected earlier has the matching Render logical-export filename shape and timestamp:
+`C:\\Users\\zaidh\\Downloads\\2026-11-04T20_42Zghm-db.dir.tar.gz`
+Its embedded timestamp is 20:42Z on November 4. This is a **strong candidate for the November 4 Render ghm-db export**. The Recovery page no longer exposes its original row, so the exact association cannot be independently re-opened from Render.
+
+The archive's TOC was readable, but its extracted migration ledger had 89 rows and latest version `20261026120000`, whereas the subsequent read-only live production audit reported 105 rows and latest version `20261020140000`. This mismatch means the archive is **not accepted as an exact replay baseline for the current live production database**. The discrepancy must be reconciled; do not restore it.
+
+### Updated classification
+
+- November 4 local GHM archive: **STRONG CANDIDATE — USER-RECALLED RENDER EXPORT; CONTENT/BASELINE MISMATCH UNRESOLVED**.
+- November 14 local GHM archive: **LIKELY MATCH TO THE CURRENTLY LISTED NOVEMBER 14 EXPORT BY FILENAME/TIMESTAMP SHAPE; LIVE LEDGER MISMATCH STILL REQUIRES RECONCILIATION**.
+- October 12 / September 23 cluster archives: **USER-CONFIRMED LEGACY SUPABASE**, not Render production candidates.
+- PITR availability shown November 15: **3 days**, not 7; do not upgrade.
+
+### Next investigation
+
+Do not create another export or restore either candidate. The next useful work is a read-only forensic comparison of the November 4 archive's full migration-ledger rows against the live production audit output already obtained, then check its TOC for database/schema/object inventory and export metadata. Keep the archive immutable. If equivalence cannot be established, it remains historical evidence only, not a production replay source.
+
+### Repository / PR / branch check before this addendum
+
+The canonical handover was fetched from the default branch immediately before this append. Open PRs and existing migration/backup branches were rechecked; no backup branch was found. No PR/branch was created, deleted, rebased, or changed. Amanda's Render support context and the unresolved database-role ADMIN OPTION issue remain preserved and unchanged.
+
+### Safety
+
+No Render upgrade, new resource, export creation, PITR, restore, SQL execution, database mutation, migration, deployment, environment/credential change, or branch/PR mutation occurred.
