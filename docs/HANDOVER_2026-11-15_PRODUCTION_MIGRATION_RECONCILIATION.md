@@ -813,3 +813,18 @@ Fetch and inspect the current PR branch head before any further command. Then re
 5. Review each next pending migration's production dependencies, effective privileges, application compatibility and rollback separately; execute only small, verified contiguous batches after all gates are cleared.
 
 No production migration, ledger repair, DDL/DML, role/grant change, secret, Render configuration, deployment or application data was changed by the audit.
+
+
+## 35. Handover commit exact-head CI passed; next audit must use this head (2026-11-15 23:35 UTC)
+
+The handover update in section 34 created commit `3a3fdd675302c53dcb00cf9c994e42c2e4f2f81e`. Exact-head CI workflow **#5028** (run ID `43773290668`) completed successfully on that exact commit:
+- `quality`: PASS.
+- `web-quality`: PASS.
+
+PR #285 remains open, draft and unmerged. This CI pass qualifies the documentation/code snapshot; it does not execute or authorize production migrations.
+
+### Owner's next local step
+
+Fetch the current PR branch and verify exact HEAD `3a3fdd675302c53dcb00cf9c994e42c2e4f2f81e`. Preserve the existing untracked `.bak` file. Then run only the TLS-verified, read-only production reconciliation command `npm run audit:migrations:predeploy` from this exact checkout, with `DOTENV_CONFIG_PATH=C:\\GHM\\.env` and the repo's documented production audit confirmation variable. Capture the complete JSON output and exit code.
+
+Do not run the production migration runner, set a production batch variable, repair the ledger, alter grants/roles, or deploy. Once the fresh exact-head audit is reviewed, proceed to resolve the independent backup/recovery, Render role-authority (including Amanda's support correspondence), and production gateway readiness gates before planning any first migration batch.
