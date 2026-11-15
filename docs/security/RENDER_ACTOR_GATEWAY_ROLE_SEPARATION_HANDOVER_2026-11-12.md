@@ -1295,3 +1295,43 @@ The ten retained historical ledger rows were all verified against registered pro
 **Next work:** inspect the seven pending SQL files in dependency order, assess their effects and compatibility against the live production schema and runtime, and prepare a separately gated migration execution plan. Do not run migrations or deploy until that review is complete. The seven redundant historical exception entries can be reviewed for later cleanup independently; do not conflate that cleanup with production ledger correctness.
 
 This result supersedes the earlier notes in this handover that said the production audit had not yet been run. Amanda's support-resolution history remains preserved and unchanged.
+
+
+## 2026-11-15 — pending SQL review: production schema and signed-gateway blockers
+
+The seven allowlisted migration files were fetched from `database/migrations/` on main and reviewed against current source and a read-only Render production catalog query. No production changes were made.
+
+### Live catalog checks completed
+
+- The existing production `ghm_actor_gateway` role has LOGIN=true, NOINHERIT, and all elevated flags false.
+- Its only membership edge is `ghm_db_user` as a member of `ghm_actor_gateway`, with ADMIN OPTION=true, INHERIT=false, SET=false. This exactly satisfies the role-membership predicate in `20261110210000_add_actor_gateway_principal_guard.sql`.
+- Production has `ghm.account_identity`, `ghm.business`, `ghm.opportunity`, `ghm.storage_object`, and `ghm.business_registration_identity`, all observed under `ghm_schema_owner`.
+- Production's current `ghm.storage_object_lifecycle_check` still requires `available_at IS NOT NULL` for `deletion_pending`. The pending storage migration relaxes that requirement so a deletion request can be recorded while an upload is still pending. Row-level compatibility under the new check still needs a read-only count using the migrator/schema-owner session because the Render query connection cannot SELECT the protected table.
+- Production's current `ghm.update_business_registration_identity(bigint,bigint,text,text,text)` is SECURITY DEFINER, owned by `ghm_schema_owner`, pinned to `pg_catalog, ghm`, and executable by `ghm_runtime`. Its live definition still uses `ON CONFLICT (business_id)`, matching the defect described by pending migration `20261110233000`; the migration changes this to the named primary-key constraint.
+
+### Critical source/migration interface mismatch
+
+Current main source `src/actor-gateway/request-assertion.ts` signs the v2 payload containing account ID, operation, issued-at, nonce, and the exact JSON request context. Current readers call these signed SQL signatures:
+- Actor identity: `ghm.gateway_get_actor_identity(bigint,bigint,uuid,text,text)`.
+- Registration read: `ghm.gateway_read_business_registration_identity(bigint,bigint,uuid,text,text,bigint)`.
+- Registration write: `ghm.gateway_update_business_registration_identity(bigint,bigint,uuid,text,text,bigint,text,text,text)`.
+
+But the three pending SQL files `20261110220000`, `20261110230000`, and `20261110233000` create legacy unsigned overloads accepting only the account/business IDs and business fields. The pending `20261110210000` also creates the older `ghm.assert_actor_gateway(bigint)` helper, which only checks that the supplied account is active and does not verify the signed assertion.
+
+Later repository migrations `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor.sql` and `20261111060000_bind_gateway_assertions_to_request_context.sql` replace the old wrappers with signed v1/v2 functions. The later `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes execution on the old one-argument assertion helper. Since those later migration versions may already be recorded as applied while the seven earlier versions are missing, the normal migration runner could replay the earlier migrations and skip the later conversions. That could reintroduce executable unsigned gateway overloads. **Do not run the seven migrations or the migration runner until this ordering/replay hazard is resolved.**
+
+The live catalog query currently returned no `gateway_*` or `assert_actor_gateway*` functions, while the base registration update function remains at the old definition. The read-only Render query connection cannot read `ghm.ghm_schema_migrations` or protected storage rows, so the exact production applied-version list and storage row compatibility remain to be verified using the already-proven `ghm_migrator` session with `SET ROLE ghm_schema_owner` inside `BEGIN READ ONLY`.
+
+### Additional execution security issue
+
+The forensic audit now enforces certificate verification, but `src/db/migrate.ts` (the actual migration executor) still configures node-postgres with `ssl: { rejectUnauthorized: false }` when `DATABASE_SSL=true`. Do not use it for production execution until the migration runner's TLS policy is brought up to the same strict, URL-sanitized configuration and covered by regression tests. This is separate from the already-passed audit-only TLS hardening.
+
+### Current disposition
+
+- Migration 1 (onboarding): structurally account-scoped; runtime SELECT/INSERT/UPDATE only, no DELETE. Needs live sequence/table absence and dependency checks.
+- Migration 2 (relationship/outcome models): creates four new tables with provenance, authority, lifecycle, temporal and visibility constraints; runtime is SELECT-only. Needs full object/sequence absence and constraint dependency checks.
+- Migration 3 (storage pending cleanup): addresses a confirmed live constraint mismatch; validate existing rows against the proposed replacement check before execution.
+- Migration 4 (actor gateway principal guard): live role membership matches, but the migration also creates the obsolete unsigned `assert_actor_gateway(bigint)` primitive.
+- Migrations 5–7 (self identity and registration gateway): their unsigned function signatures are incompatible with current source and unsafe to replay ahead of already-applied signed-wrapper migrations.
+
+**No production migration was applied.** No ledger row, role, grant, data, secret, Render setting, deployment or traffic was changed. Next gate: retrieve the exact applied ledger rows for `20261110210000` through `20261112070000`, inspect the actual signed/unsigned function catalog and storage row compatibility under the migrator/schema-owner read-only session, then prepare a corrective forward-only migration plan. The normal migration command remains blocked.
