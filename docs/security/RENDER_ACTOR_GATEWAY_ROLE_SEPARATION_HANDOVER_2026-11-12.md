@@ -2624,3 +2624,27 @@ The initial commit-associated workflow lookup returned an empty list, but a dire
 - A new Actions run for the new head was not yet visible at the first poll; exact-head CI for `a90a7873407b3f1f3fe942ed1b572c3c85f15740` is **PENDING** and must be confirmed before merge. Do not treat the successful prior run as validating this new merge commit.
 - PR #282 remains open and unmerged. Do not merge until the new head's required checks pass and GitHub's mergeability/check state is refreshed.
 - Production remains untouched: no production DB access, migration, data or ledger change; no Render setting, role, grant, credential, deployment or traffic change. PayFast remains paused and the 35 unapproved pending migrations remain outside the seven-entry allowlist.
+
+
+### 2026-11-15 18:24Z — PR #282 merged after exact-head qualification
+- Rechecked PR #282, latest exact-head commit, check-runs, diff and branch comparison before merge.
+- Exact PR-head workflow `43734441282` on `a90a7873407b3f1f3fe942ed1b572c3c85f15740` completed **SUCCESS**:
+  - `quality`: PASS (73/73 steps).
+  - `web-quality`: PASS (11/11 steps).
+  - `Cloudflare Pages`: PASS for the PR head; Cloudflare's preview deployment reported successful.
+- The reviewed PR source diff contained exactly the six migration-runner source/test files:
+  - `src/db/migrate.ts`
+  - `src/db/migration-checksum.test.ts`
+  - `src/db/migration-checksum.ts`
+  - `src/db/migration-order.ts`
+  - `src/db/migrator-principal-contract.test.ts`
+  - `src/db/production-pending-migration-allowlist.ts`
+  The only main-side divergence since the tested PR head was a 15-line append to this canonical handover document; it was incorporated by the controlled synchronization commit `a90a7873407b3f1f3fe942ed1b572c3c85f15740` before the successful exact-head run.
+- No PR reviews were returned by the GitHub reviews endpoint. Branch protection lookup was unavailable to this integration (403); therefore required-review/branch-protection settings could not be independently enumerated. The visible required CI checks all passed and GitHub reported the PR mergeable.
+- PR #282 was squash-merged with expected-head protection against `a90a7873407b3f1f3fe942ed1b572c3c85f15740`.
+  - Merge commit: `29e7b4b5246d7119561b4878b54475a621da1c47`.
+  - PR state verified **CLOSED / MERGED**.
+  - Main's latest commit verified as the merge commit.
+- Post-merge commit checks were queried immediately after merge and are **QUEUED / IN PROGRESS** (`quality`, `web-quality`, Cloudflare Pages). These are separate from the already-passing exact PR-head checks; poll them before claiming main's post-merge pipeline is green.
+- No production database connection, migration execution, data/ledger change, role/grant/credential change, Render environment update, service deployment or traffic change was performed by this merge. Cloudflare's PR preview deployment is not the Render production runtime.
+- Production migration execution remains blocked pending the separate production-only migration and Project↔Opportunity reconciliation gates. Do not expand the seven-entry allowlist to include the 35 unapproved pending migrations. PayFast remains paused. Amanda's Render support context and unresolved sensitive-role ADMIN OPTION concern remain open as documented above.
