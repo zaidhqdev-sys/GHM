@@ -2185,3 +2185,62 @@ Amanda's Render support conversation remains preserved earlier in this handover.
 - September 23 cluster archive batch provenance: **USER-CONFIRMED LEGACY SUPABASE BACKUPS**; the QuoteFlow-labelled file's internal DB identity remains uninspected.
 - Render `ghm-db` production backup discovery: **STILL OPEN**.
 - No restore, SQL execution, production connection, database mutation, Render change, migration, deployment, branch update, or allowlist change occurred.
+
+
+## 2026-11-15 03:58Z — Render production database inventory and backup-discovery route
+
+### Local synchronization confirmation
+
+The user fast-forwarded `C:\\GHM-main` to `fa57881f` (`fa57881fb8a37c09c51f6ea8872cdf0575ded998`), matching `origin/main`. The preserved untracked forensic file remains present; the user-reported SHA-256 prefix matches the previously recorded full hash `6D05EA92B1F3376C92C23526716B8D46866B72174382F2B7F806636083B668B9`. Do not alter or commit it.
+
+### Live Render workspace/database inventory (read-only connector inspection)
+
+Workspace: `ZAID Technologies` (`tea-d9svua6417fc73bhcutg`).
+
+The Render account's current Postgres inventory returned:
+
+| Render resource | Database | Status | Created | Plan / version | Finding |
+|---|---|---|---|---|---|
+| `ghm-db` | `ghm_db` | Available, not suspended | 2026-09-08 | `0.1c-256mb`, PostgreSQL 18, Frankfurt | Current production target |
+| `ghm-payfast-sandbox-db` | `ghm_payfast_sandbox_db` | Suspended (billing) | 2026-10-09 | Free, PostgreSQL 18 | Expired sandbox; do not revive |
+| `ghm-identity-qualification-20261018` | `ghm_identity_qualification_20261018` | Available | 2026-10-18 | `basic_256mb`, PostgreSQL 18 | Separate qualification database, not production |
+
+The production resource ID is `dpg-dag0sdtbedkc7389vi2g-a`; dashboard:
+`https://dashboard.render.com/d/dpg-dag0sdtbedkc7389vi2g-a`.
+
+The production database metadata confirms the target is available, PostgreSQL 18, Frankfurt, 1 GB disk, plan `0.1c-256mb`, and was created 2026-09-08. This is resource metadata, not proof of any particular backup's source or contents. The connector's Postgres detail endpoint returned no export list, recovery-window metadata, or backup filenames. No restore/export/recovery action was triggered.
+
+### Important Render backup-format/provenance clarification
+
+Render's current official documentation describes logical exports as compressed directory archives named with a UTC timestamp, typically `YYYY-MM-DDTHH_MMZ.dir.tar.gz`, created from the database's **Recovery** page using **Create export**. Render retains these logical exports for seven days after creation. Paid Postgres also has point-in-time recovery, with a short rolling recovery window; PITR creates a separate recovery database and is not a way to recover arbitrary September/October states today. See:
+- Render Postgres recovery and backups: https://render.com/docs/postgresql-backups
+- Render Postgres backup/recovery tutorial: https://render.com/tutorials/postgres-on-render/backups-and-pitr
+
+The filename shape of the November 14 artifact `2026-11-14T14_26Z.dir.tar.gz` is consistent with Render's documented logical-export naming convention, but this alone does **not** prove it came from `ghm-db`. Its ledger mismatch against the earlier read-only live production audit remains unresolved. The November 4 GHM-named archive also remains unverified as to source database. Do not label either archive a Render production backup until its export listing/provenance and ledger/schema are reconciled.
+
+The current account inventory plus the documented retention policy imply that older logical exports may no longer appear in Render's Recovery export list after seven days; any previously downloaded local files remain available for forensic inspection. PITR retention is only a few days (workspace-plan dependent), so it cannot recreate the September/October historical backup state now. No plan upgrade or paid resource creation is proposed.
+
+### Next precise user-side inspection — no restore and no export creation
+
+The only missing source-of-truth evidence is the existing Recovery-page export listing for `ghm-db`. User should open the production database dashboard link above, select **Recovery**, and inspect the existing logical export table only. Do **not** click **Create export**, **Restore Database**, or any recovery action.
+
+Record/paste only:
+- Existing export filename(s) and UTC timestamp(s), if any.
+- Any displayed status or creation timestamp.
+- Whether the page shows a PITR recovery window and its earliest/latest available timestamps (metadata only).
+
+Do not share connection strings, passwords, database URLs, or secret values. If no exports appear, report that; do not create one as part of this forensic search. Once the listing is known, compare exact filenames/timestamps to the already inspected local November 4 and November 14 files. If a match is identified, verify its archive TOC and ledger against the authoritative production read-only audit before considering any replay. No restore is authorized.
+
+### PR and branch recheck before this handover append
+
+Open PRs individually rechecked: #282, #243, #244, #264, #201, and #233 remain open. Relevant existing migration/Render branches were searched again; no branch was created, deleted, rebased, pushed, or updated. No PR was merged or changed.
+
+Amanda's Render support conversation and her guidance remain preserved above. The sensitive-role ADMIN OPTION issue remains unresolved and was not modified or re-tested during this inventory.
+
+### Safety/status
+
+- Render production resource identity: **CONFIRMED** (`ghm-db` / `ghm_db`, PostgreSQL 18, Frankfurt).
+- Render logical export provenance for November 4 / November 14 artifacts: **NOT CONFIRMED**.
+- Legacy Supabase cluster archives: **USER-CONFIRMED LEGACY SUPABASE**, excluded from Render production-backup search.
+- Existing Render Recovery export listing: **NOT YET INSPECTED**.
+- No export created, no PITR initiated, no restore, no SQL query, no database mutation, no service/environment change, no migration, no deployment, no credential change, and no branch/PR change occurred.
