@@ -2374,3 +2374,71 @@ Amanda's Render support conversation remains preserved in this handover. Her con
 ### Next safe step
 
 Re-run the repository's read-only production migration audit against the same verified `ghm_db` target and compare its complete ledger endpoint with the direct 105-row query. Resolve why its earlier summary reported latest version `20261020140000` before using any pending-migration count or deciding on the migration-runner gate. Keep the November 4 archive immutable and do not restore it.
+
+
+## 2026-11-15 15:55Z — Reconciliation of forensic audit endpoint and archive comparison
+
+### Correct interpretation of the earlier audit output
+
+The earlier handover wording that described `20261020140000` as the latest live production ledger version was incorrect. The value was taken from the final entry in the audit's `extra` / retained-history classification, not from the full ordered production ledger.
+
+The forensic audit script `scripts/forensic-migration-reconciliation.mjs` does not emit a `latest_row` or ledger endpoint field. It reports repository migrations, pending migrations, and live ledger entries that are not present in the current repository. Its `extra` array is therefore not a complete ordered ledger and its final element must not be described as the latest production migration.
+
+The independent direct read-only query is the authoritative endpoint evidence:
+- Live production ledger rows: **105**.
+- First version: `00000000000000` / `create_migration_ledger`.
+- Latest version: **`20261109210000`** / `deactivate_unrecognized_public_directory_records`.
+- Latest applied_at: `2026-11-09 20:50:23.763528+00`.
+- All 105 versions are strictly increasing.
+- Connection identity before role switch: `ghm_migrator` / `ghm_migrator`, database `ghm_db`.
+- Comparison identity after role switch: `ghm_schema_owner` / `ghm_migrator`.
+- `transaction_read_only=on` before and after `SET ROLE`; rollback completed and connection returned to `ghm_migrator`.
+
+### Reconciliation of counts
+
+The repository audit result and direct ledger endpoint are not contradictory:
+- The audit reports **105 live ledger rows**, **10 retained historical extras** not represented as current repository migration files, and **42 current repository migrations missing from the live ledger**.
+- The 10 retained historical extras include `20261020140000`; this is the final row in that *filtered extras list*, not the latest live ledger version.
+- The arithmetic is consistent: 105 live rows minus 10 retained historical extras = 95 repository migration versions already represented in the ledger; 137 repository migration files minus 95 represented versions = 42 pending repository migrations.
+- The 42 pending migrations comprise the 7 already listed in `config/pending-migrations.production.json` plus 35 additional migrations not covered by that allowlist.
+- The audit's `pending_allowlist_mismatch_count: 1` is a boolean mismatch indicator (one mismatch condition), not a count of missing migrations.
+- No checksum mismatches, name mismatches, unexplained extra ledger rows, or invalid retained-history entries were reported in the supplied audit output.
+
+This resolves the apparent latest-version discrepancy as a **handover interpretation error**, not a production ledger inconsistency. The production migration audit verdict remains **INVESTIGATE** because the pending set does not match the seven-entry allowlist. Do not add the 35 additional migrations to the allowlist merely to obtain a passing result, and do not run `npm run migrate` or deploy migrations.
+
+### November 4 archive comparison remains valid
+
+The November 4 archive comparison independently established:
+- Archive ledger: 89 rows.
+- Live production ledger: 105 rows.
+- All 89 shared versions match production exactly on version, name, checksum and applied_at.
+- Archive-only rows: 0.
+- Live-only rows: 16, ending at `20261109210000`.
+
+The archive is therefore strongly supported as an earlier snapshot of the same production migration history, but it is not a current 105-row backup and has not been qualified for full schema/data restoration. It remains immutable; do not restore it.
+
+### Mainline / PR / branch recheck before this addendum
+
+The canonical handover was fetched from the default branch immediately before this update (current handover blob SHA before append: `539891d926d99ac29eb5077fc80de7d8fff6df60`). Current `main` HEAD was `1fb674b3d3566b1caf5684784e300ca0cdd2d3f3` (2026-11-15 15:50:08Z), whose subject records the exact November 4 archive/production comparison.
+
+The six open PRs were rechecked and remain open:
+- #282 — `fix(db): enforce verified TLS and fail-closed migration ordering` (head `5e13c479c79e7e9518a0b78445eae927812682b5`).
+- #264 — gateway registration identity checkpoint documentation.
+- #244 — GHM Business engagement and Analytics API (stacked on #243).
+- #243 — governed supplier classification for Connect Marketplace.
+- #233 — PayFast ITN timezone handling (PayFast work remains paused; do not activate payment paths).
+- #201 — QuoteFlow legal document acceptance (legal wording/publication remains paused).
+
+Existing migration branches were rechecked, including the current #282 branch, production audit TLS branch, audit SSL URL override branch, migration checksum/provenance branches and historical migration branches. Existing Actor Gateway branches were rechecked, including trusted-admin-membership, principal-guard, registration identity, self-read, worker-body-limit, business-profile, capability-governance and supplier-classification branches. These are existing branches; no new branch was created and no branch or PR was modified, merged, rebased, deleted or pushed as part of this audit interpretation correction.
+
+### Amanda / Render role-separation continuity
+
+Amanda's Render support conversation remains preserved in the earlier sections of this handover. Her confirmed recommendation remains to retain the Dashboard-managed default credential for controlled administration and use SQL-created restricted login identities for normal application execution. The production sensitive-role ADMIN OPTION concern remains unresolved; this audit/archive comparison did not change or re-test it.
+
+### Current disposition
+
+- Live production ledger endpoint: **105 rows, latest `20261109210000` — CONFIRMED READ-ONLY**.
+- Earlier claim that `20261020140000` was the latest live version: **CORRECTED — it was the last retained-extra entry, not the ledger endpoint**.
+- Repository migration audit: **INVESTIGATE — 42 pending, only 7 allowlisted; 35 remain unallowlisted**.
+- November 4 archive ledger history: **89/89 exact matches with the live production ledger for shared versions; 16 later live rows**.
+- Production migration execution, restore, allowlist edits, role/grant changes, credential/environment changes and deployment: **NOT PERFORMED**.
