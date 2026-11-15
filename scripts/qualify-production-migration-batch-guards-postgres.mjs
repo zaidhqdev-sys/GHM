@@ -34,7 +34,7 @@ const guardSql = getProductionMigrationPostBatchGuards([
   { version: '20261110010000', name: 'add_business_supplier_classification' },
 ]);
 assert.equal(guardSql.length, 1, 'production runner must select exactly one supplier-classification guard');
-assert.match(guardSql[0], /^REVOKE EXECUTE ON FUNCTION ghm\\.update_business_supplier_classification\\(bigint, bigint, boolean\\) FROM ghm_runtime$/);
+assert.equal(guardSql[0], 'REVOKE EXECUTE ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime');
 const migrationPath = path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql');
 
 const runtimePrivilege = async (pool) => {
