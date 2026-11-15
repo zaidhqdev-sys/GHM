@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Pool } from 'pg';
 import { normalizeMigrationSqlForExecution } from '../dist/db/migration-checksum.js';
-import { getProductionMigrationPostBatchGuards } from '../dist/db/production-migration-batch.js';
 
 if (process.env.NODE_ENV !== 'test') {
   throw new Error('Production migration batch guard qualification is restricted to NODE_ENV=test');
@@ -30,12 +29,8 @@ const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } :
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
 const functionSignature = 'ghm.update_business_supplier_classification(bigint,bigint,boolean)';
-const guardSql = getProductionMigrationPostBatchGuards([
-  { version: '20261110010000', name: 'add_business_supplier_classification' },
-]);
-assert.equal(guardSql.length, 1, 'production runner must select exactly one supplier-classification guard');
-assert.equal(guardSql[0], 'REVOKE EXECUTE ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime');
 const migrationPath = path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql');
+
 
 const runtimePrivilege = async (pool) => {
   const result = await pool.query(
@@ -69,24 +64,23 @@ try {
       'SELECT has_function_privilege($1, $2::regprocedure, \'EXECUTE\') AS can_execute',
       ['ghm_runtime', functionSignature],
     );
-    assert.equal(duringMigrationBeforeGuard.rows[0]?.can_execute, true,
-      'historical migration must first grant the transitional runtime privilege');
+    assert.equal(duringMigrationBeforeGuard.rows[0]?.can_execute, false,
+      'supplier migration must not grant direct runtime execution to the caller-supplied actor identity function');
 
-    for (const statement of guardSql) await client.query(statement);
     const afterGuard = await client.query(
       'SELECT has_function_privilege($1, $2::regprocedure, \'EXECUTE\') AS can_execute',
       ['ghm_runtime', functionSignature],
     );
     assert.equal(afterGuard.rows[0]?.can_execute, false,
-      'runtime must not retain direct execution after the same-transaction guard');
+      'runtime must remain unable to execute the supplier identity function');
 
     const owner = await client.query(
       'SELECT pg_get_userbyid(proowner) AS owner FROM pg_proc WHERE oid = $1::regprocedure',
       [functionSignature],
     );
     assert.equal(owner.rows[0]?.owner, 'ghm_schema_owner');
-    console.log('TRANSITIONAL MIGRATION GRANT OBSERVED INSIDE TRANSACTION: PASS');
-    console.log('ACTUAL RUNNER GUARD DENIES RUNTIME EXECUTE IN SAME TRANSACTION: PASS');
+    console.log('SUPPLIER MIGRATION DOES NOT GRANT RUNTIME EXECUTE: PASS');
+    console.log('RUNTIME EXECUTE REMAINS DENIED IN THE MIGRATION TRANSACTION: PASS');
     console.log('SECURITY DEFINER FUNCTION OWNER PRESERVED: PASS');
 
     await client.query('ROLLBACK');
@@ -101,7 +95,7 @@ try {
   assert.equal(afterRollback, before,
     'rollback must restore the exact pre-qualification runtime EXECUTE state');
   console.log('ROLLBACK RESTORES PRE-QUALIFICATION FUNCTION PRIVILEGE STATE: PASS');
-  console.log('GHM PRODUCTION MIGRATION BATCH GUARD POSTGRES QUALIFICATION: PASS');
+  console.log('GHM SUPPLIER MIGRATION ACL QUALIFICATION: PASS');
 } finally {
   await Promise.all([runtimePool.end(), migratorPool.end()]);
 }
