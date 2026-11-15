@@ -460,3 +460,44 @@ No migration SQL, production role/grant, secret, service, deployment or applicat
 - Extend migration-4 qualification to assert the exact pre-existing function signature, return type, owner, search_path and effective grants before/after `CREATE OR REPLACE`, and test both pending and available object deletion-request semantics without altering timestamps.
 - Reconcile all five storage legacy functions against the exact signed wrapper calls and the deployed app release; keep the production grant cutover as a separately planned, reversible operation.
 - Update this handover after each repository change and check exact-head CI. Keep PR #285 draft; no merge or production migration authorization is implied.
+
+
+## 23. Supplier-classification migration ACL correction (2026-11-15)
+
+### Finding and correction
+
+The earlier implementation added a generic runner post-batch REVOKE after migration `20261110010000`. Review against the actual later cutover migration `20261110260000_gateway_supplier_classification_cutover` showed that this was the wrong place to perform the revocation: it could break a still-active legacy Resource API path before the signed Actor Gateway route was deployed and verified. The generic post-batch guard/helper has therefore been removed from the runner.
+
+The safer database boundary is now enforced directly in migration `20261110010000_add_business_supplier_classification`:
+
+- The SECURITY DEFINER implementation accepts a caller-supplied account ID, so it must not be executable by the general runtime login.
+- The migration explicitly revokes all privileges from `PUBLIC`, `ghm_runtime`, and `ghm_migrator`.
+- It does not grant EXECUTE to `ghm_runtime`.
+- The later gateway cutover migration `20261110260000_gateway_supplier_classification_cutover` creates the signed gateway wrapper, grants that wrapper to `ghm_actor_gateway`, and retains revocation of direct runtime access to the underlying function.
+- The gateway wrapper calls the underlying function as its SECURITY DEFINER owner; the general runtime does not need direct EXECUTE.
+
+This removes the temporary caller-supplied actor-identity function from the general runtime surface rather than relying on an extra post-batch runner mutation. The old post-batch guard qualification has been converted to a disposable PostgreSQL ACL/rollback qualification that verifies the migration itself does not grant runtime EXECUTE. The source contract test also asserts the exact revoke list and absence of a runtime grant. CI now invokes it as `qualify:supplier-classification-migration-acl`.
+
+### Current code changes
+
+- Removed runtime EXECUTE grant from migration `20261110010000`: commit `9f1ce592253dad2c36e076c8c0e9c9533b64998f`.
+- Added contract assertion against runtime EXECUTE: commit `3752f8261d6722fa6c5ce097210a7cc65b75b84f`, then tightened it to require revocation from PUBLIC/runtime/migrator in commit `3b75213666eae1ae38a18824d7790491444464f2`.
+- Removed the generic post-batch guard helper and runner hook: commits `59d654a5b66746dbb90eb0014f2a1be0b9c9aeca` and `37af8f41fe950f5f039b0e55e45c33db81cf6a49`.
+- Reworked the disposable PostgreSQL qualification and CI command to assert the migration's own ACL boundary and rollback: commits `ba75a1001ce0cb102dfb837215371cc1904edd6d`, `44b42c46495c1f4ff6eb5bb0c5c7c0476ce8c2c5`, `1d95f3bef1e846fc298019884984f92183c3c64a`, `6c7cd2e07fe536f995ec5e485408b2c47f6a8db2`, `0111cf4ce05de06d8b8a6b0c94f66cae2ed30a8b`.
+- Updated the production preflight's object operation classification and supplier ACL warning: commits `95730b6a443a8c161440843fe4a96871321a70c9` and `3fc5e6b476b575ced0d06ec2547db493c76dc059`.
+
+### Qualification status and limits
+
+These are repository changes only. They have not yet been confirmed by exact-head CI. The earlier successful CI run `43762783722` applies to the earlier code head and does not qualify these corrections. The PR remains draft. No production migration, role/grant, secret, Render setting, deployment, or application data was changed.
+
+The owner-supplied production preflight observed that `ghm.update_business_supplier_classification` did not yet exist in `ghm_db`, so this correction does not require removing a currently observed production grant. It does mean the future migration will create the function without granting the runtime login direct execution.
+
+### Updated next sequence
+
+1. Verify the latest branch diff and exact-head CI for all changes above.
+2. Re-run the revised read-only production preflight to capture expected `create` versus `replace` operations, unexpected object collisions, and the exact storage function return type.
+3. Complete the first-four SQL/application compatibility review. Migrations 1–3 may be structurally eligible after disposable qualification, but this does not override the independent fresh-backup and Render role-administration gates.
+4. Keep migration 4 blocked until the deployed Resource API ↔ Actor Gateway ↔ PostgreSQL storage path, provider attestation, lifecycle smoke tests and separate reversible five-function legacy grant cutover are verified.
+5. Keep the capability gateway cutover at migration 5 as a hard stop until its service/client deployment and separately qualified manual cutover are ready. Do not infer production readiness from merged source or disposable CI.
+
+Amanda's Render support conversation remains the source-of-truth operational guidance: Dashboard-managed default credential for controlled administration; SQL-created restricted logins for normal execution; retain separate runtime/migrator identities and the SET-only schema-owner path. The Render role-administration issue and fresh verified production recovery point remain independent production blockers.
