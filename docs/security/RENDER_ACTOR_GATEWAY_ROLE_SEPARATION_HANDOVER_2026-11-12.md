@@ -1213,3 +1213,20 @@ Commits:
 This change is not yet merged and has not yet been run through CI. The production migration audit has **not** been executed. Next: run the targeted audit-policy test and syntax check locally, verify that the Node runtime trusts Render PostgreSQL's presented certificate chain, then run exact-head CI. Only after those checks should the read-only production audit be attempted. A TLS certificate failure must stop the audit; do not fall back to disabled certificate verification.
 
 Amanda's support-resolution conversation remains preserved in PR #274 and the existing role-separation handover history; this TLS work does not alter that record.
+
+
+## 2026-11-15 — node-postgres SSL URL override prevention
+
+PR #280 was merged after exact-head CI passed (run `43657345428`, quality 73/73 and web-quality passed), merge commit `64b4a18301a72f6549f819c4fc7cde96dad36dd9`.
+
+Review of the node-postgres SSL documentation identified a second issue: when `sslmode`, `sslrootcert`, `sslcert` or `sslkey` appears in a connection URL, node-postgres replaces the supplied `ssl` object. Render's external Postgres URL convention includes `sslmode=require`; leaving that parameter in place could therefore discard `rejectUnauthorized: true`. Render's official Postgres docs confirm external connections require TLS and use Render-managed certificates. The node-postgres docs explicitly warn that these URL options replace the `ssl` object.
+
+A follow-up hardening change is in progress on branch `fix/migration-audit-ssl-url-override-20261115`:
+- Added a URL sanitizer that removes all `ssl*` connection-string parameters and `uselibpqcompat` while preserving host, database, credentials and unrelated parameters.
+- The audit passes the sanitized URL to node-postgres while retaining explicit `ssl: { rejectUnauthorized: true }`.
+- Added a unit test covering `sslmode`, root/client cert/key parameters, `ssl=true`, libpq compatibility, and preservation of unrelated connection options.
+- This does not disable TLS. It makes the explicit Node TLS policy authoritative.
+
+Render documentation confirms external DB endpoints are TLS-encrypted using Render-managed certificates and require TLS 1.2+. It documents `sslmode=require` as the baseline, not server-certificate identity verification. Node's default CA trust and hostname verification still need to succeed in the actual existing local environment. No live connection has yet been made, no CA verification has been waived, and no production SQL or Render setting has changed.
+
+Next gate: exact-head CI for the URL-sanitization change, then a credential-safe local connection preflight with the existing `GHM_MIGRATOR_DATABASE_URL`. If strict Node certificate verification fails, stop and establish a valid CA/hostname verification path; never fall back to `rejectUnauthorized:false`.
