@@ -10,7 +10,7 @@ import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from '.
 import { findOutOfOrderPendingMigration } from './migration-order';
 import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
-import { parseProductionMigrationBatch, selectProductionMigrationBatch } from './production-migration-batch';
+import { getProductionMigrationPostBatchGuards, parseProductionMigrationBatch, selectProductionMigrationBatch } from './production-migration-batch';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -249,6 +249,12 @@ const migrate = async (): Promise<void> => {
       if (!ledgerTable) throw new Error(`Migration ${migration.filename} completed but the migration ledger cannot be resolved`);
       await client.query(`INSERT INTO ${ledgerTable} (version, name, checksum) VALUES ($1, $2, $3)`, [migration.version, migration.name, migration.checksum]);
       appliedByVersion.set(migration.version, migration.checksum);
+    }
+    if (productionTarget) {
+      for (const guardSql of getProductionMigrationPostBatchGuards(executionMigrations)) {
+        await client.query(guardSql);
+        console.info(`Applied production post-batch security guard: ${guardSql}`);
+      }
     }
     await client.query('COMMIT');
   } catch (error) {
