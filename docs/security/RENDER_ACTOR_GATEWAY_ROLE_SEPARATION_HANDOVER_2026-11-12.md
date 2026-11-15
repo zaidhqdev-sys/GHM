@@ -2598,3 +2598,14 @@ The initial commit-associated workflow lookup returned an empty list, but a dire
 - PR #282 remains **OPEN / UNMERGED**.
 - The canonical handover has received two mainline-only updates since the synchronization commit. The current compare therefore shows 15 commits ahead / 2 behind; both behind commits modify only this handover document. The six PR source/test files remain the complete source diff. Do not rebase or force-update merely to absorb these documentation-only notes while the exact-head quality job is running; incorporate them at the next controlled synchronization if needed.
 - No merge, production migration, production database write, Render configuration change, or deployment occurred.
+
+
+### 2026-11-15 18:20Z — PR #282 continuation poll
+- Canonical handover refreshed from current `main` before append; current blob SHA: `d02bc5b7fb58eced37ddbd935da044fdf156e32a`.
+- Exact-head workflow `43734074745` for `f1d06bcf6f4603f38c779c9dc45ed5689151c648` remains **IN PROGRESS**.
+- `web-quality`: **PASS**; `Cloudflare Pages`: **PASS**; `quality`: **IN PROGRESS**, 56/72 reported steps completed, no failed steps reported. The active step is disposable PostgreSQL Business Logo signed Gateway cutover qualification.
+- PR #282 remains open and unmerged; latest API poll reported `mergeable=true`. The PR is not being merged until every required check passes.
+- Current branch comparison: 15 commits ahead / 3 behind `main`; the three behind commits are handover-only updates. The six migration-runner source/test files remain the entire PR source diff. Keep this documentation-only divergence separate from the CI-tested source head; perform a final controlled sync and exact-head CI if the PR head is changed.
+- One attempt to fetch the in-progress job log returned GitHub's transient `BlobNotFound` response; job status and step progression remain available through the Actions API. No test failure was indicated by that response.
+- Earlier historical status lines in this handover that say synchronization was not performed or post-sync CI was pending are superseded by the later dated entries documenting merge commit `f1d06bcf6f4603f38c779c9dc45ed5689151c648` and run `43734074745`.
+- No production database, migrations, data, roles, grants, secrets, Render settings, deployment or traffic were changed.
