@@ -29,7 +29,7 @@ export const classifyStorageMigrationFourState = ({
   const hasGateway = gatewayExecute === true || /ghm_actor_gateway=x/.test(aclText);
   const hasPublic = /(^|[,{])=x\//.test(aclText);
   const hasMigrator = /ghm_migrator=x/.test(aclText);
-  const aclEntries = aclText.replace(/^\\{|\\}$/g, '').split(',').filter(Boolean).sort();
+  const aclEntries = aclText.replace(/^\{|\}$/g, '').split(',').filter(Boolean).sort();
   const exactPostAcl = aclEntries.length === 2 &&
     aclEntries[0] === 'ghm_runtime=x/ghm_schema_owner' &&
     aclEntries[1] === 'ghm_schema_owner=x/ghm_schema_owner';
