@@ -8,9 +8,9 @@
 
 Cloudflare Workers VPC plus Hyperdrive is a technically supported way to connect a Cloudflare Worker to a private PostgreSQL database through a Cloudflare Tunnel. Workers VPC is currently documented as free during beta across Workers plans.
 
-However, a Cloudflare Tunnel must run continuously in a network that can reach the database. The only existing Render service in the production environment that can reach the database is GHM-Internal-Runtime, and Render currently reports it as a Free web service. Render documents that Free web services spin down after 15 minutes without inbound HTTP/WebSocket traffic, take about a minute to wake, may restart at any time, and are explicitly not intended for production. The current ADR also requires process, credential, network and deployment isolation to be demonstrably equivalent if the issuer/gateway are co-located in isolated processes.
+However, a Cloudflare Tunnel must run continuously in a network that can reach the database. A fresh account-wide Render inventory found two web services in the Production environment and Frankfurt region: GHM-Internal-Runtime and zaid-ai-workforce. Both are Free web services. Render's same-region private networking can permit services to initiate connections to data stores, but neither service is an approved persistent connector host: GHM-Internal-Runtime is the ordinary GHM API, while zaid-ai-workforce is a separate application workload. Render documents that Free web services spin down after 15 minutes without inbound HTTP/WebSocket traffic, take about a minute to wake, may restart at any time, and are explicitly not intended for production. The current ADR also requires process, credential, network and deployment isolation to be demonstrably equivalent if the issuer/gateway are co-located in isolated processes.
 
-Running cloudflared as a sidecar process in the same Free GHM runtime is therefore only a lab/qualification candidate, not an approved production topology. It introduces shared-host/process-management and availability risks and has not demonstrated the ADR's equivalent-isolation requirement. No new Render service, paid plan, database, or schedule is permitted.
+Running cloudflared in either existing Free production web service is therefore not an approved production topology. In GHM-Internal-Runtime it would introduce shared-host/process-management and availability risks; in zaid-ai-workforce it would additionally repurpose an unrelated application service. Neither option has demonstrated the ADR's equivalent-isolation requirement. No new Render service, paid plan, database, or schedule is permitted.
 
 **Do not create the Cloudflare Tunnel, VPC Service, Hyperdrive binding, secrets, or production route as part of this assessment.** This is design/documentation only.
 
@@ -18,8 +18,9 @@ Running cloudflared as a sidecar process in the same Free GHM runtime is therefo
 
 - Render database: ghm-db, database ghm_db, PostgreSQL 18, Frankfurt, paid plan 0.1c-256mb, status available.
 - Render database IP allowlist currently contains 0.0.0.0/0 ("everywhere"). This is a verified broad external allowlist, not evidence that direct public exposure is desirable or approved. Do not broaden or alter it. A private-tunnel design should target the database's Render internal hostname from a tunnel host in the same Render region.
-- Render GHM-Internal-Runtime: srv-damupsek1f9s73eq8kkg, Frankfurt, Free web-service plan, branch main, auto-deploy OFF, health check /healthz, URL https://ghm-internal-runtime.onrender.com. Build Command is npm ci --include=dev && npm run build; Start Command remains npm start.
-- Render service inventory contains no dedicated Actor Gateway service. Historical sandbox/qualification services are not eligible targets and must not be repurposed.
+- Render GHM-Internal-Runtime: Frankfurt, Production environment, Free web-service plan, branch main, auto-deploy OFF, health check /healthz. It remains the ordinary GHM API and is currently failing deployment; do not co-host the tunnel here.
+- Render zaid-ai-workforce: Frankfurt, same Production environment, Free web-service plan, Node runtime, separate `zaidhqdev-sys/ai-workforce` repository and `runtime` root directory, deployed. It is an unrelated application workload and must not be repurposed as the GHM connector.
+- The account-wide Render inventory also exposed historical sandbox services (`ghm-payfast-sandbox-runtime`, `ghm-payfast-callback-sandbox`, `ghm-identity-qualification`) in a separate environment; exclude them. The sandbox database `ghm-payfast-sandbox-db` is suspended/expired. A separate paid `ghm-identity-qualification-20261018` database is not production and must not be repurposed. No dedicated Actor Gateway service or background worker exists in the Production environment.
 - Current live GHM deployment remains the previous c7cf1ebaf4db5912983bfa45bd42747c0854cfaf; the post-PR #283 deployment built successfully but failed startup because GHM_ACTOR_GATEWAY_URL is required when production storage is enabled. The new endpoint is not live.
 - Actor Gateway source exists in workers/actor-gateway. wrangler.jsonc still has workers_dev=false, a zero placeholder Hyperdrive ID, no VPC binding, and no production route/domain. No Actor Gateway production deployment workflow was found.
 - PR #272 was merged to main on 2026-11-14 (head 81b0a90f762772ca745fbca122f9848968d4f234). That merges code only; it does not provision the gateway, secrets, network path, DB privileges, or production cutover.
@@ -42,7 +43,8 @@ This is the topology Cloudflare documents for private PostgreSQL via Workers VPC
 | Host option | Cost | Isolation / availability | Decision |
 |---|---:|---|---|
 | New Render private/background service | Additional paid compute | Better service isolation and always-on operation | Not permitted under current cost constraint |
-| Existing GHM-Internal-Runtime Free web service as cloudflared host | No new service charge | Free service sleeps after 15 minutes idle, cold-starts, may restart; sidecar shares service host and deployment lifecycle | Lab-only candidate; not production-qualified |
+| Existing GHM-Internal-Runtime Free web service as cloudflared host | No new service charge | Free service sleeps after 15 minutes idle, cold-starts, may restart; sidecar shares ordinary API host and deployment lifecycle | Not production-qualified; do not repurpose |
+| Existing zaid-ai-workforce Free web service as cloudflared host | No new service charge | Free service sleeps/restarts; unrelated application workload and deployment lifecycle | Not production-qualified; do not repurpose |
 | Existing sandbox or qualification services | No new spend in theory | Wrong environment/DB; sandbox is suspended/expired and qualification services are not production | Prohibited |
 | Owner workstation / home network | No new hosting fee | Not continuously available; not a production database network host | Not suitable |
 | Direct public Hyperdrive connection to Render DB | Potentially no new service fee | Requires public DB ingress and a trustworthy narrow source allowlist; no verified fixed Cloudflare egress source is established here | Not selected |
@@ -59,7 +61,7 @@ Render's Free web service limits are material to a production security boundary:
 
 A cloudflared process could in principle initiate the tunnel outbound and reach a Render private database hostname. But hosting it in the same Free service as the ordinary API does not currently prove the ADR's process/credential/network/deployment isolation. The API and tunnel would share a service lifecycle and deployment. The tunnel token must not become available to the API process. A design would need to demonstrate process identity separation, secret injection isolation, minimal tunnel routing to only the database host/5432, startup ordering/readiness, restart recovery, memory/CPU headroom, and correct shutdown behavior. No such implementation or test currently exists.
 
-The fact that the API itself currently uses a Free service does not automatically qualify adding a second critical security component to the same Free instance.
+The fact that either application currently uses a Free service does not qualify adding a critical database tunnel to that service. The AI Workforce service is not a spare host simply because it is deployed in the same Render environment.
 
 ## Database and identity gates remain independent
 
@@ -130,3 +132,30 @@ This document records repository and dashboard inventory only. No Cloudflare res
 ### Decision
 
 No newly discovered vendor feature changes the no-go result. Cloudflare networking is free during beta, but a continuously available and sufficiently isolated tunnel host is still missing. The only existing candidate is explicitly not for production. Do not use keepalive pings to disguise that limitation, combine security boundaries without proving ADR-001 equivalence, or weaken the guard. The production endpoint and Connect cutover remain blocked.
+
+
+## 2026-11-15 follow-up — Cloudflare dashboard and full Render inventory
+
+### Cloudflare account inventory (user-inspected dashboard)
+
+- Workers & Pages shows the existing Pages project `ghm`, linked to `zaidhqdev-sys/GHM`, with Pages domain `ghm-cu1.pages.dev`. This is a Pages project, not the Actor Gateway Worker. No `ghm-actor-gateway` Worker is present in the inspected inventory.
+- The account's Workers subdomain is `zaidhqdev.workers.dev`. The previously discussed `https://ghm-actor-gateway.zaidhqdev.workers.dev` remains only a proposed name; it is not deployed, verified, or valid for `GHM_ACTOR_GATEWAY_URL`.
+- Workers VPC (Beta) is visible in the account dashboard.
+- Workers VPC Services page reports no VPC Services.
+- Workers VPC Networks page shows the Cloudflare Mesh network (`cf1:network`). The Mesh page says there are no nodes yet; its “4 items, 3 online” summary is not evidence of an enrolled connector node.
+- Cloudflare Tunnels inventory reports 0 / 1,000 and no existing tunnels.
+- Hyperdrive reports no configurations and 0 / 100,000 queries.
+- No Cloudflare resource was created or changed during this inspection.
+
+### Render account-wide inventory (read-only API inspection)
+
+- The Production project page showed three resources: `zaid-ai-workforce` (deployed Node web service, Frankfurt), `GHM-Internal-Runtime` (Node web service, failed deploy, Frankfurt), and `ghm-db` (PostgreSQL 18, Frankfurt).
+- The account-wide service API confirmed both Production web services are Free plans. `zaid-ai-workforce` is a separate repository/application; it is not a spare connector host. `GHM-Internal-Runtime` is also Free and remains the ordinary GHM API.
+- The account-wide inventory exposed additional sandbox services and qualification databases in separate environments. They are explicitly excluded from this design; the PayFast sandbox remains paused, the sandbox database is suspended/expired, and the paid identity-qualification database is not a production host.
+- The production database inventory confirms `ghm-db` / `ghm_db`, PostgreSQL 18, Frankfurt, paid 0.1c-256mb plan, status available. Its existing IP allowlist was observed as `0.0.0.0/0`; this is not authorization to change it or rely on public ingress.
+
+### Updated decision
+
+Cloudflare's required product features are visible and Workers VPC is available, but the account has no deployed Actor Gateway Worker, no Tunnel, no VPC Service, no Hyperdrive configuration, and no Mesh nodes. Render has no suitable existing always-on, isolated, no-additional-cost connector host. Both existing Production web services are Free and are not approved for repurposing; all sandbox and qualification services are excluded.
+
+The no-go decision is unchanged. Do not create Cloudflare resources, set `GHM_ACTOR_GATEWAY_URL`, add secrets, modify database ingress, deploy a tunnel sidecar, alter Render services, or change production DB roles/grants/migrations. Amanda's Render support guidance, the unresolved production role-administration issue, and a fresh independently verified production backup remain separate hard gates.
