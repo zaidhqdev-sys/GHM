@@ -122,3 +122,23 @@ Before production migration/cutover, independently inspect live Render role attr
 Both manual issuer SQL scripts now fail closed unless the connection identity is exactly `session_user=ghm_migrator` and the active execution identity is exactly `current_user=ghm_schema_owner`. This prevents a direct superuser/operator invocation from bypassing the controlled migrator path and makes the execution contract self-enforcing in the SQL artifact, not merely a property of the CI harness.
 
 The disposable CI applies the cutover through the same restricted migrator login and SET-only membership used by the migration runner. A migration-contract test covers both cutover and rollback guards. Exact-head CI is required after this change; no production operation was performed.
+
+
+## SECURITY DEFINER metadata prerequisite
+
+Before issuer or Actor Gateway cutover, migration `20261112090000_pin_security_definer_search_path.sql` must be present in the fully qualified migration chain. It preflights every GHM SECURITY DEFINER function as owned by `ghm_schema_owner` and pins each function-local path to `pg_catalog, ghm, pg_temp`. Issuer and Actor Gateway startup checks independently enforce the same owner/path contract across all GHM SECURITY DEFINER functions, not only their callable allow-lists. Exact-head PostgreSQL 18 migration and startup qualification is mandatory; do not treat the source change or a prior green run as evidence. Unexpected function ownership is a hard stop, not a reason to relax the preflight.
+
+
+## Latest disposable qualification checkpoint (2026-11-12)
+
+Exact source HEAD `b0711ccebc4adb82fc24256a40a812d0335f8702` passed CI run `43178029417` (`quality` and `web-quality`), including PostgreSQL 18.6 full migration application, issuer and Actor Gateway principal checks, full tests, migration audit, runtime boundary, manual issuer cutover, issuer lifecycle/runtime denials and database-only rollback. This qualifies only the disposable environment. Production role ownership, fresh verified backup, TLS/network topology, recovery delivery, product-client compatibility and separate approvals remain required. Do not merge/deploy from this result alone.
+
+
+## Complete function grantee prerequisite
+
+The issuer and Actor Gateway startup verifiers now enumerate direct function ACL entries and require every allow-listed function to be executable only by its dedicated principal plus the function owner. Unexpected grants to PUBLIC, Resource API, migrator, payment-provider, or any other role fail closed. The disposable qualification adversarially grants issuer/gateway functions to `ghm_payment_provider`, verifies both failures, removes the grants and verifies clean baselines. Exact-head PostgreSQL 18.6 CI passed at `1db5f78b8a0f0405586fc9ae2675f16732e9374e` in run `43179755317`. This is not production authorization.
+
+
+## Pre-cutover grant snapshot and rollback baseline
+
+Before manual issuer cutover, run `scripts/qualify-auth-issuer-precutover.mjs` against the guarded disposable database. It asserts the exact 16-function Resource API runtime authentication allow-list and rejects direct auth-function grants to PUBLIC or unexpected principals. The only additional direct application-role grant accepted in this pre-cutover state is the explicitly documented `ghm_migrator` grant on `auth_lookup_business_external_mapping(text,text)`. The manual rollback qualification must then restore the same 16-function set, not a broader historical list. CI exact-head qualification passed at `405a220d408cb3c2f176131173fedb9200f62635`, run `43181545588`. This does not authorize production cutover.

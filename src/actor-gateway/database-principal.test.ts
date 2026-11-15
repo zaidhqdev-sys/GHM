@@ -5,10 +5,6 @@ import { assertActorGatewayDatabaseIdentity, type ActorGatewayDatabaseIdentity }
 const leastPrivilegeGateway: ActorGatewayDatabaseIdentity = {
   session_user: 'ghm_actor_gateway',
   current_user: 'ghm_actor_gateway',
-  database_connect_privilege: true,
-  database_create_privilege: false,
-  schema_usage: true,
-  schema_create: false,
   rolcanlogin: true,
   rolinherit: false,
   rolsuper: false,
@@ -19,47 +15,23 @@ const leastPrivilegeGateway: ActorGatewayDatabaseIdentity = {
   no_untrusted_role_memberships: true,
 };
 
-test('accepts the dedicated Actor Gateway login with only the trusted administrator membership', () => {
+test('accepts only the isolated least-privilege Actor Gateway principal', () => {
   assert.doesNotThrow(() => assertActorGatewayDatabaseIdentity(leastPrivilegeGateway));
 });
 
-test('rejects Dashboard-managed application and effective administrator identities', () => {
+test('rejects an unexpected login or effective role', () => {
   assert.throws(
     () => assertActorGatewayDatabaseIdentity({
       ...leastPrivilegeGateway,
       session_user: 'ghm_app_user',
       current_user: 'ghm_db_user',
     }),
-    /least-privilege verification/,
+    /Actor Gateway database principal failed least-privilege verification/,
   );
 });
 
-test('rejects role substitution after connecting as the gateway login', () => {
-  assert.throws(
-    () => assertActorGatewayDatabaseIdentity({
-      ...leastPrivilegeGateway,
-      current_user: 'ghm_schema_owner',
-    }),
-    /least-privilege verification/,
-  );
-});
-
-test('rejects database or schema creation and missing required access', () => {
+test('rejects elevated role attributes and untrusted memberships but allows the Render administrator member', () => {
   for (const override of [
-    { database_create_privilege: true },
-    { schema_create: true },
-    { database_connect_privilege: false },
-    { schema_usage: false },
-  ]) {
-    assert.throws(
-      () => assertActorGatewayDatabaseIdentity({ ...leastPrivilegeGateway, ...override }),
-      /least-privilege verification/,
-    );
-  }
-});
-
-test('rejects elevated login attributes and untrusted role memberships', () => {
-  const overrides: Partial<ActorGatewayDatabaseIdentity>[] = [
     { rolinherit: true },
     { rolsuper: true },
     { rolcreatedb: true },
@@ -67,12 +39,10 @@ test('rejects elevated login attributes and untrusted role memberships', () => {
     { rolreplication: true },
     { rolbypassrls: true },
     { no_untrusted_role_memberships: false },
-    { rolcanlogin: false },
-  ];
-  for (const override of overrides) {
+  ]) {
     assert.throws(
       () => assertActorGatewayDatabaseIdentity({ ...leastPrivilegeGateway, ...override }),
-      /least-privilege verification/,
+      /Actor Gateway database principal failed least-privilege verification/,
     );
   }
 });

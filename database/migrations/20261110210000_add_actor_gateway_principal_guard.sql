@@ -17,7 +17,6 @@ BEGIN
   IF to_regrole('ghm_db_user') IS NULL THEN
     RAISE EXCEPTION 'trusted Render administrator ghm_db_user must exist before applying this migration';
   END IF;
-
   trusted_admin_oid := to_regrole('ghm_db_user')::oid;
 
   SELECT * INTO gateway_role
@@ -34,17 +33,22 @@ BEGIN
     RAISE EXCEPTION 'ghm_actor_gateway must be LOGIN NOINHERIT and have no elevated role attributes';
   END IF;
 
-  -- Render retains ghm_db_user as the trusted administrator. It may hold
-  -- ADMIN OPTION on the gateway role, but must not inherit or SET ROLE to it.
-  -- No service login may be a member of the gateway role, and the gateway
-  -- login itself may not be a member of any other role.
   IF EXISTS (
     SELECT 1
-      FROM pg_auth_members
-     WHERE member = gateway_oid
-        OR (roleid = gateway_oid AND member <> trusted_admin_oid)
+      FROM pg_auth_members m
+      JOIN pg_roles member_role ON member_role.oid = m.member
+     WHERE m.member = gateway_oid
+        OR (
+          m.roleid = gateway_oid
+          AND (
+            member_role.rolname <> 'ghm_db_user'
+            OR m.admin_option IS DISTINCT FROM true
+            OR m.inherit_option IS DISTINCT FROM false
+            OR m.set_option IS DISTINCT FROM false
+          )
+        )
   ) THEN
-    RAISE EXCEPTION 'ghm_actor_gateway may only be granted to trusted administrator ghm_db_user';
+    RAISE EXCEPTION 'ghm_actor_gateway may only have the bounded ghm_db_user administrative membership (ADMIN true, INHERIT false, SET false)';
   END IF;
 
   IF NOT EXISTS (
@@ -52,9 +56,9 @@ BEGIN
       FROM pg_auth_members
      WHERE roleid = gateway_oid
        AND member = trusted_admin_oid
-       AND admin_option
-       AND NOT inherit_option
-       AND NOT set_option
+       AND admin_option IS TRUE
+       AND inherit_option IS FALSE
+       AND set_option IS FALSE
   ) THEN
     RAISE EXCEPTION 'ghm_actor_gateway requires ghm_db_user ADMIN OPTION without INHERIT or SET';
   END IF;

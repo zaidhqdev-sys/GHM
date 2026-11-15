@@ -17,17 +17,14 @@ const createPersistence = (
   lookup: AuthPersistence['lookupExternalIdentity'],
 ): AuthPersistence => ({
   completeQuoteFlowMigrationReset: async () => ({ accountId: 0, loginEmail: '', revokedSessionCount: 0 }),
-  setPassword: async () => { throw new Error('unused'); },
+  rehashPasswordIfUnchanged: async () => false,
   resetPasswordWithRecovery: async () => { throw new Error('unused'); },
   lookupPasswordByEmail: async () => null,
   createSessionWithRefresh: async () => { throw new Error('unused'); },
-  validateSession: async () => { throw new Error('unused'); },
   rotateRefresh: async () => { throw new Error('unused'); },
   issueRecovery: async () => { throw new Error('unused'); },
-  redeemRecovery: async () => { throw new Error('unused'); },
   lookupQuoteFlowMigrationResetEnrollment: async () => null,
   lookupExternalIdentity: lookup,
-  linkBusinessExternalMapping: async () => { throw new Error('unused'); },
   revokeSessionByRefreshToken: async () => ({ found: false, sessionId: null, accountId: null }),
 });
 

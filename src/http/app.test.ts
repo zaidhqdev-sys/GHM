@@ -1298,3 +1298,38 @@ test('managed Business profile PATCH fails closed when actor gateway is not conf
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
+
+
+test('Resource API can run without Authentication Issuer routes or token-pepper initialization', async () => {
+  const app = createApp({
+    authRoutesEnabled: false,
+    resourceAuthMiddleware: httpTestAuth,
+    businessIdentityService: {} as BusinessIdentityService,
+  });
+  const server = http.createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  try {
+    for (const path of [
+      '/api/v1/auth/register',
+      '/api/v1/auth/login',
+      '/api/v1/auth/refresh',
+      '/api/v1/auth/logout',
+      '/api/v1/auth/password-recovery/request',
+      '/api/v1/auth/password-recovery/reset',
+      '/api/v1/auth/quoteflow-migration-reset/request',
+      '/api/v1/auth/quoteflow-migration-reset/complete',
+    ]) {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      assert.equal(response.status, 404, path);
+    }
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});

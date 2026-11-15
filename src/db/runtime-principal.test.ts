@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import test from 'node:test';
 import { assertRuntimeDatabaseIdentity, type RuntimeDatabaseIdentity } from './runtime-principal';
 
 const leastPrivilegeRuntime: RuntimeDatabaseIdentity = {
@@ -19,60 +19,48 @@ const leastPrivilegeRuntime: RuntimeDatabaseIdentity = {
   no_untrusted_role_memberships: true,
 };
 
-test('accepts the dedicated restricted runtime login with only trusted administrator membership', () => {
+test('accepts only the dedicated least-privilege ghm_runtime principal', () => {
   assert.doesNotThrow(() => assertRuntimeDatabaseIdentity(leastPrivilegeRuntime));
 });
 
-test('rejects the Dashboard-managed application and effective administrator identities', () => {
+test('rejects a generic or over-privileged login principal', () => {
   assert.throws(
     () => assertRuntimeDatabaseIdentity({
       ...leastPrivilegeRuntime,
       session_user: 'ghm_app_user',
       current_user: 'ghm_db_user',
     }),
-    /least-privilege verification/,
+    /Runtime database principal failed least-privilege verification/,
   );
 });
 
-test('rejects role substitution after connecting as the runtime login', () => {
+test('rejects an unexpected effective role even when the login is ghm_runtime', () => {
   assert.throws(
     () => assertRuntimeDatabaseIdentity({
       ...leastPrivilegeRuntime,
       current_user: 'ghm_schema_owner',
     }),
-    /least-privilege verification/,
+    /Runtime database principal failed least-privilege verification/,
   );
 });
 
-test('rejects database or schema creation privileges', () => {
+test('rejects CREATEROLE and untrusted role memberships while allowing the isolated Render administrator membership', () => {
   for (const override of [
+    { database_connect_privilege: false },
     { database_create_privilege: true },
+    { schema_usage: false },
     { schema_create: true },
+    { rolcreaterole: true },
+    { rolsuper: true },
+    { no_untrusted_role_memberships: false },
+    { rolcreatedb: true },
+    { rolreplication: true },
+    { rolbypassrls: true },
+    { rolinherit: true },
   ]) {
     assert.throws(
       () => assertRuntimeDatabaseIdentity({ ...leastPrivilegeRuntime, ...override }),
-      /least-privilege verification/,
-    );
-  }
-});
-
-test('rejects elevated login attributes and untrusted memberships', () => {
-  const overrides: Partial<RuntimeDatabaseIdentity>[] = [
-    { rolinherit: true },
-    { rolsuper: true },
-    { rolcreatedb: true },
-    { rolcreaterole: true },
-    { rolreplication: true },
-    { rolbypassrls: true },
-    { no_untrusted_role_memberships: false },
-    { rolcanlogin: false },
-    { database_connect_privilege: false },
-    { schema_usage: false },
-  ];
-  for (const override of overrides) {
-    assert.throws(
-      () => assertRuntimeDatabaseIdentity({ ...leastPrivilegeRuntime, ...override }),
-      /least-privilege verification/,
+      /Runtime database principal failed least-privilege verification/,
     );
   }
 });

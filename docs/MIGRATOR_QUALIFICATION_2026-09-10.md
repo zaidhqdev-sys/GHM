@@ -81,3 +81,14 @@ The list below records the status of this 2026-09-10 qualification after later m
 ## Safety boundary
 
 This instruction governed the isolated construction branch and qualification activity on 2026-09-10; it is a historical scope restriction, not a current instruction to prevent subsequently reviewed and merged mainline work. It remains true that this qualification itself did not authorize Connect or QuoteFlow cutover or changes to their production Supabase configuration or traffic. Current merge and cutover status is governed by `GHM_CURRENT_STATE.md` and the current remaining-work register.
+
+## Later mainline reconciliation — exact migrator role contract (2026-11-12)
+
+The historical 2026-09-10 qualification proved connectivity and the `SET ROLE ghm_schema_owner` path, but did not assert exact role flags or membership options. The current runner now checks `ghm_migrator` LOGIN/NOINHERIT/no elevated attributes, exactly one direct membership to `ghm_schema_owner` with `ADMIN FALSE`, `INHERIT FALSE`, `SET TRUE`, and a NOLOGIN/non-elevated/no-membership schema-owner role before activating owner authority. It then verifies the effective role and preserved session identity.
+
+This stricter contract passed on disposable PostgreSQL in CI run `43160050121` at head `465b8e034243c80bf7efe6cc6ea8b27705176760`. The historical qualification above remains evidence of the earlier connectivity test, not evidence that the live Render roles currently satisfy the new exact contract. Production role inspection remains a separate gate; no production role mutation was performed.
+## Later mainline reconciliation — migrator direct privilege contract (2026-11-12)
+
+The migration runner now enforces that `ghm_migrator` has database CONNECT only and no database CREATE, no `ghm` schema USAGE/CREATE, and no direct GHM relation or sequence privileges before it uses its one non-inheritable SET-only membership to `ghm_schema_owner`. The owner role is NOLOGIN/non-elevated and has no memberships. This supplements the earlier connectivity/SET ROLE evidence; it does not retroactively prove that the live Render role has these settings.
+
+Disposable CI exact head `5a1b26ab65c69bab654ba3b1c4fc8610123481cd`, run `43160516327`, passed the complete migration chain and suite. Live Render role/ACL inspection remains required before production migration.

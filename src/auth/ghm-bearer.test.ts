@@ -3,9 +3,11 @@ import test from 'node:test';
 import { generateKeyPairSync } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import type { Request } from 'express';
-import { loadEs256Keys } from './foundation/es256-keys';
+import { loadEs256Keys, loadEs256VerificationKeys, verificationKeyMapFromPublicKeys } from './foundation/es256-keys';
 import { createAccessJwtService, ACCESS_JWT_ISS, ACCESS_JWT_AUD } from './foundation/access-jwt';
+import { createAccessJwtVerifier } from './foundation/access-jwt-verifier';
 import {
+  createGhmBearerAuthenticator,
   createGhmBearerAuthenticatorWithKeys,
   GhmBearerAuthError,
   type AccountAuthStateStore,
@@ -156,4 +158,26 @@ test('ghm bearer rejects missing Authorization header', async () => {
   const { keys } = makeKeys();
   const authenticator = createGhmBearerAuthenticatorWithKeys(keys, activeStore());
   await assert.rejects(() => authenticator.authenticate(requestWithBearer()), GhmBearerAuthError);
+});
+
+
+test('resource bearer verifier loads public ES256 material without a private signing key', async () => {
+  const pair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const privateKeyPem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const publicKeyPem = pair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const env: NodeJS.ProcessEnv = {
+    GHM_JWT_ES256_PUBLIC_KEY_PEM: publicKeyPem,
+    GHM_JWT_ES256_KID: 'resource-public-only',
+  };
+  const publicKeys = loadEs256VerificationKeys(env);
+  const verifier = createAccessJwtVerifier(verificationKeyMapFromPublicKeys(publicKeys));
+  const authenticator = createGhmBearerAuthenticator(verifier, activeStore(42));
+  const token = jwt.sign(
+    { sub: '42', iss: ACCESS_JWT_ISS, aud: ACCESS_JWT_AUD, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 900 },
+    privateKeyPem,
+    { algorithm: 'ES256', keyid: 'resource-public-only' },
+  );
+  const context = await authenticator.authenticate(requestWithBearer(token));
+  assert.equal(context.accountId, 42);
+  assert.equal(Object.hasOwn(env, 'GHM_JWT_ES256_PRIVATE_KEY_PEM'), false);
 });

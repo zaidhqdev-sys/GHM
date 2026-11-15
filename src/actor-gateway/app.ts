@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response, type NextFunction } from 'express';
+import express, { type Express, type Request, type Response, type NextFunction, type RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
   type AccessJwtVerifier,
@@ -13,10 +13,15 @@ import type { SavedBusinessGatewayReader } from './saved-business-reader';
 import type { BusinessHoursGatewayReader } from './business-hours-reader';
 import type { TrustScoreGatewayReader } from './trust-score-reader';
 import type { BusinessLogoGatewayReader } from './business-logo-reader';
+import type { StorageMetadataGatewayReader } from './storage-metadata-reader';
+import type { ConnectBusinessProvisioningReader } from '../integrations/connect/business-provisioning-contracts';
+import type { CampaignDirectoryReviewGatewayReader } from './campaign-directory-review-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
   rateLimitWindowMs?: number;
+  rateLimitDecision?: (accountId: number) => Promise<boolean>;
+  jsonBodyParser?: RequestHandler;
 }
 
 export interface ActorGatewayDependencies {
@@ -31,6 +36,9 @@ export interface ActorGatewayDependencies {
   businessHoursReader?: BusinessHoursGatewayReader;
   trustScoreReader?: TrustScoreGatewayReader;
   businessLogoReader?: BusinessLogoGatewayReader;
+  storageMetadataReader?: StorageMetadataGatewayReader;
+  connectBusinessProvisioningReader?: ConnectBusinessProvisioningReader;
+  campaignDirectoryReviewReader?: CampaignDirectoryReviewGatewayReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -58,7 +66,21 @@ export const createActorGatewayApp = (
     try {
       const accountId = dependencies.verifier.verify(authorization.slice('Bearer '.length).trim()).accountId;
       res.locals.actorAccountId = accountId;
-      next();
+      if (!options.rateLimitDecision) {
+        next();
+        return;
+      }
+      void options.rateLimitDecision(accountId).then((allowed) => {
+        if (!allowed) {
+          res.status(429).json({ error: 'rate_limited' });
+          return;
+        }
+        next();
+      }).catch(() => {
+        // The Worker edge limiter is an additional abuse-control layer. If it
+        // cannot be reached, fail closed instead of silently disabling it.
+        res.status(503).json({ error: 'service_unavailable' });
+      });
     } catch {
       res.status(401).json({ error: 'unauthorized' });
     }
@@ -69,6 +91,7 @@ export const createActorGatewayApp = (
     limit: options.rateLimitLimit ?? 120,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
+    skip: () => Boolean(options.rateLimitDecision),
     keyGenerator: (_req, res) => {
       const accountId = res.locals.actorAccountId;
       return Number.isSafeInteger(accountId) ? `actor:${accountId}` : 'actor:unverified';
@@ -79,7 +102,61 @@ export const createActorGatewayApp = (
   }));
 
   // Do not spend JSON parsing work on unauthenticated requests.
-  app.use('/v1', express.json({ limit: '16kb' }));
+  app.use('/v1', options.jsonBodyParser ?? express.json({ limit: '16kb' }));
+
+  app.post('/v1/connect/businesses/provision-or-resolve', async (req: Request, res: Response) => {
+    const accountId = res.locals.actorAccountId as number;
+    if (!dependencies.connectBusinessProvisioningReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    const keys = Object.keys(body);
+    const externalBusinessId = typeof body.externalBusinessId === 'string' ? body.externalBusinessId.trim().toLowerCase() : '';
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    if (
+      keys.length !== 2 ||
+      keys.some(key => key !== 'externalBusinessId' && key !== 'name') ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(externalBusinessId) ||
+      !name || name.length > 200
+    ) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    try {
+      const result = await dependencies.connectBusinessProvisioningReader.provisionOrResolve(
+        accountId,
+        { externalBusinessId, name },
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (isSqlState(error, '42501')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      if (isSqlState(error, '22023')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (isSqlState(error, '23505')) {
+        res.status(409).json({ error: 'conflict' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'business.connect.provision',
+        error: {
+          name: error instanceof Error ? error.name : 'UnknownError',
+          code: isSqlState(error, '08000') ? '08000' : undefined,
+        },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
 
   app.get('/v1/actor/me', async (req: Request, res: Response) => {
     const accountId = res.locals.actorAccountId as number;
@@ -464,6 +541,183 @@ export const createActorGatewayApp = (
     }
   });
 
+  const storageMetadataReader = dependencies.storageMetadataReader;
+  const parseStorageObjectId = (value: unknown): number | null => {
+    if (typeof value !== 'string' || !/^[1-9][0-9]*$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  };
+  const storageGatewayFailure = (error: unknown, res: Response): void => {
+    if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+    if (isSqlState(error, '22023') || isSqlState(error, '23514')) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    console.error(JSON.stringify({
+      event: 'actor_gateway_operation_failed',
+      operation: 'storage.metadata',
+      error: { name: error instanceof Error ? error.name : 'UnknownError' },
+    }));
+    res.status(503).json({ error: 'service_unavailable' });
+  };
+
+  app.post('/v1/storage/metadata', async (req: Request, res: Response) => {
+    const body = req.body as Record<string, unknown> | null;
+    const allowed = ['businessId', 'resourceId', 'providerKey', 'contentType', 'byteSize', 'originalFilename'];
+    const businessId = body?.businessId;
+    const providerKey = body?.providerKey;
+    const keyParts = typeof providerKey === 'string' ? providerKey.split('/') : [];
+    const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))
+      || !Number.isSafeInteger(businessId) || Number(businessId) <= 0
+      || body.resourceId !== businessId
+      || keyParts.length !== 4 || keyParts[0] !== 'media' || keyParts[1] !== 'logos'
+      || keyParts[2] !== String(businessId) || !validUuid.test(keyParts[3])
+      || !['image/jpeg', 'image/png', 'image/webp'].includes(String(body.contentType))
+      || !Number.isSafeInteger(body.byteSize) || Number(body.byteSize) < 0 || Number(body.byteSize) > 2 * 1024 * 1024
+      || (body.originalFilename !== null && typeof body.originalFilename !== 'string')
+      || (typeof body.originalFilename === 'string' && body.originalFilename.length > 255)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.createPending(res.locals.actorAccountId as number, {
+        businessId: Number(businessId),
+        resourceType: 'business',
+        resourceId: Number(body.resourceId),
+        objectClass: 'business_logo',
+        providerKey: String(providerKey),
+        contentType: body.contentType as 'image/jpeg' | 'image/png' | 'image/webp',
+        byteSize: Number(body.byteSize),
+        visibility: 'public',
+        originalFilename: body.originalFilename as string | null,
+      });
+      res.status(201).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+  app.get('/v1/storage/metadata/:objectId', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    if (objectId === null) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.getObject(res.locals.actorAccountId as number, objectId);
+      if (!object) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+  app.post('/v1/storage/metadata/:objectId/deletion-pending', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    if (objectId === null) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.markDeletionPending(res.locals.actorAccountId as number, objectId);
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+  const parseProviderAttestation = (value: unknown): import('./storage-metadata-reader').StorageProviderWorkflowAttestation | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const attestation = value as Record<string, unknown>;
+    if (Object.keys(attestation).length !== 4
+      || !Number.isSafeInteger(attestation.issuedAt)
+      || typeof attestation.nonce !== 'string'
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(attestation.nonce)
+      || typeof attestation.context !== 'string' || attestation.context.length > 32768
+      || typeof attestation.signature !== 'string' || !/^[0-9a-f]{64}$/.test(attestation.signature)) return null;
+    return {
+      issuedAt: Number(attestation.issuedAt),
+      nonce: attestation.nonce,
+      context: attestation.context,
+      signature: attestation.signature,
+    };
+  };
+
+  app.post('/v1/storage/metadata/:objectId/available', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    const body = req.body as Record<string, unknown> | null;
+    const allowed = ['checksum', 'providerKey', 'contentType', 'byteSize', 'attestation'];
+    const attestation = parseProviderAttestation(body?.attestation);
+    if (objectId === null || !body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))
+      || (body.checksum !== null && typeof body.checksum !== 'string')
+      || typeof body.providerKey !== 'string'
+      || !['image/jpeg', 'image/png', 'image/webp'].includes(String(body.contentType))
+      || !Number.isSafeInteger(body.byteSize) || Number(body.byteSize) < 0 || Number(body.byteSize) > 2 * 1024 * 1024
+      || !attestation) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.markAvailable(
+        res.locals.actorAccountId as number, objectId, body.checksum as string | null,
+        body.providerKey, String(body.contentType), Number(body.byteSize), attestation,
+      );
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+  app.post('/v1/storage/metadata/:objectId/deleted', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    const body = req.body as Record<string, unknown> | null;
+    const attestation = parseProviderAttestation(body?.attestation);
+    if (objectId === null || !body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).length !== 2 || Object.keys(body).some(key => key !== 'providerKey' && key !== 'attestation')
+      || typeof body.providerKey !== 'string' || !attestation) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.markDeleted(
+        res.locals.actorAccountId as number, objectId, body.providerKey, attestation,
+      );
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+
   const trustScoreReader = dependencies.trustScoreReader;
   app.get('/v1/trust-scores', async (req: Request, res: Response) => {
     const trustLevel = req.query.trustLevel;
@@ -755,6 +1009,68 @@ export const createActorGatewayApp = (
         operation: 'saved_business.delete',
         error: { name: error instanceof Error ? error.name : 'UnknownError' },
       }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+
+  app.post('/v1/campaigns', async (req: Request, res: Response) => {
+    const reader = dependencies.campaignDirectoryReviewReader;
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : null;
+    if (!reader) { res.status(503).json({ error: 'service_unavailable' }); return; }
+    if (!body || Object.keys(body).length !== 2 || !Number.isSafeInteger(body.businessId) || (body.businessId as number) <= 0 || typeof body.title !== 'string') {
+      res.status(400).json({ error: 'invalid_request' }); return;
+    }
+    try {
+      const campaign = await reader.createCampaign(res.locals.actorAccountId as number, { businessId: body.businessId as number, title: body.title });
+      res.status(201).json({ campaign });
+    } catch (error) {
+      if (isSqlState(error, '42501')) { res.status(403).json({ error: 'forbidden' }); return; }
+      if (isSqlState(error, '22023')) { res.status(400).json({ error: 'invalid_request' }); return; }
+      console.error(JSON.stringify({ event: 'actor_gateway_operation_failed', operation: 'campaign.create', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.patch('/v1/campaigns/:campaignId', async (req: Request, res: Response) => {
+    const reader = dependencies.campaignDirectoryReviewReader;
+    const raw = req.params.campaignId;
+    const campaignId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : null;
+    const allowed = new Set(['title', 'status']);
+    if (!reader) { res.status(503).json({ error: 'service_unavailable' }); return; }
+    if (!Number.isSafeInteger(campaignId) || campaignId <= 0 || !body || Object.keys(body).length === 0 ||
+        Object.keys(body).some(key => !allowed.has(key)) ||
+        (Object.hasOwn(body, 'title') && typeof body.title !== 'string') ||
+        (Object.hasOwn(body, 'status') && body.status !== 'draft' && body.status !== 'active' && body.status !== 'archived')) {
+      res.status(400).json({ error: 'invalid_request' }); return;
+    }
+    try {
+      const campaign = await reader.updateCampaign(res.locals.actorAccountId as number, campaignId, {
+        ...(Object.hasOwn(body, 'title') ? { title: body.title as string } : {}),
+        ...(Object.hasOwn(body, 'status') ? { status: body.status as 'draft' | 'active' | 'archived' } : {}),
+      });
+      res.status(200).json({ campaign });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) { res.status(404).json({ error: 'not_found' }); return; }
+      if (isSqlState(error, '22023')) { res.status(400).json({ error: 'invalid_request' }); return; }
+      console.error(JSON.stringify({ event: 'actor_gateway_operation_failed', operation: 'campaign.update', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.get('/v1/businesses/:businessId/directory-review-presentation', async (req: Request, res: Response) => {
+    const reader = dependencies.campaignDirectoryReviewReader;
+    const raw = req.params.businessId;
+    const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    if (!reader) { res.status(503).json({ error: 'service_unavailable' }); return; }
+    if (!Number.isSafeInteger(businessId) || businessId <= 0) { res.status(400).json({ error: 'invalid_request' }); return; }
+    try {
+      const review = await reader.getDirectoryReviewPresentation(res.locals.actorAccountId as number, businessId);
+      res.status(200).json({ review });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) { res.status(404).json({ error: 'not_found' }); return; }
+      console.error(JSON.stringify({ event: 'actor_gateway_operation_failed', operation: 'directory_review.presentation.read', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
       res.status(503).json({ error: 'service_unavailable' });
     }
   });

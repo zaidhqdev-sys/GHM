@@ -1,6 +1,8 @@
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
+import type { CampaignDirectoryReviewGatewayClient } from '../../http/campaign-directory-review-gateway-client';
+import { CampaignDirectoryReviewGatewayError } from '../../http/campaign-directory-review-gateway-client';
 import type {
   Campaign,
   CampaignId,
@@ -38,10 +40,24 @@ const READ_MEMBERSHIP = `
 `;
 
 export class PostgresCampaignRepository implements CampaignRepository {
-  constructor(private readonly transactionPool?: TransactionPool) {}
+  constructor(
+    private readonly transactionPool?: TransactionPool,
+    private readonly gatewayClient?: CampaignDirectoryReviewGatewayClient,
+    private readonly gatewayRequired = false,
+  ) {}
 
   async createCampaign(context: AuthContext, input: CreateCampaignInput): Promise<Campaign> {
     const businessId = requirePositiveId(input.businessId, 'businessId');
+    if (this.gatewayClient) {
+      if (!context.actorGatewayBearerToken) throw new Error('Authenticated Actor Gateway bearer token required');
+      try { return await this.gatewayClient.createCampaign(context.actorGatewayBearerToken, { ...input, businessId }); }
+      catch (error) {
+        if (error instanceof CampaignDirectoryReviewGatewayError && error.status === 403) throw new Error('Business management permission required');
+        if (error instanceof CampaignDirectoryReviewGatewayError && error.status === 400) throw new Error('Campaign title must be between 1 and 200 characters');
+        throw error;
+      }
+    }
+    if (this.gatewayRequired) throw new Error('Campaign Actor Gateway is required but unavailable');
     return withAuthorizedTransaction(context, async client => {
       const result = await client.query(
         `SELECT * FROM ghm.create_campaign($1, $2, $3)`,
@@ -94,6 +110,16 @@ export class PostgresCampaignRepository implements CampaignRepository {
     const hasStatus = Object.hasOwn(input, 'status');
     if (!hasTitle && !hasStatus) throw new Error('Campaign update requires at least one field');
 
+    if (this.gatewayClient) {
+      if (!context.actorGatewayBearerToken) throw new Error('Authenticated Actor Gateway bearer token required');
+      try { return await this.gatewayClient.updateCampaign(context.actorGatewayBearerToken, id, input); }
+      catch (error) {
+        if (error instanceof CampaignDirectoryReviewGatewayError && error.status === 404) throw new Error('Campaign not found or management permission required');
+        if (error instanceof CampaignDirectoryReviewGatewayError && error.status === 400) throw new Error('Invalid campaign status');
+        throw error;
+      }
+    }
+    if (this.gatewayRequired) throw new Error('Campaign Actor Gateway is required but unavailable');
     return withAuthorizedTransaction(context, async client => {
       const result = await client.query(
         `SELECT * FROM ghm.update_campaign($1, $2, $3, $4)`,

@@ -1,0 +1,95 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  assertAuthIssuerDatabasePrivileges,
+  type AuthIssuerDatabasePrivileges,
+} from './database-privileges';
+
+const leastPrivilege: AuthIssuerDatabasePrivileges = {
+  database_connect_privilege: true,
+  database_create_privilege: false,
+  schema_usage: true,
+  schema_create: false,
+  direct_relation_privileges: false,
+  executable_functions: ['ghm.auth_login(text)'],
+  expected_functions: ['ghm.auth_login(text)'],
+  unsafe_function_defaults: false,
+  unsafe_security_definer_functions: [],
+  public_executable_security_definer_functions: [],
+  unsafe_function_grantees: [],
+  runtime_executable_auth_functions: [
+    'ghm.auth_lookup_external_identity(text, text)',
+    'ghm.auth_lookup_business_external_mapping(text, text)',
+  ],
+  expected_runtime_auth_functions: [
+    'ghm.auth_lookup_external_identity(text, text)',
+    'ghm.auth_lookup_business_external_mapping(text, text)',
+  ],
+};
+
+test('accepts only the exact issuer function allow-list and isolated database privileges', () => {
+  assert.doesNotThrow(() => assertAuthIssuerDatabasePrivileges(leastPrivilege));
+});
+
+test('rejects missing schema usage, schema CREATE and direct relation privileges', () => {
+  for (const override of [
+    { database_connect_privilege: false },
+    { database_create_privilege: true },
+    { schema_usage: false },
+    { schema_create: true },
+    { direct_relation_privileges: true },
+  ]) {
+    assert.throws(
+      () => assertAuthIssuerDatabasePrivileges({ ...leastPrivilege, ...override }),
+      /database privileges failed least-privilege verification/,
+    );
+  }
+});
+
+test('rejects extra/missing issuer functions and unsafe future defaults', () => {
+  for (const override of [
+    { executable_functions: [...leastPrivilege.executable_functions, 'ghm.auth_unreviewed()'] },
+    { executable_functions: [] },
+    { unsafe_function_defaults: true },
+    { runtime_executable_auth_functions: ['ghm.auth_lookup_external_identity(text, text)'] },
+    { runtime_executable_auth_functions: [...leastPrivilege.runtime_executable_auth_functions, 'ghm.auth_create_account(text)'] },
+  ]) {
+    assert.throws(
+      () => assertAuthIssuerDatabasePrivileges({ ...leastPrivilege, ...override }),
+      /database privileges failed least-privilege verification/,
+    );
+  }
+});
+
+
+test('rejects SECURITY DEFINER functions with unexpected owners or unsafe search_path', () => {
+  assert.throws(
+    () => assertAuthIssuerDatabasePrivileges({
+      ...leastPrivilege,
+      unsafe_security_definer_functions: ['ghm.auth_sensitive_operation()'],
+    }),
+    /unsafe_security_definer_functions/,
+  );
+});
+
+
+test('rejects issuer-only function grants to any non-owner principal other than the issuer', () => {
+  assert.throws(
+    () => assertAuthIssuerDatabasePrivileges({
+      ...leastPrivilege,
+      unsafe_function_grantees: ['ghm.auth_create_account(text)'],
+    }),
+    /unsafe_function_grantees/,
+  );
+});
+
+
+test('rejects PUBLIC EXECUTE on any SECURITY DEFINER function', () => {
+  assert.throws(
+    () => assertAuthIssuerDatabasePrivileges({
+      ...leastPrivilege,
+      public_executable_security_definer_functions: ['ghm.auth_sensitive_operation()'],
+    }),
+    /public_executable_security_definer_functions/,
+  );
+});

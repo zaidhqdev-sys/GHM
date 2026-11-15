@@ -4,6 +4,18 @@
 **Repository authority:** consolidated `main`
 **Reconciliation history:** the PR #125 baseline (`01bd40dabe0b0f02bb30d2f78267a0414d3d8356`) was followed by PR #126 (`aef8ecdeee241d31827f6fc42730f9a61f1ddea4`), PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`), PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), PR #129 (`9af7901b0baecbdc4b307f3a0a93e1643f006ca6`), and PR #130 (`14c805cfd749ed50493523972fdd0a7c359bbfce`), all merged on 2026-10-13. These SHAs identify historical reconciliation milestones, not live pointers to deployed Render code or database state. The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit is historical provenance. PR #130 subsequently merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`; pre-merge checkpoint language retained below is historical only.
 
+## Authentication Issuer / Actor Gateway integration status — 2026-11-12
+
+The isolated Authentication Issuer implementation is being developed on the dependent branch `construction/auth-issuer-isolation-20261112`, stacked directly on `integration/capability-gateway-qualification-20261110` (PR #272). It is not mainline, deployed, or production-enabled. PR #272 remains open and unmerged; do not merge it independently underneath the dependent issuer branch.
+
+The issuer database boundary is designed around an exact ten-function issuer allow-list, zero direct GHM table/view/sequence privileges, schema USAGE without CREATE, safe schema-owner future-function defaults, and a separately verified **two-function** Resource API auth-function allow-list (`auth_lookup_external_identity` and `auth_lookup_business_external_mapping`). Connect Business creation/mapping now runs through the signed `business.connect.provision` Actor Gateway operation introduced by migration `20261112080000_signed_connect_business_provisioning_gateway.sql`; direct runtime/application execution of `auth_link_business_external_mapping` is revoked. The manual issuer cutover and database-only rollback remain disposable-PostgreSQL-only. The latest dependent branch head must pass its own exact-head CI before this updated qualification is considered complete. The rollback does not restore binaries, signing keys, token pepper, secrets, routing, or deployments.
+
+Latest startup ACL regression checkpoint: head `8c6502a9faf8e31e66ca3afd07eb262c97f74d5c` failed the final issuer lifecycle qualification because the verifier counted trigger-returning functions as ordinary callable functions. The diagnostic showed the expected ten issuer functions and fourteen trigger functions; schema, relation, default ACL, and Resource API runtime checks were otherwise correct. The query now excludes trigger-returning functions and a source-contract regression protects that distinction. Fix commits are `c2ddd18d793b61fe20a017f26bfade8cdb0394a1` and `fe3b765e2e265817655359c9fd96977a3dca9179`; the handover-only follow-up is tracked in the current branch. Exact-head CI for the corrected head is pending and must be checked before any qualification claim.
+
+Recovery-token delivery remains unavailable: generic password-recovery and QuoteFlow migration-reset request routes return 503 until an approved delivery adapter exists. Do not add a paid provider without approval. Connect and QuoteFlow issuer-origin work remains on dependent, unmerged product branches; Connect encoded-path proxy bypass tests passed on its documented head, and QuoteFlow Gate A remains explicitly disabled by default. Neither product branch is deployed or cut over.
+
+Production issuer deployment/cutover remains blocked by the Render PostgreSQL role/ownership resolution, a fresh independently verified production backup (the last known backup is 4 November 2026), reviewed role/network/TLS topology, recovery delivery decision, exact-head qualification, and separately approved deployment/routing/cutover/rollback sequencing. No production database, credentials, secrets, service, deployment, or product routing was changed by this construction work. No paid infrastructure was introduced.
+
 ## Purpose
 
 This document is the current navigation point for GHM construction state. It reconciles the living architecture/evidence record against the consolidated mainline and explicitly separates qualified construction capability from remaining production-replacement work.
@@ -851,3 +863,562 @@ Before GHM removes auth routes from Resource API, add separate auth issuer/resou
 ## Latest predecessor CI result (2026-11-12)
 
 CI run #3493 completed successfully on predecessor commit `0f9349a`: both `quality` and `web-quality` passed, including the full build, migrations, tests and configured disposable PostgreSQL qualifications. Cross-product consumer-inventory commits were added afterward and are not covered by #3493. Current branch head therefore still needs exact-head CI confirmation.
+
+
+## Isolated auth issuer construction status (2026-11-12)
+
+Construction branch: `construction/auth-issuer-isolation-20261112`.
+
+An initial separate issuer process/app now exists under `src/auth-issuer/`, with a dedicated DB URL/pool, strict startup role assertion (`ghm_auth_issuer`), explicit production DB SSL mode, issuer-only signing/pepper construction, existing auth router contract, and health endpoint. Added principal/SSL/app tests, a `start:auth-issuer` script, CI-only disposable role creation and issuer environment placeholders.
+
+This is not a cutover: Resource API still registers auth routes and retains its signing/pepper code path. The issuer DB login has no auth function grants yet; no privilege migration, deployment or product-client changes. Cross-product auth/resource URL separation and Connect BFF issuer upstream split remain required. Recovery delivery and QuoteFlow reset services remain unavailable by default.
+
+CI runs #3508–#3510 are still in progress / superseded while commits were being added. The latest run against the exact current head must complete successfully before claiming build/test qualification. Detailed implementation and remaining security gates are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## Disposable auth issuer cutover qualification passed (2026-11-12)
+
+CI #3521 passed both quality and web-quality on `76adba8`. A real disposable `ghm_auth_issuer` login was proven locked before grants, then granted an exact 12-function auth allow-list in a CI-only SQL fixture. The real `ghm_runtime` login was denied on all 12 issuer-only functions (42501), while its Connect lookup-only `auth_lookup_external_identity` operation remained available. The issuer had no direct credential/session/identity table privileges.
+
+Positive issuer flows passed: registration, login, refresh rotation, logout, one-time recovery issuance/redemption, password reset, replay rejection, old-password rejection and new-password login. The disposable fixture is applied after the existing runtime tests/qualifications; no existing test assumptions were weakened.
+
+Still outstanding: positive QuoteFlow migration-reset enrollment/completion with a real issuer login; forced password-rehash qualification; recovery-token/email mismatch contract resolution; exact-head CI for the later CORS and environment-documentation commits; actual separate-service deployment and cross-product URL/proxy migration. Resource API still owns current auth routes and secrets. No production role/grant/secret/service/deployment changes.
+
+
+## Extended issuer lifecycle qualification passed (2026-11-12)
+
+CI #3528 passed quality + web-quality. The disposable issuer test now also forces password rehash-on-login and proves a subsequent normal login verifies the replacement hash. It exercises the full QuoteFlow migration reset using a credentialless active account, approved enrollment and matching Supabase external identity mapping; the issuer performs enrollment lookup, issues/consumes the token-bound recovery credential, completes reset once, rejects replay, transitions enrollment out of `reset_required`, and successfully logs in with the new password.
+
+Final output: 12 issuer-only functions, zero issuer direct secret-table privileges, 12 runtime permission denials, Connect lookup preserved, registration/login/forced rehash/refresh/logout passed, recovery replay/session revocation passed, QuoteFlow migration reset passed. Fixture setup uses the migrator with `SET ROLE ghm_schema_owner`; issuer operations use the real issuer login.
+
+CORS allow-list validation and explicit production proxy-hop configuration were added after #3528. CI against those later commits is pending; see the security handover. No production changes.
+
+
+## Cross-product auth issuer origin construction (2026-11-12)
+
+Optional issuer-origin separation has been added on construction branches:
+- GHM web: `VITE_GHM_AUTH_ISSUER_BASE_URL`; auth requests use issuer, resource requests remain on `VITE_GHM_API_BASE_URL`; fallback preserves current behavior.
+- ZAID Connect: `VITE_GHM_AUTH_ISSUER_BASE_URL` for native auth; optional server-only `GHM_AUTH_ISSUER_URL` for its existing browser-auth BFF; resource proxy remains on `GHM_INTERNAL_RUNTIME_URL`. Browser auth remains default-off.
+- QuoteFlow: `EXPO_PUBLIC_GHM_AUTH_ISSUER_URL`; auth calls use issuer while identity calls remain on `EXPO_PUBLIC_GHM_AUTH_BASE_URL`. Gate A remains disabled and Supabase coexistence is unchanged.
+
+Connect CI #292 and QuoteFlow CI #220 passed on their workflow-triggering commits; later final branch test commits still need exact-head rechecks. Full source paths, CI evidence and remaining end-to-end/deployment gates are in the security handover. No production URLs, environment variables, flags, deployments, secrets or service routing changed.
+
+
+## Render topology verified read-only (2026-11-12)
+
+Render inventory confirms the current `GHM-Internal-Runtime` service is a Free Frankfurt web service on `main`, build `npm ci && npm run build`, start `npm start`, health `/healthz`, auto-deploy disabled, public edge allow-list `0.0.0.0/0`. No dedicated Actor Gateway service appears in the current five-service inventory; only its source entrypoint/process contract is verified. Do not describe it as separately deployed until an actual service is found/created and qualified.
+
+Private service networking, trusted proxy chain, and an additional free service allocation remain unverified. Do not create services or change routing/secrets before these are confirmed. Detailed service inventory and next gates are in the security handover. No Render configuration was changed.
+
+
+## Issuer readiness and expanded ACL qualification (2026-11-12)
+
+The issuer now has separate liveness `/healthz` and DB-backed readiness `/readyz`; readiness returns 503 without a successful `SELECT 1` on its dedicated pool. Tests cover fail-closed and ready cases.
+
+The issuer ACL checks now inspect every GHM table/partition/view/materialized view/foreign table for direct privileges, not just credential tables. A variable rename regression caused #3544/#3545 to fail in the pre-grant qualification script; fixed in `f254435`. CI #3549 passed build, all migrations and the strengthened baseline; full suite and post-cutover issuer tests were still running at that checkpoint. Latest readiness and handover commits need exact-head CI.
+
+
+## Guarded issuer cutover SQL and minimal allow-list (2026-11-12)
+
+Added `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql` as a manual-only cutover artifact. It preflights the dedicated issuer role, removes direct issuer relation/function privileges, revokes auth lifecycle functions from PUBLIC/runtime and grants the reviewed allow-list. CI #3553/#3554 passed the disposable qualification using this actual cutover SQL.
+
+A caller audit found `auth_validate_session` had no active production caller and was used only by database tests. Removed its persistence API method and issuer grant; database tests now call it under the schema-owner role. Runtime denial remains explicitly tested. The allow-list is reduced from 12 to 11 functions. CI #3557/#3558 are validating this reduced list and owner-only test path; wait for exact-head success before marking it qualified. The cutover SQL remains manual only and has not been applied to any live database.
+
+
+## Token-bound password reset correction (2026-11-12)
+
+Added migration `20261112020000_add_token_bound_password_recovery_reset.sql` with a one-time recovery-token-bound reset operation. It verifies the submitted normalized email matches the token's active account, refuses QuoteFlow migration-enrolled accounts, updates only password hash/Argon2 parameters (not login email), consumes the token and revokes all sessions atomically.
+
+Persistence now calls this single function. The email field remains in the HTTP contract as an account-binding check, not an email-change instruction. Standalone `redeemRecovery` was removed from the production persistence interface after caller audit found no active app caller; database tests invoke the legacy wrapper under schema-owner test credentials only.
+
+The issuer allow-list is now 10 functions: registration, password lookup, password set/rehash, session creation, refresh, logout, recovery issuance, token-bound password reset, QuoteFlow enrollment lookup and QuoteFlow completion. Legacy redemption wrappers are excluded and revoked at manual cutover. Exact-head CI #3571–#3573 is validating the migration, persistence changes, and reduced allow-list; prior runs found stale test mocks/Buffer typing, now corrected.
+
+
+## Conditional password rehash and stale-login race protection (2026-11-12)
+
+Added migration `20261112030000_add_conditional_password_rehash.sql`. Login rehash now uses `auth_rehash_password_if_unchanged`, which updates only if the stored active credential hash still equals the hash verified by that login. If another reset wins the race, the issuer re-reads and re-verifies the current credential before issuing a session. This prevents stale login from restoring an old password.
+
+Removed general `setPassword` from the production persistence API; `auth_set_password` remains an owner-internal operation for the distinct QuoteFlow migration-reset function and is not granted to the issuer. Manual cutover grants conditional rehash instead. The disposable issuer script now includes an interleaved concurrent-reset/rehash adversarial scenario. CI #3588 is validating the corrected reset migration, rehash migration, test suite and manual cutover.
+
+
+## 10-function auth issuer cutover qualification passed (2026-11-12)
+
+CI #3588 passed both quality and web-quality on code commit `68b5713`. The full test suite passed 894/894, all migrations and runtime-boundary checks passed, and the guarded manual cutover SQL succeeded in disposable PostgreSQL.
+
+Post-cutover output: exact 10-function issuer allow-list; zero direct GHM relation privileges; 14 tested runtime issuer/legacy-function denials; Connect lookup preserved; registration/login/conditional rehash/concurrent-reset protection/refresh/logout passed; token-bound recovery email mismatch/replay/session revocation passed; QuoteFlow migration reset passed.
+
+Final allow-list: account creation, password-hash lookup, conditional password rehash, session creation, refresh rotation, refresh-token logout, recovery issuance, token-bound email-preserving password reset, QuoteFlow enrollment lookup and QuoteFlow reset completion. General `auth_set_password` is not granted to issuer; only the QuoteFlow SECURITY DEFINER owner path uses it. Old redemption wrappers and unused session validation are excluded.
+
+The cutover SQL ran only on disposable CI PostgreSQL after all ordinary runtime tests. No production grants, roles, secrets, services, routing or deployments were changed. Current construction branch documentation commits are later than #3588 and require exact-head CI confirmation. Deployment/routing and product production env cutover remain outstanding.
+
+
+## 2026-11-12 — Authentication issuer isolation: Resource API no longer owns issuance routes
+
+Exact current construction head: 1cc09f83c236f9061e89dcf332c048845fd83185; GitHub Actions #3597 passed both quality and web-quality. Quality result: 896 tests passed, 0 failed; full migrations, all disposable PostgreSQL qualification steps, runtime boundary checks and the guarded manual issuer cutover/lifecycle qualification passed.
+
+The production Resource API entrypoint explicitly disables authentication issuer routes. With those routes disabled, the app does not construct auth persistence and does not load the refresh/recovery token pepper. Its bearer verifier loads public ES256 verification keys only. The isolated issuer is the only process expected to hold the signing private key, token pepper and dedicated issuer DB URL. Regression test: all eight issuer lifecycle/recovery/QuoteFlow reset routes return 404 on a Resource API instance with issuer routes disabled.
+
+Cross-product split-origin clients are implemented and exact-head CI passed:
+- GHM web: optional VITE_GHM_AUTH_ISSUER_BASE_URL for auth; VITE_GHM_API_BASE_URL for resources.
+- ZAID Connect: branch head 5b564c09148948b7a854bc73dbe920844b4b16ce, CI #293 passed. Native auth uses optional issuer URL; resources use the resource API URL. The server-only same-origin BFF routes only four browser auth operations to optional GHM_AUTH_ISSUER_URL; browser auth remains disabled by default.
+- Historical main-based QuoteFlow branch head 321eb8d8322fcc1d07ce576d382bb4b34af1573f passed CI #221; superseded by the PR #25-based dependent branch. Supabase coexistence described current main only, not the PR #25 stack.
+
+No client environment flags or issuer URLs have been enabled. Render issuer hosting/private networking remains unverified. Password recovery and QuoteFlow migration-reset delivery services are not wired into the issuer yet; their request routes remain unavailable (503), as before. End-to-end non-production service routing is the next gate. The guarded issuer privilege cutover remains manual-only and was applied only in disposable CI PostgreSQL. No production state was changed.
+
+
+## 2026-11-12 — Render Free networking verified; issuer deployment remains non-production gated
+
+Read-only Render inventory confirms five web services. GHM-Internal-Runtime is Free/Frankfurt/main with auto-deploy disabled. ghm-identity-qualification is also Free/Frankfurt but is an active service on integration/ghm-identity-merge-candidate-20261018, auto-deploy enabled, last live deploy 2026-11-04 (ee91f42503e064571d57e87ed0d5cd1e9d5badd5), and no Render health-check path. It is not an unused allocation; do not repurpose it before its current purpose, credentials and DB boundary are verified. No dedicated issuer service exists.
+
+Official Render docs now resolve the network limitation: same-workspace/same-region services share a private network, but Free web services can send and cannot receive private-network traffic. This applies to the Free Resource API and any Free issuer. Free web services can receive public HTTPS, but spin down after 15 minutes idle, take about one minute to cold-start, and Render says Free instances are not for production. Sources: https://render.com/docs/private-network and https://render.com/docs/free.
+
+The three product clients do not need issuer-to-resource private calls: only login/refresh/logout go to the issuer; resource/identity calls remain on the Resource API. Therefore a public HTTPS issuer endpoint could be evaluated for non-production, with exact GHM web CORS origins, explicit measured proxy hops, TLS, isolated DB identity, and tested rate limits. CORS is not an authorization boundary. express-rate-limit is process-local and resets on process restart; do not claim distributed abuse protection.
+
+No Render resources, service settings, secrets, database grants, deployments or product environment values were changed. The existing identity qualification service has not been repointed or redeployed. Do not use the live GHM database for a non-production issuer. A verified isolated non-production DB principal and safe service allocation are prerequisites. No paid service/database may be created. Free Render is not a production availability solution for auth.
+
+End-to-end non-production routing remains blocked until an isolated DB and safe service allocation are independently verified. Production cutover additionally requires fresh independently verified backup, approved role provisioning, successful non-production end-to-end routing, and explicit approval. PayFast remains paused; approved legal documents remain parked.
+
+
+### 2026-11-12 — Render Postgres inventory: no free isolated issuer database available
+
+Read-only Render inventory returned three databases:
+- ghm-db / ghm_db: production primary, available, paid 0.1c-256mb. Not a non-production target.
+- ghm-payfast-sandbox-db / ghm_payfast_sandbox_db: Free, but billing-suspended and expired 2026-11-08. Do not repurpose; it is reserved for PayFast sandbox qualification.
+- ghm-identity-qualification-20261018 / ghm_identity_qualification_20261018: available paid basic_256mb, 15 GB disk. Dedicated qualification DB, but ownership/consumers/roles/data contract not yet audited for issuer suitability.
+
+No available Free Postgres DB exists in the workspace. Hosted non-production issuer deployment is blocked unless an already-paid qualification DB is first audited and explicitly approved for reuse, or a free isolated DB becomes available. Do not connect issuer to production ghm_db, repurpose the identity qualification DB without approval, or create paid infrastructure. Continue disposable PostgreSQL CI qualification. No DB connection/query or mutation, grants, service settings or environment variables were changed in this inventory.
+
+
+### PR #272 / Authentication Issuer branch ancestry (2026-11-12)
+
+PR #272 remains open/unmerged with green current checks. The issuer construction branch is 140 commits ahead and 0 behind PR #272's head, so the issuer work is layered directly on the Actor Gateway integration stack. Do not merge PR #272 independently underneath this branch or create a duplicate integration. Preserve the separate construction branch until issuer routing, deployment constraints, documentation and exact-head CI are fully reconciled.
+
+
+The existing paid identity-qualification database could not be audited through the read-only Render Postgres connector because its IP allow-list is empty. No allow-list change was made. Its schema, roles, migration state, data and service consumers remain unknown; do not assume it is reusable or empty.
+
+
+## 2026-11-12 — Issuer CORS and rate-limit tests passed
+
+Code/test head `51e1faa9836d09c8cf8f6eae4b97a06e82467115`, GitHub Actions #3606: quality and web-quality passed; 898 tests passed, 0 failed, plus 15 additional qualification checks passed. New HTTP regressions verify exact allowed CORS preflight origin, no CORS grant to an unlisted origin, and 10 successful login requests followed by 429 on request 11. Existing test verifies rate limiting uses the rightmost trusted forwarded client IP.
+
+Current per-process auth route limits: register/login 10 per 15 minutes; password recovery and QuoteFlow migration-reset recovery request/completion 5 per 15 minutes; refresh 60 per 15 minutes; browser-cookie logout 60 per 15 minutes. These are process-local, not distributed or edge abuse controls. CORS is not authentication/authorization. Do not claim deployed proxy behavior until hop count is measured on the actual issuer ingress.
+
+This is the qualified code/test head, not the latest documentation head. The latest handover/state commit still requires exact-head CI.
+
+
+### Issuer database transport / temporary Free Postgres caveats
+
+Render Free Postgres is 1 GB, expires after 30 days, and only one Free Postgres database can be active per workspace. It could only serve as a temporary disposable qualification target, not durable issuer storage or a backup. None was available in the inventory; no new database was created.
+
+The issuer's production database SSL mode must be explicit. Current `external` mode encrypts with `rejectUnauthorized: false` and therefore does not authenticate the server certificate. `internal` mode disables TLS and is only appropriate after verifying a same-region Render private-network route. No production mode or deployment topology has been selected.
+
+
+### Production remains unchanged — issuer separation is not deployed
+
+Render's GHM-Internal-Runtime service still points to `main`, auto-deploy is disabled, and the latest live deployment inventory entry is `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` (2026-11-10). The issuer-isolation branch and its split-origin clients have not been deployed. Production still uses its existing Resource API authentication arrangement. Do not remove current Resource API signing/token secrets or revoke current auth grants until an approved coordinated issuer cutover. No issuer service, production issuer role, env var or routing change has occurred.
+
+
+## 2026-11-12 — Issuer cutover/rollback hardening and recovery wiring
+
+Found and closed an overlooked runtime privilege: `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint, text, text, text, text, text)` was still executable by `ghm_runtime`. Added migration `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql`, manual issuer-cutover revocation for both runtime and issuer, disposable denial qualification, and a migration-contract regression. Enrollment creation remains a migrator/`ghm_schema_owner` operation.
+
+The issuer manual cutover now explicitly revokes schema `ghm` CREATE from `ghm_auth_issuer`. Qualification checks direct table/view and sequence privileges, schema CREATE, the exact issuer function allow-list, and runtime denials.
+
+Added `database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql`. It removes issuer auth-function/schema access and restores only the documented pre-cutover runtime auth-function allow-list. It does not restore migration-only functions or direct table/sequence privileges. Qualification executes this rollback only on disposable PostgreSQL and checks both role ACLs. It does not qualify service, secret, key, pepper or client-routing rollback.
+
+The issuer now wires QuoteFlow migration-reset completion and has an HTTP test that verifies approved email is used for post-completion login. Both generic password-recovery request and QuoteFlow migration-reset request remain 503 because no delivery adapter exists. Recovery delivery is therefore still a go-live blocker.
+
+Full sequence, exact limitations and rollback prerequisites: `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`. Design-only; no production changes authorized.
+
+Issuer branch ancestry is 140 commits ahead and 0 behind `integration/capability-gateway-qualification-20261110`. PR #272 remains the upstream Actor Gateway integration; do not merge it independently underneath this dependent construction branch. Latest exact-head CI is pending; production remains unchanged.
+
+
+### 2026-11-12 — Future GHM function default ACL
+
+Added migration `20261112050000_revoke_public_default_function_execution.sql` to revoke PostgreSQL's default PUBLIC EXECUTE privilege for all future functions created by `ghm_schema_owner`. A disposable PostgreSQL probe function verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` receive no implicit EXECUTE, then drops the function. This does not change existing function ACLs; existing functions remain governed by their explicit migrations/cutover.
+
+Issuer server wires QuoteFlow migration-reset completion; the reset request and generic recovery request remain unavailable (503) until a delivery adapter is configured. This is a go-live blocker, not a passing recovery delivery flow.
+
+### 2026-11-12 — Exact issuer qualification passed
+
+Construction branch exact head f678ea8d3a6f36556bd768318919134fa3241634, GitHub Actions #3648: quality and web-quality passed; 900/900 main tests and 15/15 additional disposable PostgreSQL qualification checks passed.
+
+Coverage includes issuer principal baseline, future-function default ACL probe (PUBLIC/runtime/issuer all denied), issuer ten-function allow-list, zero direct table/view/sequence grants, no schema CREATE, guarded cutover, runtime denials, QuoteFlow migration-reset completion and fail-closed request, plus disposable rollback restoring the documented runtime function allow-list.
+
+Run #3647 was an assertion-shape failure: diagnostic metadata was included in a deep equality comparison; actual ACL booleans were all false. The assertion was corrected to compare only those booleans. #3648 passed on the exact corrected head.
+
+This remains construction/disposable qualification. No production service, secret, DB grant, migration, routing or deployment changed. Generic recovery and QuoteFlow reset request delivery remain 503 until an approved delivery adapter is configured.
+
+
+## 2026-11-12 — Cross-product issuer integration and PR stack snapshot
+
+Client-origin changes are now stacked on the actual open product PR heads:
+- Connect dependent branch: `construction/ghm-auth-issuer-origin-connect-20261112`, based on PR #68, 9 ahead / 0 behind. Code CI #296 and documentation-head CI #298 passed. The BFF now blocks encoded/case-variant native auth paths.
+- QuoteFlow dependent branch: `construction/ghm-auth-issuer-origin-quoteflow-20261112`, based on PR #25, 10 ahead / 0 behind. CI #224 passed (8 suites, 55 tests). Auth and resource origins are separated; Gate A is opt-in and defaults false. PR #25 itself hard-coded Gate A true and must not be merged/released as-is.
+No client changes were deployed or merged.
+
+GHM open PR review:
+- #272 is the unified Actor Gateway integration (open, non-draft, mergeable); exact head 0eda4ea has green quality, web-quality and Cloudflare Pages checks. Still do not merge until all GHM docs are fully reconciled.
+- #250, #268, #269 are ancestors already included in #272 (0 behind); do not merge separately.
+- #271 and #270 are divergent older drafts with overlapping profile/supplier gateway work; review unique diffs before closing/superseding.
+- #243/#244 form a separate supplier/analytics stack and contain additional work not all in #272; preserve dependency.
+- #237 older Business-profile compatibility branch diverges; compare SQL before superseding.
+- #264 docs-only checkpoint has mergeability conflict; reconcile with current #272 handovers.
+- #233 PayFast remains parked pending sandbox availability.
+- #201 QuoteFlow legal acceptance remains parked pending the founder's instruction to defer legal work.
+
+Earlier standalone Connect/QuoteFlow branches based on main are superseded by the stacked branches. No branch-delete operation is exposed in this session, so they remain but must not be used. No merges or production changes occurred.
+
+
+### External issuer ingress requirement
+
+QuoteFlow's native mobile app calls the issuer URL directly from outside Render, so a private-only issuer is not reachable. A future deployment needs reviewed public HTTPS ingress or an approved public gateway. Connect's native browser bearer flow also calls the issuer origin directly and requires exact CORS; its optional browser-cookie mode uses the same-origin Vercel BFF. Public issuer ingress does not justify public database exposure.
+
+
+### Issuer startup ACL enforcement added
+
+The issuer now verifies database ACLs before opening its HTTP listener. Startup fails closed unless schema USAGE exists, schema CREATE is absent, no direct table/view/foreign-table/sequence privileges exist, the executable function set exactly matches the ten-function allow-list, future function defaults are safe, and ghm_runtime has no issuer lifecycle function execution grants.
+
+Added a pure privilege verifier, unit tests, and a source contract test that verification occurs before server.listen. Exact-head CI pending. No production deployment or grants changed.
+
+
+Historical checkpoint: the Resource API runtime previously had a three-function auth allow-list. The signed Connect Business gateway migration below supersedes that state and leaves only the two lookup functions executable by runtime.
+
+
+### 2026-11-12 — Signed Connect Business provisioning gateway
+
+The runtime's provider-business mapping mutation has been moved behind `ghm.gateway_provision_connect_business`, a signed Actor Gateway operation. Migration `20261112080000_signed_connect_business_provisioning_gateway.sql` adds operation `business.connect.provision`, creates Business + owner membership + external mapping atomically, and resolves existing mappings only for an active member or system admin. It serializes by provider/external ID and locks actor/membership rows.
+
+The old `auth_link_business_external_mapping` SECURITY DEFINER function is now schema-owner-only; PUBLIC, runtime, migrator, Actor Gateway, issuer and payment-provider EXECUTE are revoked. Runtime's exact auth-function allow-list is now two lookups. Actor Gateway's exact signed/typed allow-list is now 25 functions: the 24 previously qualified signed/typed operations plus the new signed Connect Business provisioning operation.
+
+`ConnectBusinessAdapter` now calls the signed gateway HTTP client, and the Actor Gateway route, client tests, route tests, migration contract and live disposable PostgreSQL qualification are added. The adapter is not yet mounted in the main Connect service router; full product API wiring remains a separate integration gate. The new DB operation denies resolving an existing mapped Business without active membership (unless system admin), correcting the previous cross-business disclosure behavior.
+
+No production grants or data were changed. The current exact branch still requires a fresh full CI run after these changes.
+
+
+
+
+### 2026-11-12 — Actor Gateway exact database ACL guard
+
+Actor Gateway startup previously asserted its database login identity but did not verify its complete effective GHM function/relation ACL. Added a verifier for the exact 25-function signed-operation allow-list, zero direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on its executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults. The verifier is wired before the HTTP listener; disposable qualification now calls the same verifier and unit/source-contract regressions cover the boundary. The issuer's future-default check also treats grants to `ghm_actor_gateway` as unsafe.
+
+This is an enforcement/qualification change, not a grant change. Exact-head CI and disposable PostgreSQL Actor Gateway qualification are pending; do not claim the 25-function boundary qualified until they pass.
+
+
+### 2026-11-12 — Revoke unsigned Actor Gateway entry points
+
+Source review confirmed that the current pre-cleanup gateway ACL included 25 functions: 24 signed/typed operations plus the surviving unsigned `assert_actor_gateway(bigint)` helper. The three later signed read projections cover business hours and trust-score reads. Nine older overloads had already been explicitly dropped by earlier signed-assertion migrations. The surviving helper was not used by current gateway code; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes PUBLIC, runtime, migrator and gateway execution from that one helper. The exact gateway allow-list is now 25 signed/typed operations, and disposable qualification requires SQLSTATE 42501 for the unsigned helper. Exact-head CI and disposable PostgreSQL qualification remain pending.
+
+
+
+### Superseding authentication issuer / Connect provisioning qualification — 2026-11-12
+
+The previous three-function Resource API allow-list note is historical and superseded. Migration `20261112080000_signed_connect_business_provisioning_gateway.sql` moved Connect Business creation, owner membership and external mapping into one signed Actor Gateway SECURITY DEFINER transaction. The gateway binds the verified actor, exact operation and canonical request context; enforces an active business/admin actor and existing-mapping membership; serializes by external Business ID; and performs canonical Business + owner membership + mapping creation atomically. The gateway operation is granted only to `ghm_actor_gateway`; the internal `auth_link_business_external_mapping` helper is revoked from PUBLIC and all application roles including runtime, migrator, Actor Gateway, issuer and payment provider.
+
+The current Resource API runtime auth-function allow-list is exactly two functions: external person-identity lookup and external business-mapping lookup. The manual issuer cutover revokes direct runtime execution of the mapping-link helper. The disposable issuer cutover script expects those two functions after cutover and after database-only rollback, and continues to assert that runtime cannot call the mapping-link helper. The runbook and manual cutover comment have been reconciled to the signed gateway architecture.
+
+The previous green exact-head CI was run on `4abb42e029f774ec11b90705b59222d042ee5584` before the signed Connect provisioning gateway was added. It is historical evidence only and does not qualify the newer gateway/cutover integration. The initial follow-up commit `a650c699ba6e7a4c800b80b5ec18c87c6992b490` incorrectly assumed the older three-function architecture and was superseded before qualification. Do not use its intermediate state as evidence.
+
+Current dependent branch: `construction/auth-issuer-isolation-20261112`. Exact-head CI for the corrected two-function qualification and reconciled documentation is pending; refresh the exact SHA and run before any qualification claim. PR #272 and the dependent issuer branch remain unmerged. No production grants, data, secrets, services, deployments, routing or paid resources were changed.
+
+### 2026-11-12 — exact-head issuer / Actor Gateway qualification
+
+Exact candidate `0f12703108b1b42f6efcd8fe49970f5c28dd052f` passed run `43159174319` (`quality`, `web-quality`, Cloudflare Pages). The run completed the full build, test suite, migration chain, Actor Gateway 25-function ACL, signed Connect Business provisioning membership/atomicity/rollback, all existing signed gateway qualifications, runtime boundary checks, and disposable Authentication Issuer cutover/lifecycle/rollback.
+
+The issuer qualification reported an exact ten-function issuer allow-list, zero direct issuer relation privileges, 16 expected Resource API runtime denials, the exact two-function Resource API auth lookup allow-list, safe default function privileges, successful startup ACL verification and successful disposable database-only rollback. The PostgreSQL array-literal trailing commas in the startup verifier and qualification runner were corrected before this green exact-head run.
+
+This does not authorize production mutation. PR #272 remains open/unmerged; the issuer branch is dependent on it. Fresh independently verified production backup, Render role/ownership resolution, reviewed network/TLS topology, recovery-delivery readiness, client/service compatibility, and separate founder approvals remain blocking. No production resources or paid services were changed.
+### 2026-11-12 — current exact-head qualification and migrator role gate
+
+Latest exact candidate `465b8e034243c80bf7efe6cc6ea8b27705176760` passed run `43160050121` (`quality`, `web-quality`, Cloudflare Pages). The migration runner now validates the exact `ghm_migrator` → `ghm_schema_owner` SET-only membership and both role attribute sets before applying migrations. Disposable migration, full suite, Connect Business signed provisioning, Actor Gateway qualification, issuer cutover/lifecycle/rollback all passed.
+
+Production Render role flags and membership options still require independent inspection against the new gate before any live migration. PR #272 remains open/unmerged; no production changes or paid services.
+### 2026-11-12 — migrator direct privilege qualification
+
+Latest candidate `5a1b26ab65c69bab654ba3b1c4fc8610123481cd` passed run `43160516327` (`quality`, `web-quality`, Cloudflare Pages). The migration runner now verifies before `SET ROLE` that `ghm_migrator` has database CONNECT only, no database CREATE, no GHM schema USAGE/CREATE, and no direct GHM table/view/sequence privileges, in addition to the exact single non-inheritable SET membership to the NOLOGIN schema owner. Full migration chain, test suite, Actor Gateway and issuer cutover/lifecycle/rollback qualifications passed.
+
+Live Render role and ACL inspection remains a production gate. No production changes or paid services.
+## Exact database principal matrix — disposable qualification (2026-11-12)
+
+The following principal boundaries are enforced by application startup or the migration runner and exercised by disposable PostgreSQL 18 CI. This is not evidence that production Render currently matches; production inspection remains mandatory.
+
+| Principal | Database / schema boundary | Role and object authority |
+|---|---|---|
+| `ghm_runtime` (Resource API) | Database CONNECT; no database CREATE. GHM schema USAGE; no schema CREATE. | LOGIN / NOINHERIT, no memberships or elevated role flags. Retains application-specific relation/function privileges. Exact auth-function set: two lookup functions only. |
+| `ghm_auth_issuer` | Database CONNECT; no database CREATE. GHM schema USAGE; no schema CREATE. | LOGIN / NOINHERIT, no memberships/elevated flags, zero direct relation privileges, exact ten-function allow-list, safe future-function defaults. |
+| `ghm_actor_gateway` | Database CONNECT; no database CREATE. GHM schema USAGE; no schema CREATE. | LOGIN / NOINHERIT, no memberships/elevated flags, zero direct relation privileges, exact 25 signed/typed function allow-list, no PUBLIC or Resource API execution of gateway functions. |
+| `ghm_migrator` | Database CONNECT only; no database CREATE, no GHM schema USAGE/CREATE, no direct GHM relation or sequence privileges. | LOGIN / NOINHERIT, no elevated flags, exactly one direct membership to schema owner with ADMIN FALSE / INHERIT FALSE / SET TRUE. |
+| `ghm_schema_owner` | Owns GHM schema and objects; has controlled database/schema DDL authority required by migrations. | NOLOGIN, no elevated role flags, no direct role memberships. Authority is entered only by the dedicated migrator using the exact SET-only membership. |
+
+Exact-head disposable CI evidence: run `43161326835` at `2b2014afff8dc605ab427a15256a41f89c70adab` passed quality, web-quality, Cloudflare Pages, build, migrations, full suite, Connect Business provisioning, Actor Gateway cutovers, issuer cutover/lifecycle/runtime denials and database-only rollback. Runtime, issuer and Actor Gateway startup verifiers now assert database CONNECT without CREATE; runtime additionally requires GHM schema USAGE without CREATE.
+
+Before production migration/cutover, independently inspect live Render role attributes, memberships, membership options, database privileges, schema privileges, object ACLs and ownership against this matrix. Do not infer live compliance from disposable CI. No production changes or paid services were made.
+
+## 2026-11-12 — manual issuer SQL operator identity guard
+
+The manual Authentication Issuer cutover and rollback scripts now independently require `session_user=ghm_migrator` and `current_user=ghm_schema_owner` before changing privileges. The previous CI harness used a controlled role for rollback but the cutover step ran as disposable PostgreSQL superuser; the SQL artifacts themselves did not enforce the operator identity. Both scripts now fail closed on an unexpected caller.
+
+The migration-contract test covers both scripts. CI invokes the cutover through the dedicated migrator login, performs `SET ROLE ghm_schema_owner`, includes the manual SQL in the same psql session, and resets role afterward.
+
+The prior green run `43161326835` at `2b2014afff8dc605ab427a15256a41f89c70adab` predates this change and must not be used as qualification evidence for it. Latest known branch commit at this documentation update: `7569ea12d8261eff341fe06feae95e3aa7e11dba`; exact-head CI remains required. No production operation was performed.
+
+
+## 2026-11-12 — startup default-function ACL coverage correction
+
+Security review found that the Authentication Issuer and Actor Gateway startup ACL queries checked only global function default ACLs and a hard-coded list of known application-role grantees. They now inspect both global and GHM-schema-specific function defaults and reject EXECUTE grants to every non-owner grantee, including PUBLIC and unexpected roles. Regression source-contract checks cover both verifiers. Exact-head PostgreSQL 18 qualification is still required to validate catalog behavior against actual default-ACL fixtures.
+
+Manual issuer cutover and rollback SQL now fail closed unless the session login is `ghm_migrator` and the effective role is `ghm_schema_owner`. CI invokes cutover through that restricted identity in one psql session. Issuer allow-list: ten functions. Rollback Resource API authentication allow-list: fourteen functions; QuoteFlow migration-reset enrollment registration remains excluded.
+
+The issuer branch is separate from open/unmerged upstream PR #272. A live comparison during this audit reported 411 commits ahead and 0 behind the integration base; this is diagnostic only and is not merge readiness. The available GitHub workflow-run view did not expose push-triggered runs for this branch, so exact-head CI status is unverified. Previous green run `43161326835` predates these changes and is historical only.
+
+Latest source/test correction before this documentation update: `419dd4470268b5811dd9197ba36c9e40b87f4b1b`. Production remains untouched; no paid resource was created.
+
+
+## 2026-11-12 — schema-specific default-ACL adversarial qualification added
+
+The issuer cutover qualification now installs a temporary GHM-schema-specific function default EXECUTE grant for the unexpected non-owner role `postgres`, proves both Authentication Issuer and Actor Gateway startup verifiers reject it, revokes the probe grant through the restricted migrator/schema-owner path, and proves both return to a safe baseline. The fixture is confined to the guarded disposable `ghm_disposable_test` database and is covered by static source-contract tests. Exact-head PostgreSQL 18 CI remains unverified and is required before calling this qualified.
+
+Latest qualification-source/test commit before this state update: `c2e345440978716bc221cbf8aa486dd9d8d173a6`. No production changes or paid resources.
+
+
+## 2026-11-12 — SECURITY DEFINER owner and search_path enforcement
+
+Added manual-free migration `20261112090000_pin_security_definer_search_path.sql`. It fails closed if any GHM SECURITY DEFINER function is not owned by `ghm_schema_owner`, then pins every GHM SECURITY DEFINER function to `pg_catalog, ghm, pg_temp` so caller temporary objects cannot shadow trusted objects. Both issuer and Actor Gateway startup ACL verifiers now fail closed on any SECURITY DEFINER function with unexpected ownership or search_path; unit/source-contract tests and disposable qualification assertions were added.
+
+This is source-level hardening awaiting exact-head PostgreSQL 18 CI. The inspected commit status endpoint returned no status checks; do not claim qualification passed. Production remains untouched.
+
+
+## 2026-11-12 — SECURITY DEFINER metadata exact-head qualification passed
+
+Exact HEAD `b0711ccebc4adb82fc24256a40a812d0335f8702` passed CI run `43178029417` (`quality` and `web-quality`). PostgreSQL 18.6 applied the full migration chain, including the SECURITY DEFINER owner/search_path migration; issuer and Actor Gateway principal qualification, full test suite, migration policy, runtime boundary, guarded disposable issuer cutover, issuer lifecycle/runtime-denial and database-only rollback all passed. The issuer cutover dollar-quote guard and revised temporary-safe path expectations are included.
+
+This is disposable qualification only. No production changes or paid resources. Upstream PR #272 remains open/unmerged; issuer branch remains dependent and is not independently mergeable.
+
+
+## 2026-11-12 — complete direct function-grantee enforcement passed
+
+Issuer and Actor Gateway startup ACL verifiers now reject direct EXECUTE grants to every non-owner principal except their respective dedicated login. Disposable PostgreSQL qualification temporarily grants issuer and gateway functions to `ghm_payment_provider`, proves both verifiers detect the grants, revokes them through the restricted migrator/schema-owner path, and confirms clean baselines.
+
+Exact source HEAD `1db5f78b8a0f0405586fc9ae2675f16732e9374e` passed CI run `43179755317` (`quality` and `web-quality`), including PostgreSQL 18.6 full migrations, principal checks, full suite, runtime boundary, guarded issuer cutover, lifecycle, runtime denials and database-only rollback. Disposable evidence only; production untouched and no paid resources.
+
+
+## 2026-11-12 — PUBLIC execution denied for every GHM SECURITY DEFINER function
+
+Authentication Issuer and Actor Gateway startup privilege verifiers now independently enumerate PUBLIC EXECUTE grants across every SECURITY DEFINER function in schema `ghm`, not merely the service's callable allow-list. Both reject any result. Tests cover assertion rejection, and disposable PostgreSQL qualification temporarily grants PUBLIC EXECUTE on one function from each service, proves detection, revokes the grants and verifies a clean baseline. This is still awaiting exact-head PostgreSQL 18 CI evidence.
+
+The audit remains scoped to GHM-schema SECURITY DEFINER functions; other schemas/extensions and function-body/dynamic-SQL safety need separate review. Latest code/test commit before this state update: `e4a644825824b61db0692c479a71edbdc23b2ebf`. Production untouched.
+
+
+## 2026-11-12 — pre-cutover runtime grant snapshot and rollback proof passed
+
+The CI now verifies the exact pre-issuer Resource API runtime auth-function set before applying manual issuer cutover. It requires the documented 16 functions, rejects unexpected direct grants, and explicitly preserves the documented `ghm_migrator` grant on `auth_lookup_business_external_mapping`. The subsequent disposable rollback test verifies those exact runtime grants are restored and issuer grants are removed.
+
+Both issuer and Actor Gateway default-ACL verifiers now require the global schema-owner function default ACL row to exist, while checking both global and schema-specific rows for non-owner grants.
+
+Exact HEAD `405a220d408cb3c2f176131173fedb9200f62635` passed CI run `43181545588` (`quality` and `web-quality`), including PostgreSQL 18.6 full migration, all tests, principal checks, pre-cutover snapshot, manual cutover, issuer lifecycle/runtime denials and database rollback. Disposable evidence only; production remains untouched.
+
+
+## 2026-11-12 — SECURITY DEFINER audit scope and CI status
+
+The source-body pass found the GHM profile function's dynamic SQL uses fixed identifier fragments and parameter-bound values; the signed profile wrapper rejects supplier classification fields. Founder directory review functions remain disabled and runtime-revoked. Issuer/Actor Gateway role checks reject memberships and elevated attributes.
+
+**Qualification correction:** CI run `43181545588` passed at `405a220d408cb3c2f176131173fedb9200f62635`, but later PUBLIC-definer verifier and adversarial-test commits followed. Latest code/test SHA `e4a644825824b61db0692c479a71edbdc23b2ebf` has no verified exact-head CI run/status. Current issuer branch HEAD is `1095dc5619c013d8efe53fb416e846bad842a3e4`; PR #272 remains separate, open and unmerged.
+
+**Open coverage gaps:** PUBLIC EXECUTE is now checked across all GHM SECURITY DEFINER functions, but direct non-owner grants are not yet inventoried across every GHM SECURITY DEFINER function; the current direct-grantee checks remain service-allow-list scoped. Ownership/search_path/PUBLIC scans also remain GHM-schema scoped. A whole-database non-system SECURITY DEFINER inventory, extension/legacy schema review, and explicit function-to-role EXECUTE exception matrix are required before the security audit can be called complete. No production changes or cutover.
+
+Full evidence and next steps: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-12 — Whole-database SECURITY DEFINER inventory tooling
+
+Added read-only `scripts/audit-security-definer-authority.mjs`, its contract test, and `npm run audit:security-definer-authority`. It is restricted to local `ghm_disposable_test`, and inventories SECURITY DEFINER functions/procedures across all non-system schemas, including owner, definition, search_path/settings, extension membership, direct ACL grantor/grantee/grant-option entries, effective EXECUTE roles, role memberships and function default ACLs. It makes no changes and reports `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`.
+
+**Not yet qualified:** the inventory has not been executed against disposable PostgreSQL in this session. No actual grant matrix or cross-schema findings are claimed. The contract test is included in `npm test`; exact-head CI and database execution remain pending. Do not merge or cut over. Full next steps are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+Inventory runner refinement: full catalog JSON is saved to `tmp/security-definer-authority-audit.json` by default; terminal output is a compact summary. It reads `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL` or local `GHM_MIGRATOR_DATABASE_URL`, but rejects anything other than localhost `ghm_disposable_test`. Not yet executed; no findings claimed.
+
+
+## 2026-11-12 — Whole-database security inventory integrated into PostgreSQL 18 CI
+
+The read-only SECURITY DEFINER inventory now also reports role attributes, all non-system schema owners/ACL/effective privileges, current database owner/ACL/effective privileges, trusted/untrusted languages, extensions, membership options and function default ACLs. CI runs the inventory after migrations on PostgreSQL 18 and uploads `security-definer-authority-inventory` for 14 days. It uses the disposable CI database only and makes no database changes. Preliminary findings remain manual-review items, not automatic failures or approvals.
+
+Latest observed pre-documentation CI commit: `c9a599a19e3590de4f29ef243e7138b85e0da881`, run `43220323598` queued; earlier per-commit runs were still in progress. No exact-head pass or inventory result has yet been verified. Inspect the latest Actions run and artifact, then build the exact function/role permission matrix. Production untouched; no merge or cutover. Full detail: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-12 — Corrected cross-service PUBLIC-definer probe expectation
+
+An early Actions run failed at `scripts/qualify-auth-issuer-cutover.mjs:186`: its probe explicitly grants PUBLIC EXECUTE to both `auth_create_account` and `gateway_provision_connect_business`, but the old expected array listed only the issuer function. The issuer verifier correctly returned both functions because the new scan is intentionally global across all GHM SECURITY DEFINER functions. Updated both issuer and Actor Gateway expectations to require both signatures, then verify both arrays clear after cleanup. This is a qualification-test expectation correction; do not weaken the global verifier. Earlier failures predate the correction and do not qualify the current head.
+
+The prior failed workflow also predated the inventory step in CI, so it says nothing about inventory execution. Await the exact-head CI run that executes the new report and uploads the artifact. No production change, merge or cutover.
+
+
+The inventory also flags every non-owner role with effective EXECUTE on each SECURITY DEFINER function, separately from direct ACL grants, so inherited membership paths are explicit review findings.
+
+
+## 2026-11-12 — First PostgreSQL 18 SECURITY DEFINER inventory reviewed
+
+Exact-head CI run `43220670560` passed both jobs on `d0bf47c13114dcfe477ed45dd28173e6d4a552bd`. The inventory artifact was retrieved. It describes the disposable PostgreSQL 18.6 post-migration/pre-manual-issuer-cutover state: 97 SECURITY DEFINER routines, all in `ghm`, all owned by `ghm_schema_owner`, all pinned to `pg_catalog, ghm, pg_temp`, all in trusted SQL/PLpgSQL; no PUBLIC EXECUTE; only application-role membership is migrator SET-only membership to schema owner. The first 97 findings were inflated because superuser `postgres` was counted as an ordinary effective grantee. Inventory code now distinguishes and excludes superusers from ordinary non-owner EXECUTE findings while reporting them separately; corrected artifact is pending.
+
+Direct ACL principals in the baseline: Actor Gateway 25 functions, Resource API runtime 43, payment provider 2, migrator 1. These remain to be justified signature-by-signature; migrator's one grant is the explicit read-only business external mapping lookup. Dynamic SQL exists in `ghm.update_business_profile`; it uses fixed SQL fragments and parameterized values, while its signed gateway wrapper rejects supplier-classification fields. Full review and next gates are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. No production changes, merge or cutover.
+
+
+## 2026-11-12 — Open finding: storage SECURITY DEFINER operations trust supplied identifiers
+
+Caller-ID review confirmed the legacy saved-favourite functions accept caller-supplied account IDs; their signed Actor Gateway replacement and manual cutover exist and are qualified on disposable PostgreSQL, but production cutover remains pending. Preserve Saved Business as user favourites/bookmarks.
+
+More importantly, five `ghm_runtime`-executable SECURITY DEFINER storage functions do not establish caller identity/tenant authorization in the database: `storage_create_pending` trusts a supplied tenant Business ID; `storage_get_object` trusts a supplied account ID for membership lookup; `storage_mark_available`, `storage_mark_deletion_pending` and `storage_mark_deleted` mutate by object ID/state only. Current app storage service checks authorization before calling them, but a runtime-credential holder can invoke them directly. Public logo lookup is separately constrained to active, verified, approved public logos. This is an open database-boundary finding. Trace callers/provider verification and design a signed storage operation assertion or dedicated least-privilege storage principal/gateway before changing grants. Do not break current storage functionality or revoke grants without replacement qualification.
+
+Only SECURITY DEFINER routine with dynamic SQL is `ghm.update_business_profile`; its SQL template/fragments are code-authored and values parameterized. Signed profile wrapper checks context and rejects supplier classification fields. Full details and required adversarial qualification are in the full security handover.
+
+
+### Corrected whole-database inventory result
+
+Corrected superuser-aware inventory passed exact code/test HEAD `df7aba60df7eaf1a01a5b7b6811f5d4a5d9afe6e`, Actions run `43221800807` (both jobs passed; 55/55 quality steps). Retrieved artifact SHA-256 `ac619dc8b558ad7b828aaf50770c73f34b2d9973f2d51f8cb580af75557e47a1`: 97 SECURITY DEFINER routines, 70 findings after excluding PostgreSQL superuser bypass, zero PUBLIC EXECUTE grants. All 97 are owned by `ghm_schema_owner`, in `ghm`, pinned and trusted. Direct grants by role: Actor Gateway 25, runtime 43, payment provider 2, migrator 1. These 70 exact-signature grants still require purpose-by-purpose review. This supersedes the first report's inflated 97 findings. The current docs-only HEAD has a separate exact-head CI run pending.
+
+
+### Direct EXECUTE grant matrix reconciliation
+
+The 71 pre-cutover application-role grants reconcile to Actor Gateway 25, runtime 43, payment provider 2, migrator 1. Planned manual issuer/gateway cutovers account for 27 runtime grants: 14 auth, 3 capability catalogue, 2 registration identity, 3 Business Capability mutations, 2 Saved Business favourites, 1 Business Hours, 1 Trust Score and 1 Business Logo binding. The remaining 16 runtime grants are two auth mapping lookups, Connect replay consumption, two campaign operations, five public/directory reads, and six storage functions. Five non-public storage functions remain an open finding because database routines trust caller-supplied account/business/object identifiers or do not enforce tenant/provider authorization. Do not apply production cutovers until the release gates are satisfied; see full handover for the complete residual list and rationale.
+
+
+Branch clarification: active inventory/security work is on `construction/auth-issuer-isolation-20261112`, with no PR currently attached. PR #272 is separate and remains on `integration/capability-gateway-qualification-20261110` (head `0eda4ea8e232c98264fe83c7aecc3c85f71a5596`), open/unmerged and reported not mergeable. Do not conflate their CI or commits; no merge is authorized.
+
+
+### Function-body identity review
+
+All 24 signed Actor Gateway wrappers independently compare signed request context to actual target/payload arguments and call the verifier that requires the Actor Gateway DB login, active actor, short-lived one-use nonce and full HMAC comparison. Saved Business remains favourites/bookmarks: creation may save an eligible public Business without membership; reads/deletes are scoped to the signed actor. Legacy campaign/profile/hours/trust/registration/capability operations enforce membership/admin checks in their function bodies, with old runtime grants removed only by their manual cutovers. Evidence review legacy functions rely on admin role without checking active status themselves; signed gateway wrappers add the active-account assertion, and runtime legacy grants remain a cutover gate. The five storage functions remain the open direct-runtime identity/tenant boundary finding.
+
+
+Latest exact-head validation: branch HEAD `36fd0f63ec094a0603c3d3c272e04a456b2078a5` passed both CI jobs in run `43222978930` (55/55 quality steps). Its own inventory artifact (SHA-256 `504617d724670704e673ed22f4841069d02a19aceeca2674e9b6de9cdb73e64d`, captured 13:00:08 UTC) confirms 97 routines, 70 direct-grant findings, zero PUBLIC EXECUTE, and direct grants runtime 43 / gateway 25 / payment provider 2 / migrator 1. All routines are ghm-schema-owned, pinned and trusted. This supersedes the prior pending exact-head note.
+
+
+### 12 November 2026 continuation — latest grant-authority checkpoint
+
+The detailed current grant review and Campaign/directory-review remediation are maintained in [HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md](./HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md). Use that handover for the current branch and evidence; older grant counts and open-finding statements in this historical current-state document are retained for audit history and are superseded where the newer handover says so.
+
+At the new construction checkpoint:
+- Campaign create/update and owner directory-review presentation are moved behind signed Actor Gateway database wrappers.
+- Their three legacy runtime EXECUTE grants are revoked by a forward-only migration.
+- Disposable PostgreSQL 18 qualification covers active actor binding, cross-business denial, actor/target substitution, replay and disabled-account denial.
+- Resource API has a 43/40 exact SECURITY DEFINER EXECUTE allow-list for the inventoried pre/post migration states. Production enforcement remains gated until the production catalog is independently reconciled.
+- Production remains untouched; the migration is not approved for production application.
+
+Do not use the older 36fd0f63 checkpoint as the current branch HEAD. The linked November 12 grant-authority handover records the later source SHA, CI runs and remaining production gates.
+
+---
+
+## 2026-11-12 — Render support resolution and current database connection inventory
+
+Render support representative Amanda explicitly confirmed that normal application execution should use SQL-created login role(s) outside the Dashboard-managed credential list, while Dashboard-managed default credentials remain for controlled administration. The original `ghm_actor_gateway` role-creation/membership issue and complete support exchange are recorded in `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` on the documentation handover branch and summarized in `docs/HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md` on this construction branch.
+
+The active security construction branch is `construction/auth-issuer-isolation-20261112`; it contains the isolated Auth Issuer, Actor Gateway, Resource API runtime, migrator and storage metadata work. PR #272 remains a separate older integration branch and is not the current working source. Do not merge or conflate them.
+
+Source-level database connection inventory:
+- Resource API: `GHM_RUNTIME_DATABASE_URL` → `ghm_runtime` (production); `DATABASE_URL` is non-production fallback only.
+- Auth Issuer: `GHM_AUTH_ISSUER_DATABASE_URL` → `ghm_auth_issuer`.
+- Actor Gateway: `GHM_ACTOR_GATEWAY_DATABASE_URL` → `ghm_actor_gateway`.
+- Migration runner: `GHM_MIGRATOR_DATABASE_URL` → `ghm_migrator`, then explicit `SET ROLE ghm_schema_owner`.
+- PayFast callback: `PAYFAST_CALLBACK_DATABASE_URL` → `ghm_payment_provider`; PayFast remains paused and this is inventory-only.
+- Resource API feature repositories and storage share the Resource API runtime pool; storage provider credentials are object-storage credentials, not separate PostgreSQL identities.
+
+The active Resource API server composes `createApp({ authRoutesEnabled: false })`; the isolated Auth Issuer has its own server, pool and authentication persistence. This is implementation source evidence only, not proof of Render deployment, environment configuration or client routing cutover. Cross-product route compatibility, recovery delivery, live ACL reconciliation and deployment topology remain gates.
+
+A stale read-only legacy-role qualification harness was corrected to align with the production `GHM_RUNTIME_DATABASE_URL` requirement, and `.env.example` now distinguishes production runtime credentials from the non-production `DATABASE_URL` fallback. The Campaign/directory-review manual cutover's malformed DO-block delimiter was also corrected after exact-head CI exposed PostgreSQL syntax error 42601 in disposable qualification. The exact-head CI run after these corrections must pass both jobs before qualification is claimed.
+
+**Production remains unchanged and blocked:** Render role transition has not happened; no production SQL/privilege change, credential rotation, secret/environment update, migration, deployment, service provisioning, or traffic cutover occurred. A fresh independently verified production backup, actual live Render role/ownership/ACL inspection, TLS/network decision, and separately approved staged cutover/rollback remain required. PayFast and legal-document work remain parked.
+
+### Runtime login contract clarification
+
+Use the existing SQL-created `ghm_runtime` LOGIN directly for Resource API connections unless the architecture and startup verifier are deliberately changed. The current production config requires `GHM_RUNTIME_DATABASE_URL`, and Resource API startup requires `session_user=current_user=ghm_runtime` with no role memberships. Amanda's illustrative `ghm_app_user IN ROLE ghm_runtime` example would not pass that existing contract; do not copy it verbatim or weaken the verifier implicitly. Provision/rotate the existing `ghm_runtime` credential only through a separately qualified and approved process. No production credential or role change has occurred.
+
+### 2026-11-12 — Render live role graph and trusted administrator membership contract
+
+Fresh read-only production catalog queries reconfirmed `session_user=ghm_app_user`, `current_user=ghm_db_user`, the `role=ghm_db_user` setting on `ghm_app_user`, and the administrator's ADMIN OPTION memberships. `ghm_runtime` and `ghm_actor_gateway` are SQL-created restricted logins. The administrator is a member of both; `ghm_runtime` cannot SET ROLE `ghm_actor_gateway`, while `ghm_db_user` can SET ROLE `ghm_runtime`. `ghm_auth_issuer` is not yet present in the production role catalog.
+
+Render's current service inventory has only `ghm-internal-runtime` as the production GHM web service. There is no separately deployed production Auth Issuer or Actor Gateway service yet. The old qualification and PayFast sandbox services remain non-target; PayFast stays paused.
+
+The old `no_role_memberships` startup checks rejected Render's trusted administrator membership and would have blocked real production service startup. Resource API runtime, Actor Gateway and Auth Issuer checks now enforce `no_untrusted_role_memberships`: service login cannot be a member of other roles; only `ghm_db_user` may be a member of the service role; any other member is rejected. Migrator now separately verifies that only `ghm_db_user` may be a member of `ghm_migrator`, and only `ghm_db_user`/`ghm_migrator` may be members of `ghm_schema_owner`.
+
+The Resource API runtime function EXECUTE verifier now recognises 41/38/27/24 function states across the Campaign/review and Authentication Issuer cutovers. The issuer qualification verifies the combined 24-function runtime state. The Campaign manual cutover duplicate transaction body and nested COMMIT were removed; its qualification now checks migrator/schema-owner identity and schema authority.
+
+Exact-head CI after these changes remains pending; see `docs/HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md` for the detailed live catalog evidence, prior CI failures, exact corrections and latest CI checkpoint. Production remains unchanged: no role/grant/credential/env/deployment/service/data changes, no fresh verified backup, and no issuer/gateway service cutover. Retain Dashboard admin for controlled administration and use existing SQL-created `ghm_runtime` directly for the Resource API only after all remaining gates pass.
+
+## 2026-11-12 23:30 UTC — issuer qualification continuation
+
+Latest construction branch checkpoint and exact-head CI correction are recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. Branch HEAD before the correction was `c7b59ee93d954aa51311b79143ed961a7250302d`; a malformed Actor Gateway startup ACL source-contract test caused TypeScript build failure in run `43325617355`. Corrected in `95f0feb3f2419c3a1daac500f81e3e815bc85b82`; exact-head run `43328569213` was queued/in progress at the time of this note. Do not claim exact-head qualification until both required jobs pass.
+
+PR #272 live state is OPEN/DRAFT/UNMERGED and currently mergeable, based on main `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`, head `c81e2bf2534febef9c5e49b39f60f85415f04ff1`. It remains separate from the active construction branch. Current branch/main comparison reports 1,566 ahead / 6 behind with an unusual merge base; do not blindly merge/rebase.
+
+Connect issuer-origin branch exists at `e016f4e8fa241b65ec7f89330e88c18fd7f2d482`; QuoteFlow issuer-origin branch exists at `d2c9b48dc58e48e11e597c57204900c08c9d63fc`. Their previous branch CI is not evidence of integration atop current product migration PRs. See full handover for the required dependency-aware integration sequence. No production mutation, deployment, merge, secret change or paid resource change occurred.
+
+
+## 2026-11-12 23:26 UTC — startup ACL contract syntax correction
+
+Exact-head run `43328641760` failed in TypeScript build because the Actor Gateway startup ACL contract test had over-escaped regular-expression literals (TS1005 at lines 29–31 and 78). Web quality and Cloudflare preview passed; all database migration/inventory/qualification steps were skipped. Corrected the regex literals without weakening assertions in commit `acae5ea856fd8c695912d1990e4c8a27b0430c25`. New exact-head CI is pending. Full evidence is in the security handover. No production changes or merges.
+
+
+## 2026-11-12 23:29 UTC — Authentication Issuer qualification milestone
+
+Construction branch exact-head run `43328832429` passed `quality` and `web-quality` on `70671a19ae2f8f5d5f82121ed7d9d67f05b63e4b`, including PostgreSQL 18.7 disposable migrations, SECURITY DEFINER inventory, principal qualifications, guarded disposable issuer cutover, issuer lifecycle/runtime denial checks and full test suite. CI inventory artifact contained 103 SECURITY DEFINER routines and 75 preliminary non-owner EXECUTE findings (43 runtime, 30 Actor Gateway, 2 payment provider), with no PUBLIC execution, unsafe search_path, owner or language findings. These are inventory findings requiring exact signature-to-role reconciliation, not 75 automatically confirmed vulnerabilities. Artifact is pre-cutover only.
+
+Updated CI workflow in commit `89fb0461ddac3763d721d0bf8cb04c34457ff355` to capture a second whole-database inventory after the disposable issuer cutover; new run `43329351747` is pending at this note. See full security handover for evidence, interpretation and next comparison. No production mutation, deployment, secret change or merge.
+
+
+## 2026-11-12 23:30 UTC — product PR dependency refresh
+
+Current Connect PR #68 head is `2eadf761400bb5a644b5907e670aacb68526c81f` (draft core GHM workflow migration); PR #69 is handover documentation and PR #33 is the disabled PayFast bridge. Current QuoteFlow PR #25 head is `065225304f3a19c97050aa237ebbfe578f649a43` (draft GHM-native identity cutover); PRs #20, #21 and #23 are separate identity adapter/storage migration dependencies. The prior issuer-origin branches are not integrated proof against these product PR heads. Full dependency note added to security handover. No branch rewrites or merges.
+
+
+## 2026-11-13 — five-principal security review checkpoint
+
+Source-level reconciliation documented in the full security handover. Resource API runtime has 43 pre-cutover SECURITY DEFINER signatures and exact 512 reviewed manual-cutover combinations; issuer has an exact 10-function allow-list and permits only two runtime external-identity lookup functions; Actor Gateway has an exact 33-function signed-wrapper allow-list; migrator is limited to its controlled schema-owner SET path; payment provider qualification proves PayFast-only settlement and no direct table privileges. Payment callback startup currently checks identity but not the complete function ACL; this is a pre-reactivation hardening gate while PayFast remains paused, and no PayFast code was changed.
+
+Run `43329488561` on `0e986e448028a1a78e733b33b893b49721b2a8f4`: web-quality passed; quality is still in progress after the disposable manual issuer cutover, with issuer lifecycle and post-cutover whole-database inventory pending. No post-cutover report/artifact has yet been retrieved. No production change, merge, deployment, secret or routing change.
+
+
+## 2026-11-13 — post-cutover inventory ordering defect corrected
+
+Run `43329488561` passed both CI jobs, but inspection of its artifact found that the purported post-cutover inventory was captured after the qualification script had exercised rollback and left disposable PostgreSQL rolled back. Its 27 runtime direct grants (including 16 auth functions) and zero issuer grants therefore did not prove post-cutover state. Do not use the old comparison as cutover evidence.
+
+Updated the qualification script to reapply the guarded issuer cutover after rollback checks and fixture cleanup, verify the exact runtime and issuer allow-lists, and leave disposable PostgreSQL in cutover state for the subsequent inventory step. Added a source-contract regression test and corrected the final issuer allow-list SQL escape. Exact-head run `43330073708` on `6778b015b388f782c2d1bf9e77cbb03a65254fbe` is queued/in progress. Full evidence in security handover. No production changes or merges.
+
+
+## 2026-11-13 — qualification syntax failure corrected
+
+Run `43330073708` failed at `node --check scripts/qualify-auth-issuer-cutover.mjs` because literal backslash-n characters had been inserted into the JSON summary object. The failure occurred before disposable migration/cutover/inventory steps; no production impact. Corrected with commit `2fe38cb56ca560cb57d145d8bcc37a574ac15a7a`; exact-head run `43330297297` is queued for quality and web-quality. See full security handover. No production changes, merge or deployment.
+
+
+## 2026-11-13 — issuer lifecycle qualification SQL escape corrected
+
+Exact-head run [43330297297](https://github.com/zaidhqdev-sys/GHM/actions/runs/43330297297) passed both source syntax checks, migration/build, preceding disposable database qualifications and web-quality, but failed at step 58, `Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL`. The failure was not an ACL assertion: PostgreSQL rejected the final issuer allow-list query with SQLSTATE 22025 (`invalid escape string`) because the query used `LIKE 'auth\\_%' ESCAPE '\\\\'`; PostgreSQL's standard-conforming string handling treated the ESCAPE literal as two characters. The same query's intended purpose is simply to select function names with the literal `auth_` prefix.
+
+Corrected the query to the equivalent, simpler predicate `left(p.proname, 5) = 'auth_'`. The first matching occurrence was updated in commit `0246ef0fea21dc41b28303741424fa98640fb787`; a follow-up scan found the final-state assertion still contained the invalid predicate, so it was corrected in commit `e48e7e34d26f2d609fb63e0d3abaeeb22d39cc4d`. A complete scan of the qualification script now shows all auth-prefix checks use `left(p.proname, 5) = 'auth_'` and no remaining `p.proname LIKE` escape predicate.
+
+**Validation status:** the original failure log is conclusive for the SQL escape defect. The two correction commits are on `construction/auth-issuer-isolation-20261112`; exact-head CI for `e48e7e34d26f2d609fb63e0d3abaeeb22d39cc4d` has not yet been observed in the available workflow-run query. Do not claim the issuer lifecycle qualification or post-cutover inventory has passed until the new run completes, the lifecycle step succeeds, and both pre/post inventory artifacts are retrieved and reconciled by exact function signature, owner, direct/effective grantee, PUBLIC ACL and default ACL.
+
+No production database, role, grant, credential, secret, Render environment, deployment, routing, traffic, backup or paid infrastructure was changed. No PR was merged. PayFast and legal-document publication remain paused.
+
+### Next checkpoint
+
+1. Confirm exact-head CI on `e48e7e34d26f2d609fb63e0d3abaeeb22d39cc4d` and inspect the issuer lifecycle step.
+2. If it passes, retrieve both inventory JSON reports and verify the actual post-cutover runtime/issuer/gateway/payment-provider authority sets; do not rely on counts alone.
+3. Add/retain a regression assertion that the qualification's auth-function filters avoid PostgreSQL multi-character ESCAPE literals, then update this handover with exact run and artifact evidence.
+4. Continue the five-principal and cross-product dependency review only after this disposable qualification is green.
+
+
+## 2026-11-13 — baseline SECURITY DEFINER artifact inspected
+
+Retrieved the only artifact attached to failed run [43330297297](https://github.com/zaidhqdev-sys/GHM/actions/runs/43330297297): `security-definer-authority-inventory` (artifact ID `13994833038`, ZIP SHA-256 `7738ddd13fdfcb6a796164cdf707cd84aace174713004051e6c901477a591aa7`). The contained JSON SHA-256 is `00ff3198ee9e885d66ee4736c10a741c87f455866e48b947ecdda015ddcde9ce`. It was captured at `2026-11-12T23:37:17.658Z`, before the failed lifecycle step, from the explicitly disposable `ghm_disposable_test` database as `session_user=current_user=ghm_migrator`, PostgreSQL 18.7. It is a baseline/pre-cutover artifact, not a post-cutover inventory and not production evidence. The artifact decision is `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`; mutation is false.
+
+Baseline catalog observations (103 SECURITY DEFINER functions):
+- Direct EXECUTE grants: `ghm_schema_owner` 103, `ghm_runtime` 43, `ghm_actor_gateway` 30, `ghm_payment_provider` 2; no PUBLIC EXECUTE grants were found in this catalog snapshot.
+- `ghm_auth_issuer` had zero direct SECURITY DEFINER EXECUTE grants before the manual cutover rehearsal, as expected for the pre-cutover state.
+- Runtime's 43 include the auth lifecycle functions that the manual cutover is designed to remove, plus non-issuer functions. The auth set observed includes create-account, password lookup/set/rehash, session create/validate, refresh rotate/revoke, recovery issue/redeem/reset, QuoteFlow migration reset, external-identity lookup and Connect business mapping lookup. This inventory alone does not decide which read-only identity lookups should remain with Resource API; they require caller/route review.
+- Actor Gateway had 30 direct gateway EXECUTE grants; payment provider had the two PayFast functions. No direct SECURITY DEFINER EXECUTE was granted to `ghm_migrator` in the captured catalog.
+- Function default ACL snapshot showed global function EXECUTE default only for `ghm_schema_owner`; no PUBLIC default grant was present. The cutover qualification separately probes global and schema-scoped default ACL behavior.
+- Role graph showed `ghm_db_user` as administrator member of the five application principals plus `ghm_schema_owner`, each with ADMIN=true, INHERIT=false, SET=false in this disposable setup; `ghm_migrator` has SET=true membership in `ghm_schema_owner`. This is a constructed CI role graph and must not be represented as a fresh production catalog.
+
+**Artifact completeness limitation:** only one artifact was attached to failed run 43330297297. No second post-cutover authority inventory was produced by that failed run. Do not compare the baseline against a presumed final state or infer that the issuer received the intended ten-function allow-list. The next successful exact-head run must retain and publish both before/after (or otherwise independently captured pre/post) inventories and compare full signatures, owners, direct ACLs, effective role reachability, PUBLIC, global/schema default ACLs, table/column/sequence privileges and memberships.
+
+The qualification script's allow-list currently names ten issuer functions. The manual cutover file is explicitly non-migration and documents that it must not be applied until issuer routes, service, private ingress, client configuration, credentials and rollback gates are ready. This remains disposable qualification only; production remains untouched. No merge/deploy/production role or grant changes were made. PayFast and legal publication remain paused.

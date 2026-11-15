@@ -1,0 +1,7 @@
+{
+  "name": "ghm-worker-body-parser-stub",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.cjs",
+  "type": "commonjs"
+}

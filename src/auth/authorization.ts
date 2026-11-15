@@ -3,6 +3,8 @@ export type GhmRole = 'admin' | 'customer' | 'business';
 export interface AuthContext {
   userId: number;
   role: GhmRole;
+  /** Original verified bearer token; used only for authenticated Actor Gateway hops. Never log or serialize. */
+  readonly actorGatewayBearerToken?: string;
 }
 
 export type Resource =

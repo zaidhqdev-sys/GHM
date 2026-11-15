@@ -41,9 +41,9 @@ export interface StorageMetadataRecord {
 
 export interface StorageMetadataStore {
   createPending(input: Omit<StorageMetadataRecord, "id" | "status">): Promise<StorageMetadataRecord>;
-  markAvailable(id: string, checksum?: string | null): Promise<StorageMetadataRecord>;
+  markAvailable(id: string, checksum: string | null | undefined, evidence: StorageMetadataRecord): Promise<StorageMetadataRecord>;
   markDeletionPending(id: string): Promise<StorageMetadataRecord>;
-  markDeleted(id: string): Promise<StorageMetadataRecord>;
+  markDeleted(id: string, evidence: StorageMetadataRecord): Promise<StorageMetadataRecord>;
   getById(id: string): Promise<StorageMetadataRecord | null>;
 }
 
@@ -161,7 +161,7 @@ export function createStorageService(deps: {
       const bytes = await deps.provider.getObject(record.providerKey);
       if (bytes.byteLength !== record.byteSize) throw new Error("storage provider byte content mismatch");
       validateBusinessLogoBytes(bytes, record.contentType);
-      return deps.metadata.markAvailable(record.id, providerObject.checksum);
+      return deps.metadata.markAvailable(record.id, providerObject.checksum, record);
     },
 
     async getAccess(input) {
@@ -191,7 +191,7 @@ export function createStorageService(deps: {
       // reopening the object for reads or requiring a manual DB edit.
       if (record.status !== "deletion_pending") await deps.metadata.markDeletionPending(record.id);
       await deps.provider.deleteObject(record.providerKey);
-      await deps.metadata.markDeleted(record.id);
+      await deps.metadata.markDeleted(record.id, record);
     },
   };
 }

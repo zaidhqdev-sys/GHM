@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '../api/config';
+import { getApiBaseUrl, getAuthIssuerBaseUrl } from '../api/config';
 import {
   applyTokenBundle,
   type AuthSessionStore,
@@ -33,6 +33,7 @@ export interface GhmAuthClient {
 
 interface GhmAuthClientOptions {
   readonly baseUrl?: string;
+  readonly authBaseUrl?: string;
   readonly store?: AuthSessionStore;
   readonly fetchImpl?: typeof fetch;
 }
@@ -73,6 +74,7 @@ const readErrorCode = async (response: Response): Promise<string> => {
 
 export const createGhmAuthClient = (options: GhmAuthClientOptions = {}): GhmAuthClient => {
   const baseUrl = (options.baseUrl ?? getApiBaseUrl()).replace(/\/$/, '');
+  const authBaseUrl = (options.authBaseUrl ?? options.baseUrl ?? getAuthIssuerBaseUrl()).replace(/\/$/, '');
   const store = options.store ?? createBrowserAuthSessionStore();
   const fetchImpl = options.fetchImpl ?? fetch;
   const listeners = new Set<AuthStateListener>();
@@ -96,7 +98,7 @@ export const createGhmAuthClient = (options: GhmAuthClientOptions = {}): GhmAuth
   };
 
   const postJson = async (path: string, body: unknown): Promise<Response> =>
-    fetchImpl(`${baseUrl}${path}`, {
+    fetchImpl(`${authBaseUrl}${path}`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',

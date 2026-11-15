@@ -8,3 +8,6 @@ storage/
 
 # Local disposable PayFast qualification credentials
 payfast-qualification.env
+
+# Local-only Cloudflare Worker secrets
+workers/actor-gateway/.dev.vars

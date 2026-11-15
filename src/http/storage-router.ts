@@ -4,6 +4,7 @@ import { withTenantTransaction } from "../db/authorized-transaction.js";
 import { pool } from "../db/pool.js";
 import { requireAuth } from "../auth/http.js";
 import { BusinessLogoGatewayError, type BusinessLogoGatewayClient } from "./business-logo-gateway-client.js";
+import { StorageMetadataGatewayError } from './storage-metadata-gateway-client.js';
 import type { StorageProvider } from "../storage/provider.js";
 import { createStorageService } from "../storage/service.js";
 import type { StorageMetadataStore, StorageService } from "../storage/service.js";
@@ -19,6 +20,13 @@ const objectIdParam = (value: unknown): string | null =>
   typeof value === "string" && /^[1-9]\d*$/.test(value) ? value : null;
 
 const handleStorageError = (error: unknown, res: Response): void => {
+  if (error instanceof StorageMetadataGatewayError) {
+    if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+    if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+    if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+    res.status(503).json({ error: 'service_unavailable' });
+    return;
+  }
   if (error instanceof BusinessLogoGatewayError) {
     if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
     if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
@@ -51,6 +59,8 @@ export interface StorageRouteTestSeam {
   serviceForContext?: (context: AuthContext) => StorageService;
   bindBusinessLogoForContext?: (context: AuthContext, businessId: number, objectId: number | null) => Promise<number | null>;
   publicLogoKeyForBusiness?: (businessId: number) => Promise<string | null>;
+  storageMetadataGatewayStoreFactory?: (accessToken: string) => StorageMetadataStore;
+  storageMetadataGatewayRequired?: boolean;
 }
 
 export const registerStorageRoutes = (
@@ -62,9 +72,25 @@ export const registerStorageRoutes = (
   testSeam: StorageRouteTestSeam = {},
   businessLogoGatewayClient?: BusinessLogoGatewayClient,
   businessLogoGatewayRequired = false,
+  storageMetadataGatewayStoreFactory?: (accessToken: string) => StorageMetadataStore,
+  storageMetadataGatewayRequired = false,
 ): void => {
-  const metadataFor = (context: AuthContext): StorageMetadataStore =>
-    testSeam.metadataStoreForContext?.(context) ?? createPostgresStorageMetadataStore(context);
+  const accessTokenFor = (req: Request): string => {
+    const authorization = req.header('authorization');
+    return authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  };
+  const metadataFor = (context: AuthContext, accessToken = ''): StorageMetadataStore => {
+    if (testSeam.metadataStoreForContext) return testSeam.metadataStoreForContext(context);
+    const factory = testSeam.storageMetadataGatewayStoreFactory ?? storageMetadataGatewayStoreFactory;
+    if (factory) {
+      if (!accessToken) throw new StorageMetadataGatewayError(401);
+      return factory(accessToken);
+    }
+    if (testSeam.storageMetadataGatewayRequired ?? storageMetadataGatewayRequired) {
+      throw new StorageMetadataGatewayError(503);
+    }
+    return createPostgresStorageMetadataStore(context);
+  };
 
   const bindLogo = async (context: AuthContext, businessId: number, objectId: number | null, accessToken: string): Promise<number | null> => {
     if (testSeam.bindBusinessLogoForContext) return testSeam.bindBusinessLogoForContext(context, businessId, objectId);
@@ -91,10 +117,10 @@ export const registerStorageRoutes = (
     return typeof result.rows[0]?.provider_key === "string" ? result.rows[0].provider_key : null;
   };
 
-  const serviceFor = (context: AuthContext): StorageService =>
+  const serviceFor = (context: AuthContext, accessToken = ''): StorageService =>
     testSeam.serviceForContext?.(context) ?? createStorageService({
       provider,
-      metadata: metadataFor(context),
+      metadata: metadataFor(context, accessToken),
       authorization: createPostgresStorageAuthorization(context),
       uploadGrantTtlSeconds,
       downloadGrantMaxTtlSeconds,
@@ -111,19 +137,19 @@ export const registerStorageRoutes = (
         res.status(400).json({ error: "invalid_request" });
         return;
       }
-      const record = await metadataFor(context).getById(String(objectId));
+      const accessToken = accessTokenFor(req);
+      if ((storageMetadataGatewayStoreFactory || storageMetadataGatewayRequired) && !accessToken) { res.status(401).json({ error: 'unauthorized' }); return; }
+      const record = await metadataFor(context, accessToken).getById(String(objectId));
       if (!record || record.businessId !== String(businessId) || record.resourceType !== "business" || record.resourceId !== String(businessId) || record.objectClass !== "business_logo" || record.visibility !== "public" || record.status !== "available") {
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const authorization = req.header('authorization');
-      const accessToken = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
       if ((businessLogoGatewayClient || businessLogoGatewayRequired) && !accessToken) { res.status(401).json({ error: "unauthorized" }); return; }
       const previousObjectId = await bindLogo(context, businessId, objectId, accessToken);
       let cleanupPending = false;
       if (previousObjectId !== null && previousObjectId !== objectId) {
         try {
-          await serviceFor(context).deleteObject({ caller: { userId: String(context.userId), businessId: String(businessId) }, objectId: String(previousObjectId) });
+          await serviceFor(context, accessToken).deleteObject({ caller: { userId: String(context.userId), businessId: String(businessId) }, objectId: String(previousObjectId) });
         } catch {
           cleanupPending = true;
           console.error(JSON.stringify({ event: "business_logo_cleanup_pending", businessId, objectId: previousObjectId }));
@@ -142,14 +168,14 @@ export const registerStorageRoutes = (
         res.status(400).json({ error: "invalid_request" });
         return;
       }
-      const authorization = req.header('authorization');
-      const accessToken = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      const accessToken = accessTokenFor(req);
       if ((businessLogoGatewayClient || businessLogoGatewayRequired) && !accessToken) { res.status(401).json({ error: "unauthorized" }); return; }
+      if ((storageMetadataGatewayStoreFactory || storageMetadataGatewayRequired) && !accessToken) { res.status(401).json({ error: 'unauthorized' }); return; }
       const previousObjectId = await bindLogo(context, businessId, null, accessToken);
       let cleanupPending = false;
       if (previousObjectId !== null) {
         try {
-          await serviceFor(context).deleteObject({ caller: { userId: String(context.userId), businessId: String(businessId) }, objectId: String(previousObjectId) });
+          await serviceFor(context, accessToken).deleteObject({ caller: { userId: String(context.userId), businessId: String(businessId) }, objectId: String(previousObjectId) });
         } catch {
           cleanupPending = true;
           console.error(JSON.stringify({ event: "business_logo_cleanup_pending", businessId, objectId: previousObjectId }));
@@ -186,7 +212,9 @@ export const registerStorageRoutes = (
         res.status(400).json({ error: "invalid_request" });
         return;
       }
-      const result = await serviceFor(context).createUpload({
+      const accessToken = accessTokenFor(req);
+      if ((storageMetadataGatewayStoreFactory || storageMetadataGatewayRequired) && !accessToken) { res.status(401).json({ error: 'unauthorized' }); return; }
+      const result = await serviceFor(context, accessToken).createUpload({
         caller: { userId: String(context.userId), businessId: String(businessId) },
         resource: { type: "business", id: String(businessId), businessId: String(businessId) },
         objectClass: "business_logo",
@@ -208,9 +236,11 @@ export const registerStorageRoutes = (
       const objectId = objectIdParam(req.params.objectId);
       if (!context) { res.status(401).json({ error: "unauthorized" }); return; }
       if (!objectId) { res.status(400).json({ error: "invalid_request" }); return; }
-      const metadata = await metadataFor(context).getById(objectId);
+      const accessToken = accessTokenFor(req);
+      if ((storageMetadataGatewayStoreFactory || storageMetadataGatewayRequired) && !accessToken) { res.status(401).json({ error: 'unauthorized' }); return; }
+      const metadata = await metadataFor(context, accessToken).getById(objectId);
       if (!metadata) { res.status(404).json({ error: "not_found" }); return; }
-      const record = await serviceFor(context).completeUpload({
+      const record = await serviceFor(context, accessToken).completeUpload({
         caller: { userId: String(context.userId), businessId: metadata.businessId },
         objectId,
       });
@@ -228,9 +258,11 @@ export const registerStorageRoutes = (
         res.status(400).json({ error: "invalid_request" });
         return;
       }
-      const record = await metadataFor(context).getById(objectId);
+      const accessToken = accessTokenFor(req);
+      if ((storageMetadataGatewayStoreFactory || storageMetadataGatewayRequired) && !accessToken) { res.status(401).json({ error: 'unauthorized' }); return; }
+      const record = await metadataFor(context, accessToken).getById(objectId);
       if (!record) { res.status(404).json({ error: "not_found" }); return; }
-      const grant = await serviceFor(context).getAccess({
+      const grant = await serviceFor(context, accessToken).getAccess({
         caller: { userId: String(context.userId), businessId: record.businessId },
         objectId,
         expiresInSeconds,
@@ -245,9 +277,11 @@ export const registerStorageRoutes = (
       const objectId = objectIdParam(req.params.objectId);
       if (!context) { res.status(401).json({ error: "unauthorized" }); return; }
       if (!objectId) { res.status(400).json({ error: "invalid_request" }); return; }
-      const record = await metadataFor(context).getById(objectId);
+      const accessToken = accessTokenFor(req);
+      if ((storageMetadataGatewayStoreFactory || storageMetadataGatewayRequired) && !accessToken) { res.status(401).json({ error: 'unauthorized' }); return; }
+      const record = await metadataFor(context, accessToken).getById(objectId);
       if (!record) { res.status(404).json({ error: "not_found" }); return; }
-      await serviceFor(context).deleteObject({
+      await serviceFor(context, accessToken).deleteObject({
         caller: { userId: String(context.userId), businessId: record.businessId },
         objectId,
       });
