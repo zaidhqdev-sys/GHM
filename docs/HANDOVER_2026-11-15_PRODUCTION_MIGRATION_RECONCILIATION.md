@@ -293,3 +293,43 @@ This qualifies the current implementation on disposable CI infrastructure only. 
 - #4 changes a CHECK constraint on `ghm.storage_object`; before any production application, inspect live status counts and confirm all existing rows satisfy the new lifecycle predicate. No production data distribution was queried in this review.
 - The new script and package command are code additions only. They have not yet been executed in this environment because no approved disposable PostgreSQL connection details are available here. Exact-head CI must run after these commits, and the script should be run by the user against the disposable PostgreSQL 18 qualification database before considering migration 1 production-ready.
 - The earlier independent production gates remain unchanged: verified fresh backup/recovery point, Amanda/Render role-administration resolution, and deployed/verified Actor Gateway prerequisites before the capability cutover at migration 5.
+
+
+## 12. Guard qualification now exercises the runner helper and is wired into CI (2026-11-15)
+
+- Refined `scripts/qualify-production-migration-batch-guards-postgres.mjs` to import the compiled `getProductionMigrationPostBatchGuards` from `dist/db/production-migration-batch.js`; it no longer duplicates the production REVOKE as its expected implementation.
+- The qualification asserts the helper selects exactly the expected single guard for migration `20261110010000_add_business_supplier_classification`, then executes the returned statement against PostgreSQL 18 inside the same transaction as the actual historical migration SQL.
+- Corrected the exact SQL assertion to string equality (rather than a mistakenly over-escaped regular expression).
+- Added a CI step immediately after the complete disposable PostgreSQL migration chain: `npm run qualify:production-migration-batch-guards`. The job uses the pre-created isolated `ghm_runtime` and `ghm_migrator` roles and the explicit `ghm_disposable_test` localhost target.
+- The qualification replays only the first migration's SQL within a transaction after the CI chain, observes the transient runtime grant, applies the actual runner guard helper output, verifies runtime EXECUTE denial and function owner, then ROLLBACKs and verifies the prior runtime privilege state is restored. It does not write a ledger row or persist schema/grant changes.
+- Commits added after `c8c2ccd8`: `199b3233` (use actual helper), `95d7685a` (wire CI step), `323f1fee` (correct exact guard assertion). Await exact-head CI before treating this qualification as passed.
+
+## 13. Review of pending migrations 2–4 (2026-11-15)
+
+### 2. `20261110100000_create_account_onboarding_progress`
+
+- Additive table with account FK/cascade, unique (account, journey, step), constrained journey/step identifiers, three-state lifecycle and timestamp consistency checks.
+- Runtime receives SELECT/INSERT/UPDATE and sequence USAGE/SELECT; DELETE/TRUNCATE/REFERENCES/TRIGGER are explicitly revoked. Ownership is assigned to `ghm_schema_owner`; `ghm_migrator` is revoked.
+- Existing onboarding HTTP router, repository and service exist. Existing migration contract tests check account ownership, uniqueness, lifecycle and grants.
+- Remaining qualification: disposable PostgreSQL insert/update/read and negative lifecycle/tenant-scope checks using the actual repository behavior. Confirm whether the runtime repository intentionally relies on FK cascade for account deletion; do not infer delete privileges from that FK.
+
+### 3. `20261110120000_create_business_relationship_outcome_read_models`
+
+- Adds relationship/outcome type and record tables, restrictive business/account/opportunity FKs, provenance/authority/verification/lifecycle/visibility constraints, temporal validity, JSON object checks, indexes and seeded reference types.
+- Runtime is granted SELECT only; all mutation privileges are explicitly revoked. This is an additive read-model foundation, not a migration of existing production relationship/outcome records.
+- Existing read-only HTTP routers, repositories and services are present; contract tests assert provenance/lifecycle and read-only grants.
+- Remaining qualification: disposable PostgreSQL verify seed idempotence (ON CONFLICT), FK behavior, constraints and effective runtime SELECT-only privileges. Check current production object-name collisions before deployment; none were queried in this review.
+
+### 4. `20261110140000_allow_pending_storage_object_cleanup`
+
+- Drops and recreates `ghm.storage_object_lifecycle_check` to allow `deletion_pending` for both previously pending and available objects without changing `available_at`; adds SECURITY DEFINER `storage_mark_deletion_pending(bigint)`, owned by schema owner, with runtime EXECUTE.
+- Existing storage repository/service calls this function. Existing contract tests assert lifecycle semantics and that timestamps are preserved.
+- This is the first of migrations 2–4 that changes a live existing table constraint. Before production, obtain a read-only distribution of all existing `ghm.storage_object.status` values and validate every row against the proposed new predicate, including timestamp consistency. Also verify the existing constraint name and function signature/owner/grants match assumptions.
+- No production status distribution, table scan, or catalog verification was performed in this review.
+
+### Revised status
+
+- Migration 1: runner guard now has an end-to-end disposable PostgreSQL qualification wired into CI; exact-head CI pending.
+- Migrations 2–3: structurally additive, with application integrations and contract tests; dedicated database behavior/effective-grant qualification still outstanding.
+- Migration 4: storage lifecycle compatibility is a mandatory pre-production data check.
+- None of migrations 1–4 is authorized for production yet. Fresh verified backup/recovery point, Amanda/Render role-administration resolution and the Actor Gateway prerequisite before migration 5 remain outstanding. No production DB or runtime changes were made.
