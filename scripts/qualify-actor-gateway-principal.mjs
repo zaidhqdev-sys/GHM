@@ -38,7 +38,13 @@ const assertionContext = (operation,args) => {
   throw new Error(`Unsupported qualification operation: ${operation}`);
 };
 const gatewayCallWithAssertion = (accountId,a,sql,args=[]) => {
-  const shiftedSql=sql.replace(/\$(\d+)/g,(_match,n)=>'
+  const shiftedSql=sql.replace(/\$(\d+)/g,(_match,n)=>'$'+(Number(n)>=4?Number(n)+1:Number(n))).replace(/\(\$1,\$2,\$3,\$5/,()=> '($1,$2,$3,$4,$5');
+  return gatewayPool.query(shiftedSql,[accountId,a.issuedAt,a.nonce,a.context,a.signature,...args]);
+};
+const gatewayCall = (accountId,operation,sql,args=[]) => {
+  const a=signAssertion(accountId,operation,assertionContext(operation,args));
+  return gatewayCallWithAssertion(accountId,a,sql,args);
+};
 
 const identity = async (pool, expectedUser) => {
   const { rows } = await pool.query(`
