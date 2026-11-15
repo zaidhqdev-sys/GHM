@@ -197,3 +197,8 @@ Branch commit sequence:
 - The latest production inventory remains the user-supplied audit summarized above; no new production audit was run during this implementation.
 
 No production SQL, migration, role/grant, secret, environment variable, service, deployment, or application data was changed.
+
+
+### Additional integrity safeguard
+
+During final review, the batch loop was separated from the full applied-history checksum pass. The runner now continues to validate every already-applied migration checksum before executing the selected batch; limiting execution must not limit historical integrity checks. Change: `6221982b06e7162c3925c126460f61438164cd1d`. CI must qualify this final change before the PR can be considered merge-ready.
