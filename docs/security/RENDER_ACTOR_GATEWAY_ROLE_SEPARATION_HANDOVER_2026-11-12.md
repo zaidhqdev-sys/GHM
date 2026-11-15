@@ -1032,3 +1032,96 @@ Production remains blocked by:
 Begin production deployment-readiness work only: re-inventory current Render services, production environment variable names/targets, current live deployment SHA, database role/ACL state, migration ledger authority, and $0 service options. Keep all checks read-only. Produce a deployment matrix and cutover/rollback runbook before any Render setting, production database, secret, deployment or traffic change.
 
 PayFast remains paused pending sandbox access. Legal-document publication remains paused. No production data, role/grant, secret, credential, Render environment/service, Cloudflare resource, DNS, route or traffic was changed during the PR merges.
+
+
+## 2026-11-15 — post-merge production deployment readiness: Render read-only inventory
+
+After merging #272, #276 and #277, a fresh read-only Render inventory was performed against the ZAID Technologies workspace. No Render setting, environment variable, database role/grant, secret, deployment, DNS or traffic was changed.
+
+### Confirmed Render resources
+
+**Production API service**
+- Service: \`GHM-Internal-Runtime\` / slug \`ghm-internal-runtime\`
+- Service ID: \`srv-damupsek1f9s73eq8kkg\`
+- Repo: \`zaidhqdev-sys/GHM\`
+- Branch: \`main\`
+- Auto deploy: OFF (\`autoDeploy=no\`, trigger \`off\`)
+- Region: Frankfurt
+- Plan: Free
+- Health check: \`/healthz\`
+- URL: \`https://ghm-internal-runtime.onrender.com\`
+- Current live deploy: \`dep-dbpmv8jrjlhs73abkli0\`, commit \`c7cf1ebaf4db5912983bfa45bd42747c0854cfaf\`, status live, manually deployed 2026-11-10.
+
+**Production database**
+- Service: \`ghm-db\`
+- Database ID: \`dpg-dag0sdtbedkc7389vi2g-a\`
+- Database: \`ghm_db\`
+- PostgreSQL: 18.6
+- Region: Frankfurt
+- Plan: \`0.1c-256mb\`
+- Status: available
+- Database user shown by Render metadata: \`ghm_app_user\`
+- Current database allowlist: \`0.0.0.0/0\` (broad internet exposure; no change made).
+
+**Legacy/sandbox inventory still present**
+- \`ghm-payfast-callback-sandbox\` (free web service, auto deploy OFF)
+- \`ghm-payfast-sandbox-runtime\` (free web service, auto deploy ON to main)
+- \`ghm-payfast-sandbox-db\` (suspended for billing, expired 2026-11-08)
+- \`ghm-identity-qualification\` (free web service, auto deploy ON to its old qualification branch)
+- \`ghm-identity-qualification-20261018\` database (basic_256mb, available)
+These are not production issuer/gateway targets. Do not repurpose them or trigger deployments. PayFast remains paused.
+
+### Production database read-only snapshot
+
+Render's read-only SQL action successfully queried production \`ghm_db\`. Current connection identity:
+- \`session_user = ghm_app_user\`
+- \`current_user = ghm_db_user\`
+- PostgreSQL 18.6.
+
+The live role inventory currently includes:
+- \`ghm_db_user\`: LOGIN, INHERIT, CREATEDB, CREATEROLE.
+- \`ghm_app_user\`: LOGIN, INHERIT; member of \`ghm_db_user\` with INHERIT and SET enabled.
+- \`ghm_runtime\`: LOGIN, NOINHERIT.
+- \`ghm_migrator\`: LOGIN, NOINHERIT.
+- \`ghm_actor_gateway\`: LOGIN, NOINHERIT, no superuser/createdb/createrole/replication/bypassrls.
+- \`ghm_schema_owner\`: NOLOGIN.
+- \`ghm_payment_provider\`: LOGIN, NOINHERIT.
+- **\`ghm_auth_issuer\` does not exist in production.**
+
+The live role memberships still show \`ghm_db_user\` with ADMIN OPTION over \`ghm_actor_gateway\`, \`ghm_migrator\`, \`ghm_payment_provider\`, \`ghm_runtime\`, and \`ghm_schema_owner\`; it also has a separate non-admin inherited/SET-enabled membership in \`ghm_runtime\`. \`ghm_app_user\` inherits \`ghm_db_user\`. This is not yet the intended least-privilege production role boundary. Do not attempt ad hoc revokes or role changes.
+
+The migration ledger relation \`ghm.ghm_schema_migrations\` exists, but the production query identity has not been established as authorized to read it. Its exact live migration head and checksums remain unverified.
+
+Read-only catalog checks further confirm:
+- \`ghm_actor_gateway\` role exists.
+- \`ghm_auth_issuer\` role is absent.
+- There are zero \`gateway_%\` functions in schema \`ghm\`.
+- There are zero \`auth_issuer_%\` functions in schema \`ghm\`.
+- \`ghm_actor_gateway\` currently has no USAGE on schema \`ghm\`, no CREATE on schema \`ghm\`, and no direct SELECT on \`ghm.account_identity\` (the last two denials are desired).
+Therefore the merged gateway/issuer code is **not production-ready to deploy or route traffic** against the current production database state. Startup must remain fail-closed; do not weaken checks or apply manual grants.
+
+### Mainline status after merges
+
+The three stack PRs are closed/merged:
+- #272 Actor Gateway — merge commit \`4463bbb989f9d1173596f5371663b3e9e7afc0a9\`.
+- #276 Authentication Issuer — merge commit \`1d78d2b992acf92f1359b396f3ccc759c1ff6bd6\`.
+- #277 Worker hardening — merge commit \`fd629ea4148a69a0600d8424ed37580b83a59058\`.
+
+Main currently points to \`fd629ea4148a69a0600d8424ed37580b83a59058\`. Main push CI run \`43656116645\` was in progress at the time of this note. The exact PR CI runs already passed:
+- #272 PR run \`43655697931\` (quality and web-quality passed).
+- #276 PR run \`43655714468\` (quality and web-quality passed; full disposable issuer cutover and authority comparison passed).
+- #277 PR run \`43655730945\` (quality 73/73, web-quality 11/11 passed).
+
+### Environment-variable inventory limitation and next step
+
+The Render connector exposes service metadata, deploy metadata, and read-only database SQL, but no action to list the service's configured environment-variable names/values. Therefore this check does **not** claim the current \`GHM-Internal-Runtime\` environment values have been inspected. The existing handover inventory of sandbox references remains a checklist, not fresh confirmation.
+
+Before any manual deployment:
+1. Inspect the current \`GHM-Internal-Runtime\` environment-variable page in Render, compare every key/value with the handover and the merged code's current \`.env.example\` / config schema, and remove/replace sandbox targets only after exact target confirmation.
+2. Establish the authorized \`ghm_migrator\` path for the read-only migration audit and get the live ledger/checksum report. Do not place migrator credentials on the API service.
+3. Obtain current verified backup and restore evidence.
+4. Reconcile complete role memberships, ownership, default privileges, SECURITY DEFINER ACLs, service runtime dependencies, and network/TLS identity.
+5. Determine whether the gateway and issuer can be hosted under the $0 constraint. Existing Workers Free Argon2id feasibility failed the GHM password profile CPU budget; do not weaken password security or create paid services.
+6. Prepare a staged reversible production cutover and rollback runbook. Only then consider Render changes and a manual deploy.
+
+No production migrations, manual cutover SQL, role/grant changes, credentials, secrets, Render settings, deployment, Cloudflare resources, DNS, routes or traffic were changed in this read-only readiness pass.
