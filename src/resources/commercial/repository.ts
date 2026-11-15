@@ -4,6 +4,7 @@ import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type {
   BusinessId,
+  AdminCommercialLaunchState,
   CommercialAccess,
   CommercialOffer,
   CommercialEntitlement,
@@ -569,6 +570,60 @@ const preparePayment = async (
 
 export class PostgresCommercialRepository implements CommercialRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
+
+  async getAdminCommercialLaunchState(
+    context: AuthContext,
+    limit: number,
+  ): Promise<AdminCommercialLaunchState[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250) {
+      throw new Error('limit must be between 1 and 250');
+    }
+    return withAuthorizedTransaction(context, async client => {
+      const result = await client.query(
+        `SELECT
+           business.id AS business_id,
+           business.name AS business_name,
+           COALESCE(plan.code, 'business_basic') AS plan_code,
+           trial.lifecycle_status AS trial_status,
+           subscription.lifecycle_status AS subscription_status,
+           subscription.founding_sequence,
+           COALESCE(subscription.cancel_at_period_end, false) AS cancel_at_period_end,
+           subscription.current_period_end
+         FROM ghm.business AS business
+         LEFT JOIN LATERAL (
+           SELECT current_subscription.*
+           FROM ghm.commercial_subscription AS current_subscription
+           WHERE current_subscription.business_id = business.id
+           ORDER BY current_subscription.id DESC
+           LIMIT 1
+         ) AS subscription ON true
+         LEFT JOIN ghm.commercial_plan_version AS plan_version
+           ON plan_version.id = subscription.plan_version_id
+         LEFT JOIN ghm.commercial_plan AS plan
+           ON plan.id = plan_version.plan_id
+         LEFT JOIN LATERAL (
+           SELECT current_trial.lifecycle_status
+           FROM ghm.commercial_trial AS current_trial
+           WHERE current_trial.business_id = business.id
+           ORDER BY current_trial.id DESC
+           LIMIT 1
+         ) AS trial ON true
+         ORDER BY business.name, business.id
+         LIMIT $1`,
+        [limit],
+      );
+      return result.rows.map((row): AdminCommercialLaunchState => ({
+        businessId: Number(row.business_id),
+        businessName: String(row.business_name),
+        planCode: String(row.plan_code),
+        trialStatus: row.trial_status === null ? null : row.trial_status as AdminCommercialLaunchState['trialStatus'],
+        subscriptionStatus: row.subscription_status === null ? null : row.subscription_status as AdminCommercialLaunchState['subscriptionStatus'],
+        foundingSequence: row.founding_sequence === null ? null : Number(row.founding_sequence),
+        cancelAtPeriodEnd: row.cancel_at_period_end === true,
+        currentPeriodEnd: row.current_period_end === null ? null : row.current_period_end as Date,
+      }));
+    }, this.transactionPool);
+  }
 
   async getCommercialAccess(
     context: AuthContext,
