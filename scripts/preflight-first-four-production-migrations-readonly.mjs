@@ -123,7 +123,9 @@ try {
 
     const storageMigrationFourState = classifyStorageMigrationFourState({
       constraintDefinition: storageConstraint.rows[0]?.definition,
+      constraintValidated: storageConstraint.rows[0]?.convalidated,
       functionDefinition: storageFunction.rows[0]?.definition,
+      returnType: storageFunction.rows[0]?.return_type,
       securityDefiner: storageFunction.rows[0]?.security_definer,
       owner: storageFunction.rows[0]?.owner,
       configuration: storageFunction.rows[0]?.configuration,
