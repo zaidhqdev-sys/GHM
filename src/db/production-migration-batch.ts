@@ -51,3 +51,21 @@ export const selectProductionMigrationBatch = <T extends ProductionMigrationVers
   }
   return pending.slice(0, requestedBatch.length);
 };
+
+/**
+ * Transitional hardening for migrations whose historical SQL briefly grants
+ * a legacy caller-supplied identity function to the general runtime role.
+ * The guard runs in the same transaction as that migration.
+ */
+export const getProductionMigrationPostBatchGuards = (
+  batch: ProductionMigrationVersion[],
+): string[] => {
+  const versions = new Set(batch.map((migration) => migration.version));
+  const guards: string[] = [];
+  if (versions.has('20261110010000')) {
+    guards.push(
+      'REVOKE EXECUTE ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime',
+    );
+  }
+  return guards;
+};
