@@ -354,3 +354,27 @@ This qualifies the current implementation on disposable CI infrastructure only. 
 - This is post-apply qualification on the disposable CI database, not production evidence. It does not read production data, mutate production state, or authorize the migrations.
 - The script has been added but the new exact-head CI has not yet been observed. Review any CI failure before proceeding.
 - No production storage status distribution was queried. Production migration 4 still requires a separate read-only status/count and catalog check before any production execution.
+
+
+## 16. Migration 4 storage gateway cutover boundary clarified (2026-11-15)
+
+A cross-check against the existing authoritative storage handover and the exact gateway implementation changes the provisional first-four production sequence:
+
+- The November 12 storage handover explicitly records five legacy SECURITY DEFINER metadata functions that remain directly executable by `ghm_runtime` and do not independently establish database actor/tenant authority: `storage_create_pending`, `storage_get_object`, `storage_mark_available`, `storage_mark_deletion_pending`, and `storage_mark_deleted`.
+- Migration `20261110140000_allow_pending_storage_object_cleanup` creates the fifth function in that set, `ghm.storage_mark_deletion_pending(bigint)`, owned by `ghm_schema_owner` and granted EXECUTE to `ghm_runtime`. This extends the existing direct-runtime surface; the application-side authorization check is not a substitute for the database boundary.
+- Signed storage gateway wrappers and the Resource API gateway client exist in source. The design/handover states production must use the gateway client, require `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`, and fail closed rather than fall back to direct legacy SQL.
+- The repository contains a disposable-only five-function grant revocation/rollback rehearsal at `scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs`, but this is not a production cutover script. No separate production manual cutover artifact or production grant revocation is established by this review.
+- Therefore migration 4 is NOT approved for production until the deployed Resource API ↔ Actor Gateway ↔ PostgreSQL storage path is verified, the provider-attestation secret is securely provisioned, all storage lifecycle journeys are smoke-tested, and a separate reviewed/approved five-function legacy grant cutover/rollback plan exists. Do not add an automatic runner REVOKE without first proving the deployed app no longer depends on those legacy functions.
+- The strict contiguous-prefix runner means migration 4 is a stop boundary: do not execute migration 5 or later while 4 remains pending. This is an additional gate on top of the capability governance cutover at migration 5.
+- The older statement that migrations 1–4 were provisional first-prefix candidates is superseded. Migration 1–3 remain candidates for individual qualification only; migration 4 is a hard storage-gateway cutover gate.
+
+## 17. Read-only production preflight utility and CI finding/fix
+
+- Added `scripts/preflight-first-four-production-migrations-readonly.mjs` and `npm run preflight:first-four-production-migrations`.
+- The utility requires the explicit acknowledgement `GHM_PRODUCTION_MIGRATION_PREFLIGHT_CONFIRM=ghm_db:read-only`, `DATABASE_SSL=true`, a non-local `ghm_db` URL, and a verified TLS connection. It insists on `session_user=ghm_migrator`, `current_database()=ghm_db`, and a read-only transaction.
+- It reports migration 2/3 object-name collisions, the complete existing `storage_object.status` distribution against migration 4's proposed CHECK predicate, the current storage lifecycle constraint, and the effective runtime/gateway privileges/owner/search_path for the two relevant legacy functions. It performs no DDL/DML and rolls back its read-only transaction.
+- This utility has NOT been run against production; it is prepared for the user's local `C:\GHM-main` checkout after the PR is reconciled/merged and the exact code is available. No production URL or credential was accessed in this session.
+- The first CI attempt for the new post-apply qualification failed at its metadata inspection because `ghm_migrator` intentionally has no schema USAGE on `ghm`. This is a valid least-privilege behavior, not a production issue.
+- Fixed the qualification to use its existing permitted `SET ROLE ghm_schema_owner` membership inside a transaction for catalog/data inspection, while preserving the separate real `ghm_runtime` connection for effective ACL checks. This is test-only and the next exact-head CI must confirm the fix.
+- Exact failed run: `43762264142`, quality job `132959478036`; the first migration's actual-runner guard/rollback qualification passed before the new first-four qualification encountered the schema permission error. Web quality passed. Overall quality failed, so do not treat that head as green.
+- Current production remains untouched. No migration, grant, secret, deployment, Render setting or application data was changed.
