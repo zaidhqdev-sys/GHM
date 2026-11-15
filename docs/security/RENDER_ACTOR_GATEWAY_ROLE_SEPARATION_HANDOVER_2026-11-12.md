@@ -2442,3 +2442,46 @@ Amanda's Render support conversation remains preserved in the earlier sections o
 - Repository migration audit: **INVESTIGATE — 42 pending, only 7 allowlisted; 35 remain unallowlisted**.
 - November 4 archive ledger history: **89/89 exact matches with the live production ledger for shared versions; 16 later live rows**.
 - Production migration execution, restore, allowlist edits, role/grant changes, credential/environment changes and deployment: **NOT PERFORMED**.
+
+
+## 2026-11-15 16:03Z — Production pending-migration execution gate added to existing PR #282
+
+### Recheck before implementation
+
+- Canonical handover fetched from default branch immediately before this update; blob SHA: `92019828356a9de094d822f4b1c6ffb0d19d01ac`.
+- PR #282 remains open on `fix/migration-runner-strict-tls-20261115`; existing head before this follow-up was `5e13c479c79e7e9518a0b78445eae927812682b5`.
+- Existing #282 already implemented strict verified TLS and out-of-order pending-migration rejection. Its tests and quality workflow passed on the original #282 head, but the later allowlist change requires fresh exact-head CI.
+- Existing branch `fix/exact-production-pending-migration-allowlist` was inspected. It is 496 commits behind main and only changes the allowlist JSON plus checksum audit test; it does **not** change the migration executor. Its config contains a single old entry `20261109210000`, so it is not reusable as a current execution safeguard. It was not modified or merged.
+- Current production allowlist on main remains the seven-entry file documented above. No existing branch was found that wires this allowlist into `src/db/migrate.ts`.
+
+### Newly implemented fail-closed execution check (on existing #282 branch)
+
+Added to the existing PR #282 branch; no new branch or PR:
+- `src/db/production-pending-migration-allowlist.ts`: validates allowlist entries (14-digit version, non-empty name, no duplicate versions, exact version/name match to repository migration files) and rejects any repository migration that is still pending but is not explicitly allowlisted.
+- `src/db/migrate.ts`: for the explicitly identified production target `ghm_db`, invokes the allowlist check immediately after reading the live ledger and before the migration-order guard and before the migration execution loop. Non-production qualification databases do not use this production-only allowlist.
+- `src/db/migration-checksum.test.ts`: adds tests for rejecting unapproved pending migrations, allowing a pending subset when earlier allowlisted migrations are already applied, rejecting stale/name-mismatched entries, and rejecting duplicate versions.
+- A generated regex escaping issue in the helper was detected during source verification and corrected before this handover update. The helper now validates versions with `/^\d{14}$/`.
+
+Commits added to the existing #282 branch:
+- `bd8d92fb64e2e11cab121e687ad6f1e09bb2d151` — add helper.
+- `9637d18b47db38d0faaecbed4d4d26663b94dc6d` — wire production runner.
+- `9d441a4db80250dacc0123db0860d8c9294ab9c0` — add tests.
+- `ba8cffc6933e8bf1e780a678af554ee7148c6147` — correct helper regex validation.
+
+### Expected behavior against the known production ledger
+
+Given the last independently observed production ledger (105 rows, latest `20261109210000`) and the current mainline repository migration set (137 files), the production allowlist check should reject execution because 35 pending migrations are not included in the seven-entry allowlist. It must fail before the first migration SQL statement. This is a source-derived expected result; **the updated branch has not been executed against production**.
+
+The helper also refuses stale allowlist entries that do not exactly match a current repository migration filename/version name. Already-applied migrations do not need to be in the pending allowlist, but every allowlist entry must still correspond to an exact current repository migration.
+
+### CI / merge disposition
+
+- Original #282 head `5e13c479c79e7e9518a0b78445eae927812682b5` had successful `quality`, `web-quality`, and Cloudflare Pages checks.
+- The allowlist additions moved the branch head to `ba8cffc6933e8bf1e780a678af554ee7148c6147`. At the time of this handover update, only the Cloudflare Pages check was visible and was still in progress; fresh exact-head quality validation is **not yet confirmed**.
+- The branch is 22 commits behind main, and the current compare reports 12 commits ahead / 22 behind. The mainline-only changes are handover updates; the PR is not ready to merge until it is reconciled with current main and exact-head CI passes.
+- Do not merge #282 yet. Do not run `npm run migrate`, deploy migration code to Render, or change the allowlist to include the 35 blocked migrations as a shortcut.
+- No production connection, migration SQL, restore, role/grant change, Render setting, secret, credential, or deployment was performed during this implementation.
+
+### Amanda / Render support continuity
+
+Amanda's support conversation remains the documented basis for retaining the Dashboard-managed default credential for controlled administration while using SQL-created restricted login identities for normal application execution. The sensitive-role ADMIN OPTION issue remains unresolved and is not addressed by this migration-runner change.
