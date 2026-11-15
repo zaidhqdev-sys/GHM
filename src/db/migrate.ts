@@ -225,20 +225,23 @@ const migrate = async (): Promise<void> => {
         : `Non-production pending migrations selected: ${executionMigrations.length}`,
     );
 
-    for (const migration of executionMigrations) {
+    // Validate the checksum of every already-applied migration, not only the
+    // selected execution batch. Batch limiting must not weaken history integrity.
+    for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
-      if (existingChecksum) {
-        if (existingChecksum !== migration.checksum) {
-          if (matchesMigrationSqlChecksum(existingChecksum, migration.sql)) {
-            console.warn(`Accepted legacy line-ending checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
-          } else if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
-            throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
-          } else {
-            console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
-          }
+      if (!existingChecksum) continue;
+      if (existingChecksum !== migration.checksum) {
+        if (matchesMigrationSqlChecksum(existingChecksum, migration.sql)) {
+          console.warn(`Accepted legacy line-ending checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
+        } else if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
+          throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
+        } else {
+          console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
         }
-        continue;
       }
+    }
+
+    for (const migration of executionMigrations) {
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
       await client.query(normalizeMigrationSqlForExecution(migration.sql));
