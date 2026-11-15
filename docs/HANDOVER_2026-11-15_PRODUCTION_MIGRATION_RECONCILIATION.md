@@ -413,3 +413,50 @@ A cross-check against the existing authoritative storage handover and the exact 
 - Important boundary: these are disposable-database qualification results, not production compatibility evidence. Migration 4 remains blocked on the signed storage gateway production deployment, provider-attestation secret, end-to-end lifecycle smoke tests, and a separately reviewed five-function legacy grant cutover/rollback plan. Do not interpret its disposable pass as production approval.
 - PR #285 remains OPEN / DRAFT / mergeable at the time of this checkpoint. No merge, deployment, production migration, grant change, secret change, Render configuration change or production data mutation occurred.
 - Next action: run the prepared read-only preflight from the PR branch against production `ghm_db` using the existing `ghm_migrator` connection and TLS verification. Capture the complete output in the handover, then select only the earliest eligible migration(s). The backup and Render role-administration gates remain independent requirements for production DDL.
+
+
+## 22. Production preflight evidence and repository-only continuation (2026-11-15)
+
+### Exact production read-only preflight supplied by the owner
+
+The owner ran `npm run preflight:first-four-production-migrations` from the exact PR #285 checkout, loading the existing `C:\\GHM\\.env` through `DOTENV_CONFIG_PATH`. The process returned exit code 0 and reported:
+
+- `database_name=ghm_db`, `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, `transaction_read_only=on`.
+- `tls_enforced_by_client=true` using `rejectUnauthorized: true`.
+- Existing `ghm.storage_mark_deletion_pending(bigint)`: SECURITY DEFINER, owner `ghm_schema_owner`, runtime EXECUTE=true, Actor Gateway EXECUTE=false, pinned `search_path=pg_catalog, ghm`.
+- Existing lifecycle constraint `storage_object_lifecycle_check` is validated. Observed storage rows: 2 `deleted` and 2 `pending`; zero rows in either group violate the proposed migration-4 predicate.
+- The named function `update_business_supplier_classification` was absent. The five migration-2/3 target tables were absent. The named `storage_mark_deletion_pending` function existed.
+- The preflight verdict is deliberately `READ_ONLY_PREFLIGHT_ONLY`. No DDL/DML, migration, role/grant, secret, deployment or application data was changed.
+
+This is a new direct production read-only observation, not merely disposable CI evidence. The output did not include an exact signature/return-type comparison for the existing storage function; the revised preflight now reports expected operation (create vs replace), unexpected object collisions, and function return type. Re-run that revised preflight before finalizing migration-4 compatibility. Do not call the existing function-name match an unexpected collision: migration 4 uses `CREATE OR REPLACE FUNCTION`, so it is an intended replacement candidate whose signature/return type/owner/configuration/ACL still require exact reconciliation.
+
+### Source review findings — no blind changes
+
+- PR #272 is merged and contains the unified Actor Gateway source integration. Its handover still says no production Actor Gateway service/endpoint has been deployed or smoke-tested, and that production gateway hosting/network/secret prerequisites remain unresolved.
+- PR #284 remains open/draft and is limited to signed assertion replay/timestamp qualification.
+- PR #285 remains open/draft/mergeable. At this update its head is `95730b6a443a8c161440843fe4a96871321a70c9`; the preceding code qualification evidence is tied to `e8bddb05c23a3719d00a33e7db62c0fb16c28d28`, not this new head. Exact-head CI must be checked before treating the preflight refinement as qualified.
+- Amanda's Render support conversation remains the operational authority: Dashboard-managed default credential for controlled administration; SQL-created restricted login identities for normal app execution; retain distinct `ghm_runtime` and `ghm_migrator`; preserve the supported SET-only schema-owner path. The unresolved administrator/role-membership issue is not fixed by repository edits.
+
+### Two sequencing/security conclusions
+
+1. The migration-1 post-batch guard revokes runtime EXECUTE on `ghm.update_business_supplier_classification(bigint,bigint,boolean)` immediately after migration `20261110010000`. The signed gateway cutover migration `20261110260000_gateway_supplier_classification_cutover` is later in the pending prefix. Therefore the runner's current guard can revoke a still-needed legacy API path long before its gateway cutover unless the deployed application route is already switched and verified. Production preflight found the legacy function absent at the time of inspection, but this does not prove all deployed API/client paths are switched. Do not apply migration 1 with this guard until the exact production call path is proven safe. Do not simply delete the guard either: migration 1's SECURITY DEFINER function accepts caller-supplied account identity and grants runtime EXECUTE. The correct repository fix is to model the application cutover boundary explicitly and qualify the sequence.
+2. Migration `20261110140000_allow_pending_storage_object_cleanup` intentionally replaces the existing `storage_mark_deletion_pending(bigint)` function and retains/grants runtime EXECUTE. The production preflight confirms that direct runtime grant already exists, so the migration does not newly create that particular grant in the observed production state. However, it broadens the function's accepted lifecycle transition to include pending uploads and keeps a SECURITY DEFINER direct-runtime entry point. The five-function signed Storage Metadata Gateway wrappers exist in source, but their existence is not production deployment or cutover evidence. Do not automatically revoke legacy grants in this migration or in the generic runner; preserve the current app path until the gateway route, provider attestation, deployed service, secrets and rollback plan are verified.
+
+### Repository-only change completed
+
+Updated `scripts/preflight-first-four-production-migrations-readonly.mjs` in commit `95730b6a443a8c161440843fe4a96871321a70c9` to:
+- classify expected objects by operation (`create` versus `replace`) rather than label every existing object a collision;
+- report `unexpected_collision` separately;
+- include the existing function return type in the storage function inspection;
+- use `object_name_checks` rather than the misleading `object_name_collisions` label;
+- describe migration 4 as replacing the existing SECURITY DEFINER function and retaining runtime EXECUTE, and retain the explicit gateway cutover warning;
+- state migration 1's same-transaction guard requirement accurately.
+
+No migration SQL, production role/grant, secret, service, deployment or application data was changed by this commit.
+
+### Next repository work
+
+- Reconcile the migration-1 runner guard with the actual supplier-classification application rollout. Determine whether the current production route uses the legacy runtime RPC or signed gateway route; do not infer from merged source alone. Add a qualification that prevents the migration runner from revoking the legacy function before the cutover is ready.
+- Extend migration-4 qualification to assert the exact pre-existing function signature, return type, owner, search_path and effective grants before/after `CREATE OR REPLACE`, and test both pending and available object deletion-request semantics without altering timestamps.
+- Reconcile all five storage legacy functions against the exact signed wrapper calls and the deployed app release; keep the production grant cutover as a separately planned, reversible operation.
+- Update this handover after each repository change and check exact-head CI. Keep PR #285 draft; no merge or production migration authorization is implied.
