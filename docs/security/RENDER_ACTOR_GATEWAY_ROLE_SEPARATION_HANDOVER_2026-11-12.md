@@ -3087,3 +3087,26 @@ Reviewed the live GitHub metadata, complete PR #68 changed-file inventory, its e
 5. Complete active-vs-dormant Supabase caller audit, especially admin commercial, AI (remain disabled), push, avatar/media, legacy hooks and central SDK/config. Remove facade/SDK only after all active callers are migrated or explicitly retired.
 6. Keep all 42 production migrations, issuer/gateway cutovers, storage secret provisioning, data imports, deployments, payment activation, and Supabase removal from production blocked pending their separate readiness and approval gates.
 
+
+#### Additional security review of stale GHM PR #244 — do not transplant as-is
+
+Inspected the exact PR #244 migration, routers and repositories against current main transaction/authorization patterns.
+
+- The proposed migration grants ghm_runtime direct INSERT on business_engagement_event, direct SELECT on the table and USAGE/SELECT on its sequence. No RLS or actor-bound database function is defined in that migration.
+- The proposed repository calls withAuthorizedTransaction(context,...), then writes context.userId into account_id. Current src/db/authorized-transaction.ts only calls requireAuthenticatedContext in application code and runs the callback in a normal transaction; it does not establish a DB-verifiable actor identity or signed assertion.
+- Therefore the event's account_id is trustworthy only while the application process and its supplied AuthContext remain trusted. Any direct SQL caller holding the ghm_runtime credential can insert events attributed to arbitrary account IDs and read all event rows. This conflicts with the documented Actor Gateway objective of preventing direct DB callers from impersonating actors. Do not transplant PR #244's engagement write path or grant as-is.
+- The proposed rate limit is a transaction advisory lock keyed by account ID plus a count of that account's events in the previous minute. It protects normal application requests but is not a database actor-authentication boundary; direct SQL can select another account ID or write around the intended caller path.
+- The analytics read repository duplicates entitlement evaluation with a direct join to subscription/plan entitlement. Unlike current src/resources/commercial/repository.ts readCommercialAccess, it does not check current_period_start <= database now; it checks only that current_period_end is null or in the future. A future-dated subscription could therefore pass the Analytics-specific check. Any replacement must reuse or align with the canonical entitlement evaluator and test period boundaries, lifecycle status, membership roles and business scope.
+- The PR #244 migration and source are not on current main; no 20261110020000 migration exists in the 42-entry current production pending inventory. Do not add it to production allowlist or apply it.
+
+#### Product/data semantics that require a backend contract decision
+
+- PR #244 only records authenticated account engagement; it intentionally excludes anonymous profile views and active members' own engagement. This is a material product/metric definition, not equivalent to the old Supabase dashboard's profile views/calls/WhatsApp metrics.
+- Its dashboard maps leads to enquiry rows, quotes to project_quote rows, projects_won to accepted quotes, and conversion_rate to accepted quotes divided by enquiry count. The old UI metric semantics require explicit confirmation; the PR itself records this as a product gate.
+- recent_activity in the proposal contains only engagement events, not enquiry or quote activity. The UI's recent-activity contract therefore needs explicit mapping or a narrower label.
+- The current canonical commercial access evaluator uses subscription lifecycle plus both period start/end bounds before returning entitlements. Analytics must not independently weaken or diverge from that evaluator.
+
+#### Decision
+
+Do not create a new Analytics/Engagement branch or port PR #244 yet. First settle the event actor-proof design (prefer the existing signed Actor Gateway contract if a supported no-cost runtime topology can be established), canonical entitlement reuse, and product metric semantics. If the gateway cannot be hosted securely at $0, keep engagement capture unavailable rather than reintroducing direct runtime actor assertions. A read-only analytics endpoint may be considered separately after entitlement and metric semantics are approved, but it must not claim event metrics that have no trusted source.
+
