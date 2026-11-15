@@ -10,6 +10,7 @@ import {
   classifyHistoricalException,
   classifyRetainedHistoricalMigration,
   resolveMigrationAuditTarget,
+  stripPostgresSslConnectionStringOptions,
 } from './migration-audit-checksum.mjs';
 
 test('canonical checksum normalizes CRLF and CR to LF', () => {
@@ -151,5 +152,18 @@ test('production forensic migration audit requires verified TLS and rejects plai
   const source = readFileSync(new URL('./forensic-migration-reconciliation.mjs', import.meta.url), 'utf8');
   assert.match(source, /DATABASE_SSL !== 'true'/);
   assert.match(source, /ssl:\s*\{\s*rejectUnauthorized:\s*true\s*\}/);
+  assert.match(source, /connectionString:\s*stripPostgresSslConnectionStringOptions\(databaseUrl\)/);
   assert.doesNotMatch(source, /rejectUnauthorized:\s*false/);
+});
+
+
+test('migration audit strips connection-string SSL options so strict TLS config cannot be overridden', () => {
+  const input = 'postgres://audit_user:secret@db.example/ghm_db?sslmode=require&sslrootcert=%2Ftmp%2Froot.crt&sslcert=%2Ftmp%2Fclient.crt&sslkey=%2Ftmp%2Fclient.key&ssl=true&uselibpqcompat=true&application_name=ghm-audit';
+  const output = new URL(stripPostgresSslConnectionStringOptions(input));
+  assert.equal(output.username, 'audit_user');
+  assert.equal(output.password, 'secret');
+  assert.equal(output.hostname, 'db.example');
+  assert.equal(output.pathname, '/ghm_db');
+  assert.equal(output.searchParams.get('application_name'), 'ghm-audit');
+  assert.deepEqual([...output.searchParams.keys()], ['application_name']);
 });
