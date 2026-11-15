@@ -3186,3 +3186,15 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 - Connect PR #68 currently remains draft at head `5839bad513db77e204bcb0ae37e53d2153a95cd9`; the recorded consumer-code head `5f421abffa4133d94be746627f3b622f57f0adce` passed Connect run `43742147332`, but the current documentation-only PR head's own exact-head qualification remains to be verified.
 - No production database, Render configuration, deployment, Connect branch, payment activation or provider change was performed. PayFast remains paused.
 - Amanda's Render support constraints remain unchanged: retain Dashboard-managed admin, separate `ghm_runtime` and `ghm_migrator`, preserve the SET-only schema-owner path, and do not improvise grants or add paid infrastructure.
+
+
+## 2026-11-15 — PR #283 ancestry reconciled with current main
+
+- Rechecked PR #283, branch `feat/admin-commercial-launch-read-20261115`, current `main`, changed-file inventory and prior exact-head CI before changing branch history.
+- Current main at reconciliation: `6f9cf966fefd2c77f8a0ce95b0adcfa3ca7a3d7a`. PR branch before reconciliation: `22925711dce0e39df96725ae86bb82fb9ef7d426`.
+- Verified the complete current-main handover document was an exact prefix of the PR branch document; the PR branch contained the additional commercial launch and qualification addenda. Thus the five mainline commits since the prior merge base were all represented in the branch tree, with no mainline content to discard.
+- Created merge commit `49f88af47b40ba46f48609792892b7b44144cfab` with both current main and the PR branch as parents, retaining the PR tree. Advanced the existing PR branch using a non-force fast-forward update with expected previous head `2292571...`; no new branch or PR was created.
+- Verified compare result after update: status `ahead`, ahead 18, behind 0, merge base current main `6f9cf966...`. Exactly eight intended changed files remain: this handover plus the seven commercial route/service/repository/contracts implementation and test files.
+- PR #283 description corrected to reflect merge-parent ancestry reconciliation. Exact-head CI run `43743790813` is running on merge commit `49f88af...`; do not promote until it completes successfully.
+- No production DB query/mutation, Render change/deployment, migration execution, Connect branch change or payment activation. PayFast remains paused.
+- Amanda's Render support constraints remain authoritative: retain Dashboard-managed admin; keep `ghm_runtime` and `ghm_migrator` separate; preserve the SET-only schema-owner path; no improvised grants or paid infrastructure.
