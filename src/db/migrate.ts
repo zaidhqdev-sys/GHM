@@ -8,6 +8,8 @@ import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
 import { findOutOfOrderPendingMigration } from './migration-order';
+import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
+import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -191,6 +193,13 @@ const migrate = async (): Promise<void> => {
       ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
       : { rows: [] as Array<{ version: string; checksum: string }> };
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
+    if (approvedTarget.databaseName === 'ghm_db') {
+      assertProductionPendingMigrationAllowlist(
+        migrations,
+        new Set(appliedByVersion.keys()),
+        productionPendingMigrationAllowlist,
+      );
+    }
     const outOfOrderPending = findOutOfOrderPendingMigration(
       migrations,
       new Set(appliedByVersion.keys()),
