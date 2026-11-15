@@ -1645,3 +1645,88 @@ If no suitable backup exists, stop the production-equivalent replay and record t
 - Pending migration allowlist: unchanged at seven entries.
 - PR #282: open/unmerged; no branch update or merge.
 - Render and deployments: unchanged.
+
+
+## 2026-11-15 — November 14 production archive ledger reconciliation
+
+### Repository / work-inventory check before recording this result
+
+- Current mainline immediately before this handover update: `7dcd74387d1a467d2d9a905bce7c3d8045c3e6b3`.
+- Open PR inventory checked: #282, #243, #264, #201, #233 and #244. No PR was merged or changed during this investigation.
+- PR #282 remains open/unmerged. Its current branch comparison against main is divergent: 9 commits ahead / 8 behind. Its proposal includes strict TLS and a fail-closed migration-order guard; it is not a production migration authorization.
+- The repository contains many historical/construction branches, including migration checksum/provenance branches. Do not create another branch or repeat a generic migration audit before inspecting those existing branches and commit history for the exact historical SQL.
+- Existing canonical handover retained; this entry supplements the PostgreSQL 18 clean-install and production-baseline gate above. Amanda's Render support conversation and recommendation remain recorded earlier in this document.
+
+### Archive identified and inspected — inventory only
+
+Candidate archive supplied and inspected locally:
+
+- Outer archive: `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz`.
+- Extracted directory-format dump: `C:\Users\zaidh\AppData\Local\Temp\GHM-backup-inspect-20261114\2026-11-14T14_26Z\ghm_db`.
+- Extracted ledger SQL: `C:\Users\zaidh\AppData\Local\Temp\GHM-backup-inspect-20261114-migration-ledger.sql`.
+- Archive TOC says database `ghm_db`, dump created 2026-11-14 14:28:34, source PostgreSQL 18.6, directory format, 760 TOC entries.
+- Extracted archive inventory: 65 files, 537,097 bytes total; TOC 493,562 bytes; migration-ledger data 16,256 bytes.
+- The archive contains both `ghm` and legacy `public` schemas and table data. The presence of legacy `public` objects is an inventory observation only; it does not establish that production still depends on Supabase.
+- `ghm.ghm_schema_migrations` ledger data extracted successfully without restoring the archive or connecting to a database. It contains 105 rows, from `00000000000000` through `20261109210000`; the final recorded `applied_at` is 2026-11-09 20:50:23.763528+00.
+
+### Exact repository checksum reconciliation result
+
+The extracted 105-row snapshot ledger was compared with the current mainline migration directory using the repository's supported normalized-LF and legacy-CRLF SHA-256 checksum rules.
+
+| Result | Count |
+|---|---:|
+| Snapshot ledger rows | 105 |
+| Repository migration files | 137 |
+| Exact filename + checksum matches | 86 |
+| Same filename, checksum mismatch | 9 |
+| Ledger rows with no matching repository migration file | 10 |
+| Repository migrations not present in snapshot ledger | 42 |
+
+The 9 same-name checksum mismatches are:
+
+| Version | Migration |
+|---|---|
+| 20260911030000 | create_project_public_projection |
+| 20260911210000 | reconcile_business_verification_state |
+| 20260911211500 | reconcile_business_verification_default |
+| 20260912030000 | grant_review_runtime_access |
+| 20260914120000 | create_project_quote |
+| 20260914130000 | reconcile_project_quote_transition_privilege |
+| 20260914220000 | create_opportunity_capability_requirements |
+| 20260915193000 | reconcile_commercial_payment_transaction |
+| 20261005211000 | correct_founder_system_admin_bootstrap_existing_account |
+
+The 10 ledger entries whose migration files are absent from the current repository are:
+
+| Version | Migration |
+|---|---|
+| 20261016100000 | add_connect_identity_authority_contract |
+| 20261016120000 | create_account_external_mapping |
+| 20261016170000 | add_connect_directory_contract |
+| 20261016180000 | extend_owner_managed_directory_profile |
+| 20261016190000 | expose_authenticated_account_email |
+| 20261018210000 | grant_runtime_account_profile_column_updates |
+| 20261019190000 | create_business_engagement_events |
+| 20261019210000 | create_business_registration_identity |
+| 20261020130000 | create_quoteflow_migration_business_provisioning |
+| 20261020140000 | reconcile_quoteflow_provisioning_verification_status |
+
+The 42 repository migrations after the snapshot ledger are the 2026-11-10 through 2026-11-12 suffix already enumerated and source-reviewed in the earlier section of this handover. Their absence from a 2026-11-14 14:28 dump ledger is expected; it is not itself a mismatch.
+
+### Interpretation and decision
+
+- The archive is a strong candidate for reconstructing the production schema/ledger state represented by the 105-row snapshot, and is materially better evidence than the 2026-11-04 archive.
+- It is **not yet a verified production-replay baseline**. Only 86/105 ledger entries match current migration source exactly. The nine modified-source checksums and ten missing source files prevent us from establishing the exact SQL history from current mainline alone.
+- Do not overwrite or regenerate migration files to force checksum matches. Do not edit the ledger. Do not infer historical SQL from current migration contents.
+- Next work is a targeted provenance recovery, not another broad audit: inspect existing Git branches, commit history, PR diffs and repository objects for the nine historical versions and ten missing migration files; recover candidate historical contents and verify each against the exact ledger checksum using the repository's normalization policy.
+- For any migration whose exact historical source cannot be recovered and checksum-verified, retain it as unresolved. Do not claim an exact baseline or run the production-equivalent replay.
+- Once all 105 entries are exact, separately qualify the archive's schema/object inventory and the 42-migration suffix on a disposable local PostgreSQL 18 instance only if an already-existing local instance is available and safe to use. Do not create a new paid or hosted database, revive the expired sandbox, or restore over an existing database.
+
+### Safety / current status
+
+- Archive TOC and ledger data were inspected/extracted only; no restore was run.
+- No production database connection or SQL was used for this reconciliation.
+- No production migration, data mutation, role/grant change, credential/secret change, Render environment change, deployment, allowlist change, PR merge or branch update was performed.
+- November 14 archive baseline: **CANDIDATE — NOT YET VERIFIED**.
+- Exact source reconciliation: **86 PASS / 9 checksum mismatches / 10 missing files**.
+- Production-equivalent replay: **NOT RUN — historical migration provenance unresolved**.
