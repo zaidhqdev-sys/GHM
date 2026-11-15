@@ -3,7 +3,7 @@ import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import historicalProvenanceExceptions from '../../config/historical-migration-provenance-exceptions.json';
-import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution } from './migration-checksum';
+import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution, stripPostgresSslConnectionStringOptions } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
@@ -20,9 +20,15 @@ if (process.env.NODE_ENV === 'production' && !databaseSsl) {
   throw new Error('DATABASE_SSL must be true in production');
 }
 
+if (process.env.NODE_ENV === 'production' && !databaseSsl) {
+  throw new Error('Production migrations require DATABASE_SSL=true with certificate verification enabled');
+}
+
 const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+  connectionString: databaseSsl && databaseUrl
+    ? stripPostgresSslConnectionStringOptions(databaseUrl)
+    : databaseUrl,
+  ssl: databaseSsl ? { rejectUnauthorized: true } : false,
 });
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
