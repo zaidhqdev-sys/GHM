@@ -84,7 +84,13 @@ const workerJsonBodyParser: RequestHandler = (request, response, next) => {
     totalBytes += bytes.length;
     if (totalBytes > MAX_JSON_BODY_BYTES) {
       tooLarge = true;
+      completed = true;
       chunks.length = 0;
+      // Respond immediately when the limit is crossed. Drain the remaining
+      // request bytes without buffering so the connection can complete
+      // cleanly, but never wait for a slow sender before returning 413.
+      response.status(413).json({ error: 'payload_too_large' });
+      request.resume();
       return;
     }
     chunks.push(bytes);
@@ -261,7 +267,13 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
 
       actorGatewayServer = createServer(app);
       actorGatewayServer.listen(INTERNAL_HTTP_PORT);
-    })();
+    })().catch((error: unknown) => {
+      // A transient Hyperdrive/ACL startup failure must not poison this
+      // isolate forever. Fail this request closed, then allow a later fetch
+      // to retry initialization with the current bindings.
+      initialization = undefined;
+      throw error;
+    });
   }
   return initialization;
 };
