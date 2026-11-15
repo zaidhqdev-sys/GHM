@@ -69,5 +69,6 @@ ALTER FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boole
 -- The caller-supplied account ID is not a trusted runtime identity. Only the
 -- schema-owner gateway wrapper may invoke this SECURITY DEFINER implementation.
 REVOKE ALL ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM PUBLIC, ghm_runtime, ghm_migrator;
+-- The later gateway cutover grants EXECUTE only on its signed gateway wrapper.
 
 COMMIT;
