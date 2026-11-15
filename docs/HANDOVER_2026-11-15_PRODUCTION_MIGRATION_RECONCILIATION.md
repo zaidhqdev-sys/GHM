@@ -390,3 +390,10 @@ A cross-check against the existing authoritative storage handover and the exact 
 - Storage handover cross-check confirms the three actor-authorized signed wrappers plus two dual-proof provider transition wrappers are implemented in source, and the Resource API fails closed in gateway-required mode. However, the five legacy metadata function grants are only rehearsed for revoke/rollback on disposable PostgreSQL; there is no production cutover script or verified deployed service/secret. This is why migration 4 remains a hard stop.
 - Latest code/CI workflow change at this checkpoint: `f6127003d7310d5bd00b1f8c0e7b588eb79c04bf`. Exact-head CI for this SHA has not yet been observed. Previous failed quality run `43762264142` remains superseded by the scoped-role fix; do not report it as a pass.
 - PR #285 remains OPEN, DRAFT and mergeable. No reviews/threads were present at the last check. No production migration, role/grant, secret, Render configuration, service deployment or application data was changed.
+
+
+## 20. Production preflight TLS check clarification (2026-11-15)
+
+- The read-only preflight configures the PostgreSQL client with `ssl: { rejectUnauthorized: true }`, so TLS is enforced by the client connection itself.
+- Removed the server-side `ssl` GUC check because it reports server capability/configuration, not the encryption state of an individual client connection. The report now states `tls_enforced_by_client: true` based on the explicit verified client configuration.
+- Latest code commit for this correction: `dfc0b1400f6b1cc94b43a8c94e67363d9f473120`. Exact-head CI has not yet been observed for this SHA. Do not claim the new first-four qualification passes until the quality job reaches and completes that step.
