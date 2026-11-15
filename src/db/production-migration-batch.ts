@@ -2,7 +2,7 @@ import type { ProductionMigrationVersion } from './production-pending-migration-
 
 export const MAX_PRODUCTION_MIGRATION_BATCH_SIZE = 5;
 
-export const parseProductionMigrationBatch = (raw: string | undefined): T[] => {
+export const parseProductionMigrationBatch = (raw: string | undefined): ProductionMigrationVersion[] => {
   if (!raw?.trim()) {
     throw new Error('Production migration refused: set GHM_PRODUCTION_MIGRATION_BATCH to an explicit JSON array of ordered {version,name} entries');
   }
@@ -32,7 +32,7 @@ export const selectProductionMigrationBatch = <T extends ProductionMigrationVers
   migrations: T[],
   appliedVersions: ReadonlySet<string>,
   requestedBatch: ProductionMigrationVersion[],
-): ProductionMigrationVersion[] => {
+): T[] => {
   const pending = migrations.filter((migration) => !appliedVersions.has(migration.version));
   if (requestedBatch.length === 0 || requestedBatch.length > MAX_PRODUCTION_MIGRATION_BATCH_SIZE) {
     throw new Error(`Production migration refused: batch size must be between 1 and ${MAX_PRODUCTION_MIGRATION_BATCH_SIZE}`);
