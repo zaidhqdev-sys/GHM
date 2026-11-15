@@ -67,6 +67,5 @@ ALTER FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boole
 ALTER FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean)
   SET search_path = pg_catalog, ghm;
 REVOKE ALL ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) TO ghm_runtime;
 
 COMMIT;
