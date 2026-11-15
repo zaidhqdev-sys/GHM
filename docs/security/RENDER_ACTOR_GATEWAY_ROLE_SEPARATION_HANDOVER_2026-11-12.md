@@ -2648,3 +2648,14 @@ The initial commit-associated workflow lookup returned an empty list, but a dire
 - Post-merge commit checks were queried immediately after merge and are **QUEUED / IN PROGRESS** (`quality`, `web-quality`, Cloudflare Pages). These are separate from the already-passing exact PR-head checks; poll them before claiming main's post-merge pipeline is green.
 - No production database connection, migration execution, data/ledger change, role/grant/credential change, Render environment update, service deployment or traffic change was performed by this merge. Cloudflare's PR preview deployment is not the Render production runtime.
 - Production migration execution remains blocked pending the separate production-only migration and Project↔Opportunity reconciliation gates. Do not expand the seven-entry allowlist to include the 35 unapproved pending migrations. PayFast remains paused. Amanda's Render support context and unresolved sensitive-role ADMIN OPTION concern remain open as documented above.
+
+
+### 2026-11-15 18:27Z — post-merge main CI progress
+- PR #282 is verified **CLOSED / MERGED** at `29e7b4b5246d7119561b4878b54475a621da1c47`.
+- The merged commit's push-triggered main workflow is run `43734868071`.
+  - `web-quality`: **PASS** (11/11).
+  - `quality`: **IN PROGRESS**, 46/72 steps completed at the latest poll; the active stage is the full test suite; no failed steps reported.
+  - Cloudflare Pages check for the merge commit: **PASS**.
+- This is the post-merge main pipeline; the PR-head run `43734441282` had already passed both required jobs before merge. Do not report the main push-triggered quality job as green until it completes.
+- Canonical handover update commit `307f628e41013ee970e1349910919e1227866883` was added after merge and triggers a separate documentation-only Cloudflare Pages check; that check was in progress at the latest poll. It does not alter application source.
+- No production DB connection, migration, data change, Render runtime configuration, credential, role, grant, deployment or traffic change occurred. Production migration and Project↔Opportunity reconciliation gates remain outstanding; PayFast remains paused.
