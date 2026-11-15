@@ -17,11 +17,7 @@ const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
 });
 
 const databaseSsl = process.env.DATABASE_SSL === 'true';
-if (process.env.NODE_ENV === 'production' && !databaseSsl) {
-  throw new Error('DATABASE_SSL must be true in production');
-}
-
-if (process.env.NODE_ENV === 'production' && !databaseSsl) {
+if (approvedTarget.databaseName === 'ghm_db' && !databaseSsl) {
   throw new Error('Production migrations require DATABASE_SSL=true with certificate verification enabled');
 }
 
