@@ -2987,3 +2987,57 @@ Current `main` caller inspection confirms:
 - QuoteFlow migration reset enrollment registration is a migration/operator action. The issuer-side flow reads an approved enrollment and completes it; the manual issuer cutover also explicitly denies the registration function to runtime and issuer.
 
 **Scope of this checkpoint:** source-level references and intended privilege architecture only. It is not proof that all external consumers, deployed clients, scripts, or production binaries have been exhaustively inventoried. The production deployment still has not been updated to current main during this audit. Preserve the requirement for a complete route/client and operational caller inventory before the manual issuer cutover or auth privilege revocations.
+
+### 2026-11-15 — Client, service topology and storage provisioning reconciliation
+
+This checkpoint follows the 42-migration SQL review. It inspects current GHM main source, current ZAID Connect PR metadata and existing handovers. No production configuration or deployment was changed.
+
+#### Actor Gateway deployment reality
+
+- Current implementation is a Cloudflare Worker (workers/actor-gateway), not a configured Render service. It requires a real Hyperdrive binding, ACTOR_GATEWAY_RATE_LIMITER, GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET, current ES256 public key/KID (and optional previous key pair).
+- workers/actor-gateway/wrangler.jsonc has workers_dev=false, preview_urls=false, and a placeholder all-zero Hyperdrive ID. Its local connection string is explicitly a disposable PostgreSQL test value. The Worker cannot be deployed usefully until a real binding, DB principal/credentials, secrets, rate-limit binding, and reviewed HTTPS routing are configured.
+- The Worker startup verifies session_user, role flags/membership, and the full gateway ACL before listening. It does not accept arbitrary SQL. The Resource API validates the gateway URL as an HTTPS origin (localhost HTTP only in development).
+- The prior Render review found no dedicated Actor Gateway Render service; do not repurpose GHM Internal Runtime or any expired sandbox service. The current architecture ADR permits isolated implementation/qualification only and does not authorize production provisioning.
+- There is no established $0 production topology in the reviewed evidence. Cloudflare Worker hosting/bindings and database connectivity must not be presumed free or provisioned without checking actual account plan/cost and explicit approval. Do not create a new paid service.
+
+#### Authentication Issuer topology and client requirements
+
+- Current mainline issuer code requires GHM_AUTH_ISSUER_DATABASE_URL, an issuer-only DB login, ES256 signing key material, refresh-token pepper continuity, explicit GHM_AUTH_ISSUER_TRUST_PROXY_HOPS and exact HTTPS GHM_AUTH_ISSUER_CORS_ORIGINS.
+- QuoteFlow native mobile calls the issuer directly from outside Render. Connect native bearer flows also need the issuer HTTPS origin and CORS; Connect's optional browser-cookie path uses the same-origin Vercel BFF and remains separately gated. A private-only issuer endpoint cannot serve all clients.
+- Current issuer app has no password-recovery delivery adapter; generic recovery and QuoteFlow migration-reset recovery intentionally return 503. Do not claim complete issuer readiness until delivery is separately solved without introducing an unapproved paid provider.
+- The manual issuer DB privilege cutover remains manual-only and production-prohibited. It must follow issuer deployment, client routing, exact-head disposable qualification, verified backup/restore and separate approval. The current Render production binary/deployment was not inspected in this source-only pass and must not be assumed to match current main.
+
+#### Storage-provider dual-proof readiness
+
+- Resource API production storage configuration requires STORAGE_PROVIDER=s3, region, bucket, access key ID and secret access key; custom endpoints must use HTTPS. If storage is enabled in production, GHM_ACTOR_GATEWAY_URL and GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET are also required.
+- The provider attestation is HMAC-SHA256 over operation, issue time, nonce and request context using a canonical base64 32-byte key. PostgreSQL stores the verifier secret in a protected table; neither runtime nor gateway should be able to read it.
+- scripts/provision-storage-provider-attestation-secret.mjs explicitly rejects any non-localhost/non-disposable database and requires the explicit mutation opt-in. This is qualification-only, not a production secret provisioning procedure.
+- Existing storage evidence says provider-level Cloudflare R2 PUT/HEAD/GET/DELETE passed, and the November signed actor/provider proof path passed disposable PostgreSQL qualification. It does not establish deployed Resource API → Worker → production DB → provider workflow, recovery/orphan reconciliation, production secrets, or production enablement.
+- The existing bucket named zaid-ghm-production is not proven to be non-production. Do not use it for new mutation tests.
+
+#### ZAID Connect current PR and no-Supabase reconciliation
+
+Live GitHub PR inventory for zaid-connect was checked:
+
+- PR #68 feat: migrate core Connect workflows to GHM remains OPEN / DRAFT, head 2eadf761400bb5a644b5907e670aacb68526c81f. It contains a broad caller migration batch for Opportunity, Projects/Quotes, Trust Score, notifications, Analytics/engagement, onboarding, relationships/outcomes, commercial, Business Logo, Marketplace and administration. Its body explicitly says remaining Supabase callers and dependencies remain and lists more gates; it is not a completed no-Supabase cutover.
+- PR #69 docs: hand over GHM auth trust-boundary findings remains OPEN / DRAFT, head 1aaf64cf8ca01e500df33d2a95b4b130747c1885. Documentation-only, must be reviewed before duplicating or superseding its handover content.
+- PR #33 is an open/draft PayFast sandbox bridge and remains out of scope while PayFast sandbox access is unavailable.
+- PR #68 explicitly depends on GHM #243 supplier classification and #244 Analytics/engagement. #243 and #244 remain open/draft. Do not declare these consumers complete or merge PR #68 as though dependencies have closed.
+- PR #68's changed-file list includes the central src/lib/lib_supabase.js, auth contracts, Marketplace, Analytics, onboarding, relationships, commercial, notifications, Business Logo and multiple other clients. The PR is not proof that all callers are migrated or that the app has no active Supabase runtime dependency.
+- The current Connect main baseline still has an active @supabase/supabase-js facade in src/lib/lib_supabase.js, including Supabase Auth, Postgres/RPC, Storage and Realtime call sites. Its own migration handover says zero active Supabase runtime dependency is the target, and explicitly retains historical migrations/source only as provenance.
+- The GHM Connect provisioning migration's provider='supabase' is only a legacy external-identity namespace in the mapping contract; it is not evidence that GHM's target runtime should connect to Supabase. This distinction must not be used to excuse the still-active Supabase callers in Connect main.
+- The current Connect identity adapter and service trust contract still describe legacy Supabase identity bridging. GHM-native identity/session and removal of active Supabase Auth/database/Storage/Realtime/Edge Function use remain separate product migration gates. User's instruction remains no Supabase dependency in the target website/runtime; user migration is not a blocker and accounts can re-sign-up.
+
+#### Corrections to stale documentation and prior assumptions
+
+- Some older GHM issuer handover/runbook text says PR #272/#276 are unmerged construction branches and quotes the old PR #25 as an open Supabase Auth removal proposal. These statements are stale after the 2026-11-15 merge of #272/#276/#277 and the later ZAID Connect PR inventory. Do not use old PR #25 as a live work item; its current API state is closed and its scope was a commercial milestone, not a current auth-removal plan.
+- Current mainline source has issuer and gateway implementations, but implementation/CI is not deployment. The governing no-production-provisioning and no-cutover constraints remain unchanged.
+- A previous summary phrase that the provider namespace is not an active Supabase dependency applies only to the GHM external-identity mapping key. It does not describe Connect's current runtime, where active Supabase facade calls remain on main.
+
+#### Next sequence
+
+1. Review PR #68 exact diff and latest CI, especially auth, storage/logo, notifications, onboarding, relationships, commercial, supplier classification and central facade; compare with GHM current main contracts and all remaining GHM dependencies before any Connect changes.
+2. Review PR #69 and update/close documentation duplication only after its content is reconciled with this handover.
+3. Check GHM #243 and #244 exact heads, status and dependency compatibility; do not recreate supplier/analytics work.
+4. Determine a genuinely no-cost, secure and supported deployment topology for issuer and gateway before proposing any service/Worker configuration. No service creation, paid plan, secrets, environment changes or deployment now.
+5. Keep storage production secret provisioning, issuer manual cutover, gateway cutover, all 42 production migrations, PayFast, and Connect production cutover blocked.
