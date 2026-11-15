@@ -86,6 +86,41 @@ test('PayFast applied migration checksums are registered as exact historical pro
 });
 
 
+test('production and qualification audit targets resolve to separate provenance manifests', () => {
+  const production = resolveMigrationAuditTarget('ghm_db');
+  const qualification = resolveMigrationAuditTarget('ghm_payfast_qualification');
+  assert.equal(production.target, 'production');
+  assert.equal(production.retainedPath, 'config/retained-historical-migrations.production.json');
+  assert.equal(production.exceptionsPath, 'config/historical-migration-provenance-exceptions.production.json');
+  assert.equal(production.pendingPath, 'config/pending-migrations.production.json');
+  assert.equal(qualification.target, 'qualification');
+  assert.equal(qualification.retainedPath, 'config/retained-historical-migrations.qualification.json');
+  assert.equal(qualification.exceptionsPath, 'config/historical-migration-provenance-exceptions.qualification.json');
+});
+
+test('migration audit target selection rejects an explicit target/database mismatch', () => {
+  assert.throws(() => resolveMigrationAuditTarget('ghm_db', 'qualification'), /not valid for database/);
+  assert.throws(() => resolveMigrationAuditTarget('unknown_db'), /Unsupported migration audit target\/database/);
+});
+
+test('production and qualification retained history preserve distinct QuoteFlow bytes', () => {
+  const production = JSON.parse(readFileSync(new URL('../config/retained-historical-migrations.production.json', import.meta.url), 'utf8'));
+  const qualification = JSON.parse(readFileSync(new URL('../config/retained-historical-migrations.qualification.json', import.meta.url), 'utf8'));
+  assert.equal(production['20261020130000'].checksum, 'a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9');
+  assert.equal(qualification['20261020130000'].checksum, '3c09cc7ecb8f566f0d359832ad91cc7b644570220236713c02a0763a0521345b');
+  assert.equal(production['20261031100000'], undefined);
+  assert.ok(qualification['20261031100000']);
+});
+
+test('PayFast historical exceptions are qualification-only', () => {
+  const production = JSON.parse(readFileSync(new URL('../config/historical-migration-provenance-exceptions.production.json', import.meta.url), 'utf8'));
+  const qualification = JSON.parse(readFileSync(new URL('../config/historical-migration-provenance-exceptions.qualification.json', import.meta.url), 'utf8'));
+  assert.equal(production['20261104120000'], undefined);
+  assert.equal(production['20261104130000'], undefined);
+  assert.ok(qualification['20261104120000']);
+  assert.ok(qualification['20261104130000']);
+});
+
 test('production pending allowance is pinned to the reviewed pending migration set', () => {
   const pending = JSON.parse(readFileSync(new URL('../config/pending-migrations.production.json', import.meta.url), 'utf8'));
   assert.deepEqual(pending, [
@@ -257,54 +292,6 @@ test('production pending allowance is pinned to the reviewed pending migration s
       "version": "20261112170000",
       "name": "revoke_redundant_migrator_business_mapping_lookup"
     }
-  ]);
-
-
-test('production and qualification audit targets resolve to separate provenance manifests', () => {
-  const production = resolveMigrationAuditTarget('ghm_db');
-  const qualification = resolveMigrationAuditTarget('ghm_payfast_qualification');
-  assert.equal(production.target, 'production');
-  assert.equal(production.retainedPath, 'config/retained-historical-migrations.production.json');
-  assert.equal(production.exceptionsPath, 'config/historical-migration-provenance-exceptions.production.json');
-  assert.equal(production.pendingPath, 'config/pending-migrations.production.json');
-  assert.equal(qualification.target, 'qualification');
-  assert.equal(qualification.retainedPath, 'config/retained-historical-migrations.qualification.json');
-  assert.equal(qualification.exceptionsPath, 'config/historical-migration-provenance-exceptions.qualification.json');
-});
-
-test('migration audit target selection rejects an explicit target/database mismatch', () => {
-  assert.throws(() => resolveMigrationAuditTarget('ghm_db', 'qualification'), /not valid for database/);
-  assert.throws(() => resolveMigrationAuditTarget('unknown_db'), /Unsupported migration audit target\/database/);
-});
-
-test('production and qualification retained history preserve distinct QuoteFlow bytes', () => {
-  const production = JSON.parse(readFileSync(new URL('../config/retained-historical-migrations.production.json', import.meta.url), 'utf8'));
-  const qualification = JSON.parse(readFileSync(new URL('../config/retained-historical-migrations.qualification.json', import.meta.url), 'utf8'));
-  assert.equal(production['20261020130000'].checksum, 'a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9');
-  assert.equal(qualification['20261020130000'].checksum, '3c09cc7ecb8f566f0d359832ad91cc7b644570220236713c02a0763a0521345b');
-  assert.equal(production['20261031100000'], undefined);
-  assert.ok(qualification['20261031100000']);
-});
-
-test('PayFast historical exceptions are qualification-only', () => {
-  const production = JSON.parse(readFileSync(new URL('../config/historical-migration-provenance-exceptions.production.json', import.meta.url), 'utf8'));
-  const qualification = JSON.parse(readFileSync(new URL('../config/historical-migration-provenance-exceptions.qualification.json', import.meta.url), 'utf8'));
-  assert.equal(production['20261104120000'], undefined);
-  assert.equal(production['20261104130000'], undefined);
-  assert.ok(qualification['20261104120000']);
-  assert.ok(qualification['20261104130000']);
-});
-
-test('production pending allowance is pinned to the reviewed pending migration set', () => {
-  const pending = JSON.parse(readFileSync(new URL('../config/pending-migrations.production.json', import.meta.url), 'utf8'));
-  assert.deepEqual(pending, [
-    { version: '20261110100000', name: 'create_account_onboarding_progress' },
-    { version: '20261110120000', name: 'create_business_relationship_outcome_read_models' },
-    { version: '20261110140000', name: 'allow_pending_storage_object_cleanup' },
-    { version: '20261110210000', name: 'add_actor_gateway_principal_guard' },
-    { version: '20261110220000', name: 'add_actor_gateway_self_identity_read' },
-    { version: '20261110230000', name: 'add_gateway_business_registration_identity_read' },
-    { version: '20261110233000', name: 'add_gateway_business_registration_identity_write' },
   ]);
 });
 
