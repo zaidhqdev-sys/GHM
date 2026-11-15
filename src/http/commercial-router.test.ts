@@ -184,3 +184,34 @@ test('commercial offer read requires authentication and a stable explicit plan c
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
+
+test('admin commercial launch state requires admin authority and returns a bounded read-only projection', async () => {
+  let received: unknown;
+  const rows = [{ businessId: 55, businessName: 'Launch Business', planCode: 'business_basic', trialStatus: null, subscriptionStatus: null, foundingSequence: null, cancelAtPeriodEnd: false, currentPeriodEnd: null }];
+  const service = {
+    getAdminCommercialLaunchState: async (...args: unknown[]) => { received = args; return rows; },
+  } as unknown as CommercialService;
+  const { server, baseUrl } = await start(service);
+  try {
+    const customerHeaders = { authorization: `Bearer ${tokenFor({ userId: 42, role: 'customer' })}` };
+    const denied = await fetch(`${baseUrl}/api/v1/admin/commercial/launch-state`, { headers: customerHeaders });
+    assert.equal(denied.status, 403);
+    assert.deepEqual(await denied.json(), { error: 'forbidden' });
+
+    const adminHeaders = { authorization: `Bearer ${tokenFor({ userId: 1, role: 'admin' })}` };
+    for (const url of ['/api/v1/admin/commercial/launch-state?limit=0', '/api/v1/admin/commercial/launch-state?limit=251', '/api/v1/admin/commercial/launch-state?limit=1.5', '/api/v1/admin/commercial/launch-state?other=1']) {
+      assert.equal((await fetch(`${baseUrl}${url}`, { headers: adminHeaders })).status, 400);
+    }
+    const response = await fetch(`${baseUrl}/api/v1/admin/commercial/launch-state?limit=25`, { headers: adminHeaders });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), [{
+      business_id: 55, business_name: 'Launch Business', plan_code: 'business_basic',
+      trial_status: null, subscription_status: null, founding_sequence: null,
+      cancel_at_period_end: false, current_period_end: null,
+    }]);
+    assert.deepEqual(received, [{ userId: 1, role: 'admin' }, 25]);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+

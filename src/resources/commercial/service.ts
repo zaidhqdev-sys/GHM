@@ -1,6 +1,7 @@
-﻿import type { AuthContext } from '../../auth/authorization';
+﻿import { assertRole, requireAuthenticatedContext, type AuthContext } from '../../auth/authorization';
 import type {
   BusinessId,
+  AdminCommercialLaunchState,
   CommercialAccess,
   CommercialOffer,
   CommercialPaymentAttempt,
@@ -14,6 +15,13 @@ import type {
 } from './contracts';
 
 export class DefaultCommercialService implements CommercialService {
+  getAdminCommercialLaunchState(context: AuthContext, limit: number): Promise<AdminCommercialLaunchState[]> {
+    requireAuthenticatedContext(context);
+    assertRole(context, 'admin');
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250) throw new Error('limit must be between 1 and 250');
+    return this.repository.getAdminCommercialLaunchState(context, limit);
+  }
+
   constructor(private readonly repository: CommercialRepository) {}
 
   getCommercialAccess(

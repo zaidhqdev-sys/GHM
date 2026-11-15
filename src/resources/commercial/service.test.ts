@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { AuthContext } from '../../auth/authorization';
 import type {
   CommercialAccess,
+  AdminCommercialLaunchState,
   CommercialOffer,
   CommercialPaymentAttempt,
   CommercialRepository,
@@ -47,6 +48,12 @@ const subscription = (): CommercialSubscription => ({
 });
 
 class FakeRepository implements CommercialRepository {
+  adminLaunchCalls: Array<{ context: AuthContext; limit: number }> = [];
+  async getAdminCommercialLaunchState(context: AuthContext, limit: number): Promise<AdminCommercialLaunchState[]> {
+    this.adminLaunchCalls.push({ context, limit });
+    return [{ businessId: 11, businessName: 'Test Business', planCode: 'business_basic', trialStatus: null, subscriptionStatus: null, foundingSequence: null, cancelAtPeriodEnd: false, currentPeriodEnd: null }];
+  }
+
   accessCalls: Array<{ context: AuthContext; businessId: number }> = [];
   subscriptionCalls: Array<{ context: AuthContext; businessId: number }> = [];
   offerCalls: Array<{ context: AuthContext; businessId: number; planCode: string }> = [];
@@ -175,3 +182,15 @@ test('Commercial service delegates canonical offer reads with explicit plan code
   assert.equal(result?.foundingPrice?.amountMinorUnits, 19900);
   assert.deepEqual(repository.offerCalls, [{ context, businessId: 11, planCode: 'business_pro' }]);
 });
+
+test('Admin commercial launch state is restricted to authenticated system admins and delegates a bounded read', async () => {
+  const repository = new FakeRepository();
+  const service = new DefaultCommercialService(repository);
+  const admin: AuthContext = { userId: 1, role: 'admin' };
+  const rows = await service.getAdminCommercialLaunchState(admin, 100);
+  assert.equal(rows[0]?.businessName, 'Test Business');
+  assert.deepEqual(repository.adminLaunchCalls, [{ context: admin, limit: 100 }]);
+  assert.throws(() => service.getAdminCommercialLaunchState(context, 100), /Insufficient role/);
+  assert.throws(() => service.getAdminCommercialLaunchState(admin, 251), /limit must be between 1 and 250/);
+});
+
