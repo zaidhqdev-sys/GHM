@@ -2589,3 +2589,12 @@ The initial commit-associated workflow lookup returned an empty list, but a dire
 - Overall workflow: **IN PROGRESS**; no failure reported.
 - GitHub recalculated PR #282 as `mergeable=true`. This is not merge authorization; wait for all required checks to finish and inspect their final conclusions.
 - This replaces the immediately preceding note that no new run was visible: the run exists and is progressing normally.
+
+
+### 2026-11-15 18:18Z — latest post-sync CI poll and branch-base note
+- Exact-head run `43734074745` remains **IN PROGRESS** on `f1d06bcf6f4603f38c779c9dc45ed5689151c648`.
+- `web-quality`: **PASS**.
+- `quality`: **IN PROGRESS**, 45/72 job steps completed; disposable PostgreSQL storage lifecycle and tenant authorization qualification is the active step. No failed step is reported.
+- PR #282 remains **OPEN / UNMERGED**.
+- The canonical handover has received two mainline-only updates since the synchronization commit. The current compare therefore shows 15 commits ahead / 2 behind; both behind commits modify only this handover document. The six PR source/test files remain the complete source diff. Do not rebase or force-update merely to absorb these documentation-only notes while the exact-head quality job is running; incorporate them at the next controlled synchronization if needed.
+- No merge, production migration, production database write, Render configuration change, or deployment occurred.
