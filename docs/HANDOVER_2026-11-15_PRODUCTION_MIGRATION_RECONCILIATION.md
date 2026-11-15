@@ -633,3 +633,43 @@ Exact-head CI for commit 0064f8dcad6ce0c964b71cb772af64ca8674f464 (run 5018) com
 Correction committed as `5d613db38aee1b554f73942959db9316e04d7939`: the classifier now immediately returns `UNKNOWN_DRIFT` when the constraint/function definition is missing, the constraint is not validated, or the function return type is not `ghm.storage_object`. This makes incomplete catalog evidence fail closed before any semantic partial-drift matching.
 
 CI for this correction has not yet been observed. Do not claim a pass. Next step: inspect the new exact-head CI run, diagnose any further failure from logs, and only after exact-head quality/web-quality pass, fetch that commit and rerun the read-only production preflight. Production remains untouched.
+
+## 29. Exact-head CI passed; production preflight confirms migration-4 partial drift (2026-11-15 22:37 UTC)
+
+### Exact-head source and CI evidence
+
+- The owner fetched PR #285 branch `feat/production-migration-batch-execution-20261115` and checked out exact HEAD `82ccc3643d4b22dec4bef1bac1fbc1e1831a85bb`.
+- The local backup `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` remains untracked and preserved. The branch tree contains no tracked copy of this backup.
+- Exact-head GitHub Actions run **#5020** (`43769828614`) completed successfully against `82ccc3643d4b22dec4bef1bac1fbc1e1831a85bb`: both `quality` and `web-quality` PASS. The quality job included the build, disposable PostgreSQL migration/guard/rollback qualifications, complete test suite, Actor Gateway smoke qualification, storage gateway qualification, and security-boundary checks. This is CI/disposable evidence only, not production authorization.
+- PR #285 remains open and draft. No merge is performed.
+
+### Owner-run production read-only preflight
+
+The owner ran `npm run preflight:first-four-production-migrations` with `DOTENV_CONFIG_PATH=C:\\GHM\\.env` and the read-only acknowledgement. Exit code was **0** and the script returned `READ_ONLY_PREFLIGHT_ONLY`.
+
+Observed identity and transport:
+- Database `ghm_db`; `session_user=ghm_migrator`; `current_user=ghm_schema_owner`.
+- `transaction_read_only=on`; client TLS verification enforced.
+
+Classifier result: **`PARTIAL_DRIFT`** for migration 4. Exact live evidence:
+- `ghm.storage_mark_deletion_pending(bigint)` exists, returns `ghm.storage_object`, is SECURITY DEFINER, owned by `ghm_schema_owner`, and has `search_path=pg_catalog, ghm`.
+- Its body still updates only rows with `status = 'available'` and retains the old “not available or does not exist” exception.
+- ACL is `{ghm_schema_owner=X/ghm_schema_owner,ghm_runtime=X/ghm_schema_owner}`; runtime EXECUTE is true and gateway EXECUTE is false.
+- The validated `storage_object_lifecycle_check` still requires `available_at IS NOT NULL` for `deletion_pending`, unlike migration 4's intended lifecycle rule.
+- The four observed rows (two `pending`, two `deleted`) have zero rows incompatible with the proposed constraint.
+- The supplier-classification function and the other six checked objects are absent; all expected-create checks report no unexpected collision.
+
+### Decision and hard stops
+
+1. Treat this as a successful diagnostic run that has identified a real production partial-drift state, not a successful migration preflight or execution authorization.
+2. Do **not** run migration 4, migrations 5+, `npm run migrate`, or set `GHM_PRODUCTION_MIGRATION_BATCH`.
+3. Do **not** repair/insert the migration ledger row, alter the function or constraint, or revoke runtime grants to force a desired state.
+4. First investigate the provenance of the existing SECURITY DEFINER function and runtime grant using authoritative backups, Render/audit evidence, and the storage gateway handover. Then plan a separately qualified signed storage gateway deployment/cutover and legacy five-function grant transition.
+5. The independent production gates remain unresolved: Amanda's Render support conversation and `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` remain the authority for the Dashboard-managed administrator versus SQL-created restricted-login model; the Render role-authority/membership issue is not resolved. A fresh verified production backup/recovery point is also not confirmed. Production Actor Gateway deployment/credentials and end-to-end smoke evidence remain prerequisites.
+6. Preserve the untracked local `.bak` file.
+
+No production migration, DDL/DML, ledger repair, role/grant change, secret, Render configuration, deployment, or application data was changed by this preflight.
+
+### Next step
+
+Continue with a read-only provenance investigation of the migration-4 function/constraint and the five legacy storage metadata function grants. Use the storage gateway handover and Amanda's Render support guidance; do not make production changes while the backup, role-authority, and gateway cutover gates remain open.
