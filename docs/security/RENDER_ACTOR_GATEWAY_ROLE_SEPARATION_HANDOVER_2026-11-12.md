@@ -3175,3 +3175,38 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 
 - Connect exact-head CI for the new admin commercial launch consumer passed on Connect PR #68 head `5f421abffa4133d94be746627f3b622f57f0adce` (run `43742147332`): GHM admin commercial launch client contract, existing analytics/engagement/commercial contracts, typecheck, lint and production build all passed. The Connect handover records this result.
 - This is client-side qualification only. GHM PR #283 is still draft/unmerged; Connect PR #68 remains draft. No production deployment, database change, migration, or commercial payment activation was performed.
+
+
+## Exact-head commercial launch read qualification — 2026-11-15
+
+- GHM PR #283 head `623a853e0b9cc677615b95c7efb0402b69a7e8ca` completed GitHub Actions run `43743268093` successfully: both `quality` and `web-quality` jobs passed, with no failed steps.
+- The full quality job completed the Business Logo, supplier classification, Business profile, commercial payment-settlement identity, migration audit policy, runtime-boundary and auth-issuer cutover/SECURITY DEFINER inventory qualifications. The disposable PostgreSQL migration/test environment was used; production `ghm_db` was not queried or changed.
+- The web-quality job passed web build, tests, dependency audit and security-sensitive toolchain verification.
+- PR #283 body was updated to record the exact-head result and accurately disclose that branch ancestry remains 5 commits behind current `main`; the intervening main commits changed only this handover document, whose content was synchronized onto the PR branch. This is content reconciliation, not a rebase. Keep the PR draft until branch history is reconciled and the release review is complete.
+- Connect PR #68 currently remains draft at head `5839bad513db77e204bcb0ae37e53d2153a95cd9`; the recorded consumer-code head `5f421abffa4133d94be746627f3b622f57f0adce` passed Connect run `43742147332`, but the current documentation-only PR head's own exact-head qualification remains to be verified.
+- No production database, Render configuration, deployment, Connect branch, payment activation or provider change was performed. PayFast remains paused.
+- Amanda's Render support constraints remain unchanged: retain Dashboard-managed admin, separate `ghm_runtime` and `ghm_migrator`, preserve the SET-only schema-owner path, and do not improvise grants or add paid infrastructure.
+
+
+## 2026-11-15 — PR #283 ancestry reconciled with current main
+
+- Rechecked PR #283, branch `feat/admin-commercial-launch-read-20261115`, current `main`, changed-file inventory and prior exact-head CI before changing branch history.
+- Current main at reconciliation: `6f9cf966fefd2c77f8a0ce95b0adcfa3ca7a3d7a`. PR branch before reconciliation: `22925711dce0e39df96725ae86bb82fb9ef7d426`.
+- Verified the complete current-main handover document was an exact prefix of the PR branch document; the PR branch contained the additional commercial launch and qualification addenda. Thus the five mainline commits since the prior merge base were all represented in the branch tree, with no mainline content to discard.
+- Created merge commit `49f88af47b40ba46f48609792892b7b44144cfab` with both current main and the PR branch as parents, retaining the PR tree. Advanced the existing PR branch using a non-force fast-forward update with expected previous head `2292571...`; no new branch or PR was created.
+- Verified compare result after update: status `ahead`, ahead 18, behind 0, merge base current main `6f9cf966...`. Exactly eight intended changed files remain: this handover plus the seven commercial route/service/repository/contracts implementation and test files.
+- PR #283 description corrected to reflect merge-parent ancestry reconciliation. Exact-head CI run `43743790813` is running on merge commit `49f88af...`; do not promote until it completes successfully.
+- No production DB query/mutation, Render change/deployment, migration execution, Connect branch change or payment activation. PayFast remains paused.
+- Amanda's Render support constraints remain authoritative: retain Dashboard-managed admin; keep `ghm_runtime` and `ghm_migrator` separate; preserve the SET-only schema-owner path; no improvised grants or paid infrastructure.
+
+
+## 2026-11-15 — PR #283 reconciled exact-head qualification and implementation review
+
+- Final branch head before this handover append: `9c50fd2f4346b577050bfd99414e66481ec698e6`; exact-head GitHub Actions run `43743842730` completed successfully. `quality` passed all 73 steps and `web-quality` passed all 11 steps. No failed steps.
+- The full core job completed disposable PostgreSQL migration qualification and the existing security/tenant/auth/storage/commercial qualification chain, including signed Trust Score and Business Logo gateway cutovers, supplier classification and membership authorization, commercial payment-settlement identities, and guarded auth issuer manual cutover/lifecycle denial checks. No production database was used.
+- Source-level review of the eight-file PR diff found the new endpoint restricted by the authenticated resource middleware plus database-loaded `admin` AuthContext role, with no caller-supplied account identity. Request limit is validated (1–250, default 100), unsupported query keys are rejected, the service repeats role/limit validation, and the repository uses a bounded, deterministic, read-only query in an authorized transaction. No additional migration, grants, tables, provider calls or write paths were introduced by this slice.
+- Review metadata rechecked: no submitted PR reviews and no inline review threads. This records the assistant's source-level review; it does not claim an independent reviewer approval.
+- Branch comparison against current main `6f9cf966fefd2c77f8a0ce95b0adcfa3ca7a3d7a`: `ahead` 19, `behind` 0, merge base current main; eight intended changed files only. PR #283 remains open/draft pending owner release progression.
+- Connect PR #68 exact current head `5839bad513db77e204bcb0ae37e53d2153a95cd9` has successful exact-head run `43742292220`; it remains draft and depends on GHM integration/deployment before production consumer activation.
+- No production `ghm_db` access or mutation, Render configuration/deployment, migration execution, Connect branch change, or payment activation. PayFast remains paused.
+- Amanda's Render support constraints remain authoritative: retain Dashboard-managed admin; keep `ghm_runtime` and `ghm_migrator` separate; preserve the SET-only schema-owner path; do not improvise grants or add paid infrastructure.

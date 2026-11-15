@@ -19,6 +19,17 @@ const requireCommercialRead: RequestHandler = (req, res, next) => {
   next();
 };
 
+const requireCommercialAdminRead: RequestHandler = (req, res, next) => {
+  const context = req.authContext as AuthContext | undefined;
+  if (!context || context.role !== 'admin'
+    || !isRegisteredOperation('commercial', 'read')
+    || !canAccessResource(context, 'commercial')) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  next();
+};
+
 const sendError = (error: unknown, res: Response): void => {
   if (error instanceof Error && ['Business read permission required', 'Business management permission required'].includes(error.message)) {
     res.status(403).json({ error: 'forbidden' });
@@ -36,6 +47,35 @@ export const registerCommercialRoutes = (
   service: CommercialService,
   resourceAuthMiddleware: RequestHandler,
 ): void => {
+  app.get('/api/v1/admin/commercial/launch-state', resourceAuthMiddleware, requireCommercialAdminRead, async (req: Request, res: Response) => {
+    const rawLimit = req.query.limit;
+    const limit = rawLimit === undefined ? 100 : typeof rawLimit === 'string' && /^[1-9]\d*$/.test(rawLimit) ? Number(rawLimit) : NaN;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250 || Object.keys(req.query).some(key => key !== 'limit')) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    const context = req.authContext as AuthContext;
+    try {
+      const rows = await service.getAdminCommercialLaunchState(context, limit);
+      res.status(200).json(rows.map(row => ({
+        business_id: row.businessId,
+        business_name: row.businessName,
+        plan_code: row.planCode,
+        trial_status: row.trialStatus,
+        subscription_status: row.subscriptionStatus,
+        founding_sequence: row.foundingSequence,
+        cancel_at_period_end: row.cancelAtPeriodEnd,
+        current_period_end: row.currentPeriodEnd,
+      })));
+    } catch (error) {
+      if (error instanceof Error && /Insufficient role/.test(error.message)) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      sendError(error, res);
+    }
+  });
+
   app.get('/api/v1/commercial/offer/:businessId', resourceAuthMiddleware, requireCommercialRead, async (req: Request, res: Response) => {
     const businessId = positiveIntegerId(req.params.businessId);
     const context = req.authContext as AuthContext | undefined;

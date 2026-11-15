@@ -31,6 +31,7 @@ const createFakePool = (options: {
   failEvent?: boolean;
   offerRow?: Record<string, unknown> | null;
   evaluatedAt?: Date;
+  adminLaunchRows?: Record<string, unknown>[];
 } = {}): { pool: TransactionPool; calls: string[]; params: unknown[][] } => {
   const calls: string[] = [];
   const params: unknown[][] = [];
@@ -39,6 +40,7 @@ const createFakePool = (options: {
       calls.push(sql);
       params.push(queryParams ?? []);
       if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.business AS business')) return { rowCount: (options.adminLaunchRows ?? []).length, rows: options.adminLaunchRows ?? [] };
       if (sql === 'SELECT now() AS activated_at') return { rowCount: 1, rows: [{ activated_at: options.activatedAt ?? new Date(1000) }] };
       if (sql === 'SELECT now() AS evaluated_at') return { rowCount: 1, rows: [{ evaluated_at: options.evaluatedAt ?? new Date(1500) }] };
       if (sql.includes('FROM ghm.business_membership') && sql.includes("membership_role IN ('owner', 'administrator')")) {
@@ -500,4 +502,30 @@ test('Commercial access does not grant entitlements at the exclusive period end'
   const result = await new PostgresCommercialRepository(pool).getCommercialAccess(context(), businessId);
   assert.deepEqual(result.entitlements, []);
   assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan_entitlement')), false);
+});
+
+test('Admin commercial launch state returns a bounded read-only projection without Business membership scoping', async () => {
+  const row = {
+    business_id: '11', business_name: 'Launch Business', plan_code: 'business_basic',
+    trial_status: null, subscription_status: 'active', founding_sequence: 7,
+    cancel_at_period_end: false, current_period_end: new Date(5000),
+  };
+  const { pool, calls, params } = createFakePool({ adminLaunchRows: [row] });
+  const result = await new PostgresCommercialRepository(pool).getAdminCommercialLaunchState(
+    context('admin'), 25,
+  );
+  assert.deepEqual(result, [{
+    businessId: 11, businessName: 'Launch Business', planCode: 'business_basic',
+    trialStatus: null, subscriptionStatus: 'active', foundingSequence: 7,
+    cancelAtPeriodEnd: false, currentPeriodEnd: new Date(5000),
+  }]);
+  const query = calls.find(sql => sql.includes('FROM ghm.business AS business'));
+  assert.ok(query);
+  assert.match(query, /LEFT JOIN LATERAL/);
+  assert.match(query, /ORDER BY business\.name, business\.id/);
+  assert.equal(params[calls.indexOf(query!)][0], 25);
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).getAdminCommercialLaunchState(context('admin'), 251),
+    /limit must be between 1 and 250/,
+  );
 });
