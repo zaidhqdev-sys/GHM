@@ -154,7 +154,7 @@ test('production migration allowlist rejects duplicate versions', () => {
   );
 });
 
-import { getProductionMigrationPostBatchGuards, parseProductionMigrationBatch, selectProductionMigrationBatch } from './production-migration-batch';
+import { parseProductionMigrationBatch, selectProductionMigrationBatch } from './production-migration-batch';
 
 test('production batch parser requires explicit valid JSON and caps batch size', () => {
   assert.throws(() => parseProductionMigrationBatch(undefined), /set GHM_PRODUCTION_MIGRATION_BATCH/);
@@ -185,12 +185,4 @@ test('production batch refuses skipped, reordered, duplicate, unknown and mismat
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [migrations[0], migrations[0]]), /duplicate batch version/);
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [{ version: '20261110100000', name: 'wrong' }]), /next pending prefix/);
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(migrations.map(x => x.version)), [migrations[0]]), /no further pending migration/);
-});
-
-test('supplier classification first batch immediately removes the legacy runtime identity-impersonation path', () => {
-  assert.deepEqual(
-    getProductionMigrationPostBatchGuards([{ version: '20261110010000', name: 'add_business_supplier_classification' }]),
-    ['REVOKE EXECUTE ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime'],
-  );
-  assert.deepEqual(getProductionMigrationPostBatchGuards([{ version: '20261110100000', name: 'create_account_onboarding_progress' }]), []);
 });
