@@ -612,3 +612,17 @@ Latest code commit at this checkpoint: 77986c3659031de215132f4b60e4b37c3aae749b.
 No production SQL, migration ledger, grant, role, secret, Render service, deployment or application data was changed. Preserve the untracked local `.bak` file.
 
 Next: wait for exact-head CI on the classifier and test wiring. Once green, fetch the exact branch head and rerun the read-only preflight only to verify it reports `PARTIAL_DRIFT` for the current production state. Then investigate provenance from backups/audit logs and continue the separate storage gateway cutover design; do not run production migrations.
+## 27. Classifier hardening and latest checkpoint (2026-11-15 22:20 UTC)
+
+The storage migration-4 classifier was hardened after review:
+
+- It now requires a validated lifecycle constraint and the expected `ghm.storage_object` return type before it can report either known state.
+- A `POST_MIGRATION` classification requires the exact expected ACL entries for `ghm_schema_owner` and `ghm_runtime`; extra PUBLIC, migrator, gateway, or other-role grants fail closed.
+- PostgreSQL's `::text` casts in catalog-rendered function/constraint definitions are accounted for.
+- Missing catalog state and an unvalidated constraint cannot be classified as a safe pre/post state.
+
+Latest code changes include classifier commit `eafd537814096d3b38014273f97955ebdc06d195`; the immediately preceding preflight wiring commit is `11c0a33bba0df6daaaab03c7fb1eca9e13c07574`. The exact branch head when this note was authored is being refreshed by this documentation commit. Workflow run 5017 for the classifier code commit was pending at last check; no pass is claimed.
+
+The observed production state remains expected to classify `PARTIAL_DRIFT`: SECURITY DEFINER is present, but the live function body still only allows `available` rows and the lifecycle constraint still requires `available_at` for `deletion_pending`.
+
+Do not apply migration 4, manually insert a ledger row, revoke runtime grants, or modify production to force a classification. Keep the untracked `.bak` file preserved. Next step remains exact-head CI, then rerun the read-only preflight against `ghm_db` and verify the explicit `PARTIAL_DRIFT` output.
