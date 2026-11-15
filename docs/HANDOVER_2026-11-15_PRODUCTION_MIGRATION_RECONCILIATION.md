@@ -862,3 +862,26 @@ Proceed with source-only review of the exact first pending migration and its dep
 Independent hard gates remain: fresh verified production backup/recovery point; Render role-authority remediation tracked through Amanda's support conversation and the role-separation handover; production Actor Gateway/storage path deployment, credentials and smoke evidence; and the separate storage legacy-grant cutover plan. Preserve the untracked local `.bak` file.
 
 No production migration, ledger repair, DDL/DML, role/grant change, secret, Render configuration, deployment, or application data was changed by this audit.
+
+
+
+## 37. Exact-head CI fully passed on bounded migration runner (2026-11-15 23:41 UTC)
+
+The owner reported that all three checks passed. Verified the associated GitHub Actions workflow and PR metadata:
+
+- PR #285 head: `531911ef731a9394fc3c4e519e9e1b0d3501e2c5`.
+- CI workflow run **#5030**, run ID `43775874907`, completed with conclusion **SUCCESS** on that exact commit.
+- Required jobs: `quality` — SUCCESS; `web-quality` — SUCCESS.
+- The workflow reports two jobs; the owner's UI showed three successful checks. The workflow's two job conclusions are independently confirmed.
+- PR #285 remains **OPEN, DRAFT, UNMERGED**; base `main`, branch `feat/production-migration-batch-execution-20261115`. No merge or deployment was performed.
+
+This exact-head CI result qualifies the current branch snapshot, including the bounded production batch selection, storage drift classifier/preflight, and disposable PostgreSQL / application qualification steps present in the workflow. It is not production migration execution evidence and does not authorize setting `GHM_PRODUCTION_MIGRATION_BATCH`.
+
+### Next safe step
+
+Continue with the first-pending migration's source/dependency/effective-ACL review and confirm the relevant Actor Gateway/Resource API route compatibility against the current branch. Keep any production batch unset. The production backup/recovery point and Render administrator-role separation remain hard blockers; follow Amanda's Render support conversation and `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` rather than improvising role changes. The production signed Actor Gateway/storage deployment and smoke test, plus the separate five-function legacy storage-grant cutover/rollback plan, are also outstanding.
+
+Preserve the untracked local `.bak` file:
+`database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`.
+
+No production migration, ledger repair, DDL/DML, role/grant change, secret, Render configuration, deployment, or application data was changed for this CI verification.
