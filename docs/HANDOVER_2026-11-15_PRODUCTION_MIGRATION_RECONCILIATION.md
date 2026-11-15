@@ -510,3 +510,47 @@ Amanda's Render support conversation remains the source-of-truth operational gui
 - The quality job is expected to execute the disposable PostgreSQL migration chain, the revised supplier ACL/rollback qualification, the first-four qualification, and the complete test suite. No pass is claimed until the run finishes successfully.
 - The earlier rapid-push runs `43765933938` and `43766098321` were cancelled by concurrency while commits were still being added; they are not failures of the code and are not qualification evidence.
 - PR #285 remains OPEN / DRAFT / mergeable. No production changes were made.
+
+
+## 24. Exact-head qualification and storage schema/ledger drift finding (2026-11-15)
+
+### Exact-head CI evidence
+
+- Commit dc670aee3b334c8d0aef601a73547c9cdca4ec56, CI run 43766335290 (run 5005): quality and web-quality both passed.
+- The quality logs explicitly recorded:
+  - SUPPLIER MIGRATION DOES NOT GRANT RUNTIME EXECUTE: PASS
+  - SECURITY DEFINER FUNCTION OWNER PRESERVED: PASS
+  - ROLLBACK RESTORES PRE-QUALIFICATION FUNCTION PRIVILEGE STATE: PASS
+  - GHM SUPPLIER MIGRATION ACL QUALIFICATION: PASS
+  - Migration 2 onboarding effective ACLs/validated constraints: PASS.
+  - Migration 3 read-only effective ACLs/seeds/validated constraints: PASS.
+  - Migration 4 disposable storage row compatibility/constraint/function ACL: PASS.
+  - Complete disposable first-four post-apply qualification: PASS.
+  - Full test suite step passed.
+- Commit c4095e2a43bdc5b282cbed75bdd0d221933238cb, CI run 43766669234 (run 5006): both quality and web-quality passed. This additionally syntax-checks and builds the revised read-only preflight that now includes the exact storage function definition and ACL in its report.
+- The successful CI runs use disposable PostgreSQL 18 and test/build environments. They did not touch production.
+
+### Production migration-4 schema/ledger mismatch
+
+The owner's production read-only preflight (the earlier version of the script) reported all of the following while the forensic migration inventory still listed 20261110140000_allow_pending_storage_object_cleanup as pending:
+
+- ghm.storage_mark_deletion_pending(bigint) exists, is SECURITY DEFINER, owned by ghm_schema_owner, has search_path=pg_catalog, ghm, and is executable by ghm_runtime.
+- The live storage_object_lifecycle_check is validated and its definition already matches the predicate written by migration 4, including allowing deletion_pending without requiring available_at IS NOT NULL.
+- Two pending and two deleted storage rows were observed; all four satisfy that predicate.
+- The original earlier migrations 20261004220000_create_storage_object.sql and 20261004221000_establish_storage_persistence_boundary.sql define the earlier lifecycle predicate (deletion-pending requires available_at IS NOT NULL) and create storage_mark_deletion_pending(bigint) as SECURITY INVOKER. Migration 4 changes that function to SECURITY DEFINER and broadens the allowed transition to pending uploads.
+- Therefore production currently exhibits the schema/function shape expected after migration 4, while its migration ledger still reports migration 4 as unapplied. This is evidence of schema/ledger drift or out-of-band DDL; the origin is not established by the preflight and must not be guessed.
+
+Do not blindly execute migration 4 or manually insert its ledger row. First inspect the revised preflight output, compare the complete live pg_get_functiondef and ACL with the exact repository migration, verify constraint definition/validation and the relevant function ownership/configuration, then determine the approved provenance/reconciliation path. The revised script now returns pg_get_functiondef(p.oid) and p.proacl for this exact comparison. This remains read-only.
+
+The fact that the four observed rows satisfy the target predicate does not resolve the ledger/provenance mismatch, nor does it clear the separate signed storage gateway and five-function legacy grant cutover gates.
+
+### Current PR / branch state
+
+- PR #285 remains OPEN / DRAFT / mergeable; no merge or deployment.
+- Latest branch HEAD at this checkpoint: c4095e2a43bdc5b282cbed75bdd0d221933238cb.
+- No production migration, role/grant, secret, Render configuration, service, deployment or application data was changed.
+- Amanda's Render support conversation remains preserved in docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md; her recommendation remains Dashboard-managed admin for controlled administration and SQL-created restricted logins for normal application execution. The outstanding Render role-authority issue and fresh verified backup/recovery point remain independent blockers.
+
+### Next operator step
+
+Fetch the exact PR #285 head locally, preserving the untracked .bak file, and run only npm run preflight:first-four-production-migrations with DOTENV_CONFIG_PATH=C:\GHM\.env and the existing read-only acknowledgement. Capture the complete JSON, especially storage_mark_deletion_pending.definition and storage_mark_deletion_pending.acl. Do not run npm run migrate, set GHM_PRODUCTION_MIGRATION_BATCH, or change any production role/grant.
