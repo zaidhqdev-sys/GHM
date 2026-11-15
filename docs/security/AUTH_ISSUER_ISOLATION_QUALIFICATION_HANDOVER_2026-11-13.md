@@ -3620,3 +3620,12 @@ Production remains blocked by:
 Begin production deployment-readiness work only: re-inventory current Render services, production environment variable names/targets, current live deployment SHA, database role/ACL state, migration ledger authority, and $0 service options. Keep all checks read-only. Produce a deployment matrix and cutover/rollback runbook before any Render setting, production database, secret, deployment or traffic change.
 
 PayFast remains paused pending sandbox access. Legal-document publication remains paused. No production data, role/grant, secret, credential, Render environment/service, Cloudflare resource, DNS, route or traffic was changed during the PR merges.
+
+
+## 2026-11-15 — post-merge release boundary
+
+PR #272 (Actor Gateway), #276 (Authentication Issuer), and #277 (Worker hardening) have all merged into main. See the canonical Render/Actor Gateway handover for merge SHAs, exact PR CI evidence, the fresh Render resource inventory, and the production read-only database findings.
+
+Important production blockers remain: the live database has no \`ghm_auth_issuer\` role, no \`gateway_%\` or \`auth_issuer_%\` functions in schema \`ghm\`, and \`ghm_actor_gateway\` has no schema USAGE. The production app connection is \`session_user=ghm_app_user\`, \`current_user=ghm_db_user\`; the Dashboard administrator still has broad role memberships and \`ghm_app_user\` inherits it. The migration ledger exists but its exact head is not yet verified through an authorized migrator path.
+
+Render's production API service remains on main with auto-deploy OFF and live deploy \`c7cf1eb\`. No production migration, grant, secret, environment change, deployment or traffic switch was performed. The issuer hosting/Argon2id $0 constraint remains unresolved. Treat the merged code as mainline implementation, not production cutover authorization.
