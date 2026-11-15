@@ -9,7 +9,7 @@ export const assertProductionPendingMigrationAllowlist = (
   const allowedByVersion = new Map<string, string>();
 
   for (const allowed of allowlist) {
-    if (!/^\\d{14}$/.test(allowed.version) || !allowed.name.trim()) {
+    if (!/^\d{14}$/.test(allowed.version) || !allowed.name.trim()) {
       throw new Error('Production migration allowlist contains an invalid version/name entry');
     }
     if (allowedByVersion.has(allowed.version)) {
