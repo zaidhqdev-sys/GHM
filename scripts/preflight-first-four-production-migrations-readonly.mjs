@@ -130,7 +130,7 @@ try {
       warnings: [
         'This script does not authorize or execute any migration.',
         'Migration 4 replaces the existing SECURITY DEFINER storage_mark_deletion_pending(bigint) function and retains ghm_runtime EXECUTE while expanding deletion-pending eligibility to pending uploads. Confirm its exact return type, owner, search_path, row compatibility and the signed storage gateway/five-function legacy grant cutover before applying it.',
-        'Migration 1 creates a legacy supplier-classification function that accepts a caller-supplied account ID. The production runner must revoke ghm_runtime EXECUTE in the same transaction; its disposable PostgreSQL qualification must pass.',
+        'Migration 1 creates a SECURITY DEFINER supplier-classification function that accepts a caller-supplied account ID. It must revoke EXECUTE from PUBLIC, ghm_runtime and ghm_migrator; only the later signed gateway wrapper may call it as schema owner. Verify effective ACLs and exact-head disposable PostgreSQL qualification before execution.',
       ],
     };
     console.log(JSON.stringify(report, null, 2));
