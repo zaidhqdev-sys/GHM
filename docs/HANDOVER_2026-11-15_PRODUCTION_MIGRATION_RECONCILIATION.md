@@ -202,3 +202,21 @@ No production SQL, migration, role/grant, secret, environment variable, service,
 ### Additional integrity safeguard
 
 During final review, the batch loop was separated from the full applied-history checksum pass. The runner now continues to validate every already-applied migration checksum before executing the selected batch; limiting execution must not limit historical integrity checks. Change: `6221982b06e7162c3925c126460f61438164cd1d`. CI must qualify this final change before the PR can be considered merge-ready.
+
+
+### First pending migration: transitional security guard
+
+A read-only production catalogue query (Render `ghm_db`) returned no current `ghm.update_business_supplier_classification` or `ghm.gateway_update_business_supplier_classification` function. The first pending migration `20261110010000_add_business_supplier_classification` creates the legacy caller-supplied identity function and grants `ghm_runtime` EXECUTE. That would create a temporary identity-impersonation path if applied by itself.
+
+To preserve the user's incremental rollout without opening that path, the runner now applies an explicit production-only post-batch guard in the same transaction whenever that migration is selected:
+
+`REVOKE EXECUTE ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime`
+
+This is intentionally separate from the historical migration file/checksum. It is applied atomically immediately after the migration, before COMMIT. The later gateway cutover migration still installs the signed gateway function and performs its own revocation. A unit test asserts the guard is selected only for the exact migration version.
+
+Changes:
+- Post-batch guard selector: `f5c68b6ccca8952fdbade0deff0bbb83ab5fc08e`
+- Atomic runner integration: `af2169854eaa6dfd057ff83f82e92b252a07b685`
+- Guard contract test: `34dc7bf0c469159137336455befda72f9c109d6c`
+
+This is code-level qualification only. No production migration was run. Before first production execution, the guard must be confirmed in the disposable PostgreSQL qualification and the production migration runner must be requalified against the latest head.
