@@ -1,3 +1,6 @@
+// Read-only production inspection for the first pending migration prefix.
+// Requires verified TLS, ghm_db, ghm_migrator -> ghm_schema_owner,
+// an explicit operator acknowledgement, and BEGIN READ ONLY. Never executes DDL/DML.
 import { Pool } from 'pg';
 import 'dotenv/config';
 
