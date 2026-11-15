@@ -333,3 +333,12 @@ This qualifies the current implementation on disposable CI infrastructure only. 
 - Migrations 2–3: structurally additive, with application integrations and contract tests; dedicated database behavior/effective-grant qualification still outstanding.
 - Migration 4: storage lifecycle compatibility is a mandatory pre-production data check.
 - None of migrations 1–4 is authorized for production yet. Fresh verified backup/recovery point, Amanda/Render role-administration resolution and the Actor Gateway prerequisite before migration 5 remain outstanding. No production DB or runtime changes were made.
+
+
+## 14. Exact-head disposable PostgreSQL guard qualification passed (2026-11-15)
+
+- On exact PR head `d7209752b856d03f22d9f4421feddbbbe30af575`, GitHub Actions `quality` job `132956166221` completed the new step **“Qualify production migration batch guard and rollback on disposable PostgreSQL”** successfully.
+- The preceding full migration chain on disposable PostgreSQL 18 also completed successfully in the same job.
+- This is the first observed end-to-end CI execution of the added qualification against the real compiled runner guard selector and PostgreSQL transaction semantics. It is not a production database execution.
+- At the time of this note, `web-quality` and Cloudflare Pages had passed; the overall `quality` job was still running later unrelated database/security qualification steps. Do not describe the whole workflow as green until the full job completes.
+- The guard qualification itself is now evidenced PASS. Production remains blocked by independent backup/recovery, Amanda/Render role-administration, and staged application/gateway prerequisites. No production DB changes.
