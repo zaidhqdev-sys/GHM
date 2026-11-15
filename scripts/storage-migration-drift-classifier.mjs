@@ -18,9 +18,9 @@ export const classifyStorageMigrationFourState = ({
   const aclText = String(acl ?? '').toLowerCase();
 
   const hasLifecycle = includes(constraint, /status\s*=\s*'deletion_pending'/);
-  const deletionRequiresAvailable = includes(constraint, /status\s*=\s*'deletion_pending'[^)]*available_at\s+is\s+not\s+null/);
+  const deletionRequiresAvailable = includes(constraint, /status\s*=\s*'deletion_pending'[\s\S]{0,160}available_at\s+is\s+not\s+null/);
   const functionAvailableOnly = includes(fn, /and status\s*=\s*'available'/);
-  const functionPendingAndAvailable = includes(fn, /and status\s+in\s*\('pending',\s*'available'\)/);
+  const functionPendingAndAvailable = includes(fn, /and status\s+in\s*\('pending'(?:\s*::\s*text)?,\s*'available'(?:\s*::\s*text)?\)/);
   const expectedOwner = owner === 'ghm_schema_owner';
   const expectedSearchPath = includes(config, /search_path=pg_catalog,\s*ghm/);
   const hasRuntime = runtimeExecute === true && /ghm_runtime=x/.test(aclText);
