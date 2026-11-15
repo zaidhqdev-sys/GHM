@@ -34,8 +34,16 @@ export const classifyStorageMigrationFourState = ({
     aclEntries[0] === 'ghm_runtime=x/ghm_schema_owner' &&
     aclEntries[1] === 'ghm_schema_owner=x/ghm_schema_owner';
 
-  const preMigration = constraintValidated === true && returnType === 'ghm.storage_object' && hasLifecycle && deletionRequiresAvailable &&
-    functionAvailableOnly && securityDefiner === false && hasRuntime && !hasGateway;
+  // October's established persistence-boundary migration already made this
+  // legacy function SECURITY DEFINER, owned by ghm_schema_owner, and executable
+  // by ghm_runtime. Those attributes are the documented pre-migration baseline,
+  // not evidence that November migration 4 was partially applied.
+  const exactBaselineAcl = exactPostAcl;
+  const exactBaselineAuthority = securityDefiner === true && expectedOwner &&
+    expectedSearchPath && hasRuntime && !hasGateway && !hasPublic && !hasMigrator &&
+    exactBaselineAcl;
+  const preMigration = hasLifecycle && deletionRequiresAvailable &&
+    functionAvailableOnly && exactBaselineAuthority;
   if (preMigration) return 'PRE_MIGRATION';
 
   const postMigration = constraintValidated === true && returnType === 'ghm.storage_object' && hasLifecycle && !deletionRequiresAvailable &&
@@ -43,7 +51,7 @@ export const classifyStorageMigrationFourState = ({
     expectedSearchPath && hasRuntime && !hasGateway && !hasPublic && !hasMigrator && exactPostAcl;
   if (postMigration) return 'POST_MIGRATION';
 
-  if (hasLifecycle && (functionAvailableOnly || functionPendingAndAvailable || securityDefiner === true)) {
+  if (hasLifecycle && (functionAvailableOnly || functionPendingAndAvailable)) {
     return 'PARTIAL_DRIFT';
   }
   return 'UNKNOWN_DRIFT';
