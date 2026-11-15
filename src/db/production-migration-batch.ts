@@ -28,8 +28,8 @@ export const parseProductionMigrationBatch = (raw: string | undefined): Producti
   });
 };
 
-export const selectProductionMigrationBatch = (
-  migrations: ProductionMigrationVersion[],
+export const selectProductionMigrationBatch = <T extends ProductionMigrationVersion>(
+  migrations: T[],
   appliedVersions: ReadonlySet<string>,
   requestedBatch: ProductionMigrationVersion[],
 ): ProductionMigrationVersion[] => {
