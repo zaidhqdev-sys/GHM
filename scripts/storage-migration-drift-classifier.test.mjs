@@ -3,6 +3,8 @@ import test from 'node:test';
 import { classifyStorageMigrationFourState } from './storage-migration-drift-classifier.mjs';
 
 const baseline = {
+  constraintValidated: true,
+  returnType: 'ghm.storage_object',
   constraintDefinition: "CHECK (((status = 'pending' AND available_at IS NULL AND deleted_at IS NULL) OR (status = 'available' AND available_at IS NOT NULL AND deleted_at IS NULL) OR (status = 'deletion_pending' AND available_at IS NOT NULL AND deleted_at IS NULL) OR (status = 'deleted' AND deleted_at IS NOT NULL)))",
   functionDefinition: "CREATE FUNCTION ghm.storage_mark_deletion_pending(p_object_id bigint) RETURNS ghm.storage_object LANGUAGE plpgsql SECURITY INVOKER SET search_path TO 'pg_catalog', 'ghm' AS $function$ BEGIN UPDATE ghm.storage_object SET status = 'deletion_pending' WHERE id = p_object_id AND status = 'available'; IF NOT FOUND THEN RAISE EXCEPTION 'storage object is not available or does not exist'; END IF; RETURN v_row; END; $function$",
   securityDefiner: false,
@@ -50,8 +52,10 @@ test('fails closed when post-migration function has unexpected gateway or PUBLIC
   };
   assert.equal(classifyStorageMigrationFourState({ ...post, gatewayExecute: true }), 'PARTIAL_DRIFT');
   assert.equal(classifyStorageMigrationFourState({ ...post, acl: '{=X/owner,ghm_runtime=X/owner}' }), 'PARTIAL_DRIFT');
+  assert.equal(classifyStorageMigrationFourState({ ...post, acl: '{ghm_schema_owner=X/ghm_schema_owner,ghm_runtime=X/ghm_schema_owner,other_role=X/ghm_schema_owner}' }), 'PARTIAL_DRIFT');
 });
 
 test('unknown or missing catalog state is not treated as safe', () => {
   assert.equal(classifyStorageMigrationFourState({ ...baseline, functionDefinition: null }), 'UNKNOWN_DRIFT');
+  assert.equal(classifyStorageMigrationFourState({ ...baseline, constraintValidated: false }), 'UNKNOWN_DRIFT');
 });
