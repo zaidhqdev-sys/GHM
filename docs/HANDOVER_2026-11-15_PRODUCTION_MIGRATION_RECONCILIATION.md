@@ -828,3 +828,37 @@ PR #285 remains open, draft and unmerged. This CI pass qualifies the documentati
 Fetch the current PR branch and verify exact HEAD `3a3fdd675302c53dcb00cf9c994e42c2e4f2f81e`. Preserve the existing untracked `.bak` file. Then run only the TLS-verified, read-only production reconciliation command `npm run audit:migrations:predeploy` from this exact checkout, with `DOTENV_CONFIG_PATH=C:\\GHM\\.env` and the repo's documented production audit confirmation variable. Capture the complete JSON output and exit code.
 
 Do not run the production migration runner, set a production batch variable, repair the ledger, alter grants/roles, or deploy. Once the fresh exact-head audit is reviewed, proceed to resolve the independent backup/recovery, Render role-authority (including Amanda's support correspondence), and production gateway readiness gates before planning any first migration batch.
+
+
+
+## 36. Fresh exact-head production reconciliation audit passed (2026-11-15 23:36 UTC)
+
+The owner supplied the completed output from the TLS-verified, read-only `npm run audit:migrations:predeploy` after the section 35 instruction.
+
+Observed result:
+- Verdict: **`PASS_WITH_PENDING`**; exit code **0**.
+- `unexplained_mismatches`: empty.
+- `name_mismatches`: empty.
+- `unrecognized_extra`: empty.
+- `pending_allowlist_mismatch_count`: **0**.
+- All ten approved retained historical entries are verified as `VERIFIED_RETAINED_HISTORY`.
+- Historical exception provenance is internally consistent; entries matching current repository bytes are marked redundant, not treated as unexplained ledger mismatches.
+- The full pending inventory remains pending; the audit does not apply migrations or authorize execution.
+
+The audit was performed after the owner fetched the CI-qualified branch state recorded in section 35. The latest handover/CI-qualified reference at that checkpoint was `3a3fdd675302c53dcb00cf9c994e42c2e4f2f81e`, with workflow #5028 successful (`quality` and `web-quality`). No claim is made that the audit itself executed SQL beyond read-only catalog/ledger inspection.
+
+### Decision
+
+The production migration ledger/name/checksum/allowlist reconciliation gate is now **PASS**. Together with the separately reported storage preflight result `PRE_MIGRATION`, this removes the previous inventory/provenance uncertainty. It does not clear the operational execution gates.
+
+### Next work: first-pending migration qualification
+
+Proceed with source-only review of the exact first pending migration and its dependent cutover chain before any production batch is considered:
+1. Review `20261110010000_add_business_supplier_classification.sql` and its dependent `20261110260000_gateway_supplier_classification_cutover.sql` plus the signed-assertion binding migration(s).
+2. Confirm the effective function ACL at creation time, especially that the caller-supplied account-ID SECURITY DEFINER function cannot be executed by `PUBLIC`, `ghm_runtime`, or `ghm_migrator`, and only the intended schema-owner/gateway wrapper path can invoke it.
+3. Trace the exact deployed Actor Gateway and Resource API routes/client compatibility, not just SQL object creation; do not infer production readiness from disposable CI.
+4. Document rollback and the smallest safe contiguous batch. Keep the batch unconfigured and do not run `npm run migrate`.
+
+Independent hard gates remain: fresh verified production backup/recovery point; Render role-authority remediation tracked through Amanda's support conversation and the role-separation handover; production Actor Gateway/storage path deployment, credentials and smoke evidence; and the separate storage legacy-grant cutover plan. Preserve the untracked local `.bak` file.
+
+No production migration, ledger repair, DDL/DML, role/grant change, secret, Render configuration, deployment, or application data was changed by this audit.
