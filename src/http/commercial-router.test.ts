@@ -204,7 +204,11 @@ test('admin commercial launch state requires admin authority and returns a bound
     }
     const response = await fetch(`${baseUrl}/api/v1/admin/commercial/launch-state?limit=25`, { headers: adminHeaders });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { rows });
+    assert.deepEqual(await response.json(), [{
+      business_id: 55, business_name: 'Launch Business', plan_code: 'business_basic',
+      trial_status: null, subscription_status: null, founding_sequence: null,
+      cancel_at_period_end: false, current_period_end: null,
+    }]);
     assert.deepEqual(received, [{ userId: 1, role: 'admin' }, 25]);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
