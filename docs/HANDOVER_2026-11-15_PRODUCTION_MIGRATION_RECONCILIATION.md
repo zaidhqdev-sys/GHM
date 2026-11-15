@@ -626,3 +626,10 @@ Latest code changes include classifier commit `eafd537814096d3b38014273f97955ebd
 The observed production state remains expected to classify `PARTIAL_DRIFT`: SECURITY DEFINER is present, but the live function body still only allows `available` rows and the lifecycle constraint still requires `available_at` for `deletion_pending`.
 
 Do not apply migration 4, manually insert a ledger row, revoke runtime grants, or modify production to force a classification. Keep the untracked `.bak` file preserved. Next step remains exact-head CI, then rerun the read-only preflight against `ghm_db` and verify the explicit `PARTIAL_DRIFT` output.
+## 28. CI failure and classifier correction (2026-11-15 22:31 UTC)
+
+Exact-head CI for commit 0064f8dcad6ce0c964b71cb772af64ca8674f464 (run 5018) completed with `web-quality` PASS and `quality` FAIL. The failure was isolated to the new classifier test `unknown or missing catalog state is not treated as safe`: an unvalidated constraint was returned as `PARTIAL_DRIFT`, while the contract requires `UNKNOWN_DRIFT` whenever catalog evidence is incomplete or the constraint is not validated.
+
+Correction committed as `5d613db38aee1b554f73942959db9316e04d7939`: the classifier now immediately returns `UNKNOWN_DRIFT` when the constraint/function definition is missing, the constraint is not validated, or the function return type is not `ghm.storage_object`. This makes incomplete catalog evidence fail closed before any semantic partial-drift matching.
+
+CI for this correction has not yet been observed. Do not claim a pass. Next step: inspect the new exact-head CI run, diagnose any further failure from logs, and only after exact-head quality/web-quality pass, fetch that commit and rerun the read-only production preflight. Production remains untouched.
