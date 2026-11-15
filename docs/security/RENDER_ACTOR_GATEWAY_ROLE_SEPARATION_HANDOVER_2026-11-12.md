@@ -2285,3 +2285,92 @@ The canonical handover was fetched from the default branch immediately before th
 ### Safety
 
 No Render upgrade, new resource, export creation, PITR, restore, SQL execution, database mutation, migration, deployment, environment/credential change, or branch/PR mutation occurred.
+
+
+## 2026-11-15 15:48Z — November 4 Render archive vs live production ledger comparison
+
+### Exact comparison result
+
+A complete read-only row-by-row comparison was run using the extracted ledger from:
+
+`C:\\Users\\zaidh\\AppData\\Local\\Temp\\GHM-Nov04-Archive-Inspection\\ghm-schema-migrations-data-v2.sql`
+
+The live side connected to Render production `ghm_db` using `GHM_MIGRATOR_DATABASE_URL`, with TLS certificate verification enabled. The transaction began with `BEGIN READ ONLY`, verified `session_user=ghm_migrator`, `current_user=ghm_migrator`, database `ghm_db`, and ability to set role `ghm_schema_owner`; after `SET ROLE ghm_schema_owner`, it verified `current_user=ghm_schema_owner`, `session_user=ghm_migrator`, and `transaction_read_only=on`. It selected only the migration ledger and rolled back. After rollback, the connection identity returned to `ghm_migrator` / `ghm_migrator` on `ghm_db`. The reported `transaction_read_only=off` after rollback is expected because it is outside the read-only transaction; it does not indicate that the comparison transaction was writable.
+
+No production writes, migrations, restores, role/grant changes, credential changes, environment changes, or deployments occurred.
+
+| Measure | November 4 archive | Live production |
+|---|---:|---:|
+| Ledger rows | 89 | 105 |
+| First version | `00000000000000` | `00000000000000` |
+| First name | `create_migration_ledger` | `create_migration_ledger` |
+| Last version | `20261026120000` | `20261109210000` |
+| Last name | `scope_storage_metadata_lookup` | `deactivate_unrecognized_public_directory_records` |
+
+Comparison:
+- Shared versions: **89**
+- Archive-only versions: **0**
+- Live-only versions: **16**
+- Shared-version name differences: **0**
+- Shared-version checksum differences: **0**
+- Shared-version applied_at differences: **0**
+
+All 89 archive rows exist in live production with exact name, checksum and timestamp equality. The 16 additional live rows are:
+
+| Version | Migration | Live applied_at |
+|---|---|---|
+| `20261104120000` | `bind_commercial_payment_attempt_provider` | `2026-11-09 20:04:06.429899+00` |
+| `20261104130000` | `isolate_payfast_settlement_identity` | `2026-11-09 20:04:06.429899+00` |
+| `20261105190000` | `extend_business_directory_location_contact` | `2026-11-09 20:04:06.429899+00` |
+| `20261105213000` | `create_business_capability_evidence` | `2026-11-09 20:04:06.429899+00` |
+| `20261105220000` | `replace_business_capability_assertions` | `2026-11-09 20:04:06.429899+00` |
+| `20261105230000` | `create_founder_directory_review` | `2026-11-09 20:04:06.429899+00` |
+| `20261106090000` | `business_logo_storage_binding` | `2026-11-09 20:04:06.429899+00` |
+| `20261106200000` | `link_project_to_opportunity` | `2026-11-09 20:04:06.429899+00` |
+| `20261107211500` | `reconcile_business_profile_and_founder_authority` | `2026-11-09 20:04:06.429899+00` |
+| `20261108150000` | `reconcile_business_registration_identity_authorization` | `2026-11-09 20:04:06.429899+00` |
+| `20261109100000` | `persist_business_profile_presentation_fields` | `2026-11-09 20:04:06.429899+00` |
+| `20261109110000` | `reconcile_capability_evidence_pending_state` | `2026-11-09 20:04:06.429899+00` |
+| `20261109120000` | `serialize_business_capability_assertion_replacement` | `2026-11-09 20:04:06.429899+00` |
+| `20261109130000` | `harden_evidence_and_founder_review_authority` | `2026-11-09 20:04:06.429899+00` |
+| `20261109140000` | `close_evidence_and_founder_review_authority` | `2026-11-09 20:04:06.429899+00` |
+| `20261109210000` | `deactivate_unrecognized_public_directory_records` | `2026-11-09 20:50:23.763528+00` |
+
+### Provenance and recovery-baseline disposition
+
+This comparison materially strengthens the earlier provenance evidence: the user recalled creating the November 4 logical export from the Render `ghm-db` Recovery page, and all 89 ledger rows in the local archive match the live production ledger exactly, while the live ledger has 16 later additions. The archive is therefore consistent with an earlier state of the same production migration history, not a divergent migration history.
+
+Classification is updated to:
+
+**November 4 archive — STRONG, OWNER-RECALLED RENDER `ghm-db` EXPORT CANDIDATE; MIGRATION-LEDGER HISTORY MATCHES LIVE PRODUCTION FOR ALL 89 SHARED VERSIONS; ARCHIVE IS AN OLDER 89-ROW STATE, NOT THE CURRENT 105-ROW STATE.**
+
+This is not yet proof that the archive's complete schema/data contents are a safe current restore baseline. Do not restore it, use it to overwrite production, or treat it as a current-state backup. It is a useful historical recovery artifact whose migration ledger is consistent with production through its captured point. A full archive object/data comparison is a separate task and is not authorized by this result.
+
+### Correction to earlier handover audit summary
+
+An earlier 2026-11-15 audit note recorded 105 live rows with latest version `20261020140000`. The direct production ledger query in this comparison returned 105 rows with latest version `20261109210000`. The row count agrees, but the latest-version field conflicts. The direct query's complete ledger endpoint is the newer evidence for this comparison; the prior audit summary must be treated as stale or internally inconsistent until the forensic audit script is rerun and its output reconciled. Do not rely on the earlier latest-version value or its derived pending count without that reconciliation. This comparison does not itself rerun the repository-wide migration audit and does not authorize any pending migration.
+
+### PR and branch inspection before this handover update
+
+The canonical handover was fetched from the default branch immediately before this update (blob SHA `e64298d5e9d04a64e0d96a8c3bbbd60ddb97e22f`). Open PR search returned six open items: #282 (verified TLS/fail-closed migration ordering), #243 (supplier classification, with its own recorded Actor Gateway integration dependency), #264 (gateway registration identity documentation), #201 (QuoteFlow legal acceptance), #233 (PayFast timezone handling), and #244 (stacked Business engagement/Analytics). Their recorded merge/release/security gates remain in force; this archive comparison does not close or override any of them.
+
+Existing migration, Actor Gateway and mainline branch searches were rechecked. Results included the existing strict-TLS / migration-audit branches, existing Actor Gateway/security branches, and `main`; a backup-named branch search returned none. Search pagination was exhausted for the returned migration/actor/main result sets. No branch or PR was created, deleted, rebased, pushed, merged, or modified as part of this comparison.
+
+### Amanda support / role-separation continuity
+
+Amanda's Render support conversation remains preserved in this handover. Her confirmed recommendation remains: retain the Dashboard-managed default credential for controlled administration and use SQL-created restricted login identities for normal application execution. The sensitive-role ADMIN OPTION concern remains unresolved and was not tested or changed in this archive comparison.
+
+### Status after this comparison
+
+- November 4 archive ledger integrity: **PASS — 89 rows, complete COPY block, no duplicate versions**.
+- Shared archive/live migration identity: **PASS — 89/89 exact version/name/checksum/applied_at matches**.
+- Archive-only versions: **0**.
+- Live-only versions: **16**, all listed above.
+- November 4 archive as exact current production state: **NO — it predates the 16 later ledger entries**.
+- November 4 archive as historical production recovery evidence: **STRONGLY SUPPORTED; full schema/data restore suitability not established**.
+- Earlier live audit latest-version summary: **REQUIRES RECONCILIATION** against direct live ledger query.
+- Production migration execution, restore, role/grant changes, credential/environment changes, deployments and allowlist edits: **NOT AUTHORIZED / NOT PERFORMED**.
+
+### Next safe step
+
+Re-run the repository's read-only production migration audit against the same verified `ghm_db` target and compare its complete ledger endpoint with the direct 105-row query. Resolve why its earlier summary reported latest version `20261020140000` before using any pending-migration count or deciding on the migration-runner gate. Keep the November 4 archive immutable and do not restore it.
