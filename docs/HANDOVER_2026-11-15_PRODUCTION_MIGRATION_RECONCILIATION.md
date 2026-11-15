@@ -934,3 +934,64 @@ Reviewed the supplier cutover and signed-assertion sequence:
 Source review confirms the supplier-classification SQL and current gateway client/Worker route are designed to meet at the final context-bound signed assertion contract. It does **not** establish that the live production app can currently serve the feature or that any migration batch is ready for production. Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset, keep all production roles/grants/secrets/services unchanged, and do not run `npm run migrate`.
 
 No production SQL, migration, ledger repair, DDL/DML, role/grant change, secret, Render/Cloudflare configuration, deployment, or application data was changed during this review. Preserve the untracked local `.bak` file.
+
+
+
+## 39. Ordered first-four migration qualification review (2026-11-15 23:53 UTC)
+
+### Exact-head CI and PR state
+
+- PR #285 head: `41202d20d01f9a54f248bf072a719610bb9346cc`.
+- Workflow #5032, run ID `43776795728`, completed SUCCESS on that exact head.
+- `quality` and `web-quality` both passed.
+- PR #285 remains OPEN, DRAFT, UNMERGED. No production execution or deployment.
+
+### Disposable first-four qualification scope
+
+Reviewed `scripts/qualify-first-four-pending-migrations-postgres.mjs`. It is hard-gated to `NODE_ENV=test`, distinct runtime and migrator URLs, localhost, and database `ghm_disposable_test`. It verifies:
+- migration 2 onboarding table runtime SELECT/INSERT/UPDATE and denied DELETE/TRUNCATE/REFERENCES/TRIGGER, sequence privileges and validated constraints;
+- migration 3 SELECT-only runtime access on four relationship/outcome tables, denied write privileges, expected seed rows and validated constraints;
+- migration 4 storage lifecycle row compatibility, validated lifecycle constraint, SECURITY DEFINER owner/search_path and effective runtime EXECUTE.
+
+This script is a post-apply disposable qualification. It does not run production SQL and is not evidence that the production storage gateway is deployed or safe.
+
+### Migration-by-migration review findings
+
+**1 — `20261110010000_add_business_supplier_classification`**
+- Adds the descriptive Business classification and a SECURITY DEFINER update function owned by `ghm_schema_owner`, with pinned search_path and explicit EXECUTE revocation from PUBLIC, runtime and migrator.
+- The function accepts caller-supplied account ID, so it must remain inaccessible to untrusted/direct runtime callers. The later signed gateway chain is required before writes are exposed. See section 38.
+
+**2 — `20261110100000_create_account_onboarding_progress`**
+- Creates a constrained per-account progress table and grants runtime SELECT/INSERT/UPDATE plus sequence USAGE/SELECT; destructive table privileges are denied.
+- The current Resource API repository binds every query to `context.userId`, and route/service layers require authenticated, authorized onboarding context. However, the table has no row-level security policy. A caller holding the shared `ghm_runtime` SQL credential can bypass those application predicates and read or alter another account's progress. This is an application-vs-database authority gap to record; the disposable test currently verifies table-level ACLs but not cross-account isolation under direct runtime SQL. Do not represent table grants alone as tenant isolation.
+
+**3 — `20261110120000_create_business_relationship_outcome_read_models`**
+- Creates relationship/outcome tables, foreign keys, lifecycle/provenance/visibility checks, indexes and 5 relationship + 6 outcome type seeds. Runtime receives SELECT only; writes are denied.
+- The current repository checks active membership in the requested Business and scopes rows to that Business. However, the schema introduces `visibility` and `verification_status` fields while the current read queries do not filter either field. The repository currently returns matching Business rows regardless of `private`/other visibility and verification state. The exact product visibility policy must be reconciled and enforced before exposing these read models. The disposable qualification validates grants/constraints/seeds, not these application authorization semantics.
+
+**4 — `20261110140000_allow_pending_storage_object_cleanup`**
+- Replaces the lifecycle constraint to allow deletion-pending rows with or without `available_at`, preserving the recorded timestamp.
+- Replaces `ghm.storage_mark_deletion_pending(bigint)` with a SECURITY DEFINER function that accepts only an object ID and performs no actor, tenant, membership or signed provider-attestation check.
+- It explicitly grants EXECUTE to `ghm_runtime`. This is a direct shared-runtime database authority path, not a signed gateway operation. The existing five-function storage finding remains open; the production read-only preflight confirms this migration is currently in PRE_MIGRATION state and found two pending/two deleted rows compatible with the new predicate.
+- Do not apply migration 4 until the complete signed Storage Metadata Gateway/provider-attestation path is live and tested, and the separate five-function legacy grant cutover plus rollback are approved and rehearsed. The current gateway construction handover states the Resource API repository still invokes the legacy functions and no complete provider transition/cutover exists.
+
+### Ordered-prefix decision
+
+The first-four disposable qualification is useful test evidence, but the four migrations are **not approved as one production batch**:
+
+1. Migration 2 needs an explicit decision on whether cross-account isolation is acceptable at the application layer for a shared runtime credential, or whether DB-level tenant enforcement is required.
+2. Migration 3's visibility and verification semantics are not fully enforced by the current repository queries.
+3. Migration 4 introduces/retains direct runtime execution of an actor-agnostic SECURITY DEFINER storage transition. This is a hard stop until the signed storage gateway and provider attestation cutover are complete.
+4. The supplier write route and context-bound v2 SQL wrapper are not present in the currently deployed production Resource API/Actor Gateway topology (section 38).
+
+Therefore do not set `GHM_PRODUCTION_MIGRATION_BATCH`, do not run `npm run migrate`, and do not treat the disposable first-four test as production authorization. If later execution gates are resolved, re-evaluate whether the first three can be qualified as a smaller contiguous prefix while migration 4 remains blocked; the runner's exact-prefix rule must be respected.
+
+### Outstanding hard gates
+
+- Fresh verified production backup and tested recovery point.
+- Amanda/Render support resolution of the Dashboard-managed administrator membership and effective CREATEROLE/role grant authority; use the existing role-separation handover, do not improvise SQL revokes.
+- Production Actor Gateway and Resource API route/service topology, credentials, signed assertion secret and end-to-end smoke tests.
+- Complete signed Storage Metadata Gateway including provider-attested availability/deletion transitions; separately rehearsed five-function legacy storage grant cutover/rollback.
+- Resolve onboarding direct-runtime tenant isolation and relationship/outcome visibility/verification semantics before treating migrations 2 and 3 as application-ready.
+
+No production SQL, DDL/DML, ledger repair, grant/role change, secret, Render/Cloudflare configuration, deployment, or application data was changed during this review. Preserve the untracked local `.bak` file.
