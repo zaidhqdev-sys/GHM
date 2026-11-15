@@ -1730,3 +1730,36 @@ The 42 repository migrations after the snapshot ledger are the 2026-11-10 throug
 - November 14 archive baseline: **CANDIDATE — NOT YET VERIFIED**.
 - Exact source reconciliation: **86 PASS / 9 checksum mismatches / 10 missing files**.
 - Production-equivalent replay: **NOT RUN — historical migration provenance unresolved**.
+
+
+## 2026-11-15 — targeted historical migration provenance recovery (in progress)
+
+After recording the November 14 archive reconciliation, the next step was narrowed to the existing migration-provenance branches rather than rerunning the general migration audit.
+
+### Existing branch inspection
+
+- Inspected `construction/ghm-migration-checksum-line-ending-compatibility`, `fix/migration-provenance-reconciliation-20261109`, `fix/migration-bom-crlf-checksum-20261018`, and `fix/migration-audit-checksum-policy`.
+- The nine checksum-mismatch migration files were present on the first two branches, but GitHub blob SHA and file contents were identical to current main for the five files directly compared. These branches therefore do not, by themselves, recover the ledger-recorded historical contents for those versions.
+- `fix/migration-bom-crlf-checksum-20261018` contains five of the ten ledger-referenced files that are absent from current main:
+  - `20261016100000_add_connect_identity_authority_contract.sql`
+  - `20261016120000_create_account_external_mapping.sql`
+  - `20261016170000_add_connect_directory_contract.sql`
+  - `20261016180000_extend_owner_managed_directory_profile.sql`
+  - `20261016190000_expose_authenticated_account_email.sql`
+- The same branch did not contain the remaining five missing versions:
+  - `20261018210000_grant_runtime_account_profile_column_updates.sql`
+  - `20261019190000_create_business_engagement_events.sql`
+  - `20261019210000_create_business_registration_identity.sql`
+  - `20261020130000_create_quoteflow_migration_business_provisioning.sql`
+  - `20261020140000_reconcile_quoteflow_provisioning_verification_status.sql`
+- The five recovered candidate files have been located by path and blob SHA, but their normalized SHA-256 values have **not yet been verified against the corresponding 105-row snapshot ledger checksums**. Presence on a historical branch is not sufficient proof of provenance.
+- No candidate historical file has been restored to main, copied into the working tree, or used to change any migration checksum.
+
+### Next exact task
+
+1. Compute each candidate file's normalized-LF and legacy-CRLF SHA-256 and compare with the exact ledger value.
+2. Search the remaining historical branches, PR heads and commit history for the other five missing migration files.
+3. For the nine same-name mismatches, search historical Git blobs/commits for the exact source whose normalized checksum matches the snapshot ledger. Current main copies are not accepted as substitutes.
+4. Record per-version evidence (branch/ref, commit/blob, filename, normalized checksum, match result) before deciding whether the archive can qualify as an exact baseline.
+
+This is a targeted provenance recovery task. Do not repeat the archive extraction, TOC inventory, 105-row count or 137-file count unless the archive or repository baseline changes.
