@@ -2788,3 +2788,88 @@ The merged Authentication Issuer stack / commit `1d78d2b9` added or changed:
 - `20261112170000_revoke_redundant_migrator_business_mapping_lookup`
 
 Important distinction: these are **commit-level file additions/modifications**, not a declaration that every one is currently pending in production. The production audit's `missing` array is the authoritative pending list. The #272/#276 stack is already merged; do not treat its former PRs as open implementation work or create duplicates. Its required isolated gateway/issuer hosting and runtime cutover constraints remain unresolved, so the merge and CI qualification do not authorize production migration execution.
+
+
+### 2026-11-15 — Exact production pending inventory captured
+
+**Source:** user's read-only `npm run audit:migrations:predeploy` output from production `ghm_db`, captured 2026-11-15 16:43 UTC. This is the authoritative complete pending list for this audit checkpoint.
+
+#### Exact counts and reconciliation
+
+- Verdict: `INVESTIGATE`.
+- Repository migration files: **137**.
+- Live `ghm.ghm_schema_migrations` ledger rows: **105**.
+- Pending repository migrations: **42**.
+- Approved retained historical ledger extras: **10** (from the preceding audit summary; no unrecognized extras).
+- Reconciliation: 105 ledger rows less 10 retained historical extras = 95 repository migrations represented in the ledger; 137 - 95 = 42 pending.
+- Pending allowlist exact match: **false**; mismatch count **1**. The configured allowlist still has seven records, so 35 pending migrations are outside it.
+- Checksum mismatches: **0**; name mismatches: **0**; unrecognized ledger extras: **0**; orphaned historical exceptions: **0**; invalid retained-history entries: **0**.
+- Authority/read-only checks passed; no production writes or migration execution occurred.
+
+#### Complete pending migration inventory (42)
+
+- `20261110010000_add_business_supplier_classification.sql`
+- `20261110100000_create_account_onboarding_progress.sql`
+- `20261110120000_create_business_relationship_outcome_read_models.sql`
+- `20261110140000_allow_pending_storage_object_cleanup.sql`
+- `20261110160000_add_admin_capability_catalogue_governance.sql`
+- `20261110210000_add_actor_gateway_principal_guard.sql`
+- `20261110220000_add_actor_gateway_self_identity_read.sql`
+- `20261110230000_add_gateway_business_registration_identity_read.sql`
+- `20261110233000_add_gateway_business_registration_identity_write.sql`
+- `20261110240000_enforce_capability_catalogue_cross_row_invariants.sql`
+- `20261110250000_add_gateway_capability_governance.sql`
+- `20261110260000_gateway_supplier_classification_cutover.sql`
+- `20261110265000_reconcile_business_profile_legacy_contract.sql`
+- `20261110270000_gateway_business_profile_update.sql`
+- `20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql`
+- `20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql`
+- `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql`
+- `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor.sql`
+- `20261111060000_bind_gateway_assertions_to_request_context.sql`
+- `20261111070000_add_signed_business_capability_mutations.sql`
+- `20261111100000_add_signed_saved_business_gateway.sql`
+- `20261111130000_add_signed_business_hours_gateway.sql`
+- `20261111140000_add_business_hours_read_projections.sql`
+- `20261111150000_add_signed_trust_score_gateway.sql`
+- `20261111160000_add_signed_business_logo_gateway.sql`
+- `20261111170000_add_trust_score_read_projections.sql`
+- `20261111210000_revoke_runtime_account_external_identity_table_access.sql`
+- `20261111220000_revoke_unused_auth_runtime_entry_points.sql`
+- `20261111230000_add_token_bound_recovery_revocation_result.sql`
+- `20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql`
+- `20261111250000_revoke_runtime_external_identity_link.sql`
+- `20261111260000_revoke_runtime_external_identity_bootstrap.sql`
+- `20261112020000_add_token_bound_password_recovery_reset.sql`
+- `20261112030000_add_conditional_password_rehash.sql`
+- `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql`
+- `20261112050000_revoke_public_default_function_execution.sql`
+- `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql`
+- `20261112080000_signed_connect_business_provisioning_gateway.sql`
+- `20261112090000_pin_security_definer_search_path.sql`
+- `20261112140000_add_signed_storage_metadata_actor_gateway.sql`
+- `20261112150000_add_storage_provider_workflow_attestation.sql`
+- `20261112170000_revoke_redundant_migrator_business_mapping_lookup.sql`
+
+#### Classification status and guardrails
+
+This list is now preserved in the handover so it does not need to be re-captured just to recover the inventory. Classification below is by provenance/theme only; it is **not** production approval.
+
+1. **Previously allowlisted (7):** `20261110100000`, `20261110120000`, `20261110140000`, `20261110210000`, `20261110220000`, `20261110230000`, `20261110233000`. Note that `20261110210000_add_actor_gateway_principal_guard.sql` was modified by the later merged Authentication Issuer stack, so the current file content is not byte-identical to the version at the allowlist commit. Its production checksum is not currently mismatched because it is pending, but its qualification must be revisited.
+2. **Supplier classification / marketplace:** `20261110010000_add_business_supplier_classification` and `20261110260000_gateway_supplier_classification_cutover`. Related PR #243 remains open/draft; the initial classification migration reached main through merged #272 reconciliation. Inspect the current PR diff and Connect consumer before deciding whether any further implementation is needed.
+3. **Capability catalogue and governance:** `20261110160000_add_admin_capability_catalogue_governance`, `20261110240000_enforce_capability_catalogue_cross_row_invariants`, `20261110250000_add_gateway_capability_governance`. These arrived in merged #272's Actor Gateway integration stack.
+4. **Business profile contract/cutover:** `20261110265000_reconcile_business_profile_legacy_contract`, `20261110270000_gateway_business_profile_update`. These arrived in merged #272; their runtime caller and gateway cutover requirements must be confirmed.
+5. **Signed Actor Gateway operations and read projections:** `20261111020000` through `20261111170000` as listed above, covering signed actor assertion bindings, capability/supplier/profile/registration operations, saved businesses, hours, trust score, logo and read projections. These arrived in merged #272 and require the actual isolated gateway contract/runtime deployment to be checked before production use.
+6. **Authentication and runtime privilege hardening:** `20261111210000` through `20261111260000`, plus `20261112040000`, `20261112050000`, `20261112070000`, `20261112090000`, and `20261112170000`. These include runtime privilege revocations, removal of legacy entry points/overloads, search-path pinning, and restricted migrator access. They are security-sensitive: inspect exact SQL, dependency order, and all production callers before any approval.
+7. **Token-bound authentication/recovery:** `20261111230000`, `20261112020000`, `20261112030000`. These relate to recovery revocation, password reset and conditional rehash; qualify against the merged isolated Authentication Issuer implementation and existing auth data/contracts.
+8. **Connect provisioning and storage gateway:** `20261112080000`, `20261112140000`, `20261112150000`. These require signed Connect provisioning and storage-provider workflow/attestation dependencies to be established; do not infer that current production services already provide these callers.
+9. **Previously allowlisted onboarding/read models/storage cleanup:** `20261110100000`, `20261110120000`, `20261110140000`. Keep their prior precondition/qualification findings; the storage cleanup file was subsequently corrected by merged PR #279 and needs the already-recorded disposable PostgreSQL qualification carried forward.
+
+#### Next work sequence (no production mutation)
+
+- Preserve this 42-entry inventory as the audit baseline; do not rerun the production audit merely to recover the list.
+- Inspect each migration's current SQL and its merged commit/PR provenance. First establish the exact content of all 42 and the dependency order, then map to runtime consumers and current service availability.
+- Read current handover and PR/branch state before each workstream. #272/#276/#277 are merged; do not recreate their implementation. #243 and #264 remain open and must be reviewed before touching supplier classification or gateway registration documentation.
+- Do not expand the production pending allowlist, run `npm run migrate`, or deploy migrations as a response to this mismatch.
+- The unresolved no-cost isolated Actor Gateway / Authentication Issuer hosting and cutover remains a blocker for gateway-dependent migrations. PayFast remains paused and is not a reason to include payment migrations or resume activation.
+- Keep the pre-existing untracked recovery `.bak` file untouched.
