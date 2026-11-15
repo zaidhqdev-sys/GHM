@@ -236,3 +236,47 @@ Latest exact PR-head CI: run `43757998434` (run #4961) completed successfully on
 - Web quality/build/tests passed.
 
 This qualifies the current implementation on disposable CI infrastructure only. PR #285 remains a draft; no production migration has been executed and the independent Render role/backup/Actor Gateway service gates remain. Current branch has subsequent documentation-only handover commit(s) after the qualified code commit; if code changes are made, rerun exact-head CI before merge.
+
+
+## 10. Exact-head reconciliation and first-prefix security review (2026-11-15)
+
+### PR #285 exact current state
+
+- PR #285 remains OPEN, DRAFT and mergeable; base is `main`, head branch is `feat/production-migration-batch-execution-20261115`.
+- Current main at review: `61cd1121a1fb30e3b28c250b7b6812707f1c9109`.
+- Current PR head at review: `42e86d8ddf4c2184108a8d65b813a86d882ed468`. The previously recorded `ae27246ed14e40c3da73bdb0da5ed6d43af5d9bc` is the code-qualified parent; `42e86d8d` adds the subsequent CI/handover record.
+- Exact-head checks on `42e86d8d` completed successfully: `quality` and `web-quality` in workflow run `43758290924`, plus the Cloudflare Pages check. This is code qualification on CI/disposable infrastructure, not production qualification.
+- Six changed files: production pending inventory, this handover, two migration test files, `src/db/migrate.ts`, and `src/db/production-migration-batch.ts`.
+- No submitted PR reviews or inline review threads were present at this check. Keep the PR draft until the remaining source/production gates are resolved.
+- No production SQL, migration, role/grant, secret, environment, Render or Cloudflare change was performed.
+
+### First pending migration and guard qualification gap
+
+- `20261110010000_add_business_supplier_classification` creates `ghm.update_business_supplier_classification(bigint,bigint,boolean)` and grants EXECUTE to `ghm_runtime`.
+- The PR runner selects a production-only post-batch guard for this exact migration and executes the REVOKE inside the same transaction before COMMIT. The migration file's historical bytes/checksum remain unchanged.
+- Current unit coverage asserts that the helper returns the expected REVOKE SQL for this exact version and no guard for the next migration. The exact-head CI passed, but the current test is a helper/contract test: it does not itself demonstrate the production-only runner path applying that REVOKE against disposable PostgreSQL and then observing the effective runtime privilege.
+- Before first production execution, add or run a disposable PostgreSQL 18 qualification that exercises the exact guard SQL/effective privilege result and verifies the batch transaction/rollback behavior. Do not treat the helper string assertion alone as end-to-end database proof.
+
+### Fifth pending migration is a deliberate gateway cutover boundary
+
+- `20261110160000_add_admin_capability_catalogue_governance` creates three SECURITY DEFINER legacy functions that accept caller-supplied `p_actor_account_id` and grants EXECUTE to `ghm_runtime`:
+  - `ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)`
+  - `ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)`
+  - `ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)`
+- This is an actor-attribution risk if the general runtime can invoke those functions directly. Do not treat the successful full migration-chain CI as proof that this legacy grant is safe.
+- The subsequent `20261110250000_add_gateway_capability_governance` installs signed Actor Gateway wrappers, but its SQL explicitly retains the legacy runtime grants until a separately approved API cutover.
+- The repository already contains the intended manual cutover at `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql`. Its header requires the Actor Gateway to be deployed, `GHM_ACTOR_GATEWAY_URL` configured, and capability administration routes end-to-end verified before applying it. The disposable qualification script `scripts/qualify-capability-governance-cutover-postgres.mjs` tests direct legacy RPC denial and continued gateway operations after that cutover.
+- Do not add an automatic post-migration REVOKE for these three functions to the generic migration runner: that would bypass the documented application cutover sequence and could break a still-active legacy application path.
+- Because the production runner enforces a contiguous pending prefix, migration 5 is a hard stop: do not advance to migration 6 or later until the gateway and capability route prerequisites are satisfied and the manual cutover is separately executed and verified.
+
+### Provisional first-prefix execution plan
+
+- Keep production batches to one migration at a time unless a documented dependency requires a small atomic batch.
+- The first four pending migrations are candidates for separate review/qualification, not production authorization:
+  1. `20261110010000_add_business_supplier_classification` — only with the runner's same-transaction runtime EXECUTE guard proven on disposable PostgreSQL.
+  2. `20261110100000_create_account_onboarding_progress` — additive onboarding table/index/privilege change.
+  3. `20261110120000_create_business_relationship_outcome_read_models` — additive relationship/outcome read-model schema; complete remaining SQL and application compatibility review before selection.
+  4. `20261110140000_allow_pending_storage_object_cleanup` — changes the storage-object lifecycle constraint and installs a runtime cleanup function; verify existing production status distribution and storage deletion workflow compatibility before selection.
+- Migration 5 is not in this provisional first-four set. Stop there until the gateway deployment, capability API route verification, and manual cutover conditions are met.
+- The first four are not yet approved for production execution. The fresh verified production backup/recovery point and Amanda/Render role-administration issue remain unresolved; the production Actor Gateway has no verified deployed endpoint/DB connection/credentials. No production migration may be run while these gates remain open.
+- The production pending inventory remains based on the user's supplied read-only audit (137 repository migrations, 105 ledger rows, 42 pending, INVESTIGATE). No new full production ledger audit was performed in this review.
