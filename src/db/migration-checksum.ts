@@ -31,3 +31,17 @@ export const normalizeMigrationSqlForExecution = (sql: string): string => {
     .replace(/^\s*BEGIN\s*;\s*/i, '')
     .replace(/\s*COMMIT\s*;\s*$/i, '\n');
 };
+
+
+/**
+ * node-postgres replaces an explicitly supplied ssl object when SSL options
+ * are present in the connection URL. Remove URL-level SSL controls so the
+ * migration runner's verified TLS policy remains authoritative.
+ */
+export const stripPostgresSslConnectionStringOptions = (connectionString: string): string => {
+  const url = new URL(connectionString);
+  for (const key of [...url.searchParams.keys()]) {
+    if (/^ssl/i.test(key) || key.toLowerCase() === 'uselibpqcompat') url.searchParams.delete(key);
+  }
+  return url.toString();
+};

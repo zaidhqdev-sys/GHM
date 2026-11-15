@@ -3,10 +3,13 @@ import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import historicalProvenanceExceptions from '../../config/historical-migration-provenance-exceptions.json';
-import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution } from './migration-checksum';
+import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution, stripPostgresSslConnectionStringOptions } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
+import { findOutOfOrderPendingMigration } from './migration-order';
+import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
+import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -16,13 +19,15 @@ const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
 });
 
 const databaseSsl = process.env.DATABASE_SSL === 'true';
-if (process.env.NODE_ENV === 'production' && !databaseSsl) {
-  throw new Error('DATABASE_SSL must be true in production');
+if (approvedTarget.databaseName === 'ghm_db' && !databaseSsl) {
+  throw new Error('Production migrations require DATABASE_SSL=true with certificate verification enabled');
 }
 
 const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+  connectionString: databaseSsl && databaseUrl
+    ? stripPostgresSslConnectionStringOptions(databaseUrl)
+    : databaseUrl,
+  ssl: databaseSsl ? { rejectUnauthorized: true } : false,
 });
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
@@ -188,6 +193,22 @@ const migrate = async (): Promise<void> => {
       ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
       : { rows: [] as Array<{ version: string; checksum: string }> };
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
+    if (approvedTarget.databaseName === 'ghm_db') {
+      assertProductionPendingMigrationAllowlist(
+        migrations,
+        new Set(appliedByVersion.keys()),
+        productionPendingMigrationAllowlist,
+      );
+    }
+    const outOfOrderPending = findOutOfOrderPendingMigration(
+      migrations,
+      new Set(appliedByVersion.keys()),
+    );
+    if (outOfOrderPending) {
+      throw new Error(
+        `Migration history gap: refusing to replay pending ${outOfOrderPending.pending.version}_${outOfOrderPending.pending.name} before already-applied ${outOfOrderPending.laterApplied.version}_${outOfOrderPending.laterApplied.name}`,
+      );
+    }
 
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
