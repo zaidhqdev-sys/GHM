@@ -159,3 +159,31 @@ No newly discovered vendor feature changes the no-go result. Cloudflare networki
 Cloudflare's required product features are visible and Workers VPC is available, but the account has no deployed Actor Gateway Worker, no Tunnel, no VPC Service, no Hyperdrive configuration, and no Mesh nodes. Render has no suitable existing always-on, isolated, no-additional-cost connector host. Both existing Production web services are Free and are not approved for repurposing; all sandbox and qualification services are excluded.
 
 The no-go decision is unchanged. Do not create Cloudflare resources, set `GHM_ACTOR_GATEWAY_URL`, add secrets, modify database ingress, deploy a tunnel sidecar, alter Render services, or change production DB roles/grants/migrations. Amanda's Render support guidance, the unresolved production role-administration issue, and a fresh independently verified production backup remain separate hard gates.
+
+
+## 2026-11-15 follow-up — Actor Gateway source and deployment qualification
+
+### Existing branch and PR reconciliation
+
+- Re-read the repository branch inventory and pull-request history before considering source changes.
+- PR #278, `fix: align Actor Gateway role guard with trusted Render administrator`, is merged (merge commit `e78422560b35be3d8fdc3d08387b6c3f47ce5883`; head `8141e1e24652933a0e7d6313c9f25a14918f214a`). It preserves the documented Render-managed `ghm_db_user` membership in `ghm_actor_gateway` only as ADMIN OPTION=true, INHERIT=false, SET=false, while rejecting gateway-login memberships and other members. Its PR description records a prior read-only production catalog observation matching that relationship; this historical evidence is not a substitute for a fresh production check before rollout.
+- The branch `fix/actor-gateway-trusted-admin-membership` remains in the branch inventory as the merged PR head; it is not outstanding implementation work. Do not recreate it.
+- The only currently open Actor Gateway-related PR found is #264, a documentation checkpoint. Open PRs #243 and #244 are Connect supplier-classification and analytics work, not Actor Gateway deployment work. No open Actor Gateway implementation/deployment PR was identified.
+- Existing construction branches for isolated issuer work were noted but not changed. No new branch or PR was created.
+
+### Worker source/configuration findings
+
+- Worker entry point: `workers/actor-gateway/index.ts`. It uses Cloudflare's Node HTTP adapter, creates the typed gateway app, and initializes only after checking the Hyperdrive connection, JWT verification material, capability assertion secret, database principal and database privileges.
+- Required Worker-side values in source are: Hyperdrive binding `HYPERDRIVE`; public ES256 verification key PEM and key ID (plus optional previous public key/key ID); and `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`. The Worker source does not load the ES256 private signing key, token pepper, issuer DB URL, or ordinary API credentials.
+- The Worker has a 16 KiB JSON request-body limit, immediate 413 handling for oversized bodies, per-actor rate limiting configured at 120 requests per 60 seconds, and fails closed with HTTP 503 if startup checks fail. The Worker health route is not evidence of successful authenticated business operations by itself.
+- Current `workers/actor-gateway/wrangler.jsonc`: Worker name `ghm-actor-gateway`; `workers_dev=false`; `preview_urls=false`; observability disabled; Hyperdrive binding name `HYPERDRIVE` but its ID is all zeroes (placeholder); local connection string targets a disposable local test database. There is no production VPC binding, no custom route/domain, and no deployed `workers.dev` hostname.
+- `workers/actor-gateway/worker-contract.test.mjs` statically checks the adapter, required bindings/secrets, public-key-only verification material, startup ACL order, fail-closed behaviour, disabled public routes, and body-limit handling.
+- `package.json` defines `typecheck:worker:actor-gateway` and `test:worker:actor-gateway`. The CI workflow includes a Wrangler deploy dry-run (bundle only, no deployment) and a local Wrangler runtime smoke test against disposable PostgreSQL/Hyperdrive configuration, including `/healthz`, invalid JSON rejection, and immediate oversized-body rejection. These are repository/CI qualification paths, not proof of a deployed Cloudflare Worker or production DB connectivity.
+- No dedicated Actor Gateway deployment workflow was found in `.github/workflows`; the existing workflow performs build/bundle/test qualification only.
+
+### Result and next qualification boundary
+
+- The Worker implementation and its local CI harness already exist. The immediate code/configuration gap is not a missing Worker implementation: it is the intentionally unprovisioned production Hyperdrive/VPC binding, tunnel path, secrets, and HTTPS Worker route.
+- Do not replace the zero Hyperdrive ID with a guessed value, enable `workers_dev`, add a custom route, provision secrets, or deploy as a local workaround.
+- No source code, Worker configuration, production DB, Render service, environment variable, Cloudflare resource, secret, route, deployment, migration, grant, or role was changed during this source/configuration inspection.
+- The current main head after the handover update is `3026460b8f379f0ad6ab08a338b3f6c84cf616cf`. The source/configuration review is documentation-only. Continue with non-production source/test inspection only while the connector-host, backup, and production role-model gates remain unresolved.
