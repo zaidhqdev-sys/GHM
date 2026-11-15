@@ -261,7 +261,19 @@ export interface ApplyCommercialPaymentResultInput {
   readonly metadata?: Record<string, unknown>;
 }
 
+export interface AdminCommercialLaunchState {
+  readonly businessId: BusinessId;
+  readonly businessName: string;
+  readonly planCode: string;
+  readonly trialStatus: CommercialTrialLifecycle | null;
+  readonly subscriptionStatus: CommercialSubscriptionLifecycle | null;
+  readonly foundingSequence: number | null;
+  readonly cancelAtPeriodEnd: boolean;
+  readonly currentPeriodEnd: Date | null;
+}
+
 export interface CommercialRepository {
+  getAdminCommercialLaunchState(context: AuthContext, limit: number): Promise<AdminCommercialLaunchState[]>;
   getCommercialAccess(context: AuthContext, businessId: BusinessId): Promise<CommercialAccess>;
   getCommercialOffer(context: AuthContext, businessId: BusinessId, planCode: string): Promise<CommercialOffer | null>;
   getCommercialSubscription(context: AuthContext, businessId: BusinessId): Promise<CommercialSubscription | null>;
@@ -271,6 +283,7 @@ export interface CommercialRepository {
 }
 
 export interface CommercialService {
+  getAdminCommercialLaunchState(context: AuthContext, limit: number): Promise<AdminCommercialLaunchState[]>;
   getCommercialAccess(context: AuthContext, businessId: BusinessId): Promise<CommercialAccess>;
   getCommercialOffer(context: AuthContext, businessId: BusinessId, planCode: string): Promise<CommercialOffer | null>;
   getCommercialSubscription(context: AuthContext, businessId: BusinessId): Promise<CommercialSubscription | null>;
