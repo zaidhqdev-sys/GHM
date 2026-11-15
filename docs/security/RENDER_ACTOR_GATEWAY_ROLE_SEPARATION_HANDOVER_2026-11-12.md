@@ -2512,3 +2512,42 @@ Amanda's Render support recommendation remains unchanged: retain the Dashboard-m
 - Exact-head CI: running; awaiting final results.
 - #282 branch vs main: 13 commits ahead / 23 behind, with main-side commits since merge base limited to this handover document.
 - Production migration execution / deployment: not performed.
+
+
+## 2026-11-15 18:09Z — PR #282 corrected exact-head CI passed; synchronization still required
+
+### Recheck before continuation
+- Canonical handover re-fetched from `main` immediately before this update; current blob SHA: `dbf1a894cbbd5e26c5c3a09d34d2a05371a52b62`.
+- PR #282 remains open and unmerged: `fix(db): enforce verified TLS and fail-closed migration ordering`.
+- Existing PR branch rechecked: `fix/migration-runner-strict-tls-20261115`; no new branch or PR was created.
+- Corrected test commit independently fetched and confirmed: `9622807fd1a9168b843186aad86b397fda56997c` (`test(db): correct pending allowlist rejection count`).
+- Exact-head CI run `43733524314` completed with conclusion **SUCCESS**. Both jobs passed:
+  - `quality` — passed. The job completed all 69 substantive steps, including build, Worker bundle, disposable PostgreSQL migration application, Actor Gateway/auth issuer/storage qualification, the full test suite, production migration audit policy tests, runtime boundary verification, and disposable issuer cutover/authority comparison.
+  - `web-quality` — passed (web build/tests/dependency and toolchain checks).
+- This resolves the prior one-test failure. No retry was needed; this is a fresh exact-head run on the corrected commit.
+
+### Branch reconciliation evidence
+- Current comparison at this checkpoint: PR branch is **14 commits ahead / 24 commits behind** `main`.
+- Reverse comparison confirms the 24 main-only commits since the merge base modify only this canonical handover file; the branch-side source diff remains limited to six migration-runner source/test files:
+  - `src/db/migrate.ts`
+  - `src/db/migration-checksum.test.ts`
+  - `src/db/migration-checksum.ts`
+  - `src/db/migration-order.ts`
+  - `src/db/migrator-principal-contract.test.ts`
+  - `src/db/production-pending-migration-allowlist.ts`
+- The current main HEAD at comparison time is `67173f368c2bb44e029bd16b4d5d5915b8674d1e`; the PR branch merge base is `4b144e3d44568141ab44d2f3131f55b14a0db40b`.
+- The divergence is therefore handover-only on the main side, not evidence of additional mainline source changes. Nevertheless, the PR must be synchronized with current main and exact-head CI rerun after synchronization before merge consideration.
+- Do not merge #282 yet. Do not use a force update or discard either side's handover history. Reconcile by preserving the canonical handover and all six PR source files, then verify the resulting tree and exact-head CI.
+
+### Production and service safety
+- The passing CI used disposable PostgreSQL and isolated qualification environments only.
+- No production database connection or migration was run by this CI pass; no production ledger, schema, data, role, grant, secret, Render variable, deployment, or traffic was changed.
+- Production migration execution remains blocked. The allowlist must not be expanded merely to make the audit pass; the known 35 unapproved pending migrations remain outside the seven-entry production allowlist.
+- PayFast remains paused. Amanda's Render support recommendation and the unresolved sensitive-role ADMIN OPTION concern remain as documented above.
+
+### Current disposition
+- Corrected exact-head CI: **PASS** (run `43733524314`, commit `9622807fd1a9168b843186aad86b397fda56997c`).
+- PR #282: **OPEN / UNMERGED**.
+- Branch synchronization: **NOT YET PERFORMED**.
+- Post-synchronization exact-head CI: **PENDING**.
+- Production migrations / deployment / role or credential changes: **NOT PERFORMED**.
