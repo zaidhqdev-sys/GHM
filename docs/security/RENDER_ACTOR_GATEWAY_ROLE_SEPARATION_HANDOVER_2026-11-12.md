@@ -3149,7 +3149,7 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 
 - Draft PR #283: `feat(commercial): add admin commercial launch state read` — https://github.com/zaidhqdev-sys/GHM/pull/283
 - Branch: `feat/admin-commercial-launch-read-20261115`.
-- Exact current head after initial implementation: `2a54cee207276b1411a42cb01dbf71ffa86a47f0` (verify again before merge/review; further documentation commits may advance it).
+- Latest verified branch head after the handover entry was added: `8d87c7620565fb3b5bb2e8ac309a169ce69efe2b` (verify again before merge/review).
 - Changes: extend Commercial service/repository contracts; add admin-only service method; add `GET /api/v1/admin/commercial/launch-state?limit=100`; query GHM business/commercial tables with bounded `LIMIT` and lateral latest trial/subscription projections; map response to the existing Connect snake_case array contract.
 - Authorization: GHM ES256 bearer authentication resolves active account state from `ghm.account_identity`; the route requires `AuthContext.role === 'admin'`, registered commercial read operation and commercial resource access; the service independently requires admin role. No caller-supplied actor/account ID is accepted.
 - Input: default limit 100; accepted integer range 1–250; unsupported query keys and malformed/out-of-range limits return 400. Non-admin receives 403; missing/invalid bearer is rejected by the existing resource auth middleware.
@@ -3159,7 +3159,7 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 
 #### Qualification and integration status
 
-- PR #283 was opened as DRAFT pending exact-head `quality` and `web-quality` CI. The initial exact-head run 43739788714 showed `web-quality` SUCCESS and `quality` still IN_PROGRESS at the last check; Cloudflare Pages check completed SUCCESS. These are not final qualification results until both GitHub Actions jobs complete on the latest head.
+- PR #283 remains DRAFT pending exact-head `quality` and `web-quality` CI. Run 43739788714 on the initial implementation head had `web-quality` SUCCESS; it was superseded by the handover commit. Latest observed run 43739944235 on head `8d87c7620565fb3b5bb2e8ac309a169ce69efe2b` showed `web-quality` SUCCESS and `quality` still IN_PROGRESS. These are not final qualification results until both GitHub Actions jobs complete on the latest head.
 - No production GHM DB query, migration, Render variable, service setting, deployment, Connect branch or PR #68 change was performed for this implementation.
 - After PR #283 passes exact-head CI and is reviewed, the Connect client change must replace `commercialLaunchAdminService.getState()` with this endpoint, preserve the existing panel's snake_case row contract, and remove only that specific RPC dependency. Do not remove the Supabase SDK/facade until the separately documented active callers are resolved.
 - Amanda's Render support guidance remains the source-of-truth operational constraint: retain Dashboard-managed admin, separate `ghm_runtime` and `ghm_migrator`, preserve the SET-only schema-owner path, and do not improvise grants or new paid infrastructure. This read endpoint uses existing grants and does not alter that role separation.
