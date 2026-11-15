@@ -1187,3 +1187,29 @@ Use the already-configured local \`C:\\GHM\\.env\` value for \`GHM_MIGRATOR_DATA
 ### Backup and deployment gate
 
 Existing handover evidence still identifies only the 2026-11-04 database archive; no newer verified production backup/restore evidence has been established. The live API deploy remains \`c7cf1eb\`; mainline implementation is merged and CI passed, but production API auto-deploy remains OFF. No service variables, roles, migrations, backups, deployments, DNS, routes or traffic were changed during this pass.
+
+
+## 2026-11-15 — production migration audit TLS verification hardening
+
+The local preflight was completed using the existing `C:\GHM\.env` configuration without displaying credentials. It confirmed:
+- `GHM_MIGRATOR_DATABASE_URL` is present.
+- Target database is `ghm_db`.
+- Host is `dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com`.
+- `DATABASE_SSL=true`.
+- No database connection was attempted by this preflight.
+
+Review of `scripts/forensic-migration-reconciliation.mjs` found the audit client previously configured TLS with `rejectUnauthorized:false`, and allowed TLS to be omitted when `DATABASE_SSL` was not exactly true. This did not authenticate the server certificate and was not acceptable for a production migrator connection.
+
+A focused fix is now on branch `fix/production-migration-audit-tls-verification-20261115`:
+- The audit now fails before connecting unless `DATABASE_SSL=true`.
+- The PostgreSQL client explicitly uses `ssl: { rejectUnauthorized: true }`.
+- The regression test checks that strict TLS is required and that `rejectUnauthorized:false` is absent.
+- No migration SQL, role grants, production data, secrets, Render settings, or deployment behavior was changed.
+
+Commits:
+- TLS enforcement: `1ee75bc9abc6790116a0829d8bdc84f6112b3db9`.
+- Regression test: `e84f200ba4c95805c43adf317711892e4153515b`.
+
+This change is not yet merged and has not yet been run through CI. The production migration audit has **not** been executed. Next: run the targeted audit-policy test and syntax check locally, verify that the Node runtime trusts Render PostgreSQL's presented certificate chain, then run exact-head CI. Only after those checks should the read-only production audit be attempted. A TLS certificate failure must stop the audit; do not fall back to disabled certificate verification.
+
+Amanda's support-resolution conversation remains preserved in PR #274 and the existing role-separation handover history; this TLS work does not alter that record.

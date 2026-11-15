@@ -145,3 +145,11 @@ test('production pending allowance is pinned to the reviewed pending migration s
     { version: '20261110233000', name: 'add_gateway_business_registration_identity_write' },
   ]);
 });
+
+
+test('production forensic migration audit requires verified TLS and rejects plaintext', () => {
+  const source = readFileSync(new URL('./forensic-migration-reconciliation.mjs', import.meta.url), 'utf8');
+  assert.match(source, /DATABASE_SSL !== 'true'/);
+  assert.match(source, /ssl:\s*\{\s*rejectUnauthorized:\s*true\s*\}/);
+  assert.doesNotMatch(source, /rejectUnauthorized:\s*false/);
+});
