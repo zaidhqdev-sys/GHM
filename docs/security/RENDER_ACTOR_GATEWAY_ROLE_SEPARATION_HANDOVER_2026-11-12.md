@@ -2732,3 +2732,59 @@ The production allowlist at `config/pending-migrations.production.json` contains
 - PayFast remains paused; no PayFast activation work is part of this audit.
 
 **Handover rule:** before every further implementation or production step, read this document and the relevant PR/branch history first; append new findings here before moving to a different workstream. This entry records the 2026-11-15 audit investigation so the same allowlist provenance and mainline chronology are not repeated.
+
+
+#### PR / branch reconciliation added after the audit checkpoint
+
+The live GitHub PR inventory was refreshed before further investigation:
+
+- PR #272 — Actor Gateway integration stack: **CLOSED / MERGED** at 2026-11-14 23:59:20Z. Its merged head is the second parent of mainline commit `4463bbb9`.
+- PR #276 — isolated Authentication Issuer stacked on #272: **CLOSED / MERGED** at 2026-11-15 00:00:31Z. Its merged head is the second parent of mainline commit `1d78d2b9`.
+- PR #277 — Actor Gateway Worker body-limit hardening: **CLOSED / MERGED** at 2026-11-15 00:01:32Z.
+- PR #243 — governed supplier classification for Connect Marketplace: **OPEN / DRAFT**, branch `feat/connect-marketplace-supplier-contract-ghm-20261110`, head `1246ed74a81b3fc607e6f65f3cd8036bc081ab1b`. Do not recreate this work. Its related supplier-classification migration already exists on main via #272's merged reconciliation, so inspect the PR diff and its intended follow-up before any action.
+- PR #264 — gateway registration identity milestone documentation: **OPEN**, branch `docs/gateway-registration-identity-checkpoint-20261110`, head `b2f7f1d514dd380db1579c907cf06efa9ff48fa1`. Review its scope before changing or duplicating documentation.
+- Other open PRs at this refresh: #244 (Business engagement/Analytics, draft), #233 (PayFast timezone, draft; leave paused), #201 (QuoteFlow legal acceptance, draft; legal docs remain paused). These are not substitutes for migration provenance review.
+
+The merged mainline migration additions attributed to #272 / commit `4463bbb9` are:
+
+- `20261110010000_add_business_supplier_classification`
+- `20261110160000_add_admin_capability_catalogue_governance`
+- `20261110240000_enforce_capability_catalogue_cross_row_invariants`
+- `20261110250000_add_gateway_capability_governance`
+- `20261110260000_gateway_supplier_classification_cutover`
+- `20261110265000_reconcile_business_profile_legacy_contract`
+- `20261110270000_gateway_business_profile_update`
+- `20261111020000_bind_capability_gateway_actor_to_signed_assertion`
+- `20261111030000_bind_supplier_gateway_actor_to_signed_assertion`
+- `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion`
+- `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor`
+- `20261111060000_bind_gateway_assertions_to_request_context`
+- `20261111070000_add_signed_business_capability_mutations`
+- `20261111100000_add_signed_saved_business_gateway`
+- `20261111130000_add_signed_business_hours_gateway`
+- `20261111140000_add_business_hours_read_projections`
+- `20261111150000_add_signed_trust_score_gateway`
+- `20261111160000_add_signed_business_logo_gateway`
+- `20261111170000_add_trust_score_read_projections`
+- `20261111210000_revoke_runtime_account_external_identity_table_access`
+- `20261111220000_revoke_unused_auth_runtime_entry_points`
+- `20261111230000_add_token_bound_recovery_revocation_result`
+- `20261111240000_revoke_runtime_quoteflow_migration_provisioning`
+- `20261111250000_revoke_runtime_external_identity_link`
+- `20261111260000_revoke_runtime_external_identity_bootstrap`
+
+The merged Authentication Issuer stack / commit `1d78d2b9` added or changed:
+
+- Modified `20261110210000_add_actor_gateway_principal_guard` (already in the seven-entry allowlist; its migration bytes changed after the allowlist commit).
+- `20261112020000_add_token_bound_password_recovery_reset`
+- `20261112030000_add_conditional_password_rehash`
+- `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration`
+- `20261112050000_revoke_public_default_function_execution`
+- `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads`
+- `20261112080000_signed_connect_business_provisioning_gateway`
+- `20261112090000_pin_security_definer_search_path`
+- `20261112140000_add_signed_storage_metadata_actor_gateway`
+- `20261112150000_add_storage_provider_workflow_attestation`
+- `20261112170000_revoke_redundant_migrator_business_mapping_lookup`
+
+Important distinction: these are **commit-level file additions/modifications**, not a declaration that every one is currently pending in production. The production audit's `missing` array is the authoritative pending list. The #272/#276 stack is already merged; do not treat its former PRs as open implementation work or create duplicates. Its required isolated gateway/issuer hosting and runtime cutover constraints remain unresolved, so the merge and CI qualification do not authorize production migration execution.
