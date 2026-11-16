@@ -880,3 +880,28 @@ Behavioral qualification verifies:
 - Authority and approved-status events are rolled back; synthetic immutable draft/version fixtures remain only in ephemeral CI.
 
 No production legal document, approval, authority grant, consent or payment record was created. The branch remains database-side only; HTTP approval route/reader is a separate next slice.
+
+
+### 23.2 PR #292 merged — exact founder-only document approval transition (2026-11-16)
+
+PR [#292](https://github.com/zaidhqdev-sys/GHM/pull/292), `feat: add founder-only commercial document approval transition`, was squash-merged after exact-head qualification.
+
+- Tested code head: `0e9c4fe1ebb59054b17c15ab6af28348e2ac6bde`.
+- Final documentation head: `63618ae13cac8f7a101927f04f2912faa196eced`.
+- Exact final-head workflow: `43909156864` — `quality` and `web-quality` both passed.
+- Merge commit: `83f9ba486aec3ca44aed7c4a4bc0a340df69dcdc`.
+
+The database transition approves only an exact immutable version whose latest status is draft and whose exact owner/document/jurisdiction authority has a latest grant event still active. Approval and status evidence are appended atomically and reference the exact grant event. It shares the advisory lock with grant/revoke so a revocation cannot race past approval.
+
+The disposable Actor Gateway qualification passed successful approval, duplicate denial, denial after revocation, approval after re-grant, wrong document-key denial, non-founder denial, forged assertion, version-context transplant, replay and expiry. All authority and approved-status writes were rolled back. Synthetic immutable draft/version fixture rows remained only in the ephemeral CI database.
+
+### Next bounded slice
+
+Wire the approved-document transition through the Actor Gateway HTTP/TypeScript layer:
+- derive actor only from verified ES256 bearer token;
+- accept only exact immutable document version ID and reason;
+- no caller-supplied actor, approver, status or grant event ID;
+- return minimal approval evidence;
+- test revoked/stale grant, wrong version, duplicate approval, non-founder, replay and failure rollback.
+
+After that, implement document registration and GHM-native consent/payment preparation. Do not register/approve real legal documents until the owner supplies and reviews the actual documents. Production hosting/backup/admin/migration/secret gates remain. No production migration, approval, consent, payment attempt, Render service or deployment occurred. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
