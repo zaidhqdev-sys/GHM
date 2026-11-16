@@ -827,3 +827,56 @@ Merge commit `f480a463c4e24182d47809c9638b6afb9b4f9d3e` passed main-branch workf
 - Full disposable PostgreSQL migrations, full test suite and Actor Gateway database qualification passed.
 
 The handover was updated after the merge. This does not authorize production migration, deployment or commercial writes.
+
+
+## 23. Founder-only exact document-version approval transition — PR in progress (2026-11-16)
+
+A separate bounded database transition branch is open after PR #291:
+- Branch: `feat/founder-only-commercial-document-approval-transition-20261116`
+- Migration: `database/migrations/20261116180000_add_founder_only_commercial_document_approval_transition.sql`
+- Contract test: `src/db/founder-only-commercial-document-approval-transition-migration-contract.test.ts`
+- Disposable behavioral qualification extended in `scripts/qualify-actor-gateway-principal.mjs`.
+- Standard `npm test` includes the new migration contract test.
+
+### Approval transition contract
+
+- Uses a distinct HMAC operation name `commercial.document.status.approve`; authority-management signatures cannot be replayed as document-approval signatures.
+- Revalidates the canonical founder bootstrap account, active system-admin account and active canonical credential.
+- Binds the assertion to one exact immutable `document_version_id` and reason.
+- Locks the immutable version and the same account/document/jurisdiction advisory-lock scope used by grant/revoke.
+- Requires the exact founder authority identity and the latest authority event to remain `granted`.
+- Requires the latest status event for that exact version to be `draft`.
+- Appends an `approved` status event with the authenticated founder account and exact grant-event ID/type in the same transaction.
+- No direct runtime/PUBLIC/table privileges are added; only the Actor Gateway principal receives EXECUTE on the two SECURITY DEFINER functions with pinned search paths.
+
+### Disposable behavioral tests
+
+The Actor Gateway qualification adds disposable immutable document-version and draft-status fixtures, then tests successful approval, duplicate approval denial, approval denial after revocation, approval after re-grant, wrong-document-scope denial, non-founder denial, forged signature, version-context transplant, replay and expiry. Authority and approved-status writes occur inside a transaction that is rolled back. The disposable draft version rows are retained in the ephemeral CI database because the evidence tables are deliberately append-only; they contain only synthetic fixture hashes/titles and are not production/legal documents.
+
+### Explicit boundaries
+
+- No legal document or hash is registered in production.
+- No production approval, authority assignment, consent or payment write.
+- No production migration, ACL/credential change, Render service, deployment or launch activation.
+- Exact-head CI and SQL review are pending. Do not merge until migration application, Actor Gateway behavioral qualification and full suite pass.
+
+
+### 23.1 Founder-only document approval transition qualification passed (2026-11-16)
+
+PR #292 code head `0e9c4fe1ebb59054b17c15ab6af28348e2ac6bde` passed exact-head workflow `43908611434`:
+- `quality`: success.
+- `web-quality`: success.
+- All migrations applied to disposable PostgreSQL.
+- The Actor Gateway principal qualification passed with the new document approval behavior.
+- The complete test suite passed, including the new migration contract.
+
+Behavioral qualification verifies:
+- Founder approves an exact draft version under a current grant.
+- Duplicate approval is denied.
+- Approval after revocation is denied.
+- Re-grant permits approval of a subsequent exact version.
+- Authority for one document key cannot approve another key.
+- Non-founder admin, forged assertion, document-version context transplant, replay and expiry are denied.
+- Authority and approved-status events are rolled back; synthetic immutable draft/version fixtures remain only in ephemeral CI.
+
+No production legal document, approval, authority grant, consent or payment record was created. The branch remains database-side only; HTTP approval route/reader is a separate next slice.
