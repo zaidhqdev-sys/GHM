@@ -144,14 +144,23 @@ try {
 
   for (const item of snapshots) {
     for (const [role, pool] of [['ghm_runtime', runtime], ['ghm_migrator', migrator], ['ghm_actor_gateway', gateway]]) {
-      let denied = false;
+      let probeError = null;
+      const probeClient = await pool.connect();
       try {
-        await pool.query(`PREPARE storage_acl_probe AS SELECT ghm.${item.proname}(${item.null_arguments})`);
-        await pool.query('DEALLOCATE storage_acl_probe');
-      } catch (error) {
-        denied = error && typeof error === 'object' && 'code' in error && error.code === '42501';
-        if (!denied) throw error;
+        await probeClient.query('BEGIN');
+        try {
+          await probeClient.query(`SELECT ghm.${item.proname}(${item.null_arguments})`);
+        } catch (error) {
+          probeError = error;
+        } finally {
+          await probeClient.query('ROLLBACK');
+        }
+      } finally {
+        probeClient.release();
       }
+      const denied = probeError && typeof probeError === 'object'
+        && probeError.code === '42501'
+        && String(probeError.message).includes(`permission denied for function ${item.proname}`);
       if (!denied) {
         const diagnostic = await migrator.query(`
           SELECT
@@ -181,11 +190,11 @@ try {
           JOIN pg_roles owner_role ON owner_role.oid = p.proowner
           WHERE p.oid = to_regprocedure($2)
         `, [role, item.signature]);
-        throw new Error(`${role} direct function reference was not denied for ${item.signature}; privilege diagnostics: ${JSON.stringify(diagnostic.rows[0] ?? null)}`);
+        throw new Error(`${role} direct function execution was not denied for ${item.signature}; probe_error: ${JSON.stringify(probeError ? { code: probeError.code, message: probeError.message } : null)}; privilege diagnostics: ${JSON.stringify(diagnostic.rows[0] ?? null)}`);
       }
     }
   }
-  console.log('RUNTIME, MIGRATOR AND ACTOR GATEWAY DIRECT CALLS DENIED FOR ALL FIVE LEGACY FUNCTIONS: PASS');
+  console.log('RUNTIME, MIGRATOR AND ACTOR GATEWAY ACTUAL FUNCTION EXECUTION DENIED FOR ALL FIVE LEGACY FUNCTIONS: PASS');
 
   const wrapperAcl = await gateway.query(`
     SELECT
