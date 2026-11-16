@@ -1938,3 +1938,43 @@ Therefore, repository-only migration policy checks already run in CI, while the 
 - Repository migration audit policy: covered by the existing CI command and tests; no duplicate audit script is warranted.
 - Production migration execution: **BLOCKED** pending the remaining ordered migration review, exact prerequisites, verified backup/recovery point, and Actor Gateway hosting/credential/network gates.
 - PR #285: keep open and draft. A passing CI run and reconciled audit documentation do not authorise merge or production execution.
+
+## 61. First pending migration security review and disposable qualification checkpoint (2026-11-16 03:44 UTC)
+
+### First pending migration: supplier classification
+
+The first production-pending entry remains `20261110010000_add_business_supplier_classification`. Source review confirms:
+- Adds `ghm.business.is_supplier boolean NOT NULL DEFAULT false`, normalizes legacy NULL values to false, and documents that this is owner-managed marketplace classification—not verified capability or Trust evidence.
+- Adds `ghm.update_business_supplier_classification(bigint,bigint,boolean)` as SECURITY DEFINER with pinned `pg_catalog, ghm` search path and active owner/administrator membership validation.
+- The implementation accepts a caller-supplied account ID. Therefore the migration assigns ownership to `ghm_schema_owner` and revokes all privileges from PUBLIC, `ghm_runtime`, and `ghm_migrator`. It must not be exposed as a direct runtime RPC.
+- The application repository explicitly routes writes through the authenticated Actor Gateway client; it does not call the legacy function directly.
+- Later migration `20261110260000_gateway_supplier_classification_cutover` creates the gateway-only wrapper, revokes direct runtime execution, and grants wrapper execution to `ghm_actor_gateway`. Subsequent signed-assertion migrations bind the gateway principal and request context. The first migration must not be interpreted as permission to bypass those later security boundaries.
+
+### Disposable PostgreSQL qualification — exact-head CI evidence
+
+CI run **#5067** for commit `a3a107779a4c53c7bbcece8b871ac21bc006179f` completed successfully; both `web-quality` and `quality` jobs passed. The quality job includes:
+- Applying repository migrations to disposable PostgreSQL.
+- Supplier-classification migration ACL/rollback qualification.
+- First-four pending migration effective-privilege and post-apply qualification.
+- Full supplier-classification gateway qualification, including runtime direct-RPC denial, gateway-only access, forged/expired/replayed assertion denial, request-context substitution denial, and owner/member authorization checks.
+- Migration audit policy tests.
+
+These are disposable-database/source qualification results, not production migration execution or live production data evidence. No production migration was applied.
+
+### Next required production-only check — read-only first-four preflight
+
+The repository already provides `npm run preflight:first-four-production-migrations`, backed by `scripts/preflight-first-four-production-migrations-readonly.mjs`. It enforces:
+- Explicit `ghm_db:read-only` operator acknowledgement.
+- Non-local `ghm_db` target and verified TLS.
+- `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, and `transaction_read_only=on`.
+- Object-name collision checks for migrations 1–4, plus a separate migration-4 storage drift classification.
+- Read-only transaction with rollback; it performs no DDL/DML and never authorizes execution.
+
+Run this only to capture the current production preflight evidence. A clean preflight does not authorise applying the first four migrations; the existing gateway/network, role, backup, dependency-order, and release gates remain independent.
+
+### Disposition
+
+- Migration 1 source/ACL design: **reviewed; no source change proposed**.
+- Disposable qualification: **PASS** on CI #5067.
+- Live first-four production preflight: **NEXT READ-ONLY GATE; not yet claimed complete in this section**.
+- Production migration execution: **BLOCKED**.
