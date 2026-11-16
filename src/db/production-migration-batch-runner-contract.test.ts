@@ -4,11 +4,19 @@ import test from 'node:test';
 
 const runner = fs.readFileSync('src/db/migrate.ts', 'utf8');
 
-test('production runner selects a named batch instead of iterating every repository migration', () => {
+test('production runner selects a named batch and gates SQL execution to its versions', () => {
   assert.match(runner, /selectProductionMigrationBatch\(/);
   assert.match(runner, /GHM_MIGRATION_BATCH_ID/);
-  assert.match(runner, /for \(const migration of executionMigrations\)/);
-  assert.doesNotMatch(runner, /for \(const migration of migrations\)\s*\{/);
+  assert.match(runner, /const executionVersions = new Set\(executionMigrations\.map/);
+  assert.match(runner, /for \(const migration of migrations\)/);
+  assert.match(runner, /if \(!executionVersions\.has\(migration\.version\)\) continue/);
+});
+
+test('all already-applied repository migrations retain checksum verification', () => {
+  const checksumCheck = runner.indexOf('const existingChecksum = appliedByVersion.get(migration.version)');
+  const executionGate = runner.indexOf('if (!executionVersions.has(migration.version)) continue');
+  assert.ok(checksumCheck >= 0);
+  assert.ok(executionGate > checksumCheck);
 });
 
 test('production plan mode prints selected migrations and rolls back without executing SQL', () => {
