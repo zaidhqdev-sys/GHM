@@ -591,15 +591,16 @@ try {
     assert.equal(prepared.rowCount, 1);
     assert.equal(prepared.rows[0].attempt_status, 'pending_checkout');
     assert.equal(prepared.rows[0].provider_code, 'payfast');
-    const consent = await paymentGateway.query(
-      'SELECT id, business_id, account_id, document_version_id, consent_action FROM ghm.commercial_consent_event WHERE idempotency_key = $1',
-      [idempotencyKey],
+    assert.ok(Number(prepared.rows[0].payment_attempt_id) > 0);
+    assert.ok(Number(prepared.rows[0].consent_event_id) > 0);
+    assert.equal(Number(prepared.rows[0].business_id), paymentBusinessId);
+    assert.equal(Number(prepared.rows[0].subscription_id), paymentFixtures.subscriptionId);
+    assert.equal(Number(prepared.rows[0].price_id), paymentFixtures.priceId);
+    await expectPaymentSqlState(
+      () => paymentGateway.query('SELECT id FROM ghm.commercial_consent_event LIMIT 1'),
+      '42501',
+      'ACTOR GATEWAY CANNOT READ IMMUTABLE CONSENT TABLE DIRECTLY',
     );
-    assert.equal(consent.rowCount, 1);
-    assert.equal(Number(consent.rows[0].business_id), paymentBusinessId);
-    assert.equal(Number(consent.rows[0].account_id), founderAccountId);
-    assert.equal(Number(consent.rows[0].document_version_id), paymentFixtures.documentVersionId);
-    assert.equal(consent.rows[0].consent_action, 'accepted');
     console.log('ATOMIC APPROVED-DOCUMENT CONSENT AND PAYMENT ATTEMPT PREPARATION: PASS');
 
     const retry = await preparePayment(founderAccountId, paymentFixtures.documentVersionId, idempotencyKey);
