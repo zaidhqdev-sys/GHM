@@ -105,3 +105,16 @@ Conditions:
 - No production deployment is authorized by this decision alone; code qualification and the existing production rollout gates still apply.
 
 Launch priority reaffirmed: stabilize GHM, bring Zaid Connect and QuoteFlow to market, remove remaining Supabase dependencies, and prioritize revenue. Additional architecture hardening should be proportionate to immediate launch risk and revisited as revenue allows.
+
+
+## CI qualification update — 2026-11-17
+
+The latest PR head `c08087d538367c3177a58bc3527e6b69bd463bc0` completed GitHub Actions run `43978486010` (run #5217) successfully:
+- `quality`: success
+- `web-quality`: success
+
+This run includes the embedded authentication startup code and the owner-accepted temporary process-isolation trade-off recorded above. This is CI qualification only; it does not establish production environment readiness or authorize deployment.
+
+## Standalone issuer cleanup boundary
+
+The production start command `start:auth-issuer` has been removed and the existing GHM runtime now mounts the auth routes. The remaining `src/auth-issuer/app.ts` is a testable Express app factory and `src/auth-issuer/app.test.ts` exercises its standalone app behavior; the database principal/privilege/SSL modules under that directory are actively imported by the embedded runtime. Do not delete those shared database security modules. The standalone server entry file is no longer referenced by the package start command. Retire obsolete standalone-only app/test files only as a separate cleanup after equivalent embedded-runtime tests cover their behavior; avoid broad deletion that removes useful security qualification.
