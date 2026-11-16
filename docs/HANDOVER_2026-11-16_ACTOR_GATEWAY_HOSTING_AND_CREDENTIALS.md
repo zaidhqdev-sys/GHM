@@ -709,3 +709,27 @@ The authority event writes are enclosed in a gateway transaction and rolled back
 The disposable qualification was tightened to respect the intended no-direct-table-access boundary for `ghm_actor_gateway`. It now validates the returned grant/revoke event types from the SECURITY DEFINER operation instead of querying `commercial_document_approval_authority_event` directly. The authority test transaction still rolls back all fixture events.
 
 This correction is included in commit `546f5be6a97802bd1cec2bb7add9eb893b914c5f`; exact-head CI must run on the final branch head.
+
+
+### 21.4 Founder-only authority database operation — exact-head qualification passed (2026-11-16)
+
+Corrected branch code commit `174d10aece78ceacdecdfe8d701f1bcaff1256b2` passed exact-head workflow `43902840161`:
+- `quality`: success.
+- `web-quality`: success.
+- All repository migrations applied to disposable PostgreSQL.
+- The complete test suite passed.
+- Isolated Actor Gateway database-principal qualification passed, including the new founder-only authority operation tests.
+- The exact Actor Gateway executable-function allow-list, SECURITY DEFINER owner/search-path checks, and no-direct-table-access boundary passed.
+
+The disposable qualification proves:
+1. Canonical founder bootstrap fixture can grant its own scoped approval authority.
+2. Duplicate grant is rejected.
+3. Founder can revoke the active grant.
+4. Revocation without a current grant is rejected.
+5. Re-grant after revocation appends a new grant event.
+6. Non-founder administrator, forged signature, context/scope transplant, replay and expired assertion are rejected.
+7. All test authority events are rolled back; founder singleton/account/credential fixtures are cleaned up.
+
+PR #290 remains the SQL/database boundary only; it does not yet expose an HTTP route or TypeScript reader. The next bounded slice is Actor Gateway route/reader integration. After that, implement the separate document approval transition that verifies current grant, actor and exact immutable document version. No production authority row or approved document exists.
+
+No production migration, DB role/ACL change, secret change, Render service, deployment, legal approval, consent/payment write or commercial activation occurred. Launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
