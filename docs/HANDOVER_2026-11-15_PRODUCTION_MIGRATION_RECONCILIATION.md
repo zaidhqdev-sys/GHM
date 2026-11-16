@@ -397,7 +397,6 @@ A cross-check against the existing authoritative storage handover and the exact 
 - The read-only preflight configures the PostgreSQL client with `ssl: { rejectUnauthorized: true }`, so TLS is enforced by the client connection itself.
 - Removed the server-side `ssl` GUC check because it reports server capability/configuration, not the encryption state of an individual client connection. The report now states `tls_enforced_by_client: true` based on the explicit verified client configuration.
 - Latest code commit for this correction: `dfc0b1400f6b1cc94b43a8c94e67363d9f473120`. Exact-head CI has not yet been observed for this SHA. Do not claim the new first-four qualification passes until the quality job reaches and completes that step.
-
 ## 21. Exact-head CI completed successfully (2026-11-15 21:20 UTC)
 
 - Exact branch head `e8bddb05c23a3719d00a33e7db62c0fb16c28d28` completed GitHub Actions run `43762783722` (CI run number 4987) with overall conclusion `success`.
@@ -797,7 +796,6 @@ This is the required ledger/name/checksum/allowlist reconciliation result. It is
 - The PR branch advanced beyond the owner's checked-out audit head `09c4d485d642ceb3c1c1805467fb4128c08065f5` to `4c6260c0c4d80a13c61af3bfd7b20c7e0789c6fb`.
 - Exact-head workflow **#5027**, run ID `43772180560`, completed successfully on `4c6260c0c4d80a13c61af3bfd7b20c7e0789c6fb`.
 - Both `quality` and `web-quality` passed. The quality job also completed disposable PostgreSQL qualification for the first four pending migrations, supplier-classification ACL/rollback, storage lifecycle and gateway qualification; this is disposable-environment evidence only, not production execution.- The owner's local untracked `.bak` remains a preservation requirement; do not add, delete, overwrite or stage it.
-
 ### Next action
 
 Fetch and inspect the current PR branch head before any further command. Then rerun only the TLS-verified read-only `npm run audit:migrations:predeploy` on that exact current head and capture its verdict/exit code. Do not run the production migration runner, set `GHM_PRODUCTION_MIGRATION_BATCH`, repair the ledger, change grants/roles, or deploy.
@@ -1197,8 +1195,7 @@ No production database, migration ledger, role/grant, secret, Render/Cloudflare 
 - The externally granted compatibility wrappers are token-bound (no caller-supplied account ID), but this is a transitional Resource API runtime grant. The final Authentication Issuer allow-list does not include either `auth_redeem_recovery` wrapper; no application persistence callsite for these wrappers was found in the reviewed source. Do not add them to the issuer allow-list merely because the migration creates them. The supported password reset route uses migration 1202's combined token-bound reset operation.
 - Migration also revokes the caller-supplied-account-ID all-session revocation wrapper from runtime.
 **24–26 — `20261111240000`, `20261111250000`, `20261111260000`**
-- Revoke runtime/PUBLIC EXECUTE on QuoteFlow migration account provisioning, external identity linking and external identity bootstrap, respectively.
-- Provisioning remains an operator/migrator capability. Identity link/bootstrap are not ordinary Resource API runtime operations; Business provisioning is through the signed Actor Gateway transaction.
+- Revoke runtime/PUBLIC EXECUTE on QuoteFlow migration account provisioning, external identity linking and external identity bootstrap, respectively.- Provisioning remains an operator/migrator capability. Identity link/bootstrap are not ordinary Resource API runtime operations; Business provisioning is through the signed Actor Gateway transaction.
 - These are forward-only privilege reductions in the ordered migration chain; do not restore old runtime function grants to get an older API artifact working.
 
 ### Migrations 1202–1204: token-bound recovery and operator-only enrollment
@@ -1372,9 +1369,10 @@ PayFast remains paused until sandbox access returns. Legal-document work remains
 ### Exact GitHub state rechecked before continuation
 
 - PR #285 is OPEN, DRAFT, mergeable and UNMERGED.
-- Current PR head is `d8b986412106b09ffd1e9d123722856a845b3967` on `feat/production-migration-batch-execution-20261115`; base `main` is `61cd1121a1fb30e3b28c250b7b6812707f1c9109`.
-- The branch compares as 103 commits ahead, 0 behind, with the current main commit as merge base. The PR's actual diff remains 15 intended files; the 103-commit ancestry is not 103 changed files.
-- Exact-head GitHub Actions workflow #5039, run ID `43781450072`, completed SUCCESS on `d8b9864`. Both `quality` and `web-quality` passed. This supersedes the section 45 checkpoint (head `9abcd5b`, workflow #5038) for current PR-head CI status.
+- The source head reviewed before this handover-only update was `d8b986412106b09ffd1e9d123722856a845b3967` on `feat/production-migration-batch-execution-20261115`; base `main` is `61cd1121a1fb30e3b28c250b7b6812707f1c9109`.
+- That source head compared as 103 commits ahead, 0 behind, with current main as merge base. The PR's actual diff remains 15 intended files; the 103-commit ancestry is not 103 changed files.
+- Exact-head GitHub Actions workflow #5039, run ID `43781450072`, completed SUCCESS on `d8b9864`. Both `quality` and `web-quality` passed. This supersedes the section 45 checkpoint (head `9abcd5b`, workflow #5038) for the source snapshot.
+- This section was then appended as a handover-only commit `c219ba2c2e33678aa533cf15d9f76257e8c8ea22`, which is now the PR head. Its exact-head CI run has not yet been returned by GitHub and remains unverified; do not call the handover update CI-qualified until that run is confirmed.
 - PR #285 remains unmerged and draft. The successful Cloudflare Pages preview comment is a PR preview only, not a production Actor Gateway deployment or database connectivity proof.
 
 ### Migration inventory and review boundary
