@@ -1430,3 +1430,85 @@ The source trace is partial, not a complete classification of all 9 missing and 
 ### Next precise action
 
 Continue a per-signature provenance matrix for every missing and unexpected runtime-executable SECURITY DEFINER function. For each row record: creator/replacement migration(s), exact GRANT/REVOKE migration(s), version relative to production ledger, current-main intended state, live owner/search_path/PUBLIC grants, and whether a live application caller still exists. Then compare the 39 relation objects and column-level ACLs to Resource API repository SQL. Keep all queries read-only. No production grants/revokes, migrations, credential changes, deploys or service changes are authorized by this investigation.
+
+
+## 33. 2026-11-16 — production runtime relation, sequence and column ACL inventory
+
+A further read-only catalogue pass captured the Resource API runtime's direct relation and sequence permissions. The Render query connection remains `session_user=ghm_app_user`, `current_user=ghm_db_user`; all effective privilege checks below explicitly name `ghm_runtime`. No ACL was changed.
+
+### Relation-level permissions
+
+- Exactly **39** `ghm` relation objects currently grant at least one direct table/view privilege to `ghm_runtime`.
+- Objects are owned by `ghm_schema_owner`.
+- The set is predominantly SELECT. Direct write privileges are present on selected objects, including:
+  - `business`: SELECT, INSERT.
+  - `business_membership`: SELECT, INSERT.
+  - `opportunity`: SELECT, INSERT, UPDATE.
+  - `opportunity_capability_requirement`: SELECT, DELETE.
+  - `business` and `opportunity` need particular attention because the catalogue shows table-level privilege presence; column grants alone cannot safely be inferred from the aggregate effective privilege check.
+- The read-oriented set includes account identity/session views and core business, category, hours, offering, campaign, capability, commercial, customer, enquiry, notification, opportunity, project, quote, review, saved-business, support and trust-score objects. The exact inventory is retained in the live query output from this audit; no direct relation privilege was granted during this work.
+- The catalogue query's effective `has_table_privilege` checks include inherited permissions. The separately captured direct ACL column identifies direct `ghm_runtime` grants. The next ACL report must distinguish table-level ACLs, column ACLs, PUBLIC ACLs, role-inherited ACLs and default privileges rather than treating these as interchangeable.
+
+### Column-level ACLs
+
+The production catalog contains extensive explicit column-scoped INSERT/UPDATE grants. They cover profile fields, business offering details, business/category assignments, capability and evidence submission, customer/enquiry creation, notification read-state, opportunity capability requirements/participants, project/quote fields, review moderation and support-request workflows.
+
+Examples of important restrictions visible in the live catalog:
+- `account_identity` UPDATE is limited to `full_name`, `phone`, `avatar_ref`, `updated_at`, `connect_role` and `business_operator_intent`.
+- `business` UPDATE is limited to `rating`, `review_count`, `updated_at`; this is the review aggregate boundary.
+- `business_capability` INSERT is limited to submitted capability fields, excluding verification authority columns.
+- `review` INSERT/UPDATE is column-scoped, with moderation columns explicitly separated.
+- `project` and `project_quote` have field-scoped INSERT/UPDATE; Project and Quote lifecycle status fields are separately governed.
+- Commercial payment attempt, subscription, trial and event writes are column-scoped. They do not grant blanket UPDATE/DELETE on those tables.
+- `support_request` and `support_request_message` are column-scoped for creation and state transitions.
+
+No column ACL changes were made. This list is an inventory, not approval of every current privilege. Each column grant still needs to be tied to a current route/repository caller and the exact applied migration prefix.
+
+### Sequence privileges
+
+The current catalog shows **38** sequences with effective privileges for `ghm_runtime`. Most are USAGE-only; a subset also has SELECT. None of the inventoried runtime sequences had UPDATE=true.
+
+Important provenance:
+- `20260914100000_create_opportunity_core.sql` contains a broad historical `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA ghm TO ghm_runtime`. This is a likely source of legacy SELECT privileges on sequences that existed at that migration point.
+- `20260910230000_create_project.sql` and `20260912030000_grant_review_runtime_access.sql` establish schema-owner default USAGE grants on future sequences.
+- `20260915203000_reconcile_commercial_runtime_sequence_acl.sql` explicitly revokes USAGE from the Commercial sequence set and removes the schema-owner default USAGE grant. The live Commercial sequences currently show USAGE only where later specific grants reintroduced it, not broad Commercial SELECT.
+- `20261003153000_revoke_runtime_reference_sequence_privileges.sql` removes USAGE/SELECT/UPDATE from country and currency sequences.
+- `20261111210000_revoke_runtime_account_external_identity_table_access.sql` explicitly revokes all runtime access to `account_external_identity_id_seq`, but this migration is later than the latest production ledger row. Production currently still shows USAGE on this sequence.
+
+The 38-sequence inventory therefore needs per-sequence provenance, especially legacy SELECT grants, explicit USAGE grants and the default-privilege history. Do not bulk revoke sequence privileges.
+
+### Confirmed pending cutover explains live direct identity access
+
+The live catalog currently shows:
+- `account_external_identity`: direct runtime SELECT.
+- `account_external_identity_id_seq`: direct runtime USAGE.
+
+The current-main migration `20261111210000_revoke_runtime_account_external_identity_table_access.sql` explicitly revokes ALL from PUBLIC and `ghm_runtime` on both the table and sequence, while retaining explicit EXECUTE grants for narrow identity operations. This migration is later than production's latest ledger version `20261109210000`, so the live permissions are consistent with the pending cutover. Do not hand-apply only this revocation out of migration order; reconcile and qualify the complete intervening migration prefix first.
+
+### Additional source provenance confirmed
+
+- `20260910230000_create_project.sql` grants SELECT plus field-scoped INSERT/UPDATE on Project and USAGE on its sequence; status mutation was added separately by `20260914130000_reconcile_project_quote_transition_privilege.sql`.
+- `20260914100000_create_opportunity_core.sql` historically grants table-level SELECT/INSERT/UPDATE on `opportunity`, SELECT on reference tables and broad existing sequence USAGE/SELECT. This is a key legacy grant requiring exact review against later migrations and current query callers.
+- `20260914120000_create_project_quote.sql` grants SELECT and field-scoped INSERT/UPDATE on Project Quote, with sequence USAGE. It intentionally avoids blanket DML.
+- `20260912030000_grant_review_runtime_access.sql` grants SELECT and field-scoped INSERT/UPDATE on Review plus sequence USAGE.
+- `20260916210000_create_business_capability.sql` and `20260916213000_narrow_business_capability_runtime_insert.sql` establish the restricted capability submission columns and exclude verification-state writes.
+- `20260916251000_narrow_business_profile_runtime_update.sql` removes table-wide UPDATE on `business` and grants only `rating`, `review_count`, `updated_at`.
+- `20260916230000_create_saved_business.sql` revokes direct INSERT/UPDATE/DELETE and grants EXECUTE on owner-bound functions instead.
+- `20260921130000_create_auth_runtime_functions.sql` narrows account profile UPDATE and revokes direct DML on credential/session/mapping tables.
+- `20261003150000_create_country_currency_reference_data.sql` grants reference-table SELECT and explicitly removes runtime writes.
+- `20261012120000_revoke_runtime_business_mapping_table_access.sql` removes all direct runtime privileges on `business_external_mapping`.
+- `20261111210000_revoke_runtime_account_external_identity_table_access.sql` is the later corresponding cutover for person external identity table and sequence access.
+
+### Deployed Resource API database identity remains unproven
+
+A Render application-log query for the GHM Internal Runtime resource `srv-damupsek1f9s73eq8kkg` covering 2026-11-16 18:00–20:30 UTC returned no log entries. It therefore provided no connection identity evidence. Source inspection shows the service pool uses the configured `config.databaseUrl`, and startup enforces the `ghm_runtime` principal contract, but this does not establish the live secret value or prove which database role a running instance uses. Do not inspect or expose the secret value. We need a safe, non-secret runtime identity diagnostic (or a controlled application-side log of `session_user`/`current_user`) before claiming the deployed service is using `ghm_runtime`.
+
+### Next audit tranche
+
+1. Export exact relation ACLs including `relacl`, per-column `attacl`, PUBLIC grants, role membership inheritance, and schema-owner default privileges.
+2. Build the per-relation and per-sequence provenance matrix, starting with legacy broad opportunity/sequence grants and the identity-table pending cutover.
+3. Map each write grant to an active Resource API route/query and confirm that owner/tenant authorization is enforced in the caller or a SECURITY DEFINER boundary.
+4. Trace the remaining function differences and identify which later migrations in the pending prefix reconcile them.
+5. Establish safe deployed identity evidence without reading Render secrets.
+
+No database mutation, migration, role/grant/revoke change, credential rotation, secret read/write, service/environment change or deployment occurred. All production queries in this section were read-only.
