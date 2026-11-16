@@ -1390,3 +1390,38 @@ PayFast remains paused until sandbox access returns. Legal-document work remains
 4. Only request new production evidence when it is read-only and can be obtained through the already supported credential/backup process. Do not attempt role changes or ledger repair.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, service, deployment, bucket/object, product routing or application data was changed during this continuation. Preserve the local untracked `.bak` file.
+
+## 47. First-prefix and capability cutover source reconciliation (2026-11-16 01:05 UTC)
+
+### Exact PR-head CI confirmation
+
+- PR #285 head remains `273d368dea2226beba70bab62caabfcca96e24d7`, OPEN, DRAFT and UNMERGED.
+- Exact-head CI workflow #5041, run ID `43783331896`, completed SUCCESS. Both `quality` and `web-quality` passed.
+- This confirms the Section 46 handover correction commit is CI-qualified. No source or production change was included in this continuation.
+
+### Migration 1 — supplier classification: reconcile an earlier handover discrepancy
+
+Direct inspection of `database/migrations/20261110010000_add_business_supplier_classification.sql` confirms the current PR-head SQL:
+- creates the descriptive `ghm.business.is_supplier` column;
+- creates the SECURITY DEFINER legacy implementation with pinned `pg_catalog, ghm` search path and active owner/administrator membership check;
+- explicitly revokes all function privileges from PUBLIC, `ghm_runtime` and `ghm_migrator`; it does NOT grant runtime EXECUTE.
+
+Some earlier provisional handover wording described this migration as granting `ghm_runtime` EXECUTE. That wording is inaccurate for the current exact PR-head file and is superseded by this direct source inspection and the later detailed source review in this handover. The runner's exact-version post-batch runtime REVOKE therefore repeats an already-present revocation for the current SQL. It is idempotent and fail-closed, but redundant for this exact migration file. Do not change the historical migration or runner as part of this review; any cleanup would need a separate checksum/runner/test impact review.
+
+### Migration 5 — capability governance: confirmed manual cutover hard stop
+
+Direct inspection confirms:
+- `20261110160000_add_admin_capability_catalogue_governance.sql` creates three schema-owner-owned SECURITY DEFINER functions that accept caller-supplied account IDs and grants EXECUTE to `ghm_runtime`. This is the known shared-runtime actor-attribution exposure; application HTTP role checks do not independently constrain direct SQL callers.
+- `20261110250000_add_gateway_capability_governance.sql` adds gateway wrappers but explicitly leaves the legacy runtime grants in place pending a separate API cutover.
+- Signed, request-context-bound gateway wrappers are added/qualified later in the chain; their existence does not revoke the three legacy RPC grants.
+- The existing manual cutover is `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql`. Its header requires deployed Actor Gateway, configured `GHM_ACTOR_GATEWAY_URL`, and end-to-end verified capability administration routes. It revokes the three legacy functions from PUBLIC, runtime, migrator and gateway login.
+- Existing disposable qualification `scripts/qualify-capability-governance-cutover-postgres.mjs` applies that manual cutover on localhost-only disposable PostgreSQL, proves direct legacy calls are denied for runtime and gateway, and proves signed gateway list/create/update/transition still work.
+
+### Operational consequence
+
+- Migration 5 is an explicit stop boundary, not a routine next batch. The production runner only permits a contiguous pending prefix, so later migrations cannot be selected while migration 5 remains pending.
+- Do not automatically add its REVOKEs to the migration runner or convert the manual cutover into an automatic migration. That would bypass the documented API traffic cutover sequence.
+- No capability manual cutover has been applied to production. No production Actor Gateway URL or compatible live route is established. The capability cutover therefore remains blocked by the existing Section 45 NO-GO decision and its backup/Render role-authority gates.
+- Migrations 1–3 remain subject to their individual disposable qualification and production backup/role gates. Migration 4 remains the separate storage-gateway hard stop already documented. Nothing in this review authorizes production execution.
+
+No production query or mutation, migration, ledger repair, grant/role change, secret, deployment, service/configuration change, or application routing change was performed. The local untracked `.bak` file remains protected.
