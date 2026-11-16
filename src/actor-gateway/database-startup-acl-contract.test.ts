@@ -84,3 +84,9 @@ test('Actor Gateway qualification proves PUBLIC cannot execute SECURITY DEFINER 
   assert.ok(qualificationSource.includes('actorPublicDefiner'));
   assert.ok(qualificationSource.includes('FROM PUBLIC'));
 });
+
+test('founder-only commercial approval functions are part of the exact gateway ACL allow-list', () => {
+  assert.ok(privilegeSource.includes('ghm.assert_actor_gateway_commercial_document_authority('));
+  assert.ok(privilegeSource.includes('ghm.gateway_manage_commercial_document_approval_authority('));
+  assert.ok(privilegeSource.includes("search_path=pg_catalog, ghm, pg_temp"));
+});
