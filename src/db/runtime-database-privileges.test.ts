@@ -55,12 +55,7 @@ test('the fully cut-over runtime state retains only the thirteen explicitly revi
       'ghm.get_public_trust_score(bigint)',
       'ghm.is_business_capability_publicly_evidence_eligible(bigint)',
       'ghm.list_public_trust_scores(text)',
-      'ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)',
-      'ghm.storage_get_object(bigint,bigint)',
       'ghm.storage_get_public_business_logo(bigint)',
-      'ghm.storage_mark_available(bigint,text)',
-      'ghm.storage_mark_deleted(bigint)',
-      'ghm.storage_mark_deletion_pending(bigint)',
     ].sort(),
   );
 });
@@ -100,6 +95,30 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
       }),
       /Runtime database function EXECUTE allow-list mismatch/,
     );
+  }
+});
+
+test('the five legacy storage metadata functions are removed only by the storage metadata cutover while the public logo lookup remains', () => {
+  const storageCutoverIndex = Object.keys(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS).indexOf('storageMetadata');
+  assert.ok(storageCutoverIndex >= 0);
+  const signatures = [
+    'ghm.storage_create_pending(bigint, text, bigint, text, text, text, bigint, text, text)',
+    'ghm.storage_get_object(bigint, bigint)',
+    'ghm.storage_mark_available(bigint, text)',
+    'ghm.storage_mark_deleted(bigint)',
+    'ghm.storage_mark_deletion_pending(bigint)',
+  ];
+  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.storageMetadata, signatures);
+  for (let mask = 0; mask < ALL_STAGES.length; mask += 1) {
+    const cutoverApplied = (mask & (1 << storageCutoverIndex)) !== 0;
+    for (const signature of signatures) {
+      assert.equal(
+        (ALL_STAGES[mask] as readonly string[]).includes(signature),
+        !cutoverApplied,
+        `storage metadata cutover mask=${mask}: ${signature}`,
+      );
+    }
+    assert.ok((ALL_STAGES[mask] as readonly string[]).includes('ghm.storage_get_public_business_logo(bigint)'));
   }
 });
 
