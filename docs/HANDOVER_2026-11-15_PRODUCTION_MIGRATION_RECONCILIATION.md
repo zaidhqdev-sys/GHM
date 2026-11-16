@@ -1787,3 +1787,84 @@ The full workflow also passed runtime-boundary verification, the SECURITY DEFINE
 This resolves the CI stage-model mismatch; it does not mean the manual cutover has been applied to `ghm_db` or production runtime privileges. CI used disposable PostgreSQL only. No production migration, manual cutover, ledger change, grant/revoke, role membership, Render/Cloudflare setting, deployment, secret or application data was changed.
 
 PR #285 stays draft/unmerged. The successful checks do not authorize production migration execution or merge by themselves. Continue with the separately required production read-only migration inventory, production-only Project↔Opportunity reconciliation, and explicit release gates before any production rollout.
+
+
+## 59. Current handover reconciliation and next production read-only audit (2026-11-16 03:20 UTC)
+
+### Superseding interpretation of Sections 56–58
+
+Sections 56–57 are historical records of the earlier uncertainty about the two Business registration identity RPCs. They must not be used as the current stage-model conclusion.
+
+Section 58 records the later source and qualification evidence:
+- The explicit manual cutover is `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql`.
+- It revokes ordinary `ghm_runtime` EXECUTE on the two legacy registration identity RPCs.
+- Signed Actor Gateway wrappers remain the supported access path after the cutover.
+- The independent registration cutover is modeled as its own group; it is not attributed to the Campaign/Review cutover.
+- Exact code/test head `b90e959b9cfae6dcd5e64dcda9fc8fd12bf15d09` passed all three required checks in workflow run `43796446852`.
+
+The current PR head subsequently advanced to the handover-only commit `205336bcfb5e8e40ab3f8eae650c1260aa184293`. This documentation-only head has not yet been independently verified by a new workflow run. PR #285 remains open, draft and unmerged.
+
+### Production migration audit — next action, read-only only
+
+The repository's supported forensic audit entry point is `scripts/forensic-migration-reconciliation.mjs`. It:
+- Requires `GHM_MIGRATOR_DATABASE_URL`, `DATABASE_SSL=true`, verified TLS (`rejectUnauthorized: true`), and the explicit `ghm_db` production target.
+- Opens `BEGIN READ ONLY`, verifies `session_user=ghm_migrator`, `current_user=ghm_schema_owner` after `SET ROLE`, and `current_database=ghm_db`.
+- Reads the live `ghm.ghm_schema_migrations` ledger and compares it with repository migration bytes, historical provenance exceptions and retained historical entries.
+- Rolls back the read-only transaction; it does not apply migrations or repair the ledger.
+
+The production pending allowlist currently contains 42 version/name entries in `config/pending-migrations.production.json`. This is an expected repository configuration, not proof of the live production pending inventory. The live database result must be freshly captured and compared against it. A prior production observation of 137 repository migrations / 105 live ledger rows / 42 pending entries is historical evidence only and must not be presented as a current result until rerun against the present `ghm_db`.
+
+### Operator runbook — exact local PowerShell invocation
+
+From `C:\GHM`, after confirming the checkout is on the intended PR head and the existing local `.env` contains the already-issued `GHM_MIGRATOR_DATABASE_URL` (do not display or paste the URL or credentials):
+
+```powershell
+PS C:\GHM> Write-Host "=== VERIFY READ-ONLY PRODUCTION MIGRATION AUDIT INPUTS ==="
+>>
+>> $env:DATABASE_SSL = "true"
+>> $env:GHM_MIGRATION_AUDIT_DATABASE = "ghm_db"
+>> $env:GHM_MIGRATION_AUDIT_TARGET = "production"
+>> Remove-Item Env:GHM_MIGRATION_AUDIT_ALLOW_PENDING -ErrorAction SilentlyContinue
+>>
+>> node --input-type=module -e '
+>> import "dotenv/config";
+>> const url = process.env.GHM_MIGRATOR_DATABASE_URL;
+>> if (!url) throw new Error("GHM_MIGRATOR_DATABASE_URL is missing");
+>> const parsed = new URL(url);
+>> if (parsed.pathname !== "/ghm_db") throw new Error("Refusing: expected ghm_db");
+>> if (["localhost","127.0.0.1","::1"].includes(parsed.hostname)) throw new Error("Refusing local database");
+>> if (process.env.DATABASE_SSL !== "true") throw new Error("DATABASE_SSL must be true");
+>> console.log(JSON.stringify({ database: parsed.pathname.slice(1), host: parsed.hostname, tls: "verified by audit script", credentialsPrinted: false }));
+>> '
+>>
+>> if ($LASTEXITCODE -ne 0) { throw "Audit input verification failed" }
+>>
+>> Write-Host "=== RUN READ-ONLY PRODUCTION MIGRATION RECONCILIATION ==="
+>> node scripts/forensic-migration-reconciliation.mjs
+>>
+>> if ($LASTEXITCODE -ne 0) { throw "Read-only migration audit returned INVESTIGATE or failed; preserve the full output" }
+```
+
+Do not use `--allow-pending` for the first capture. The first run must establish the actual live inventory and verdict without pre-authorizing pending migrations. Capture the complete JSON output. Do not print environment variables, connection strings, passwords, or private keys.
+
+### Project ↔ Opportunity reconciliation remains a separate production-only read-only task
+
+The current repository contract confirms:
+- Project has a unique `opportunity_id` reference to `ghm.opportunity(id)` with `ON DELETE RESTRICT`.
+- Project creation creates a project-type Opportunity and inserts the Project within one authorized transaction.
+
+This source contract does not establish the live production data state. Before any rollout, perform a separate `BEGIN READ ONLY` production query to count and list:
+- Projects with NULL `opportunity_id`.
+- Projects whose `opportunity_id` has no matching Opportunity.
+- Duplicate Project references to one Opportunity.
+- Referenced Opportunities with an unexpected type/status or inconsistent Business/owner relationship.
+- Orphan project-type Opportunities, distinguishing legitimate non-Project opportunities from true reconciliation candidates.
+
+Do not update rows, create missing Opportunities, delete records, or repair links during this audit. The SQL must be designed against the exact current schema and run only after the migration inventory and current schema contract are confirmed. Capture counts and bounded, non-sensitive identifiers; never export private registration identity or personal data.
+
+### Current release gate
+
+- PR #285: open, draft, unmerged; code/test head `b90e959b` passed; handover-only head `205336bc` requires its own exact-head check.
+- Production migration audit: NOT YET RE-RUN against current `ghm_db`; no fresh result claimed.
+- Project ↔ Opportunity production reconciliation: NOT YET RUN; no data-integrity conclusion claimed.
+- No production migrations, manual cutovers, ledger edits, role/grant changes, deployments, Render settings, secrets or application data have been changed by this work.
