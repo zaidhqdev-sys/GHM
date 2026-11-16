@@ -796,3 +796,24 @@ PR #291 code head `13923a1c538ce23aacd491d65f5bca65bbbe8c85` passed exact-head w
 - The existing disposable Actor Gateway database-principal qualification also passed with the new exact function allow-list.
 
 The route is source-level only. No production request was sent and no deployment, migration, authority assignment, approval, consent or payment write occurred. The branch is ready for final diff review and merge consideration.
+
+
+### 22.2 PR #291 merged — authenticated owner authority route (2026-11-16)
+
+PR [#291](https://github.com/zaidhqdev-sys/GHM/pull/291), `feat: expose founder-only commercial approval authority route`, was squash-merged after exact-head qualification.
+
+- Exact final tested head: `b87dfa3510e0be7fec6fcc67b1f0cba3069d985a`.
+- Workflow run: `43906160152` — `quality` and `web-quality` both passed.
+- TypeScript build, all migrations on disposable PostgreSQL, full test suite and existing Actor Gateway database qualifications passed.
+- Merge commit: `f480a463c4e24182d47809c9638b6afb9b4f9d3e`.
+
+The merged route is `POST /v1/owner/commercial-document-approval-authority`. Actor identity is derived from the verified ES256 bearer token; the body is strictly allow-listed and cannot provide an actor/approver account ID. The reader signs the exact request context and calls the founder-only database function in a transaction. Tests cover HMAC binding, transaction rollback, bearer authentication, body validation, founder denial and conflict mapping.
+
+### Remaining commercial governance stages
+
+1. Implement the separate transactional document-approval transition. It must require the latest still-granted authority event, the same authenticated founder actor, exact document type/key/jurisdiction/plan scope, and the immutable version/hash. Approval status and event must be committed atomically.
+2. Add disposable PostgreSQL positive/negative tests for wrong actor, revoked grant, stale grant, mismatched document version/scope, duplicate status transitions, replay and concurrency with revocation.
+3. Only after an actual legal document is supplied and reviewed by the owner may its content/hash/version be registered and approved through the owner route.
+4. Then implement the separate GHM-native Business consent + payment-preparation transaction, preserving explicit customer acceptance and the independent launch freeze.
+
+No production route call, migration, authority grant, document approval, consent, payment attempt, Render Actor Gateway service, deployment or secret change has occurred. The production gateway hosting/backup/admin/migration gates remain. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
