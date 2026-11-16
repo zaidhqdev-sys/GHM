@@ -21,10 +21,7 @@ BEGIN
     SELECT p.proowner,p.prosecdef,p.proconfig INTO v_owner,v_security_definer,v_settings FROM pg_catalog.pg_proc p WHERE p.oid=v_oid;
     IF v_owner IS DISTINCT FROM ('ghm_schema_owner'::regrole::oid)
        OR v_security_definer IS DISTINCT FROM true
-       OR (
-         v_settings IS DISTINCT FROM ARRAY['search_path=pg_catalog, ghm']::text[]
-         AND v_settings IS DISTINCT FROM ARRAY['search_path=pg_catalog, ghm, pg_temp']::text[]
-       ) THEN
+       OR NOT (COALESCE(v_settings,ARRAY[]::text[]) && ARRAY['search_path=pg_catalog, ghm','search_path=pg_catalog, ghm, pg_temp']::text[]) THEN
       RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %',v_signature USING DETAIL = pg_catalog.format('owner_oid=%s schema_owner_oid=%s security_definer=%s settings=%s',v_owner,'ghm_schema_owner'::regrole::oid,v_security_definer,v_settings);
     END IF;
     SELECT EXISTS(SELECT 1 FROM pg_catalog.aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
@@ -68,9 +65,11 @@ BEGIN
     v_oid := to_regprocedure(v_signature);
     IF v_oid IS NULL THEN RAISE EXCEPTION 'required legacy storage function is missing: %', v_signature; END IF;
     SELECT p.proowner,p.prosecdef,p.proconfig INTO v_owner,v_security_definer,v_settings FROM pg_catalog.pg_proc p WHERE p.oid=v_oid;
-    IF v_owner <> 'ghm_schema_owner'::regrole OR v_security_definer IS DISTINCT FROM true
-       OR NOT (COALESCE(v_settings,ARRAY[]::text[]) @> ARRAY['search_path=pg_catalog, ghm']) THEN
-      RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %',v_signature;
+    IF v_owner IS DISTINCT FROM ('ghm_schema_owner'::regrole::oid)
+       OR v_security_definer IS DISTINCT FROM true
+       OR NOT (COALESCE(v_settings,ARRAY[]::text[]) && ARRAY['search_path=pg_catalog, ghm','search_path=pg_catalog, ghm, pg_temp']::text[]) THEN
+      RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %',v_signature
+        USING DETAIL = pg_catalog.format('owner_oid=%s schema_owner_oid=%s security_definer=%s settings=%s',v_owner,'ghm_schema_owner'::regrole::oid,v_security_definer,v_settings);
     END IF;
     SELECT EXISTS(SELECT 1 FROM pg_catalog.aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
       WHERE p.oid=v_oid AND a.grantee=0 AND a.privilege_type='EXECUTE') INTO v_public_execute
