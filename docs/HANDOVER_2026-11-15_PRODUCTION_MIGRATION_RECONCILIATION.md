@@ -1487,3 +1487,35 @@ These checks agree with the existing runbook and earlier sections; no contradict
 No additional pending migration follows the 1217 inventory endpoint. The remaining work is release/cutover evidence and reconciliation, not inventing another migration batch: exact integration of the dependent Issuer and Actor Gateway branches, application/client compatibility, non-production end-to-end tests, verified production backup/restore, Amanda/Render role-authority resolution, network/TLS decision and the existing no-additional-cost deployment constraints. Do not start a new branch, create paid resources, alter production or bypass the manual cutovers.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
+
+## 50. Mainline integration and production migration stop-boundary enforcement review (2026-11-16 01:16 UTC)
+
+### Exact CI and branch state
+
+- Section 49 handover commit `74e3dffc2b3b6863eb01e67e80acf2b5f0375eb2` passed exact-head CI workflow #5044, run ID `43784649947`; both `quality` and `web-quality` completed SUCCESS.
+- PR #285 remains OPEN, DRAFT and UNMERGED at head `74e3dffc2b3b6863eb01e67e80acf2b5f0375eb2`.
+- The PR branch compares against current `main` as 108 commits ahead, 0 behind, with 15 intended changed files. The 108 commits are ancestry, not changed-file count.
+- PR #276 (isolated Authentication Issuer stacked on Actor Gateway) is CLOSED and MERGED at `1d78d2b992acf92f1359b396f3ccc759c1ff6bd6`. Current main is the PR #285 base and includes that merged integration. Do not continue describing Issuer/Actor Gateway source integration as an unmerged dependent branch. Its production deployment/cutover remains blocked by the operational gates.
+
+### Critical finding — the migration runner does not enforce the documented capability cutover stop
+
+Direct source review of `src/db/production-migration-batch.ts` and `src/db/migrate.ts` confirms:
+- Production batch selection enforces an explicit JSON array, exact ordered next-pending prefix, no duplicate versions, and a maximum of five migrations.
+- It does not encode a semantic/manual-cutover stop boundary.
+- It contains no capability cutover ACL-state check, no storage cutover ACL-state check, and no manual-cutover marker/attestation check before selecting later pending migrations.
+- Therefore a five-entry first-prefix request can include migration 5 `20261110160000_add_admin_capability_catalogue_governance`, which grants `ghm_runtime` EXECUTE on three SECURITY DEFINER functions accepting caller-supplied account IDs. The batch selector itself does not prevent crossing that security boundary.
+- The separate manual cutover `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql` explicitly requires a deployed and end-to-end-verified Actor Gateway before revoking those legacy grants. The manual SQL exists, but that release prerequisite is not represented in the migration runner.
+- Existing first-four disposable qualification explicitly asserts migration 4's storage deletion-pending function is SECURITY DEFINER and runtime EXECUTE remains true. The read-only production preflight classifies migration 4's structural state and explicitly says it does not authorize execution or ledger repair.
+
+### Required handling
+
+- Do not execute a five-migration first batch. The documented review boundary is after the first four, with migration 5 treated as a manual-cutover-sensitive boundary.
+- Do not assume the prose handover alone is a machine-enforced stop. Before any future production execution, add and qualify an explicit runner guard that prevents crossing the capability boundary until the required cutover evidence and effective ACL state are established; define equivalent protection for any storage cutover boundary.
+- Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset. No production migrations or manual cutovers are approved. Do not modify the production ledger, role/grants or migration history.
+- The guard design must preserve exact-prefix semantics and must not use a caller-controlled environment acknowledgement as the sole proof of a completed cutover. It must be tested on disposable PostgreSQL with both blocked and permitted states before any production consideration.
+
+### Correction to the next-work description
+
+The Issuer and Actor Gateway source integration is already merged through PR #276 and present on current main. Remaining work is to verify the migration branch's compatibility with that merged source, complete the runner's semantic stop-boundary enforcement, and satisfy non-production E2E plus the existing production backup, Amanda/Render role-authority, network/TLS and no-additional-cost gates. Do not create another architecture branch or repeat the merged implementation.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
