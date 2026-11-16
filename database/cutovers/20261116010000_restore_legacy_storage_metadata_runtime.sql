@@ -72,7 +72,7 @@ BEGIN
       WHERE p.oid=v_oid AND a.grantee=0 AND a.privilege_type='EXECUTE') INTO v_public_execute
       FROM pg_catalog.pg_proc p WHERE p.oid=v_oid;
     IF v_public_execute THEN RAISE EXCEPTION 'PUBLIC EXECUTE must not be present: %',v_signature; END IF;
-    IF !has_function_privilege('ghm_runtime', v_oid, 'EXECUTE') OR has_function_privilege('ghm_migrator', v_oid, 'EXECUTE') OR has_function_privilege('ghm_actor_gateway', v_oid, 'EXECUTE') THEN RAISE EXCEPTION 'legacy storage EXECUTE state is not the reviewed pre-cutover state: %',v_signature; END IF;
+    IF NOT has_function_privilege('ghm_runtime', v_oid, 'EXECUTE') OR has_function_privilege('ghm_migrator', v_oid, 'EXECUTE') OR has_function_privilege('ghm_actor_gateway', v_oid, 'EXECUTE') THEN RAISE EXCEPTION 'legacy storage EXECUTE state is not the reviewed pre-cutover state: %',v_signature; END IF;
   END LOOP;
   FOREACH v_signature IN ARRAY ARRAY[
     'ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text)',
