@@ -111,9 +111,11 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
 ] as const;
 
-// Every independently qualified manual runtime cutover is represented here.
-// These are exact legacy signatures revoked by the corresponding SQL files in
-// database/cutovers/. No unrelated function is accepted as a stage transition.
+// The nine modeled manual runtime cutover groups are represented here.
+// This function-only stage model does not prove that each group has an authoritative
+// cutover/rollback SQL artifact or that any stage is active in production. Verify
+// those artifacts and production catalog state separately before enforcement.
+// No unrelated function is accepted as a modeled stage transition.
 export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
   authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
