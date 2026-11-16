@@ -265,3 +265,60 @@ The production database is not ready for Actor Gateway deployment: required gate
 The owner has previously approved a maximum incremental hosting allowance of USD 7/month for one dedicated, always-on Actor Gateway service. This approval is a spending ceiling, not an instruction to provision before the database and backup gates pass. No cost has been incurred and no service has been created.
 
 No production writes, migrations, grants, revocations, role changes, secrets, environment variables, service changes or deployments were performed during this preflight.
+
+
+## Handover reconciliation — prior ledger-access and backup status correction (2026-11-17)
+
+The 2026-11-16/17 assistant updates incorrectly described the production migration ledger as requiring a new Render administrator report. The canonical role-separation handover already documents and verifies the supported path; do not repeat the support escalation or try the Render read-only connector for ledger contents.
+
+### Correct production ledger access path — already verified
+
+Source of truth: `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md`, especially its 2026-11-14 continuations.
+
+- Use the existing local `C:\\GHM\\.env` value `GHM_MIGRATOR_DATABASE_URL` without displaying or copying it.
+- The connection uses the SQL-created `ghm_migrator` login, with `DATABASE_SSL=true` and strict certificate verification.
+- Begin `BEGIN READ ONLY`; verify `session_user=current_user=ghm_migrator` and `current_database()=ghm_db`.
+- Run `SET LOCAL ROLE ghm_schema_owner`; verify `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, and `transaction_read_only=on`.
+- Read `version,name,checksum,applied_at` from `ghm.ghm_schema_migrations`, then ROLLBACK.
+- This exact path was successfully verified on 2026-11-14, and the full production forensic reconciliation was run through it. The Render query connector's `ghm_db_user` permission denial is expected and does not mean the supported migrator path is unavailable.
+- Do not grant ledger SELECT to `ghm_db_user`, `ghm_runtime`, or `ghm_actor_gateway`; do not change role memberships or use the Dashboard Default connection as a substitute.
+
+A previous local `GHM_MIGRATOR_DATABASE_URL` attempt timed out before PostgreSQL authentication, but that observation was superseded by the successful 2026-11-14 identity, SET LOCAL ROLE and ledger-read tests. Do not treat the old timeout as a current blocker.
+
+### Audit state and current PR inventory
+
+- The latest full recorded live ledger baseline is 105 rows through `20261109210000`, obtained using the verified migrator path. The November 14 Render logical export has since been restored successfully into local PostgreSQL 18.6 and independently confirmed to contain the same 105-row ledger boundary.
+- PR #297's current pending inventory contains 48 ordered repository migrations against that 105-row baseline; the separate production batch manifest remains intentionally empty.
+- The legacy `config/pending-migrations.production.json` seven-entry allowlist is historical audit policy and is not the new 48-entry execution inventory. Do not expand it just to force the older audit command to pass. Do not treat either inventory as permission to execute.
+- Immediately before any production batch decision, rerun the read-only forensic reconciliation using the existing `GHM_MIGRATOR_DATABASE_URL` from the local `C:\\GHM\\.env` against the exact reviewed PR/main tree. Compare the full live version/name/checksum rows to the 48-entry inventory, retained-history registry and checksum policy. Do not run `npm run migrate`.
+
+### Backup status — existing recovery evidence, not missing
+
+- The November 14 Render-generated logical export at `C:\\Users\\zaidh\\Downloads\\2026-11-14T14_26Z.dir.tar.gz` (SHA-256 `2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`) was restored successfully to local PostgreSQL 18.6 database `ghm_restore_20261116` at `127.0.0.1:5433`.
+- Restore exited 0; post-restore checks confirmed 105 ledger rows through `20261109210000`, 59 `ghm` tables and 5 `public` tables. This is **local logical restore validated**, not a Render PITR test and not coverage of writes after the November 14 export.
+- Therefore the backup is not simply “missing” and the local restore does not need to be repeated. A **fresh on-demand Render logical export** is still required immediately before production DDL/ACL/role changes, because the November 14 artifact is now stale for a November 17 change window. Render's Postgres connector exposes metadata and read-only SQL only; it has no export/backup operation. Do not claim a fresh backup exists until the owner downloads and verifies the new artifact.
+- Preserve the November 14 archive and restored database; do not overwrite or drop either.
+
+### Render inventory and cost decision
+
+- The current Render resource inventory was refreshed: production `ghm-db` is available; `GHM-Internal-Runtime` remains the existing Free Frankfurt Web Service with auto-deploy OFF; no `ghm-actor-gateway` service exists.
+- The owner has explicitly approved a maximum incremental allowance of **US$7/month for one dedicated, always-on Frankfurt Actor Gateway Web Service**. This is not a blanket allowance for any other service or resource.
+- Do not create the gateway until the current live migration inventory, fresh backup, complete gateway migration/ACL dependencies and credential/secret readiness are verified. The service remains a dedicated Node Web Service; the old Cloudflare Tunnel/Hyperdrive connector topology is superseded and must not be reopened.
+
+### Exact-head qualification
+
+PR #297 head `a8635422b51efdbd7c975556b699465aca285cbd` completed CI run `43982113002` (run #5222) successfully:
+- `quality`: success, including disposable PostgreSQL application of all migrations, migration batch-runner qualification, Actor Gateway principal qualification, signed assertion and cutover qualifications, capability legacy RPC cutover, full test suite and runtime boundary checks.
+- `web-quality`: success.
+
+This is repository/disposable-database qualification only. It does not refresh the live ledger, create a production backup, install production gateway functions, deploy a service, or authorize a production batch.
+
+### Correct next actions
+
+1. Use the already-configured local migrator URL in `C:\\GHM\\.env` and rerun the read-only production forensic reconciliation against the exact current reviewed tree. Keep secrets hidden and capture only the JSON audit result.
+2. Compare the live ledger's exact missing migration set to PR #297's 48-entry inventory; investigate any difference rather than editing the inventory to make it pass.
+3. Finish the contiguous gateway migration prefix/dependency map and the production ACL/startup allowlist comparison. Keep `config/production-migration-batches.json` empty until a separate exact batch is reviewed.
+4. Immediately before any production DDL, create and verify a fresh Render logical export and preserve the existing November 14 recovery artifact.
+5. Only after those gates pass, use the previously approved USD 7/month allowance for the dedicated gateway, manually deploy, verify authenticated routes and then perform the documented post-deployment manual cutovers.
+
+No production query, DDL, migration, role/grant change, secret, Render setting, service, deployment or recurring cost was changed by this handover reconciliation.
