@@ -1874,3 +1874,50 @@ A connection drop occurred during an earlier read-only membership check attempt;
 **Security conclusion:** the temporary SET membership was transaction-scoped and explicitly revoked before commit. No persistent auditor membership was left intentionally. The earlier verification showed both SET and USAGE membership false before the successful transaction. No migration SQL, production DDL, application data change, credential/secret change, Render service/deployment/environment change, payment or consent operation occurred.
 
 **Audit status:** the 105-row production CSV is now exported and row-count verified locally. Exact version/name/checksum reconciliation against the 143 repository migrations, 10 retained-history records and 16 documented provenance exceptions has NOT yet been performed. Do not report checksum reconciliation as passed until the CSV is made available to the audit workspace and every row is classified. PR #297 remains draft/unmerged and the production batch manifest remains empty.
+
+
+### Production ledger checksum reconciliation completed — 2026-11-16 21:54Z
+
+The user completed a read-only local reconciliation in a detached worktree at exact main commit `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`. The worktree was clean and contained all 143 repository SQL migrations. The original `C:\GHM-main` checkout remained untouched on its existing test branch, including its untracked backup file.
+
+Inputs:
+- Production ledger CSV: `C:\GHM\production-ledger-20261116.csv`, 105 rows.
+- Current-main migration SQL inventory: 143 files.
+- Retained historical registry: 10 entries.
+- Historical provenance exception registry: 16 entries.
+- Legacy pending production allowlist: 7 entries.
+
+Checksum algorithm was verified against the repository implementation:
+- Canonical SHA-256 over UTF-8 SQL normalized to LF.
+- Supported legacy CRLF SHA-256.
+- Explicit live-ledger checksum match against registered historical provenance exceptions.
+- Exact version/name reconciliation.
+- Retained historical ledger rows checked against registered names and checksums.
+
+Results:
+- 24 canonical checksum matches.
+- 62 supported legacy CRLF checksum matches.
+- 9 approved historical-provenance checksum matches.
+- 0 unexplained checksum mismatches.
+- 0 migration-name mismatches.
+- 10 ledger-only rows; all 10 match the retained historical registry.
+- 0 unrecognized extra ledger rows.
+- 0 invalid retained-history records.
+- 0 orphaned historical exceptions.
+- 7 historical provenance exception records are redundant because their registered hashes match current canonical repository bytes (versions: `20260915194500`, `20260915200000`, `20260915203000`, `20260915210000`, `20260915220000`, `20260916003000`, `20260916004500`). No exception record was changed; decide separately whether to retain them as provenance documentation or remove them in a reviewed source change.
+
+The counts reconcile the entire live ledger: 24 + 62 + 9 = 95 repository-backed applied rows, plus 10 verified retained historical rows = 105.
+
+Pending inventory:
+- 48 repository migrations are absent from the production ledger, beginning at `20261110010000` and ending at `20261116190000`.
+- The old seven-entry pending allowlist is a strict subset of those 48: all 7 entries are valid pending migrations, but 41 pending migrations are not in that legacy allowlist.
+- This is not a checksum/provenance failure. The staged runner PR #297 uses a separate complete 48-entry pending inventory and explicit batch manifest; the old seven-entry file remains historical/audit reference only and must not be expanded or treated as execution authorization.
+- The six latest commercial/provider/consent/document-approval migrations are part of the 48 pending entries. They are not authorized for execution by this audit.
+
+Important limitation:
+- The 16 historical exception records contain 7 redundant entries; this audit reports them but does not mutate policy files. Their historical purpose and whether to retain or remove them require a deliberate source-level decision.
+- This is a read-only reconciliation of the exported 2026-11-16 ledger snapshot. Re-export and revalidate the live ledger immediately before any eventual production batch.
+
+No production migration, DDL, grant, role membership, credential, secret, Render setting, service, deployment, payment or consent state was changed. The detached audit worktree remained clean.
+
+**Migration audit conclusion:** the 105-row production ledger snapshot reconciles fully against current main under the repository's supported checksum and provenance rules. This does not authorize execution of any of the 48 pending migrations, prove backup recoverability, qualify service/secret readiness, or satisfy the separate Actor Gateway hosting/cost gate. PR #297 remains draft/unmerged; its production batch manifest must remain empty until the separate operational and staged-runner qualification gates are complete.
