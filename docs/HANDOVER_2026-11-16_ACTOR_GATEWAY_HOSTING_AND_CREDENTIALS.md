@@ -1018,3 +1018,17 @@ Exact-head CI is pending. Reader and HTTP tests cover HMAC context binding, tran
 - Do not mistake successful source/CI qualification for production readiness. Production backup, administrator privilege, migration-ledger, Actor Gateway hosting/cost and deployment gates remain.
 - The only human approver is the owner. The assistant is not an employee, legal person, approver or signatory. Do not create a placeholder/ghost reviewer.
 - Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 24.1 Founder-only document approval route qualification passed (2026-11-16)
+
+PR #293 exact code head `c5d1a256f4b896f447e9ee3f2115be15305d6ee5` passed workflow `43912090319`:
+- `web-quality`: success (11/11 steps).
+- `quality`: success (73/73 steps).
+- TypeScript build and all repository migrations on disposable PostgreSQL passed.
+- Full test suite passed, including the new Actor Gateway approval reader and HTTP route tests.
+- Existing Actor Gateway, Auth Issuer, migration, and database-principal qualifications passed.
+
+The new route tests verify verified-bearer actor derivation, strict request allow-list, rejection of caller-supplied actor/approver fields, invalid version/reason rejection before database access, 401 for missing bearer, 403 founder denial, 409 state conflict, 404 missing document version, and transaction rollback/release on database denial. The reader test verifies HMAC binding to the exact version ID and reason and commits only on successful database result.
+
+SQL positive/negative approval behavior (current grant, revocation denial, re-grant, duplicate denial, wrong scope, non-founder, forged/context-transplanted/replayed/expired assertion) was separately qualified in PR #292's disposable PostgreSQL CI. No production route call, owner authority assignment, legal document registration/approval, consent/payment write, production migration, ACL/credential change, Render service, deployment or launch activation occurred.
