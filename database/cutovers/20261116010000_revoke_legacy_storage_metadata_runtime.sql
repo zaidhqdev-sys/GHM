@@ -27,7 +27,7 @@ BEGIN
          v_settings IS DISTINCT FROM ARRAY['search_path=pg_catalog, ghm']::text[]
          AND v_settings IS DISTINCT FROM ARRAY['search_path=pg_catalog, ghm, pg_temp']::text[]
        ) THEN
-      RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %, owner_oid=%, security_definer=%, settings=%',v_signature,v_owner,v_security_definer,v_settings;
+      RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %',v_signature USING DETAIL = pg_catalog.format('owner_oid=%s schema_owner_oid=%s security_definer=%s settings=%s',v_owner,'ghm_schema_owner'::regrole::oid,v_security_definer,v_settings);
     END IF;
     SELECT EXISTS(SELECT 1 FROM pg_catalog.aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
       WHERE p.oid=v_oid AND a.grantee=0 AND a.privilege_type='EXECUTE') INTO v_public_execute
