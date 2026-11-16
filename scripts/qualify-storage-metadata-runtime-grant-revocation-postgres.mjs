@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
@@ -20,6 +21,14 @@ if (new Set([runtimeUrl, gatewayUrl, migratorUrl]).size !== 3) throw new Error('
 const runtime = new Pool({ connectionString: runtimeUrl, ssl: false });
 const gateway = new Pool({ connectionString: gatewayUrl, ssl: false });
 const migrator = new Pool({ connectionString: migratorUrl, ssl: false });
+const readSqlBody = relativePath => {
+  const path = new URL(relativePath, import.meta.url);
+  const sql = readFileSync(path, 'utf8');
+  if (!/^\\s*BEGIN;\\s*/i.test(sql) || !/\\s*COMMIT;\\s*$/.test(sql)) throw new Error(`Expected one outer BEGIN/COMMIT in ${path.pathname}`);
+  return sql.replace(/^\\s*BEGIN;\\s*/i, '').replace(/\\s*COMMIT;\\s*$/, '');
+};
+const cutoverSql = readSqlBody('../database/cutovers/20261116010000_revoke_legacy_storage_metadata_runtime.sql');
+const rollbackSql = readSqlBody('../database/cutovers/20261116010000_restore_legacy_storage_metadata_runtime.sql');
 const names = [
   'storage_create_pending',
   'storage_get_object',
@@ -56,14 +65,7 @@ const withSchemaOwner = async (work) => {
 };
 const restoreOriginalAcl = async () => {
   if (!cutoverApplied || snapshots.length === 0) return;
-  await withSchemaOwner(async client => {
-    for (const item of snapshots) {
-      if (item.public_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO PUBLIC`);
-      if (item.runtime_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_runtime`);
-      if (item.migrator_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_migrator`);
-      if (item.gateway_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_actor_gateway`);
-    }
-  });
+  await withSchemaOwner(async client => client.query(rollbackSql));
   cutoverApplied = false;
 };
 
@@ -76,6 +78,9 @@ try {
     SELECT
       p.oid::regprocedure::text AS signature,
       p.proname,
+      pg_get_userbyid(p.proowner) AS owner,
+      p.prosecdef AS security_definer,
+      p.proconfig AS function_settings,
       COALESCE(bool_or(a.grantee = 0 AND a.privilege_type = 'EXECUTE'), false) AS public_execute,
       COALESCE(bool_or(a.grantee = runtime_role.oid AND a.privilege_type = 'EXECUTE'), false) AS runtime_direct_execute,
       COALESCE(bool_or(a.grantee = migrator_role.oid AND a.privilege_type = 'EXECUTE'), false) AS migrator_direct_execute,
@@ -102,16 +107,15 @@ try {
   if (snapshots.length !== names.length || names.some(name => snapshots.filter(row => row.proname === name).length !== 1)) {
     throw new Error(`Expected exactly five unambiguous legacy storage functions; found ${JSON.stringify(snapshots.map(x => x.signature))}`);
   }
-  if (snapshots.some(row => !row.runtime_execute)) {
-    throw new Error('Expected every legacy storage function to be executable by ghm_runtime before the disposable cutover');
+  if (snapshots.some(row => row.owner !== 'ghm_schema_owner' || row.security_definer !== true
+    || !row.function_settings?.includes('search_path=pg_catalog, ghm')
+    || row.public_execute || !row.runtime_execute || row.migrator_execute || row.gateway_execute
+    || !row.runtime_direct_execute || row.migrator_direct_execute || row.gateway_direct_execute)) {
+    throw new Error(`Legacy storage ACL does not match the reviewed pre-cutover baseline: ${JSON.stringify(snapshots)}`);
   }
   console.log('FIVE LEGACY STORAGE FUNCTION SIGNATURES + ACL SNAPSHOT: PASS');
 
-  await withSchemaOwner(async client => {
-    for (const item of snapshots) {
-      await client.query(`REVOKE ALL ON FUNCTION ${item.signature} FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway`);
-    }
-  });
+  await withSchemaOwner(async client => client.query(cutoverSql));
   cutoverApplied = true;
   console.log('DISPOSABLE LEGACY STORAGE FUNCTION GRANT REVOCATION: APPLIED');
 
