@@ -116,3 +116,15 @@ test('actor gateway origin accepts HTTPS and rejects insecure remote URLs', () =
     assert.match(invalid.stderr + invalid.stdout, /GHM_ACTOR_GATEWAY_URL/);
   }
 });
+
+test('commercial payment provider configuration rejects a provider without an installed adapter', () => {
+  const result = loadConfig({ ...baseEnv, GHM_COMMERCIAL_PAYMENT_PROVIDER: 'stripe' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr + result.stdout, /installed payment provider adapter/);
+});
+
+test('commercial payment provider configuration defaults to the installed PayFast adapter', () => {
+  const result = loadConfig({ ...baseEnv });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout.trim()).commercial.paymentProvider, 'payfast');
+});

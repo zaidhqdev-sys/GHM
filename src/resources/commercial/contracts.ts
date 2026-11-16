@@ -251,7 +251,7 @@ export interface ScheduleCommercialCancellationInput {
 
 export interface ApplyCommercialPaymentResultInput {
   readonly paymentAttemptId: CommercialPaymentAttemptId;
-  readonly providerCode: 'payfast';
+  readonly providerCode: CommercialProviderCode;
   readonly externalProviderEventId: string;
   readonly providerEventType: string;
   readonly providerPayloadHash: string;

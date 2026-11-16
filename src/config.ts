@@ -1,4 +1,5 @@
 import { assertActorGatewayBaseUrl } from './http/actor-gateway-url';
+import type { CommercialProviderCode } from './resources/commercial/contracts';
 import { loadStorageRuntimeConfig } from "./storage/config";
 import 'dotenv/config';
 
@@ -79,7 +80,7 @@ export const config = Object.freeze({
   trustProxy: parseTrustProxy(),
   storage: hasStorageConfiguration ? loadStorageRuntimeConfig() : null,
   commercial: Object.freeze({
-    paymentProvider: (process.env.GHM_COMMERCIAL_PAYMENT_PROVIDER?.trim() || 'payfast') as string,
+    paymentProvider: (process.env.GHM_COMMERCIAL_PAYMENT_PROVIDER?.trim() || 'payfast') as CommercialProviderCode,
   }),
   payfast: Object.freeze({
     environment: (process.env.PAYFAST_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'live',
