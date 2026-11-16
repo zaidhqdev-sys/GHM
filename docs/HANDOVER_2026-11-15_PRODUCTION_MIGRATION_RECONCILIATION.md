@@ -1110,3 +1110,64 @@ The next contiguous migration chain has explicit gateway foundations and later s
 Next repository review should continue with the signed Business Capability mutation / Saved Business / Business Hours / Trust Score / Business Logo sequence and their separate runtime grant cutovers, without repeating already completed capability or storage work.
 
 No production database, migration ledger, role/grant, secret, Render/Cloudflare resource, service, deployment, provider bucket/object or application data was changed during this review. Preserve the untracked local `.bak` file.
+
+
+
+## 42. Signed Business Capability, Saved Business, Business Hours, Trust Score and Logo review (2026-11-16 00:17 UTC)
+
+### Exact-head CI and PR state
+
+- PR #285 remains OPEN, DRAFT and UNMERGED.
+- Exact head reviewed: `34eaf87d706837377c78f63482879f7ec961906c`.
+- CI workflow #5035, run ID `43779093006`, completed SUCCESS. Both `quality` and `web-quality` passed.
+- This qualifies the section 41 documentation update and source snapshot reviewed here. No merge or production deployment.
+
+### Shared signed-assertion contract
+
+The feature migrations extend `ghm.assert_actor_gateway_capability` with a bounded operation allow-list, 60-second timestamp window, one-use nonce, constant-time HMAC comparison, active-account check and exact request-context binding. The verifier is SECURITY DEFINER with pinned `pg_catalog, ghm` search path, owned by `ghm_schema_owner`, revoked from PUBLIC/runtime/migrator and executable by `ghm_actor_gateway` only. Feature wrappers independently pin their search path, are schema-owner owned, and grant EXECUTE only to the gateway login.
+
+The Resource API uses the matching HTTP gateway clients; production mode marks Saved Business, Business Hours, Trust Score and Business Logo gateway routes as required. Missing clients fail closed rather than using the legacy repository path. Storage startup separately requires the Actor Gateway URL and provider workflow attestation secret when production storage is enabled.
+
+### Feature findings
+
+**Business Capability and evidence — `20261111070000`**
+- Signed wrappers cover assertion replacement, verification transition, evidence review and evidence submission. Context binds exact business/capability/evidence IDs, payload fields, status transition, decision and reason.
+- Evidence submission additionally checks active Business membership and owner/administrator role in SQL. Verification delegates to the existing verifier-authority function, so a Business owner cannot self-verify.
+- The disposable qualification applies the manual cutover and proves direct runtime calls, evidence INSERT/sequence access and runtime calls to the new gateway wrappers are denied; signed gateway flows pass; tampered payload, replay, actor/target substitution and non-management submission are denied.
+- The cutover is separate: `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql`. It removes legacy mutation function EXECUTE and direct evidence INSERT/sequence privileges. Not applied to production.
+
+**Saved Business — `20261111100000`**
+- Signed list/get/create/delete wrappers bind account ownership to the signed actor; get/list are account-scoped and create/delete delegate to existing owner-bound functions.
+- The disposable qualification verifies three distinct database identities, direct runtime table/column reads, legacy RPCs and sequence are denied after cutover; signed CRUD passes; cross-account access, actor substitution, request-target substitution and replay are denied.
+- Manual cutover `database/cutovers/20261111110000_revoke_legacy_saved_business_runtime.sql` revokes table/column privileges, sequence usage and legacy function grants. It also removes the legacy functions' grant to the gateway login so only signed wrappers remain.
+
+**Business Hours — `20261111130000` and `20261111140000`**
+- Signed replacement binds the Business ID and complete hours payload. Signed read requires an active Business membership; public projection returns hours only for active, approved, verified Businesses.
+- The legacy replacement function itself checks active owner/administrator membership and validates JSON payload before replacing the rows.
+- Manual cutover `database/cutovers/20261111130000_revoke_legacy_business_hours_runtime.sql` revokes legacy replacement, direct table SELECT and sequence access. The disposable qualification is localhost-only with separate runtime/gateway/migrator identities and tests signed read/write, cross-Business and assertion denial paths.
+- The public SQL projection returns the composite `business_hours` row; retain the existing API DTO boundary and do not expose raw DB rows directly.
+
+**Trust Score — `20261111150000` and `20261111170000`**
+- Signed calculation binds Business ID and delegates to the existing owner/administrator-authorized calculator.
+- Signed get/list permit public results only for active, verified, approved Businesses; private results require active owner/administrator membership. Public get/list SQL projections apply the same active/verified/approved predicate.
+- Manual cutover `database/cutovers/20261111150000_revoke_legacy_trust_score_runtime.sql` revokes legacy calculator, direct table SELECT and sequence access while retaining the two constrained public projection functions for runtime.
+- Disposable qualification checks private/public separation, actor and target substitution, replay, runtime denial and exact post-cutover ACL matrix.
+- As with Business Hours, SQL functions return the table composite type. Preserve API response mapping and avoid exposing raw database rows as a public contract.
+
+**Business Logo — `20261111160000`**
+- Signed binding binds Business ID and storage object ID. The underlying SECURITY DEFINER function verifies active owner/administrator membership, locks the Business row, and requires the object to match that Business's tenant, resource type/ID, `business_logo` class, public visibility and available status.
+- The public logo getter joins on the same tenant/resource/object-class/visibility/availability constraints and only exposes active, approved, verified Businesses.
+- Manual cutover `database/cutovers/20261111160000_revoke_legacy_business_logo_runtime.sql` revokes the old caller-supplied-account-ID binding function from runtime.
+- Disposable qualification proves runtime denial, signed bind/unbind, cross-Business object denial, actor/target substitution, replay, public projection and exact ACLs.
+
+### Important release boundary
+
+These migrations add signed gateway entry points but deliberately retain legacy runtime grants until their corresponding separate cutovers. Passing disposable cutover qualification does not mean those cutovers have happened in production. The production Resource API source is gateway-required, but the deployed production runtime SHA remains older than this integration and no live end-to-end gateway deployment is proven.
+
+Do not apply any of the five manual cutovers until the compatible Resource API and Actor Gateway release is deployed and end-to-end qualified, the signed assertion secret and database principal are correctly provisioned, a fresh verified backup/recovery point exists, and Render support resolves the production role-authority question. Keep the production migration batch unset and do not run `npm run migrate`.
+
+### Next review boundary
+
+Continue through the ordered authentication and identity hardening migrations beginning `20261111210000`, including recovery-token, QuoteFlow provisioning and runtime entry-point revocations. Reconcile each automatic migration with its separate cutover/rollback and existing issuer handover; PayFast remains paused and out of scope.
+
+No production database, migration ledger, role/grant, secret, Render/Cloudflare setting, service, deployment, provider bucket/object or application data was changed. Preserve the untracked local `.bak` file.
