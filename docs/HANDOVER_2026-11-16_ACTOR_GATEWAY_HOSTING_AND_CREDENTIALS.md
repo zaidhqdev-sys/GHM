@@ -1245,3 +1245,66 @@ This was a narrowly scoped production role/privilege change to enable read-only 
 The production ledger is now readable through the non-login auditor role. The verified count is 105 rows, but the version/name/checksum/status contents have not yet been reconciled against the current repository migration set. The next step is to export/read the exact ledger rows as `ghm_auditor`, compare them with the exact main-branch migration files and migration policy, and report applied, missing, checksum-mismatched, historical/approved-extra and unexplained entries. Do not run migrations or change the production Actor Gateway ACL as part of this read-only reconciliation.
 
 The production backup/recovery gate, migration execution qualification, dedicated always-on Actor Gateway hosting/cost gate, gateway credential/ACL provisioning and deployment gates remain unresolved.
+
+
+
+## 30. Full production migration ledger exported; current-main inventory refreshed (2026-11-16)
+
+The user successfully exported all production ledger rows from Render `ghm-db` / `ghm_db` using the non-login `ghm_auditor` role. The export returned **105 rows** and the following exact schema:
+
+| ordinal | column | type | nullable |
+|---:|---|---|---|
+| 1 | version | character varying | NO |
+| 2 | name | character varying | NO |
+| 3 | checksum | character varying | NO |
+| 4 | applied_at | timestamp with time zone | NO |
+
+The first ledger row is `00000000000000 / create_migration_ledger`; the highest/latest version is `20261109210000 / deactivate_unrecognized_public_directory_records`. The user supplied the complete ordered 105-row result in the 2026-11-16 conversation. Its complete values should be treated as the primary production evidence; no credentials or connection strings were shared.
+
+### Auditor access cleanup reconfirmed
+
+For the full export, the user repeated the bounded transaction:
+
+1. `GRANT ghm_auditor TO ghm_db_user WITH SET TRUE, INHERIT FALSE GRANTED BY CURRENT_USER`.
+2. `SET LOCAL ROLE ghm_auditor`.
+3. Confirmed `current_user=ghm_auditor`, `session_user=ghm_app_user`.
+4. Selected `version, name, checksum, applied_at` ordered by version; PostgreSQL returned **105 rows**.
+5. `RESET ROLE`.
+6. `REVOKE ghm_auditor FROM ghm_db_user GRANTED BY CURRENT_USER`.
+7. `COMMIT`.
+
+Both the schema-inspection transaction and full-ledger export transaction ended with explicit revoke and COMMIT. No temporary SET membership remains. Persistent grants remain limited to auditor schema USAGE and ledger SELECT; `ghm_auditor` remains NOLOGIN with no elevated attributes. No production migration was executed.
+
+### Exact current-main inventory
+
+A fresh GitHub recursive tree read inspected current `main` at `bf57690a1cddf4144acacde08097331e9e47fcb9` (the handover update immediately preceding this section). The tree was not truncated.
+
+- SQL migration files in `database/migrations`: **143**.
+- Production ledger rows: **105**.
+- Latest applied ledger version: **20261109210000**.
+- Repository migration versions later than the latest applied ledger version: **48**.
+- Current `config/pending-migrations.production.json` entries: **7**.
+- All seven configured entries are in the 48-version pending inventory; the allowlist omits **41** other pending versions.
+
+The 48 version-later migrations comprise the previously documented 42-item inventory through `20261112170000`, plus six migrations added on 2026-11-16:
+
+1. `20261116140000_generalize_commercial_payment_provider_code`
+2. `20261116150000_create_commercial_consent_evidence`
+3. `20261116160000_add_commercial_document_approval_authority`
+4. `20261116170000_add_founder_only_commercial_document_authority_gateway`
+5. `20261116180000_add_founder_only_commercial_document_approval_transition`
+6. `20261116190000_add_commercial_consent_payment_prepare_gateway`
+
+The six latest migrations are therefore repository-present and not recorded in the production ledger. The production pending configuration still contains only seven entries; it has not been changed. The version-count comparison is definitive for the current-main tree and the exported production ledger, but it is not a substitute for the full per-row SHA-256 comparison and retained-history classification.
+
+### Reconciliation status and execution boundary
+
+The prior 2026-11-15 audit documented 137 repository migrations, 105 ledger rows, 42 version-later migrations, zero unexplained checksum mismatches, and the seven-entry allowlist mismatch. Current main now contains six additional migration files, making the current counts **143 / 105 / 48**. The exact 105-row production ledger was freshly exported and its latest version agrees with that earlier audit.
+
+Do not interpret all 48 as safe to apply. The set spans Actor Gateway installation and cutovers, auth and QuoteFlow privilege revocations, global function default-privilege hardening, storage/provider workflows, and the six new commercial migrations. Do not expand the seven-entry production allowlist to 48 and do not run `npm run migrate`. The current migration runner still lacks an approved staged-prefix execution boundary, and the gateway hosting, credential/ACL, verified backup/recovery, and production smoke-test gates remain open.
+
+### Next audit action
+
+Perform the deterministic full reconciliation against the exported 105 production rows and current-main migration SQL bytes: compare version/name/checksum using the repository's canonical LF and supported legacy CRLF checksum rules; classify the registered retained-history and provenance exceptions; produce the exact 48 pending rows; and confirm the seven-entry allowlist mismatch. Record each checksum mismatch or approved historical exception explicitly. Keep this read-only. Only after the full reconciliation should the migration batch design and production gate plan be updated.
+
+No migration, allowlist, production ACL, credential, secret, Render service, deployment, environment variable, payment/consent record or application data was changed during this audit.
