@@ -1978,3 +1978,37 @@ Run this only to capture the current production preflight evidence. A clean pref
 - Disposable qualification: **PASS** on CI #5067.
 - Live first-four production preflight: **NEXT READ-ONLY GATE; not yet claimed complete in this section**.
 - Production migration execution: **BLOCKED**.
+
+## 62. First-four production read-only preflight completed (2026-11-16 03:51 UTC)
+
+The owner ran the existing repository command `npm run preflight:first-four-production-migrations` against Render `ghm-db` / `ghm_db`. This is a live, read-only preflight only; no migration was executed.
+
+### Connection and transaction safety
+
+- Database: `ghm_db`.
+- `session_user=ghm_migrator`; `current_user=ghm_schema_owner`.
+- `transaction_read_only=on`.
+- Client TLS certificate verification: enforced (`rejectUnauthorized: true`).
+- The script uses `BEGIN READ ONLY`, rolls back, and contains no DDL/DML execution path.
+
+### First-four object and storage findings
+
+- All seven expected object checks had `unexpected_collision=false`.
+- Migration 1 target function `ghm.update_business_supplier_classification(bigint,bigint,boolean)` is absent, as expected before migration 1.
+- Migration 2 targets `ghm.account_onboarding_progress`; it is absent, as expected.
+- Migration 3 targets `ghm.relationship_type`, `ghm.business_relationship`, `ghm.outcome_type`, and `ghm.outcome`; all are absent, as expected.
+- Migration 4 replaces existing `ghm.storage_mark_deletion_pending(bigint)`; the function exists, so the replacement target is present and there is no name collision.
+- Storage rows: 2 `deleted`, 2 `pending`; zero rows incompatible with the proposed lifecycle predicate.
+- Existing `storage_object_lifecycle_check` is validated and currently has the pre-migration definition.
+- Existing storage function is SECURITY DEFINER, owned by `ghm_schema_owner`, pinned to `pg_catalog, ghm`; `ghm_runtime` has EXECUTE and `ghm_actor_gateway` does not. This is the captured pre-migration ACL state and is consistent with the first-four qualification contract for migration 4. It is not evidence that a later Actor Gateway cutover is complete or that legacy direct runtime access may remain indefinitely.
+- Migration 4 state classifier: **`PRE_MIGRATION`**.
+
+### Disposition
+
+- First-four production object-name preflight: **PASS — no unexpected collisions**.
+- Migration 4 storage data compatibility: **PASS — 0 incompatible rows**.
+- Migration 4 schema classification: **PRE_MIGRATION**.
+- This does not establish migration-ledger state for each individual migration, prove all cross-migration runtime dependencies, or authorize execution.
+- Before any production batch, review the exact first-four ordered migration set and downstream storage/Actor Gateway cutover contract together. In particular, explicitly resolve the lifecycle and eventual revocation of direct `ghm_runtime` EXECUTE on `storage_mark_deletion_pending(bigint)`; do not infer that the later gateway wrapper alone revokes legacy direct access.
+- No production schema, data, migration ledger, role, grant, secret, Render setting, or deployment was changed.
+
