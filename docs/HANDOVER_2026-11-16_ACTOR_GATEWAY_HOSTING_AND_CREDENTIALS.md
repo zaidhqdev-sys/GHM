@@ -1851,3 +1851,26 @@ Expected identity while selected: `current_user=ghm_auditor`, `session_user=ghm_
 After receiving the CSV, compare all 105 live rows against all 143 repository migration SQL files using canonical LF SHA-256, supported legacy CRLF SHA-256, exact version/name, the 10 retained-history records and 16 provenance exceptions. Report exact matches, checksum/name mismatches, ledger-only rows, retained historical rows and pending repository migrations. Do not infer or reconstruct missing ledger rows.
 
 No production DDL, migration, persistent grant, credential, secret, service, deployment, environment, payment or consent state changed in this step.
+
+
+### Production ledger export completed — 2026-11-16 21:35Z
+
+The user successfully exported the live production migration ledger from Render PostgreSQL 18 using local psql and a transaction-scoped auditor membership.
+
+Observed sequence and results:
+- Initial read-only membership check: `pg_has_role('ghm_db_user','ghm_auditor','SET') = false` and `pg_has_role('ghm_db_user','ghm_auditor','USAGE') = false`.
+- A transaction was opened successfully.
+- Temporary membership was granted only inside that transaction with `SET TRUE, INHERIT FALSE`.
+- `SET LOCAL ROLE ghm_auditor` succeeded.
+- Identity while reading: `current_user=ghm_auditor`, `session_user=ghm_app_user`, `current_database=ghm_db`.
+- Client-side psql `\\copy` exported `version,name,checksum,applied_at` from `ghm.ghm_schema_migrations`, ordered by version. psql reported `COPY 105`.
+- The local file is `C:\\GHM\\production-ledger-20261116.csv`, 15,368 bytes; PowerShell `Import-Csv` returned 105 rows.
+- `RESET ROLE` returned identity to `current_user=ghm_db_user`, `session_user=ghm_app_user`.
+- `REVOKE ghm_auditor FROM ghm_db_user GRANTED BY CURRENT_USER` succeeded.
+- `COMMIT` succeeded.
+
+A connection drop occurred during an earlier read-only membership check attempt; psql reconnected. No role change was attempted during that failed connection. The subsequent stable session completed the controlled transaction above.
+
+**Security conclusion:** the temporary SET membership was transaction-scoped and explicitly revoked before commit. No persistent auditor membership was left intentionally. The earlier verification showed both SET and USAGE membership false before the successful transaction. No migration SQL, production DDL, application data change, credential/secret change, Render service/deployment/environment change, payment or consent operation occurred.
+
+**Audit status:** the 105-row production CSV is now exported and row-count verified locally. Exact version/name/checksum reconciliation against the 143 repository migrations, 10 retained-history records and 16 documented provenance exceptions has NOT yet been performed. Do not report checksum reconciliation as passed until the CSV is made available to the audit workspace and every row is classified. PR #297 remains draft/unmerged and the production batch manifest remains empty.
