@@ -1790,3 +1790,32 @@ The quality job also completed successfully:
 No failing steps were reported. This establishes code/CI qualification only; it is not production migration approval and does not replace the pending 105-row live checksum/provenance reconciliation or current backup verification.
 
 PR #297 remains draft and unmerged. Its production batch manifest remains intentionally empty. Do not populate or execute a production batch based solely on this CI result.
+
+
+### Final exact-head CI completion and read-only ledger access attempt — 2026-11-16 21:05Z
+
+The fresh workflow run `43954829470` completed successfully on exact head `20383100f9b276f15d76cb117c05032042214e7f`:
+- `quality`: success.
+- `web-quality`: success.
+
+PR #297 remains open, draft and unmerged. This is CI qualification of the staged runner and its repository integration only; it does not authorize production migrations.
+
+#### Current-main inventory anchor
+
+A fresh recursive GitHub tree read of `main` returned tree SHA `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`, complete and not truncated, with 143 SQL migration files under `database/migrations`.
+
+Current production reconciliation configuration was reread:
+- retained historical migration registry: 10 entries;
+- historical migration provenance exceptions: 16 entries;
+- old pending production allowlist: 7 entries (retained for historical/audit reference, not used as runner execution authorization).
+
+The existing checksum audit implementation defines canonical LF SHA-256, supported legacy CRLF SHA-256, retained-history verification and historical-provenance classification. The complete 105-row live ledger comparison remains outstanding; no claim is made that all live checksums have passed.
+
+#### Render read-only query attempt
+
+Tried the connected Render read-only SQL query against Postgres resource `dpg-dag0sdtbedkc7389vi2g-a`:
+`SELECT version, name, checksum, applied_at FROM ghm.ghm_schema_migrations ORDER BY version`
+
+Render returned `permission denied for table ghm_schema_migrations (SQLSTATE 42501)`. This is consistent with the established restricted ledger access: the read-only connector uses the default mapped role and cannot SET the temporary `ghm_auditor` membership. No privileges or roles were changed by this attempt.
+
+The exact 105-row export was previously produced successfully in the user's psql session on 2026-11-16, but the raw row values are not present in the accessible handover/search result now. Do not reconstruct or invent them. To finish deterministic checksum reconciliation, re-export the exact ledger through the already-qualified temporary `ghm_auditor` transaction and save CSV for processing. No production DDL, migration execution, grant, credential, service, deployment, environment, payment or consent change occurred.
