@@ -1252,3 +1252,68 @@ Do not apply the issuer manual cutover. It would remove Resource API auth lifecy
 - Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset; do not run `npm run migrate` and do not execute any manual cutover.
 
 No production database, migration ledger, role/grant, secret, Render/Cloudflare setting, service, deployment, routing, client configuration or application data was changed during this review. Preserve the untracked local `.bak` file.
+
+
+
+## 44. Default ACL, Connect provisioning, SECURITY DEFINER and provider-attestation chain review (2026-11-16 00:29 UTC)
+
+### Exact-head CI and PR state
+
+- PR #285 remains OPEN, DRAFT and UNMERGED.
+- Exact source/handover head reviewed: `097da6fb92da879fee4469b9ee587bb0c548ee80`.
+- CI workflow #5037, run ID `43780194969`, completed SUCCESS. Jobs `quality` and `web-quality` both passed.
+- This qualifies section 43's handover update and the source snapshot reviewed here. The new section 44 commit still needs its own CI.
+
+### Migrations 1205, 1207–1209 and 1214–1217
+
+**1205 — `20261112050000_revoke_public_default_function_execution`**
+- Changes global default privileges for functions created by `ghm_schema_owner`, revoking PostgreSQL's default PUBLIC EXECUTE. This is intentionally global for that owner, not limited to schema `ghm`; per-schema REVOKE cannot cancel a global default grant.
+- The matching contract test verifies the global (no `IN SCHEMA ghm`) behavior. The Authentication Issuer and Actor Gateway startup ACL verifiers inspect both global and GHM-schema function defaults and reject unexpected executable defaults. The disposable issuer qualification installs and removes unsafe default probes.
+- This is a broad forward-looking privilege policy. Any future function created by `ghm_schema_owner` must receive explicit intended role grants. Do not silently re-add PUBLIC EXECUTE to make a new function work.
+
+**1207 — `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads`**
+- Removes PUBLIC, runtime, migrator and Actor Gateway EXECUTE from the unsigned `assert_actor_gateway(bigint)` overload. Current signed typed operations must use the context-bound HMAC assertion. Keep the old overload owner-controlled only.
+
+**1208 — `20261112080000_signed_connect_business_provisioning_gateway`**
+- Adds `business.connect.provision` to the signed operation allow-list and a schema-owner-owned SECURITY DEFINER wrapper that binds the external Connect Business UUID, name and derived slug to the assertion.
+- The database transaction takes an advisory lock keyed by provider + external UUID, resolves an existing mapping without relinking, or atomically creates the canonical Business, active owner membership and `supabase` external mapping. It requires an active authenticated business/admin actor and validates UUID/name/slug. Mapping-link failure rolls back the Business and membership; no name/email/slug inference is used.
+- The Actor Gateway Express app has `POST /v1/connect/businesses/provision-or-resolve`, authenticates the ES256 bearer once, derives actor from the verified subject and rejects extra caller-supplied identity fields. The Worker injects `PostgresConnectBusinessProvisioningReader`; the reader signs the exact request context and invokes the database wrapper. Unit/HTTP contract tests cover verified actor, invalid input and membership denial. The HTTP Resource API gateway client exists, but this review did not find a production Connect route integration/cutover; this remains a separate product-adapter deployment task, not permission to switch Connect production.
+- The legacy mapping-link helper is revoked from PUBLIC/runtime/migrator/Actor Gateway direct EXECUTE; the SECURITY DEFINER wrapper invokes it under its owner context.
+- The original construction contract and qualification explicitly prohibit treating the fixed `supabase` provider key as active Supabase Auth or as authorization to cut over Connect. Existing production mapping populations and product routing remain untouched.
+
+**1209 — `20261112090000_pin_security_definer_search_path`**
+- Preflights that every GHM SECURITY DEFINER function is owned by `ghm_schema_owner`; otherwise the migration aborts.
+- Sets every GHM SECURITY DEFINER function to `pg_catalog, ghm, pg_temp`, explicitly placing temporary schema last to prevent caller-created temporary objects shadowing privileged references. A contract test verifies both owner preflight and exact path.
+- This is a broad one-time hardening migration; inspect its exact production inventory before execution and do not assume a successful disposable run proves every production function has the expected owner.
+
+**1214 — `20261112140000_add_signed_storage_metadata_actor_gateway`**
+- Extends the v2 signed operation allow-list and adds gateway-only actor-bound create/read/deletion-pending wrappers. Creation validates Business Logo metadata and active owner/administrator membership; read enforces public active Business Logo or active Business membership; deletion-pending requires active owner/administrator membership.
+- Provider-confirmed `mark_available` and `mark_deleted` are deliberately not completed by this migration; they are added in 1215 with a separate proof. The new wrapper does call the existing deletion-pending helper under SECURITY DEFINER owner context; production direct runtime EXECUTE on the legacy helper remains part of the outstanding ACL cutover.
+
+**1215 — `20261112150000_add_storage_provider_workflow_attestation`**
+- Creates separate 32-byte provider-attestation secret and one-use nonce tables, inaccessible to PUBLIC/runtime/Actor Gateway/migrator direct table privileges.
+- Adds a separate HMAC domain, short validity window, replay protection and exact stored-metadata context checks. Availability and deletion completion require BOTH the signed user actor assertion and a provider workflow attestation; the provider verifier is callable only under Actor Gateway database session context.
+- The disposable qualification script refuses non-localhost databases, requires three distinct runtime/gateway/migrator connections, explicit mutation opt-in and both secrets. It tests legitimate lifecycle, actor and provider proof, replay, expiry, invalid signature, context substitution, cross-Business actor, wrong state, metadata mismatch and effective ACLs. This is a disposable PostgreSQL qualification, not an external provider/R2 end-to-end deployment test and not production secret provisioning.
+
+**1216 — campaign/directory-review gateway manual cutover**
+- `database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql` is a separately coordinated manual cutover, not an automatic migration. It extends the signed operation allow-list, creates gateway wrappers for campaign create/update and owner directory-review presentation, and revokes legacy runtime function EXECUTE.
+- Matching rollback `database/cutovers/20261112161000_campaign_directory_review_actor_gateway_rollback.sql` restores legacy runtime grants and removes gateway EXECUTE. Both require `session_user=ghm_migrator` and `current_user=ghm_schema_owner`. The source has HTTP route tests for verified actor derivation and caller-supplied actor rejection.
+- The manual cutover comment explicitly requires old Resource API instances out of traffic before committing. It has not been applied to production.
+
+**1217 — `20261112170000_revoke_redundant_migrator_business_mapping_lookup`**
+- Removes the redundant `ghm_migrator` EXECUTE grant on the Business external mapping lookup; the Connect commercial preparation route continues to use the intended `ghm_runtime` grant. This does not remove the runtime route's required lookup.
+
+### Release and execution boundary
+
+- The source has a coherent Connect provisioning gateway route and Worker wiring, but this does not establish that the Worker or the Resource API client is deployed or that Connect production uses the route.
+- The signed storage provider proof has local disposable qualification, but no deployed provider end-to-end test against a dedicated non-production bucket is established by these artifacts.
+- The campaign/directory-review grant cutover is a separate manual operation with a rollback; do not execute it before compatible Worker/Resource API release and traffic drain.
+- Migration 1209 must be run only after production ownership preflight can be performed safely and the exact production SECURITY DEFINER inventory is understood.
+- The no-additional-spend gateway topology, verified production backup/recovery, Amanda/Render administrator-role authority and exact role ACL reconciliation remain unresolved. No production credentials, service or deployment should be improvised.
+- Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset. Do not run `npm run migrate`, do not apply manual cutovers, and do not change production Connect routing.
+
+### Next review boundary
+
+The current repository migration inventory ends at `20261112170000` in this snapshot. Before proceeding further, compare the exact PR head migration tree, migration ledger inventory and handovers/PRs/branches again; do not invent a next migration or create duplicate work. The next useful work is a consolidated readiness/compatibility matrix for the existing Actor Gateway + Resource API + Auth Issuer release under the user's no-extra-paid-service constraint, followed by exact production read-only role/backup evidence only when support and backup prerequisites allow it.
+
+No production database, migration ledger, role/grant, secret, Render/Cloudflare setting, service, deployment, bucket/object, Connect routing or application data was changed during this review. Preserve the untracked local `.bak` file.
