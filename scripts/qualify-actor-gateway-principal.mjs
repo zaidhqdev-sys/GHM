@@ -122,6 +122,46 @@ const createFounderFixtureAccount = async () => {
   }
 };
 
+const createCommercialDocumentDraftFixtures = async () => {
+  const client = await cleanupPool.connect();
+  const definitions = [
+    { key: 'zaid-business-pro-trial', version: 'qualification-v1', title: 'Disposable trial terms fixture' },
+    { key: 'zaid-business-pro-trial', version: 'qualification-v2', title: 'Disposable trial terms second version' },
+    { key: 'zaid-business-pro-trial', version: 'qualification-v3', title: 'Disposable trial terms replay fixture' },
+    { key: 'different-commercial-scope', version: 'qualification-v1', title: 'Disposable wrong-scope fixture' },
+    { key: 'zaid-business-pro-trial', version: 'qualification-v4', title: 'Disposable expired assertion fixture' },
+  ];
+  const ids = [];
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
+    for (const definition of definitions) {
+      const document = await client.query(
+        `INSERT INTO ghm.commercial_document_version
+           (document_type, document_key, version, title, content_sha256, plan_code)
+         VALUES ('trial_terms', $1, $2, $3, $4, 'business_pro')
+         RETURNING id`,
+        [definition.key, definition.version, definition.title, 'a'.repeat(64)],
+      );
+      const id = Number(document.rows[0].id);
+      await client.query(
+        `INSERT INTO ghm.commercial_document_status_event
+           (document_version_id, status, actor_account_id, source, reason)
+         VALUES ($1, 'draft', NULL, 'qualification_fixture', 'Disposable draft fixture')`,
+        [id],
+      );
+      ids.push(id);
+    }
+    await client.query('COMMIT');
+    return ids;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const createFixtureBusiness = async (accountId, suffix) => {
   const client = await cleanupPool.connect();
   try {
@@ -192,6 +232,7 @@ try {
 
   const activeAccountId = await createFixtureAccount(`${fixture.marker}-active`);
   const founderAccountId = await createFounderFixtureAccount();
+  const commercialDocumentVersionIds = await createCommercialDocumentDraftFixtures();
   const authorityClient = await gatewayPool.connect();
   try {
     await authorityClient.query('BEGIN');
@@ -201,6 +242,14 @@ try {
       return authorityClient.query(
         'SELECT * FROM ghm.gateway_manage_commercial_document_approval_authority($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
         [accountId, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature, action, documentType, documentKey, jurisdictionCountryId, reason],
+      );
+    };
+    const approvalCall = async (accountId, documentVersionId, reason, assertionOverride) => {
+      const context = { documentVersionId, reason };
+      const assertion = assertionOverride ?? signAssertion(accountId, 'commercial.document.status.approve', context);
+      return authorityClient.query(
+        'SELECT * FROM ghm.gateway_approve_commercial_document_version($1,$2,$3,$4,$5,$6,$7)',
+        [accountId, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature, documentVersionId, reason],
       );
     };
     const expectAuthoritySqlState = async (work, code, label) => {
@@ -297,6 +346,85 @@ try {
       ['granted', 'revoked', 'granted', 'granted'],
     );
     console.log('COMMERCIAL APPROVAL AUTHORITY GRANT/REVOKE HISTORY QUALIFICATION: PASS');
+    const approvedV1 = await approvalCall(founderAccountId, commercialDocumentVersionIds[0], 'Owner approves exact trial terms version');
+    assert.equal(approvedV1.rowCount, 1);
+    assert.equal(approvedV1.rows[0].status, 'approved');
+    assert.equal(String(approvedV1.rows[0].authority_event_id), String(regrant.rows[0].authority_event_id));
+    console.log('FOUNDER CAN APPROVE EXACT DRAFT VERSION UNDER CURRENT GRANT: PASS');
+
+    await expectAuthoritySqlState(
+      () => approvalCall(founderAccountId, commercialDocumentVersionIds[0], 'Duplicate approval'),
+      'P0001',
+      'ALREADY APPROVED DOCUMENT VERSION CANNOT BE APPROVED AGAIN',
+    );
+
+    const revokeBeforeV2 = await authorityCall(founderAccountId, 'revoke', 'trial_terms', 'zaid-business-pro-trial', null, 'Revoke before second version approval');
+    assert.equal(revokeBeforeV2.rows[0].event_type, 'revoked');
+    await expectAuthoritySqlState(
+      () => approvalCall(founderAccountId, commercialDocumentVersionIds[1], 'Approval after revocation'),
+      '42501',
+      'REVOKED AUTHORITY CANNOT APPROVE A NEW DOCUMENT VERSION',
+    );
+
+    const regrantBeforeV2 = await authorityCall(founderAccountId, 'grant', 'trial_terms', 'zaid-business-pro-trial', null, 'Re-grant before second version approval');
+    const approvedV2 = await approvalCall(founderAccountId, commercialDocumentVersionIds[1], 'Owner approves second exact version');
+    assert.equal(approvedV2.rows[0].status, 'approved');
+    assert.equal(String(approvedV2.rows[0].authority_event_id), String(regrantBeforeV2.rows[0].authority_event_id));
+    console.log('RE-GRANTED AUTHORITY APPROVES SECOND EXACT DOCUMENT VERSION: PASS');
+
+    await expectAuthoritySqlState(
+      () => approvalCall(founderAccountId, commercialDocumentVersionIds[3], 'Wrong document scope'),
+      '42501',
+      'AUTHORITY FOR ONE DOCUMENT KEY CANNOT APPROVE ANOTHER DOCUMENT KEY',
+    );
+
+    await expectAuthoritySqlState(
+      () => approvalCall(activeAccountId, commercialDocumentVersionIds[2], 'Non-founder approval attempt'),
+      '42501',
+      'NON-FOUNDER ADMINISTRATOR CANNOT APPROVE COMMERCIAL DOCUMENTS',
+    );
+
+    const forgedApproval = signAssertion(founderAccountId, 'commercial.document.status.approve', {
+      documentVersionId: commercialDocumentVersionIds[2], reason: 'Forged approval signature',
+    });
+    forgedApproval.signature = '0'.repeat(64);
+    await expectAuthoritySqlState(
+      () => approvalCall(founderAccountId, commercialDocumentVersionIds[2], 'Forged approval signature', forgedApproval),
+      '42501',
+      'FORGED COMMERCIAL DOCUMENT APPROVAL ASSERTION IS DENIED',
+    );
+
+    const transplantedApproval = signAssertion(founderAccountId, 'commercial.document.status.approve', {
+      documentVersionId: commercialDocumentVersionIds[2], reason: 'Signed approval context',
+    });
+    await expectAuthoritySqlState(
+      () => approvalCall(founderAccountId, commercialDocumentVersionIds[4], 'Signed approval context', transplantedApproval),
+      '42501',
+      'SIGNED APPROVAL ASSERTION CANNOT BE TRANSPLANTED TO ANOTHER DOCUMENT VERSION',
+    );
+
+    const replayApproval = signAssertion(founderAccountId, 'commercial.document.status.approve', {
+      documentVersionId: commercialDocumentVersionIds[2], reason: 'Approval replay check',
+    });
+    const firstApprovalReplayUse = await approvalCall(founderAccountId, commercialDocumentVersionIds[2], 'Approval replay check', replayApproval);
+    assert.equal(firstApprovalReplayUse.rows[0].status, 'approved');
+    await expectAuthoritySqlState(
+      () => approvalCall(founderAccountId, commercialDocumentVersionIds[2], 'Approval replay check', replayApproval),
+      '42501',
+      'REPLAYED COMMERCIAL DOCUMENT APPROVAL ASSERTION IS DENIED',
+    );
+
+    const expiredApproval = signAssertion(founderAccountId, 'commercial.document.status.approve', {
+      documentVersionId: commercialDocumentVersionIds[4], reason: 'Expired approval assertion',
+    }, Math.floor(Date.now() / 1000) - 61);
+    await expectAuthoritySqlState(
+      () => approvalCall(founderAccountId, commercialDocumentVersionIds[4], 'Expired approval assertion', expiredApproval),
+      '42501',
+      'EXPIRED COMMERCIAL DOCUMENT APPROVAL ASSERTION IS DENIED',
+    );
+
+    console.log('FOUNDER-ONLY COMMERCIAL DOCUMENT APPROVAL TRANSITION QUALIFICATION: PASS');
+
   } finally {
     await authorityClient.query('ROLLBACK').catch(() => {});
     authorityClient.release();
