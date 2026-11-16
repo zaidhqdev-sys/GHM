@@ -36,7 +36,9 @@ CREATE TABLE ghm.commercial_document_approval_authority_event (
   CONSTRAINT commercial_document_authority_request_id_valid
     CHECK (request_id IS NULL OR length(btrim(request_id)) BETWEEN 1 AND 200),
   CONSTRAINT commercial_document_authority_metadata_object
-    CHECK (jsonb_typeof(metadata) = 'object')
+    CHECK (jsonb_typeof(metadata) = 'object'),
+  CONSTRAINT commercial_document_authority_event_id_type_unique
+    UNIQUE (id, event_type)
 );
 
 CREATE INDEX commercial_document_authority_history_idx
