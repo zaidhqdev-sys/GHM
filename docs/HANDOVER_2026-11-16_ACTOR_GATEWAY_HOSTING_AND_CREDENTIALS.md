@@ -1938,3 +1938,18 @@ Source review confirmed:
 The next qualification increment is therefore a dedicated disposable-PostgreSQL integration exercise for production batch selection and execution: explicit batch success, empty-manifest/no-batch refusal, stale inventory refusal, skipped-prefix refusal, plan-only rollback/no ledger writes, injected migration failure/atomic rollback, and repeat-run/idempotency. It must use only the CI disposable PostgreSQL service or another already available local disposable database. Do not create a paid Render database/service or use production for qualification.
 
 The CI run on the current PR head must finish before reporting exact-head CI as passed. No production batch is defined or authorized. No production migration, DDL, ACL, role, credential, secret, Render setting, deployment, payment or consent state changed.
+
+### Dedicated disposable PostgreSQL batch-runner qualification added — 2026-11-16 22:01Z
+
+Implemented a dedicated integration qualification path for the actual compiled migration runner, isolated from production:
+
+- Added an explicit qualification-only switch requiring both `NODE_ENV=test` and `GHM_MIGRATION_BATCH_QUALIFICATION=true`.
+- The qualification switch accepts only `localhost` or `127.0.0.1` and explicitly refuses database name `ghm_db`. Production still independently requires verified TLS.
+- Added `scripts/qualify-production-migration-batch-runner-postgres.mjs`. It creates uniquely named disposable PostgreSQL databases using the CI PostgreSQL administrator, creates the least-privilege `ghm_migrator` / `ghm_schema_owner` execution fixture, and runs the compiled production migration runner against copied fixture migration/config trees.
+- The scenarios cover plan-only rollback/no ledger writes, empty-manifest/missing-batch refusal, stale-inventory refusal, skipped-prefix refusal, successful exact contiguous-prefix execution, injected SQL failure with atomic DDL+ledger rollback, sequential follow-up batches, and final repeat-run no-op.
+- Added npm command `qualify:production-migration-batch-runner` and CI step immediately after build, before the existing full-migration disposable PostgreSQL qualification.
+- Each temporary database is terminated and dropped in a `finally` cleanup path. The fixture uses CI's existing PostgreSQL 18 service; no paid Render resource or production database is used.
+
+Source commits on PR branch include runner qualification guard, integration script, package command and CI step. This is implementation committed but not yet proven: the new exact-head CI run must pass before calling the scenarios qualified. No production batch was added; `config/production-migration-batches.json` remains `{"batches":[]}`. No production migration, DDL, role, ACL, credential, secret, Render setting/deployment, payment or consent state changed.
+
+Potential follow-up during CI: if the isolated runner's strict principal checks expose a fixture mismatch, fix the test fixture rather than weakening production identity assertions.
