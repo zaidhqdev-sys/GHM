@@ -667,3 +667,19 @@ This PR adds the database operation and contract test only; it does not yet wire
 - Review must verify function ownership/search path, HMAC context binding, replay handling, founder bootstrap checks, advisory-lock serialization, and exact EXECUTE grants.
 - Do not merge until all exact-head checks pass and SQL review is complete.
 - No production migration, role/grant/credential change, Actor Gateway hosting, deployment, legal approval, consent/payment write or launch activation is authorized.
+
+
+### 21.1 First CI failure — exact Actor Gateway ACL allow-list (2026-11-16)
+
+The initial PR #290 quality run `43901549176` failed at `Qualify isolated actor gateway database principal`, not at SQL migration application or TypeScript build.
+
+The diagnostic identified both new SECURITY DEFINER functions as unsafe and showed them as unexpected executable functions. Root causes:
+1. Their search paths were `pg_catalog, ghm`, while the Actor Gateway verifier requires the pinned temporary-safe `pg_catalog, ghm, pg_temp`.
+2. The exact Actor Gateway executable-function allow-list did not yet include the two reviewed signatures.
+
+Corrections:
+- Both functions now pin `pg_catalog, ghm, pg_temp`.
+- `src/actor-gateway/database-privileges.ts` now includes both exact signatures in its expected function allow-list.
+- `src/actor-gateway/database-startup-acl-contract.test.ts` asserts those signatures remain present in the allow-list.
+
+A fresh exact-head run is required. Do not weaken the ACL verifier or remove its exact-function check to make CI pass.
