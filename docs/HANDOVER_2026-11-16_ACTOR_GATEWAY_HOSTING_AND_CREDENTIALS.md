@@ -1577,3 +1577,103 @@ The existing runtime privilege model is intentionally a mixture of direct SELECT
 5. Keep production role/ACL state unchanged until a small migration is source-tested, qualified against the exact production prefix, and can be rolled out with rollback/verification.
 
 All production SQL in this section was read-only catalogue inspection. No migrations, grants, revokes, RLS policies, role changes, credentials, secrets, Render settings, service deployments, or payment/consent actions were changed.
+
+
+## 35. 2026-11-16 — staged Business Identity INSERT hardening PR #296
+
+A first narrowly scoped ACL hardening change has been authored on branch `hardening/business-identity-insert-column-acl`, PR #296:
+https://github.com/zaidhqdev-sys/GHM/pull/296
+
+### Exact source-to-privilege contract
+
+Current `src/resources/business-identity/repository.ts` performs the Business creation INSERT with exactly:
+- `ghm.business`: `name, slug, verification_status, is_active`
+- `ghm.business_membership`: `business_id, account_id, membership_role, membership_status, created_by`
+
+The current production table-level INSERT grants on these two relations are broader than the repository's required input. New migration `20261116200000_narrow_business_identity_runtime_insert.sql`:
+1. revokes table-level INSERT from `ghm_runtime` on `ghm.business`;
+2. grants INSERT only on the four repository-used Business columns;
+3. revokes table-level INSERT from `ghm_runtime` on `ghm.business_membership`;
+4. grants INSERT only on the five repository-used owner-membership columns.
+
+The migration intentionally preserves SELECT, existing UPDATE/DELETE boundaries, identity sequence privileges and all other grants. It does not alter account identity grants, SECURITY DEFINER functions, role memberships, RLS, or schema/default privileges.
+
+### Qualification artifact
+
+Added `src/db/business-identity-runtime-insert-acl-migration-contract.test.ts`, included in `npm test`. It asserts:
+- both table-level INSERT privileges are revoked;
+- only the exact repository-required column INSERT privileges are granted;
+- repository SQL still uses those exact field lists and fixed owner/unverified values;
+- no SELECT/sequence or unrelated privilege is revoked/granted.
+
+PR #296 is currently a draft and is not merged. Exact-head CI was observed starting for commit `9ed825ee6a179ce16b1a47262173b7b7bb49d615`:
+- `quality`: in progress
+- `web-quality`: in progress
+- Cloudflare Pages: in progress
+
+No CI result has yet been observed as passed. Do not merge or apply the migration until exact-head checks pass and the production-prefix migration qualification is completed.
+
+### Production status and sequencing
+
+- Production ledger latest evidenced version remains `20261109210000`.
+- This migration version `20261116200000` is therefore pending and intentionally NOT added to the production pending-migration allowlist. The allowlist is an audited production pre-deploy contract, not an automatic list of every new migration.
+- No production SQL, ACL, role, credentials, secrets, Render configuration, service, or deployment was changed.
+- No RLS policy was added. The existing finding that runtime-accessible relations lack RLS remains open.
+- This is the first low-risk direct-write narrowing candidate. Opportunity lifecycle and requirement replacement remain separate follow-up designs and must not be bundled into this change.
+
+### Next steps
+
+1. Wait for exact-head quality/web-quality/Cloudflare results; inspect and fix any failures on this branch.
+2. If CI passes, review the migration against the exact production schema/ACL and migration prefix. Confirm all five membership fields and four Business fields remain valid against production defaults, triggers, constraints and repository code.
+3. Only after migration-prefix and backup/rollback gates are satisfied, consider a small production migration rollout. Do not include unrelated pending migrations.
+4. Then take the next separate write-surface candidate. Opportunity UPDATE is higher risk and should be handled with actor-bound lifecycle functions, not a simple broad column grant replacement.
+
+
+### CI exact-HEAD clarification — 2026-11-16 20:30 UTC
+
+The quality job rerun was requested for code commit `9ed825ee6a179ce16b1a47262173b7b7bb49d615` (workflow run 43949522719). Its `web-quality` job passed; its `quality` job is still executing through the repository's broader disposable-PostgreSQL qualification suite. The handover-only commit `3d7342a4e3091d2cfffb45c0fa5c27a7e8a0a591` subsequently became the PR head. Therefore, even a green result on 9ed825e is not sufficient to call checks green for the current PR head. A fresh exact-head CI run is required after this note is committed. No merge or production rollout is authorized by the in-progress run.
+
+
+### CI runner cancellation investigation — 2026-11-16 20:33 UTC
+
+The quality job for workflow run 43949522719 (PR #296 merge ref checked out at merge commit `f0b49210a133a953740a26567edef89d3e3fc3f0`, containing code commit `9ed825e`) was canceled again while progressing through the broad disposable-PostgreSQL suite. Its logs show the job completed substantial database qualification work and then ended with GitHub's generic `The operation was canceled`; no failing assertion or migration-contract failure was reported in the captured tail. This is a cancellation, not a pass and not evidence that the new ACL migration failed.
+
+The current branch head is now `accaad33f5b18c45c59835400ac569592b93f751`. A subsequent documentation-only handover commit `b2c9cd2691013a7c3e674c8282b96a863aa6aedd` was excluded from CI by the workflow's `paths-ignore: '**/*.md', 'docs/**'` rule. A SQL comment-only commit `accaad3` was added to ensure a non-doc change exists at the current head; at inspection time only Cloudflare Pages had reported a check and no fresh CI run was returned for this head.
+
+Do not represent CI as green. The earlier quality rerun was canceled; web-quality passed on the earlier code commit; Cloudflare Pages is a preview/build check only. The next action is to obtain a fresh, non-canceled CI quality run on the latest PR head, or identify the external cancellation/concurrency cause before relying on any test status. The PR remains draft and unmerged. Production remains unchanged.
+
+
+### Exact-head CI recovered — 2026-11-16
+
+A fresh CI workflow run was triggered automatically for the then-current PR head and completed successfully:
+- Workflow run: `43950351464` (run number 5179).
+- Tested commit: `350b0f3285a8fb4e5aa1815303fe88e56dc8f065`.
+- `quality`: success.
+- `web-quality`: success.
+- `Cloudflare Pages`: success.
+- PR #296 remains OPEN and DRAFT; no merge has occurred.
+
+The prior cancellations were therefore overcome by a fresh successful run. The successful run is on the current PR head; the documentation-only handover update that follows is covered by the workflow's docs path-ignore rule and does not alter executable code.
+
+### Additional production schema compatibility check — read-only
+
+The production catalog was queried for `ghm.business` and `ghm.business_membership` to validate the proposed column grants against actual column definitions, defaults, identity properties, constraints, and triggers.
+
+Confirmed:
+- All nine proposed INSERT columns exist with the expected names and compatible types.
+- Both `id` columns are generated identity primary keys; callers correctly omit them.
+- Business `verification_status` defaults to `unverified`; `is_active` defaults to true; other required Business fields omitted by the repository have defaults (including timestamps, verification flags, rating aggregates, tier and counters).
+- Membership `membership_status` defaults to `active`; timestamps default to `now()`; the repository explicitly supplies its status and creator.
+- Membership role CHECK permits `owner`; status CHECK permits `active`.
+- Membership foreign keys require valid Business and Account Identity rows; unique constraint enforces one membership per business/account.
+- Business constraints include non-empty name/slug and valid verification status; the repository's initial values satisfy those checks.
+- Neither table has user-defined triggers.
+- Existing column-level ACLs on Business are UPDATE-only for `updated_at`, `rating`, and `review_count`; no pre-existing column-level INSERT grants were present on either target table. Thus the proposed table-level INSERT revoke plus explicit column grants does not leave additional legacy column INSERT grants behind.
+
+This is a compatibility/catalog check, not a production migration dry-run. It does not validate the full outstanding migration prefix, backup/rollback readiness, or effects of migration-runner ordering.
+
+### Current decision
+
+PR #296 now has green exact-head CI and the production catalog supports the exact column contract. Keep it draft/unmerged for now because the production ledger is still at `20261109210000`, while this migration is `20261116200000`; the intervening migration prefix and its checksums/provenance have not yet been fully reconciled and qualified. Do not add it to the production pending allowlist or apply it independently.
+
+Next work is to finish deterministic production ledger↔repository reconciliation, classify the entire intervening prefix (including cutovers and retained historical provenance), and establish backup/rollback gates. Once that is complete, decide whether this small migration can be included in the next controlled prefix rollout. No production SQL or ACL was changed in this pass.
