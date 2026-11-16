@@ -413,3 +413,17 @@ The broader whole-database audit discovered a separate runtime function allow-li
 - The latest documentation head at the time of this entry is `4d9a75b52a41f218fc117064dc8db403c3539e5d`; it also requires exact-head CI confirmation.
 
 No storage production grants, roles, secrets, provider credentials, buckets, objects, deployments, traffic or data were changed. No PR was merged.
+
+
+
+---
+
+## Guarded legacy storage metadata grant cutover and rollback artifacts — 2026-11-16
+
+PR #286 now contains a manual, transactional five-function cutover and rollback pair under `database/cutovers/` (not migrations). Both require the migrator/schema-owner identity, verify the five legacy functions' owner/SECURITY DEFINER/pinned search_path, reject PUBLIC EXECUTE, and require all five Actor Gateway wrappers to exist with Actor Gateway EXECUTE.
+
+The cutover removes PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` EXECUTE on the five legacy metadata functions. The rollback restores only the reviewed `ghm_runtime` grant and keeps PUBLIC/migrator/Actor Gateway denied. The distinct `storage_get_public_business_logo(bigint)` lookup is intentionally not revoked.
+
+The disposable qualification now executes the exact SQL artifacts under the schema-owner role using three distinct localhost disposable-role URLs and explicit mutation opt-in. It verifies the exact before/after/rollback ACL state and uses PREPARE to test direct-call permission denial before function execution.
+
+These artifacts are not production-authorized. The live production wrappers are absent and their migrations are pending; no production grants, migrations, secrets or deployments were changed. Keep the production cutover blocked pending deployed gateway/Resource API proof, isolated DB principal, approved migration sequence, provider E2E, Amanda/Render role escalation and fresh verified backup.
