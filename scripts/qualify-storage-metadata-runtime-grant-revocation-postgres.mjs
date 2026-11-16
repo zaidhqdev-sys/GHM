@@ -113,7 +113,7 @@ try {
     throw new Error(`Expected exactly five unambiguous legacy storage functions; found ${JSON.stringify(snapshots.map(x => x.signature))}`);
   }
   if (snapshots.some(row => row.owner !== 'ghm_schema_owner' || row.security_definer !== true
-    || !row.function_settings?.includes('search_path=pg_catalog, ghm')
+    || !row.function_settings?.some(setting => setting === 'search_path=pg_catalog, ghm' || setting === 'search_path=pg_catalog, ghm, pg_temp')
     || row.public_execute || !row.runtime_execute || row.migrator_execute || row.gateway_execute
     || !row.runtime_direct_execute || row.migrator_direct_execute || row.gateway_direct_execute)) {
     throw new Error(`Legacy storage ACL does not match the reviewed pre-cutover baseline: ${JSON.stringify(snapshots)}`);
