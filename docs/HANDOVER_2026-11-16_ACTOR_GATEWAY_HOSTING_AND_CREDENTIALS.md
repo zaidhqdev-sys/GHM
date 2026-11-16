@@ -275,3 +275,26 @@ The three legacy web services were observed as not suspended, but this audit did
 
 **Audit scope:** read-only Render service and database inventory only. No service state, deployment, database, role, grant, environment variable, secret, payment setting, or billing configuration was changed. No paid resource was created.
 
+
+
+## 11. 2026-11-16 follow-up — PayFast sandbox credentials saved; provider decision conflict identified
+
+The owner confirmed the PayFast sandbox merchant account is active. The owner reports that the sandbox Merchant ID, Merchant Key, and Salt Passphrase are present in the PayFast dashboard; the Salt Passphrase is 15 characters and PayFast accepted/saved it (PayFast minimum reported by owner: 12 characters). All credential values were redacted and must remain out of chat, GitHub, logs, screenshots, and handover documents. No PayFast credential has been configured in GHM, Connect, or any hosting environment.
+
+### Mainline provider decision must be reconciled before any transaction
+
+A read of the current Connect `main` Milestone 52 payment-provider integration document shows that the approved initial South African provider adapter is **Paystack**, not PayFast. Its TEST verification and technical approval are recorded, while commercial launch remains unauthorized and the production LIVE track remains outstanding. The same document explicitly states that the historical `payfast-webhook` is not reused/canonical.
+
+The current Connect integration specification also preserves the frozen commercial state: `launchAuthorized=false` and `onlineSubscriptionActivation=false`. It states that PayFast approval must not be conflated with Paystack status and does not authorize payment-provider activation.
+
+The Connect PR #68 payment-freeze and Milestone 52 contract checks are therefore important gates, not permission to switch the provider. PR #33 remains an incompatible historical bridge (Supabase identity plus legacy Render sandbox runtime) and must remain disabled/unmerged. GHM PR #233 remains parked pending provider evidence for `payment_date` timezone semantics.
+
+### Current conclusion and next gate
+
+- PayFast sandbox account setup is complete; credential setup in application hosting is not.
+- GHM's PayFast checkout/ITN implementation and local tests do not establish that Connect's current commercial journey is authorized or wired to PayFast.
+- Do not configure credentials, invoke checkout, send an ITN, create a payment attempt, or initiate a sandbox transaction yet.
+- First reconcile the explicit provider choice across Connect's approved Milestone 52 architecture, Connect PR #68, and GHM's existing PayFast routes. If the owner intends to change the approved provider from Paystack to PayFast, record that as a deliberate architecture/governance decision before implementation.
+- Preserve all commercial launch and online subscription activation freezes. The PayFast sandbox account does not change production authorization.
+
+**Audit scope:** read-only source and documentation inspection plus owner-reported account setup. No application secrets, environment variables, source code, payment settings, database state, deployment, or provider transactions were changed.
