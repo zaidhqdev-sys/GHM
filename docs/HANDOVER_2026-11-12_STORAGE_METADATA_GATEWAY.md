@@ -413,3 +413,30 @@ The broader whole-database audit discovered a separate runtime function allow-li
 - The latest documentation head at the time of this entry is `4d9a75b52a41f218fc117064dc8db403c3539e5d`; it also requires exact-head CI confirmation.
 
 No storage production grants, roles, secrets, provider credentials, buckets, objects, deployments, traffic or data were changed. No PR was merged.
+
+
+---
+
+## Live production ACL confirmation — 2026-11-16 04:06 UTC
+
+A repository-root read-only inspector was run against Render `ghm-db` / `ghm_db` using verified TLS. Connection identity was `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, and `transaction_read_only=on`.
+
+### Production catalog result
+
+The five legacy functions exist and share these properties: owner `ghm_schema_owner`, SECURITY DEFINER, pinned `search_path=pg_catalog, ghm`, PUBLIC EXECUTE=false, `ghm_runtime` EXECUTE=true, `ghm_actor_gateway` EXECUTE=false, `ghm_migrator` EXECUTE=false, and `ghm_schema_owner` EXECUTE=true:
+
+- `storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)`.
+- `storage_get_object(bigint,bigint)`.
+- `storage_mark_available(bigint,text)`.
+- `storage_mark_deleted(bigint)`.
+- `storage_mark_deletion_pending(bigint)`.
+
+All five signed gateway wrappers are absent from the live production catalog: `gateway_storage_create_pending`, `gateway_storage_get_object`, `gateway_storage_mark_available`, `gateway_storage_mark_deleted`, and `gateway_storage_mark_deletion_pending`. The corresponding source and disposable qualification do not establish production installation; the wrapper migrations remain pending.
+
+### Corrected live-state interpretation
+
+The legacy direct-runtime storage authority is still active in production. The Actor Gateway does not yet have the replacement wrapper functions in `ghm_db`. Therefore, the prior disposable revocation/rollback rehearsal is evidence of qualification only, not evidence of a production cutover.
+
+Do not revoke the five legacy grants before the deployed Resource API is demonstrably using the signed gateway for every storage operation and the provider-attested lifecycle has passed against a dedicated non-production target. The wrapper migrations also do not, by themselves, revoke legacy function grants. A separate, ordered grant-cutover and rollback procedure is required.
+
+The inspector performed no DDL/DML and changed no production data, migration ledger, roles, grants, secrets, Render settings, deployments, buckets, or traffic. Existing restrictions remain: no mutation against `zaid-ghm-production`, no new paid infrastructure, and no production cutover without a fresh verified backup and resolved Render role-administration path (including the Amanda/Render support escalation recorded in the role-separation handover).
