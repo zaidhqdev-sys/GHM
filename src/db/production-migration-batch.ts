@@ -12,7 +12,7 @@ const assertUniqueOrdered = (items: MigrationIdentity[], label: string): void =>
   const seen = new Set<string>();
   let previous = '';
   for (const item of items) {
-    if (!/^\\d{14}$/.test(item.version) || !/^[a-z0-9][a-z0-9_-]*$/.test(item.name)) {
+    if (!/^\d{14}$/.test(item.version) || !/^[a-z0-9][a-z0-9_-]*$/.test(item.name)) {
       throw new Error(`${label} contains an invalid migration identity`);
     }
     if (seen.has(item.version)) throw new Error(`${label} contains duplicate version ${item.version}`);
