@@ -25,17 +25,20 @@ test('authority grant/revoke events reference one immutable authority identity',
   assert.match(migration, /authority_id, occurred_at DESC, id DESC/);
 });
 
-test('document approval must cite a specific authority grant event', () => {
-  assert.match(migration, /ADD COLUMN approval_authority_event_id bigint[\s\S]*REFERENCES ghm\.commercial_document_approval_authority_event/);
-  assert.match(migration, /status = 'approved' AND approval_authority_event_id IS NOT NULL/);
-  assert.match(migration, /status <> 'approved' AND approval_authority_event_id IS NULL/);
+test('document approval references only an authority event whose type is granted', () => {
+  assert.match(migration, /UNIQUE \(id, event_type\)/);
+  assert.match(migration, /ADD COLUMN approval_authority_event_id bigint/);
+  assert.match(migration, /ADD COLUMN approval_authority_event_type text/);
+  assert.match(migration, /FOREIGN KEY \(approval_authority_event_id, approval_authority_event_type\)[\s\S]*REFERENCES ghm\.commercial_document_approval_authority_event\(id, event_type\)/);
+  assert.match(migration, /status = 'approved'[\s\S]*approval_authority_event_type = 'granted'/);
+  assert.match(migration, /status <> 'approved'[\s\S]*approval_authority_event_type IS NULL/);
   assert.match(migration, /latest event is a[\s\S]*grant/);
 });
 
 test('authority identity and event history reject update, delete and truncate', () => {
   for (const table of ['commercial_document_approval_authority', 'commercial_document_approval_authority_event']) {
-    assert.match(migration, new RegExp(`BEFORE UPDATE OR DELETE ON ghm\\.${table}`));
-    assert.match(migration, new RegExp(`BEFORE TRUNCATE ON ghm\\.${table}`));
+    assert.match(migration, new RegExp('BEFORE UPDATE OR DELETE ON ghm\\.' + table));
+    assert.match(migration, new RegExp('BEFORE TRUNCATE ON ghm\\.' + table));
   }
 });
 
