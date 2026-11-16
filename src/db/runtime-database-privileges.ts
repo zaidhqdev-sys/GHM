@@ -54,6 +54,11 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)'
 ] as const;
 
+const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
+  'ghm.read_business_registration_identity(bigint, bigint)',
+  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
+] as const;
+
 const CAMPAIGN_REVIEW_LEGACY_FUNCTIONS = [
   'ghm.create_campaign(bigint, bigint, text)',
   'ghm.update_campaign(bigint, bigint, text, text)',
@@ -107,12 +112,13 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
 ] as const;
 
 // Only groups with an identified manual cutover artifact are modeled here.
-// Registration identity is deliberately excluded: signed wrappers exist, but no
-// authoritative legacy-function revoke/rollback artifact has been identified.
-// This function-only model does not prove that any cutover is active in production.
-// Verify cutover/rollback artifacts and production catalog state separately.
+// Registration identity has an explicit manual revoke artifact and disposable-PostgreSQL
+// qualification. No standalone rollback artifact exists; this ACL model does not imply
+// rollback authority or prove that any cutover is active in production.
+// Verify operational cutover state and production catalog state separately.
 export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
+  registrationIdentity: REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
   authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
   capabilityGovernance: CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS,
   businessCapabilityMutations: BUSINESS_CAPABILITY_LEGACY_FUNCTIONS,
@@ -181,8 +187,8 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
     stage.map(normalizeSignature).sort(),
   );
   if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
-      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 15
-      || stages.length !== 256) {
+      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
+      || stages.length !== 512) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
