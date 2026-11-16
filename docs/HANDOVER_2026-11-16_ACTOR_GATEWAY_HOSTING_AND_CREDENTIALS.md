@@ -1999,3 +1999,14 @@ PR #297 remains open, draft and unmerged at head `b6750efae7d1764bded417a2c93a75
 Correction to the preceding backup-status note: the latest known production export is the **November 14** archive, not the November 4 archive. Exact artifact: `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz`, 81,507 bytes, SHA-256 `2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`. Its outer gzip/tar listing was validated. It was extracted to `C:\Users\zaidh\AppData\Local\Temp\GHM-production-export-inspection-20261114\2026-11-14T14_26Z\ghm_db`; the inner PostgreSQL directory-format backup TOC validation passed (770 lines / 760 TOC entries), PostgreSQL 18.6 / `pg_dump` 18.6 / `pg_restore` 18.6, database `ghm_db`, 105 migration-ledger rows through `20261109210000`.
 
 This archive is already verified as a readable PostgreSQL directory-format dump; it must not be described as missing. However, it has **not** yet been restored into a disposable PostgreSQL 18 database, so recoverability is not yet proven. No new production dump is needed as the immediate next step. Next step is read-only inventory of the existing local PostgreSQL 18 Windows service/port and available disk space, followed by restore into a uniquely named local disposable database only. Do not overwrite or delete either existing archive, do not touch the local production export evidence, and do not connect the restore operation to Render.
+
+### Render logical export retention clarified — 2026-11-16 22:22Z
+
+The November 14 artifact `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz` matches Render's documented on-demand logical export format and filename convention. Treat it as a **Render-generated logical export downloaded to the laptop**, not a self-managed `pg_dump` and not a Render PITR snapshot.
+
+Render's current official Postgres backup documentation states:
+- Dashboard-created logical exports are retained by Render for **seven days after creation**, regardless of workspace plan.
+- Once downloaded, the local `.dir.tar.gz` file is a separate copy and is not subject to Render's seven-day deletion window; its local durability depends on the laptop/storage and user-managed copies.
+- PITR is a separate feature: recovery window is 3 days for Hobby workspace and 7 days for Pro or higher; PITR is unavailable for Free compute instances.
+
+Thus the 2026-11-14 Render export is still within the documented seven-day Render-side retention window as of this note, and its downloaded local copy has already passed archive SHA-256 and PostgreSQL directory TOC inspection. It has **not** passed a restore test. The recovery gate remains open until a disposable local PostgreSQL 18 restore is completed and validated. Do not create a duplicate export just because the Render-side copy expires; preserve the downloaded local file and verify its hash before restore.
