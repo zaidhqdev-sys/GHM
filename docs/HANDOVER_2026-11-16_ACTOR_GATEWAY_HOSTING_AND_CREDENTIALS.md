@@ -2045,3 +2045,26 @@ Post-restore read-only verification:
 **Limitations:** this is not a Render-side PITR test, does not prove recovery of changes made after the November 14 export, and does not prove production restore time/object-level application consistency beyond the checks recorded above. No restore was directed at Render. The original archive and extracted source were not modified. The disposable local restore database is preserved for further read-only inspection; do not drop it without an explicit decision.
 
 No production database, migration, DDL, role, ACL, credential, secret, Render setting, service, deployment, payment or consent state was changed. No recurring cost was incurred.
+
+
+### First contiguous production migration prefix — security dependency review — 2026-11-16 22:36Z
+
+A source-level review was performed against the first six entries in the committed 48-migration production pending inventory. This is a review of repository SQL only; no production SQL was run.
+
+Findings:
+- `20261110010000_add_business_supplier_classification.sql` adds `ghm.business.is_supplier` and creates `ghm.update_business_supplier_classification(bigint,bigint,boolean)`. The function is SECURITY DEFINER, accepts `p_account_id` from its caller, checks active owner/administrator membership, and grants EXECUTE to `ghm_runtime`.
+- `20261110100000_create_account_onboarding_progress.sql` creates the onboarding progress table and grants the runtime SELECT/INSERT/UPDATE plus sequence usage.
+- `20261110120000_create_business_relationship_outcome_read_models.sql` creates relationship/outcome read-model tables, seeds reference types, and grants runtime SELECT only.
+- `20261110140000_allow_pending_storage_object_cleanup.sql` changes the storage lifecycle constraint and replaces a SECURITY DEFINER deletion-pending function, granting EXECUTE to runtime.
+- `20261110160000_add_admin_capability_catalogue_governance.sql` creates/replaces three SECURITY DEFINER capability-governance functions. They accept `p_actor_account_id` from their caller, check the supplied ID for active administrator status, and grant EXECUTE to `ghm_runtime`.
+- `20261110210000_add_actor_gateway_principal_guard.sql` validates the pre-provisioned `ghm_actor_gateway` login and its bounded membership, then installs `ghm.assert_actor_gateway(bigint)`. This is only the principal/identity foundation; it does not itself install the complete signed-assertion feature gateway or prove that the dedicated service is hosted.
+
+**Rollout implication:** do not select the oldest migration as a standalone production batch merely because it is first in order. The supplier-classification and capability-governance SECURITY DEFINER functions trust a caller-supplied account identifier for their authorization check and are executable by `ghm_runtime`. Their production safety must be assessed together with the actual runtime call path and the later signed-assertion cutover migrations that bind actor identity to the authenticated gateway request context. The actor-principal guard alone does not close that dependency.
+
+Before defining the first production batch:
+1. Trace the current runtime call sites and prove how account/actor IDs are derived and protected at the API boundary.
+2. Map the exact contiguous migration prefix through the relevant signed-assertion replacements/revocations; do not skip intervening migrations.
+3. Confirm the dedicated Actor Gateway service, credential, secrets, ACL chain and health checks are ready. The dedicated always-on Render service remains uncreated because its recurring cost is not approved.
+4. Only then propose a small contiguous batch and inspect plan-only output. Until then, `config/production-migration-batches.json` must remain empty.
+
+This review does not conclude that a production exploit occurred; it identifies an authorization dependency that must be closed and qualified before these pending functions are exposed in production. No migration, DDL, ACL, role, credential, secret, Render setting, service, deployment or application data was changed.
