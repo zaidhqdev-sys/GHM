@@ -2070,19 +2070,12 @@ Before defining the first production batch:
 This review does not conclude that a production exploit occurred; it identifies an authorization dependency that must be closed and qualified before these pending functions are exposed in production. No migration, DDL, ACL, role, credential, secret, Render setting, service, deployment or application data was changed.
 
 
-### Hosting affordability decision — 2026-11-16 22:46Z
+### Hosting decision — 2026-11-16 22:52Z
 
-The owner has confirmed that the approved additional recurring hosting ceiling is **US$7/month total**, covering the dedicated Actor Gateway only. The owner cannot take on a second US$7/month service for the separate Authentication Issuer. Do not create, subscribe to, or otherwise incur a second paid service cost.
+The owner has confirmed a maximum additional recurring hosting budget of **US$7/month**, allocated to the dedicated Actor Gateway only.
 
-The previous estimate of US$7/month for the Actor Gateway remains the only approved additional hosting budget. The Authentication Issuer's separate-host requirement is not waived. Do not silently:
-- merge the issuer and Actor Gateway into one process/service;
-- place issuer private signing material or its database credential in the Actor Gateway environment;
-- weaken Argon2id/password-hashing limits;
-- move issuer operations to an unqualified Free Worker/serverless runtime;
-- deploy the issuer to GHM-Internal-Runtime or another existing service without a reviewed design proving the required trust boundaries and resource budget.
+This is the complete approved hosting scope for this work. Do not introduce, provision, subscribe to, or incur costs for any additional service, process, provider, or infrastructure component without first presenting the need, alternatives, and full cost to the owner and receiving explicit approval.
 
-**Next engineering task:** investigate a genuinely cost-neutral hosting/design option for the Authentication Issuer using already-paid/available capacity, while preserving distinct signing-key custody, database principal/ACL boundaries, password-hashing CPU requirements, network/TLS controls and operational availability. This is an investigation only; no hosting topology change is approved by the affordability decision. In particular, co-location is not accepted merely because it avoids a bill: document exactly which isolation properties would change and obtain owner agreement before implementing any such change.
-
-Until a qualified option exists, keep the Authentication Issuer deployment and production cutover blocked. The Actor Gateway's US$7/month service may be provisioned separately once its own production DB migration, role/credential, backup and secret gates are satisfied; do not treat this budget decision as authorization to bypass those gates.
+Continue the Actor Gateway work within this boundary. No additional hosting requirement is authorized by this handover.
 
 No Render service, deployment, environment variable, secret, database role, grant, migration or production data was changed by this decision.
