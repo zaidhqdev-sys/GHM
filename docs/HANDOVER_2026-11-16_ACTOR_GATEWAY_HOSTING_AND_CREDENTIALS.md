@@ -148,3 +148,55 @@ Do not include passwords or connection strings in the output. Capture only query
 ### Change record for this follow-up
 
 Only read-only Render inventory and catalogue queries were performed. No role, membership, grant, migration, secret, service, environment variable, deployment, database setting or allowlist was changed. No recurring cost was incurred.
+
+
+## 8. 2026-11-16 follow-up — local external psql session confirms default credential is not schema administrator
+
+The user connected locally from PowerShell/psql using the Render external database URL associated with the Dashboard credential marked **Default** (ghm_app_user). The URL itself was not retained in chat or this document.
+
+The read-only identity check returned:
+- session_user=ghm_app_user
+- current_user=ghm_db_user
+- current_database=ghm_db
+- has_table_privilege(current_user, 'ghm.ghm_schema_migrations', 'SELECT') = false
+
+The user then inspected role attributes and memberships read-only:
+
+| Role | SUPERUSER | CREATEROLE | CREATEDB | INHERIT | LOGIN | BYPASSRLS |
+|---|---:|---:|---:|---:|---:|---:|
+| ghm_actor_gateway | false | false | false | false | true | false |
+| ghm_app_user | false | false | false | true | true | false |
+| ghm_db_user | false | true | true | true | true | false |
+| ghm_migrator | false | false | false | false | true | false |
+| ghm_schema_owner | false | false | false | false | false | false |
+
+Relevant membership rows observed:
+
+- ghm_app_user → ghm_db_user: ADMIN=false, INHERIT=true, SET=true.
+- ghm_db_user → ghm_actor_gateway: ADMIN=true, INHERIT=false, SET=false.
+- ghm_db_user → ghm_migrator: ADMIN=true, INHERIT=false, SET=false.
+- ghm_db_user → ghm_schema_owner: ADMIN=true, INHERIT=false, SET=false.
+- ghm_db_user → ghm_payment_provider: ADMIN=true, INHERIT=false, SET=false.
+- ghm_db_user → ghm_runtime: two membership entries were returned, one INHERIT=true/SET=true/ADMIN=false and another INHERIT=false/SET=false/ADMIN=true.
+- ghm_app_user and ghm_db_user also have memberships in pg_read_all_stats and pg_signal_backend with INHERIT=true/SET=true/ADMIN=false.
+
+The migration ledger ownership query returned:
+- schema: ghm
+- table: ghm_schema_migrations
+- owner: ghm_schema_owner
+
+### Interpretation and guardrails
+
+The Dashboard label **Default** identifies the credential selected by Render for the managed connection URL; it does not mean the resulting PostgreSQL role is a superuser or has unrestricted access. The observed connection is explicitly not a superuser session, and the effective ghm_db_user role cannot SELECT the migration ledger.
+
+The ghm_db_user membership in ghm_schema_owner has ADMIN OPTION but SET=false. This does not authorize assuming the schema-owner role for a ledger read. The same bounded ADMIN=true / INHERIT=false / SET=false pattern is present for the migrator and Actor Gateway memberships. Preserve these observed settings; do not enable SET, grant ledger SELECT to the app user, alter ownership, or change role memberships as an audit workaround.
+
+The database role ghm_db_user has CREATEROLE and CREATEDB, but is not SUPERUSER. Do not conflate those attributes with unrestricted administrator authority.
+
+### Next step
+
+The Render Dashboard's current Default external credential is not sufficient for the authoritative ledger/ownership audit required here. Ask Amanda/Render support to identify the supported administrator connection or provide an administrator-authorized read-only report of the migration ledger and role/ownership catalogue. Do not rotate the Default credential, create a new default, alter memberships, or change production ACLs just to gain access.
+
+### Change record for this follow-up
+
+The local psql session ran only SELECT/catalogue inspection statements. No role, membership, grant, ownership, migration, password, secret, environment variable, service, deployment, or database setting was changed. The Default credential was not rotated. No recurring cost was incurred.
