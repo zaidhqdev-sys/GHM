@@ -1404,3 +1404,29 @@ This means the live production SECURITY DEFINER EXECUTE set is **not equal to th
 ### Change record
 
 All Render database operations in this section were read-only SELECT/catalogue queries. GitHub operations were read-only source inspection before this handover update. No SQL mutation, grant/revoke, role/membership change, migration, credential rotation, secret read/write, environment change, service creation, deployment, or payment/consent action was performed. No recurring cost was incurred.
+
+
+## 32. 2026-11-16 — first-pass provenance mapping of runtime ACL differences
+
+The follow-up source trace confirms that the production ACL mismatch is not a reason to invent a new role or immediately rewrite grants. Several live extra permissions are explicitly removed by later repository migrations which are version-later than the current production ledger's latest applied version. This is consistent with the known unapplied migration backlog and explains part of the observed state.
+
+### Confirmed source provenance
+
+- `auth_provision_migration_account(text,text,text,text)` is created/granted to `ghm_runtime` by `20261004030000_create_quoteflow_migration_account_provisioning.sql` and corrected by `20261004040000_reconcile_quoteflow_migration_account_provisioning.sql`. Migration `20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql` explicitly revokes it from PUBLIC and `ghm_runtime`.
+- `auth_link_external_identity(text,text,bigint)` is explicitly revoked from PUBLIC and `ghm_runtime` by `20261111250000_revoke_runtime_external_identity_link.sql`.
+- `auth_bootstrap_external_identity(text,text,text,text)` is explicitly revoked from PUBLIC and `ghm_runtime` by `20261111260000_revoke_runtime_external_identity_bootstrap.sql`.
+- `auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)` and `auth_disable_account(bigint)`, as well as `auth_revoke_session(bigint,text)`, are explicitly revoked from PUBLIC and `ghm_runtime` by `20261111220000_revoke_unused_auth_runtime_entry_points.sql`.
+- `auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)` is explicitly revoked from PUBLIC and `ghm_runtime` by `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql`.
+- `create_capability_draft`, `update_capability_draft`, and `transition_capability_lifecycle` are introduced/granted in `20261110160000_add_admin_capability_catalogue_governance.sql`; the later `20261110250000_add_gateway_capability_governance.sql` creates gateway wrappers and explicitly revokes the gateway functions from PUBLIC/runtime/migrator. The legacy runtime function grants must be traced through the full migration file before classifying the exact production result.
+- `update_business_profile(bigint,bigint,jsonb)` is introduced in `20260916250000_extend_business_profile_trust_inputs.sql`; `20261109100000_persist_business_profile_presentation_fields.sql` and `20261110265000_reconcile_business_profile_legacy_contract.sql` successively replace its implementation. The latter is version-later than the production ledger's latest applied version, so its body must not be assumed present merely because the signature exists.
+- The current-main runtime source baseline itself includes a number of legacy functions that later migrations explicitly cut over/revoke. The runtime checker permits only the 512 combinations of nine named manual cutover groups; it does not model arbitrary later pending migrations that add/remove unrelated function grants. This means we must reconcile the intended final source contract with the exact production migration prefix before enabling it.
+
+### Interpretation
+
+The production catalog includes runtime-executable functions which the repository explicitly intends to revoke in later migrations. The 2026-11-16 read-only catalogue therefore confirms a real ACL cutover gap, not just a naming or signature-formatting difference. The production ledger's latest version is still `20261109210000`; migrations `20261111220000`, `20261111240000`, `20261111250000`, `20261111260000`, and `20261112040000` are version-later and have not been evidenced as applied in the supplied ledger export. Their absence is consistent with the still-live runtime grants above.
+
+The source trace is partial, not a complete classification of all 9 missing and 12 additional signatures. Do not declare the ACL safe or unsafe solely from function names; inspect full function bodies, exact grant/revoke statements, dependency/caller use and production migration history.
+
+### Next precise action
+
+Continue a per-signature provenance matrix for every missing and unexpected runtime-executable SECURITY DEFINER function. For each row record: creator/replacement migration(s), exact GRANT/REVOKE migration(s), version relative to production ledger, current-main intended state, live owner/search_path/PUBLIC grants, and whether a live application caller still exists. Then compare the 39 relation objects and column-level ACLs to Resource API repository SQL. Keep all queries read-only. No production grants/revokes, migrations, credential changes, deploys or service changes are authorized by this investigation.
