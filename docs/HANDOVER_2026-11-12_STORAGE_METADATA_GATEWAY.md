@@ -440,3 +440,37 @@ The legacy direct-runtime storage authority is still active in production. The A
 Do not revoke the five legacy grants before the deployed Resource API is demonstrably using the signed gateway for every storage operation and the provider-attested lifecycle has passed against a dedicated non-production target. The wrapper migrations also do not, by themselves, revoke legacy function grants. A separate, ordered grant-cutover and rollback procedure is required.
 
 The inspector performed no DDL/DML and changed no production data, migration ledger, roles, grants, secrets, Render settings, deployments, buckets, or traffic. Existing restrictions remain: no mutation against `zaid-ghm-production`, no new paid infrastructure, and no production cutover without a fresh verified backup and resolved Render role-administration path (including the Amanda/Render support escalation recorded in the role-separation handover).
+
+
+
+---
+
+## Resource API composition-root trace and deployment boundary — 2026-11-16 04:13 UTC
+
+The current repository source has now been traced end to end through `src/http/app.ts`, `src/http/storage-router.ts`, `src/storage/service.ts`, `src/http/storage-metadata-gateway-client.ts`, the Actor Gateway routes, `PostgresStorageMetadataGatewayReader`, and the two storage gateway migrations.
+
+### Source-level integration is present
+
+- Production Resource API startup requires both `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` when storage is enabled.
+- Production sets `storageMetadataGatewayRequired=true`; storage routes receive the gateway store factory and forward the original bearer token.
+- Missing gateway factory in required mode fails closed; the direct PostgreSQL metadata store is only a non-required fallback or explicit test seam.
+- All five metadata operations are wired to the matching gateway HTTP routes and five SQL wrapper functions: create, read, mark-deletion-pending, mark-available and mark-deleted.
+- Actor Gateway routes are behind verified JWT authentication; actor identity is taken from the verified token. Its PostgreSQL reader signs one-use actor assertions for the database.
+- Provider-confirmed availability/deletion additionally require a separate Resource API HMAC attestation. The Actor Gateway does not possess that signing secret.
+- The storage service checks provider HEAD metadata and bytes before marking availability, and marks deletion-pending before provider deletion; final deleted state is written only after provider success.
+
+This supersedes the earlier open source-trace question about whether the signed gateway reader was injected into the active Resource API composition root: **the current source does inject it for production storage**. The old direct metadata repository remains in source as a non-production fallback; production's required flag prevents silent fallback.
+
+### Remaining separate SQL paths
+
+- Tenant membership/authorization checks still use Resource API authorized/tenant transactions; they are not invocations of the five legacy metadata SECURITY DEFINER functions.
+- Public Business Logo redirect lookup still invokes the distinct `ghm.storage_get_public_business_logo(bigint)` function directly. Keep this as a separate public-read ACL/caller review item.
+- Business Logo binding uses its own Actor Gateway client and production-required gate.
+
+### Not yet proven in production
+
+Source wiring does not prove the currently deployed Render Resource API is this revision, that the Actor Gateway is deployed/reachable, or that its DB session is the isolated `ghm_actor_gateway` principal. The Worker config checked into the branch still has a placeholder Hyperdrive ID. The five gateway SQL wrappers are absent from the live production catalog, while the five legacy functions remain executable by `ghm_runtime` (see the live ACL confirmation above).
+
+The deployment path therefore remains blocked by the real Hyperdrive/network binding and supported role separation, fresh verified production backup, required ordered migration installation, deployment/health/identity verification, dedicated non-production provider lifecycle, and a separate five-function legacy grant cutover/rollback. Do not use `zaid-ghm-production` for qualification and do not revoke legacy grants now.
+
+No production state or external infrastructure was changed by this source trace.
