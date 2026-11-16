@@ -156,7 +156,225 @@ BEGIN
      OR (p_country_id IS NOT NULL AND p_country_id <= 0)
      OR p_idempotency_key IS NULL
      OR length(btrim(p_idempotency_key)) NOT BETWEEN 8 AND 200
-     OR p_provider_code IS DISTINCT FROM 'payfast'
+     OR p_provider_code IS NULL OR p_provider_code !~ '^[a-z][a-z0-9_]{1,49}
+     OR p_accepted IS DISTINCT FROM true
+     OR (p_expires_at IS NOT NULL AND p_expires_at <= clock_timestamp())
+     OR (p_request_id IS NOT NULL AND length(btrim(p_request_id)) NOT BETWEEN 1 AND 200) THEN
+    RAISE EXCEPTION 'Invalid commercial payment preparation request' USING ERRCODE = '22023';
+  END IF;
+
+  v_business_id := p_business_id;
+  v_prepared_at := clock_timestamp();
+  v_effective_expiry := coalesce(p_expires_at, v_prepared_at + interval '30 minutes');
+
+  -- Serialize identical requests before looking up either immutable consent
+  -- evidence or the unique payment attempt.
+  PERFORM pg_advisory_xact_lock(hashtextextended('commercial-payment:' || p_idempotency_key, 0));
+
+  SELECT * INTO v_existing_attempt
+    FROM ghm.commercial_payment_attempt a
+   WHERE a.idempotency_key = p_idempotency_key
+   FOR UPDATE;
+
+  IF FOUND THEN
+    SELECT * INTO v_existing_consent
+      FROM ghm.commercial_consent_event c
+     WHERE c.idempotency_key = p_idempotency_key
+     FOR UPDATE;
+
+    IF NOT FOUND
+       OR v_existing_attempt.business_id IS DISTINCT FROM p_business_id
+       OR v_existing_attempt.initiated_by IS DISTINCT FROM p_actor
+       OR v_existing_attempt.provider_code IS DISTINCT FROM p_provider_code
+       OR v_existing_consent.business_id IS DISTINCT FROM p_business_id
+       OR v_existing_consent.account_id IS DISTINCT FROM p_actor
+       OR v_existing_consent.document_version_id IS DISTINCT FROM p_document_version_id THEN
+      RAISE EXCEPTION 'Commercial payment preparation idempotency conflict' USING ERRCODE = 'P0001';
+    END IF;
+
+    RETURN QUERY SELECT
+      v_existing_attempt.id,
+      v_existing_consent.id,
+      v_existing_attempt.business_id,
+      v_existing_attempt.subscription_id,
+      v_existing_attempt.price_id,
+      v_existing_attempt.provider_code,
+      v_existing_attempt.amount_minor_units,
+      v_existing_attempt.currency_id,
+      v_existing_attempt.billing_interval,
+      v_existing_attempt.attempt_status,
+      v_existing_attempt.idempotency_key,
+      v_existing_attempt.expires_at;
+    RETURN;
+  END IF;
+
+  -- Lock the active owner/administrator membership so a concurrent role
+  -- revocation cannot race the consent and payment-attempt write.
+  PERFORM 1
+    FROM ghm.business_membership m
+   WHERE m.business_id = p_business_id
+     AND m.account_id = p_actor
+     AND m.membership_status = 'active'
+     AND m.membership_role IN ('owner', 'administrator')
+   FOR SHARE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Active Business owner or administrator membership required' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT s.id, s.plan_version_id, p.code
+    INTO v_subscription_id, v_plan_version_id, v_plan_code
+    FROM ghm.commercial_subscription s
+    JOIN ghm.commercial_plan_version pv ON pv.id = s.plan_version_id
+    JOIN ghm.commercial_plan p ON p.id = pv.plan_id
+   WHERE s.business_id = p_business_id
+     AND s.lifecycle_status IN (
+       'trialing', 'active', 'past_due', 'grace_period',
+       'cancel_at_period_end', 'suspended'
+     )
+   ORDER BY s.id DESC
+   LIMIT 1
+   FOR SHARE OF s;
+
+  IF v_subscription_id IS NULL THEN
+    RAISE EXCEPTION 'Commercial subscription required' USING ERRCODE = 'P0001';
+  END IF;
+
+  SELECT price.id, price.amount_minor_units, price.currency_id, price.billing_interval
+    INTO v_price_id, v_amount_minor_units, v_currency_id, v_billing_interval
+    FROM ghm.commercial_plan_price price
+   WHERE price.plan_version_id = v_plan_version_id
+     AND price.lifecycle_status = 'active'
+     AND price.effective_from <= v_prepared_at
+     AND (price.effective_until IS NULL OR price.effective_until > v_prepared_at)
+     AND price.country_id IS NOT DISTINCT FROM p_country_id
+   ORDER BY CASE WHEN price.price_kind = 'founding' THEN 0 ELSE 1 END,
+            price.effective_from DESC, price.id DESC
+   LIMIT 1
+   FOR SHARE;
+
+  IF v_price_id IS NULL THEN
+    RAISE EXCEPTION 'Eligible commercial price not found' USING ERRCODE = 'P0001';
+  END IF;
+
+  -- The exact version must be approved, current for this Business plan, and
+  -- valid for the requested pricing jurisdiction (or globally applicable).
+  SELECT d.document_type, d.document_key, d.plan_code, d.jurisdiction_country_id
+    INTO v_document_type, v_document_key, v_document_plan_code, v_document_country_id
+    FROM ghm.commercial_document_version d
+   WHERE d.id = p_document_version_id
+   FOR SHARE;
+
+  IF NOT FOUND
+     OR v_document_type IS DISTINCT FROM 'subscription_terms'
+     OR (v_document_plan_code IS NOT NULL AND v_document_plan_code IS DISTINCT FROM v_plan_code)
+     OR (v_document_country_id IS NOT NULL AND v_document_country_id IS DISTINCT FROM p_country_id) THEN
+    RAISE EXCEPTION 'Approved subscription document version does not match Business plan or jurisdiction' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT e.status INTO v_document_status
+    FROM ghm.commercial_document_status_event e
+   WHERE e.document_version_id = p_document_version_id
+   ORDER BY e.occurred_at DESC, e.id DESC
+   LIMIT 1
+   FOR SHARE;
+
+  IF v_document_status IS DISTINCT FROM 'approved' THEN
+    RAISE EXCEPTION 'Exact commercial document version is not currently approved' USING ERRCODE = '42501';
+  END IF;
+
+  -- A consent event without its matching payment attempt is never accepted
+  -- as a retry: both are committed in this same transaction.
+  SELECT * INTO v_existing_consent
+    FROM ghm.commercial_consent_event c
+   WHERE c.idempotency_key = p_idempotency_key
+   FOR UPDATE;
+  IF FOUND THEN
+    RAISE EXCEPTION 'Commercial consent idempotency conflict' USING ERRCODE = 'P0001';
+  END IF;
+
+  INSERT INTO ghm.commercial_payment_attempt (
+    business_id, subscription_id, price_id, initiated_by, provider_code,
+    attempt_status, amount_minor_units, currency_id, billing_interval,
+    idempotency_key, expires_at
+  ) VALUES (
+    p_business_id, v_subscription_id, v_price_id, p_actor, p_provider_code,
+    'pending_checkout', v_amount_minor_units, v_currency_id, v_billing_interval,
+    p_idempotency_key, v_effective_expiry
+  )
+  RETURNING * INTO v_attempt;
+
+  INSERT INTO ghm.commercial_consent_event (
+    business_id, account_id, document_version_id, consent_action,
+    idempotency_key, request_id, source, context, accepted_at
+  ) VALUES (
+    p_business_id, p_actor, p_document_version_id, 'accepted',
+    p_idempotency_key, p_request_id, 'ghm.actor_gateway.commercial_payment_prepare',
+    jsonb_build_object(
+      'paymentAttemptId', v_attempt.id,
+      'subscriptionId', v_subscription_id,
+      'planCode', v_plan_code,
+      'priceId', v_price_id,
+      'providerCode', p_provider_code
+    ),
+    v_prepared_at
+  )
+  RETURNING id INTO v_consent_id;
+
+  INSERT INTO ghm.commercial_event (
+    business_id, subscription_id, event_type, actor_account_id,
+    source, idempotency_key, payload, occurred_at
+  ) VALUES (
+    p_business_id, v_subscription_id, 'subscription_payment_prepared',
+    p_actor, 'ghm.commercial', p_idempotency_key,
+    jsonb_build_object(
+      'paymentAttemptId', v_attempt.id,
+      'consentEventId', v_consent_id,
+      'documentVersionId', p_document_version_id,
+      'priceId', v_price_id,
+      'amountMinorUnits', v_amount_minor_units,
+      'currencyId', v_currency_id,
+      'billingInterval', v_billing_interval,
+      'providerCode', p_provider_code,
+      'expiresAt', v_effective_expiry
+    ),
+    v_prepared_at
+  );
+
+  RETURN QUERY SELECT
+    v_attempt.id,
+    v_consent_id,
+    v_attempt.business_id,
+    v_attempt.subscription_id,
+    v_attempt.price_id,
+    v_attempt.provider_code,
+    v_attempt.amount_minor_units,
+    v_attempt.currency_id,
+    v_attempt.billing_interval,
+    v_attempt.attempt_status,
+    v_attempt.idempotency_key,
+    v_attempt.expires_at;
+END;
+$prepare$;
+
+ALTER FUNCTION ghm.assert_actor_gateway_commercial_payment_prepare(bigint,bigint,uuid,text,text)
+  OWNER TO ghm_schema_owner;
+ALTER FUNCTION ghm.gateway_prepare_commercial_payment_with_consent(bigint,bigint,uuid,text,text,bigint,bigint,bigint,text,text,boolean,timestamptz,text)
+  OWNER TO ghm_schema_owner;
+
+REVOKE ALL ON FUNCTION ghm.assert_actor_gateway_commercial_payment_prepare(bigint,bigint,uuid,text,text)
+  FROM PUBLIC, ghm_runtime, ghm_migrator;
+REVOKE ALL ON FUNCTION ghm.gateway_prepare_commercial_payment_with_consent(bigint,bigint,uuid,text,text,bigint,bigint,bigint,text,text,boolean,timestamptz,text)
+  FROM PUBLIC, ghm_runtime, ghm_migrator;
+GRANT EXECUTE ON FUNCTION ghm.assert_actor_gateway_commercial_payment_prepare(bigint,bigint,uuid,text,text)
+  TO ghm_actor_gateway;
+GRANT EXECUTE ON FUNCTION ghm.gateway_prepare_commercial_payment_with_consent(bigint,bigint,uuid,text,text,bigint,bigint,bigint,text,text,boolean,timestamptz,text)
+  TO ghm_actor_gateway;
+
+COMMENT ON FUNCTION ghm.gateway_prepare_commercial_payment_with_consent(bigint,bigint,uuid,text,text,bigint,bigint,bigint,text,text,boolean,timestamptz,text) IS
+  'Atomically records explicit acceptance of an exact currently-approved subscription terms version and prepares one provider-neutral Business payment attempt. Does not initiate checkout or activate a subscription.';
+
+COMMIT;
+
      OR p_accepted IS DISTINCT FROM true
      OR (p_expires_at IS NOT NULL AND p_expires_at <= clock_timestamp())
      OR (p_request_id IS NOT NULL AND length(btrim(p_request_id)) NOT BETWEEN 1 AND 200) THEN
