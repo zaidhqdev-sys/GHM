@@ -156,7 +156,8 @@ BEGIN
      OR (p_country_id IS NOT NULL AND p_country_id <= 0)
      OR p_idempotency_key IS NULL
      OR length(btrim(p_idempotency_key)) NOT BETWEEN 8 AND 200
-     OR p_provider_code IS NULL OR p_provider_code !~ '^[a-z][a-z0-9_]{1,49}     OR p_accepted IS DISTINCT FROM true
+     OR p_provider_code IS NULL OR p_provider_code !~ '^[a-z][a-z0-9_]{1,49}$'
+     OR p_accepted IS DISTINCT FROM true
      OR (p_expires_at IS NOT NULL AND p_expires_at <= clock_timestamp())
      OR (p_request_id IS NOT NULL AND length(btrim(p_request_id)) NOT BETWEEN 1 AND 200) THEN
     RAISE EXCEPTION 'Invalid commercial payment preparation request' USING ERRCODE = '22023';
