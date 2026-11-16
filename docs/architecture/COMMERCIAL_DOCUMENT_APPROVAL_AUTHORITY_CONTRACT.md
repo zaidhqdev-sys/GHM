@@ -133,3 +133,18 @@ This is still only an owner authority grant/revoke route. It does not approve a 
 
 PR #291 exact code head `13923a1c538ce23aacd491d65f5bca65bbbe8c85` passed workflow `43905417391` (`quality` and `web-quality`).
 The route and reader tests verify ES256 actor derivation, strict request shape, HMAC context binding, transaction commit/rollback, forbidden founder checks and conflict handling. This remains an authenticated grant/revoke route only; it does not approve a legal document version. No production deployment or authority write occurred.
+
+
+## 12. Exact immutable document-version approval transition — qualification in progress
+
+Migration `20261116180000_add_founder_only_commercial_document_approval_transition.sql` adds a distinct approval operation:
+
+- HMAC operation `commercial.document.status.approve`, separate from authority grant/revoke.
+- Canonical founder bootstrap/account/credential checks are repeated at approval time.
+- Assertion context binds one exact immutable document-version ID and reason.
+- The function serializes against grant/revoke using the same advisory-lock scope.
+- It requires the exact founder authority identity, latest authority event `granted`, and latest status event `draft`.
+- It appends the approved status event with the authenticated founder actor and exact grant-event ID/type atomically.
+- Only Actor Gateway EXECUTE is granted; no direct table access is added.
+
+The disposable qualification uses synthetic immutable version/draft fixtures and rolls back all grant/revoke/approved events. No real legal document, production approval, consent or payment is created. A future HTTP route/reader must derive actor only from ES256 bearer identity and call this transition. The owner must still provide and inspect the actual legal document before any production version is registered or approved.
