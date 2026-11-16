@@ -152,7 +152,37 @@ try {
         denied = error && typeof error === 'object' && 'code' in error && error.code === '42501';
         if (!denied) throw error;
       }
-      if (!denied) throw new Error(`${role} direct function reference was not denied for ${item.signature}`);
+      if (!denied) {
+        const diagnostic = await migrator.query(`
+          SELECT
+            $1::text AS tested_role,
+            $2::text AS function_signature,
+            has_function_privilege($1, p.oid, 'EXECUTE') AS effective_execute,
+            owner_role.rolname AS function_owner,
+            COALESCE((
+              SELECT json_agg(json_build_object(
+                'grant_to', CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE grantee_role.rolname END,
+                'privilege', a.privilege_type,
+                'grantable', a.is_grantable,
+                'inherited_by_tested_role', CASE WHEN a.grantee = 0 THEN true
+                  ELSE pg_has_role($1, a.grantee, 'USAGE') END
+              ))
+              FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+              LEFT JOIN pg_roles grantee_role ON grantee_role.oid = a.grantee
+              WHERE a.privilege_type = 'EXECUTE'
+                AND (a.grantee = 0 OR pg_has_role($1, a.grantee, 'USAGE'))
+            ), '[]'::json) AS effective_acl_sources,
+            COALESCE((
+              SELECT json_agg(json_build_object('role', inherited.rolname, 'rolinherit', inherited.rolinherit))
+              FROM pg_roles inherited
+              WHERE pg_has_role($1, inherited.oid, 'USAGE')
+            ), '[]'::json) AS inherited_roles
+          FROM pg_proc p
+          JOIN pg_roles owner_role ON owner_role.oid = p.proowner
+          WHERE p.oid = to_regprocedure($2)
+        `, [role, item.signature]);
+        throw new Error(`${role} direct function reference was not denied for ${item.signature}; privilege diagnostics: ${JSON.stringify(diagnostic.rows[0] ?? null)}`);
+      }
     }
   }
   console.log('RUNTIME, MIGRATOR AND ACTOR GATEWAY DIRECT CALLS DENIED FOR ALL FIVE LEGACY FUNCTIONS: PASS');
