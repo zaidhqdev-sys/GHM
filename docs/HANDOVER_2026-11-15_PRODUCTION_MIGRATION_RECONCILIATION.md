@@ -2047,3 +2047,56 @@ A repository-wide source trace was completed after the production first-four rea
 Before any production batch that includes the storage Actor Gateway cutover, trace the concrete Resource API composition root and every caller of `createPostgresStorageMetadataStore` / `TransactionalPostgresStorageMetadataStore`. Establish whether the signed gateway reader is actually injected into active routes/services, and qualify upload completion, read/download, deletion, retry and abandoned-pending cleanup end to end. The legacy grants may only be revoked in a separately qualified cutover after all those paths are moved and rollback behavior is documented.
 
 No source, production schema, data, migration ledger, role, grant, secret, Render setting, or deployment was changed by this source inspection.
+
+
+## 64. Live production storage ACL inventory — gateway wrappers absent (2026-11-16 04:06 UTC)
+
+The owner ran the repository-root ACL inspector against Render `ghm-db` / `ghm_db`. The inspection used a read-only transaction and verified TLS.
+
+### Connection identity
+
+- Database: `ghm_db`.
+- `session_user=ghm_migrator`.
+- `current_user=ghm_schema_owner`.
+- `transaction_read_only=on`.
+- Inspection completed with rollback; no database state was changed.
+
+### Live function inventory
+
+All five legacy storage metadata functions exist in production, are SECURITY DEFINER, are owned by `ghm_schema_owner`, and have pinned `search_path=pg_catalog, ghm`:
+
+- `ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)`.
+- `ghm.storage_get_object(bigint,bigint)`.
+- `ghm.storage_mark_available(bigint,text)`.
+- `ghm.storage_mark_deleted(bigint)`.
+- `ghm.storage_mark_deletion_pending(bigint)`.
+
+For each of the five functions, the effective catalog ACL snapshot reports:
+
+- PUBLIC EXECUTE: false.
+- `ghm_runtime` EXECUTE: true.
+- `ghm_actor_gateway` EXECUTE: false.
+- `ghm_migrator` EXECUTE: false.
+- `ghm_schema_owner` EXECUTE: true.
+
+The five signed gateway wrappers inspected are all absent from production:
+
+- `ghm.gateway_storage_create_pending(...)`.
+- `ghm.gateway_storage_get_object(...)`.
+- `ghm.gateway_storage_mark_available(...)`.
+- `ghm.gateway_storage_mark_deleted(...)`.
+- `ghm.gateway_storage_mark_deletion_pending(...)`.
+
+This is consistent with the two storage gateway migrations still being pending in the production migration inventory. Source implementation and disposable PostgreSQL qualification must not be represented as proof that these wrapper functions exist in the live production catalog.
+
+### Security and sequencing disposition
+
+- Production still permits the Resource API database role `ghm_runtime` to invoke all five legacy SECURITY DEFINER storage functions directly.
+- Production does not yet have the five gateway wrapper functions, and `ghm_actor_gateway` has no EXECUTE on the legacy functions.
+- Do not revoke legacy runtime grants now or apply the wrapper migrations as an isolated shortcut. The active Resource API composition/caller wiring, deployed Actor Gateway and Resource API versions, provider-attestation configuration, complete storage lifecycle, traffic drain, rollback, fresh verified backup, and Render role-administration constraints must be resolved together.
+- The wrapper migrations themselves do not revoke the five legacy function grants. A separate, explicitly qualified grant-cutover step remains necessary after the gateway path is deployed and verified.
+- No production migration, DDL/DML, grant, role, secret, Render setting, deployment, or traffic change was performed by this inspection.
+
+### Next gate
+
+Repository/source qualification must establish the concrete active Resource API composition root and every create, read, availability, deletion, retry, and abandoned-pending cleanup caller. Then qualify the deployed end-to-end gateway/provider lifecycle and design the legacy grant cutover with rollback. Production migration execution remains blocked; do not set `GHM_PRODUCTION_MIGRATION_BATCH`.
