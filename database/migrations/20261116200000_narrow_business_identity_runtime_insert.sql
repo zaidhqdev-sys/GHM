@@ -1,6 +1,8 @@
 -- Narrow Resource API Business creation to the exact fields used by the repository.
 -- Existing SELECT and sequence privileges are unchanged.
 -- Construction-only: production rollout remains gated by exact-prefix qualification.
+-- These grants are deliberately column-scoped; caller authorization remains in the
+-- Business Identity repository until a separately qualified actor-bound DB operation exists.
 
 REVOKE INSERT ON TABLE ghm.business FROM ghm_runtime;
 
