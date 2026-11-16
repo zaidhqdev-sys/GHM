@@ -158,9 +158,18 @@ try {
       } finally {
         probeClient.release();
       }
+      const denialMessage = probeError && typeof probeError === 'object'
+        ? String(probeError.message)
+        : '';
+      // PostgreSQL may reject the qualified call at schema USAGE before it
+      // reaches the function EXECUTE check. The independent effective-ACL
+      // assertions above must still prove function EXECUTE is absent.
       const denied = probeError && typeof probeError === 'object'
         && probeError.code === '42501'
-        && String(probeError.message).includes(`permission denied for function ${item.proname}`);
+        && (
+          denialMessage.includes(`permission denied for function ${item.proname}`)
+          || denialMessage === 'permission denied for schema ghm'
+        );
       if (!denied) {
         const diagnostic = await migrator.query(`
           SELECT
