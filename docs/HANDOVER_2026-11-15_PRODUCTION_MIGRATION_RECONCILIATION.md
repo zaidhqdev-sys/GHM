@@ -2156,3 +2156,17 @@ Therefore:
 7. Separately plan and rehearse revocation of the five legacy runtime grants, including the public-logo read exception and all retry/cleanup callers.
 
 No production database, migration ledger, data, grant, role, secret, Render setting, deployment, provider bucket, or traffic was changed by this source trace. The production migration batch remains blocked and `GHM_PRODUCTION_MIGRATION_BATCH` must remain unset.
+
+
+
+## 66. Runtime startup ACL allow-list is an additional storage cutover dependency (2026-11-16 04:16 UTC)
+
+A follow-on trace inspected `src/db/runtime-database-privileges.ts` after identifying the separate public Business Logo SQL lookup.
+
+- The exact Resource API SECURITY DEFINER EXECUTE allow-list currently includes all five legacy storage metadata functions and the separate `ghm.storage_get_public_business_logo(bigint)` function.
+- The five legacy storage functions are not currently included in `RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS`. The current modeled groups cover campaign review, registration identity, authentication issuer, capability governance, Business Capability mutations, saved Business, Business Hours, Trust Score, and Business Logo binding.
+- The startup assertion accepts only an exact modeled ACL stage. If production's five legacy storage grants were revoked without first updating and qualifying this allow-list, the Resource API startup privilege check would reject the resulting ACL inventory. This is an additional application-release dependency, independent of gateway route wiring and SQL migration ordering.
+- The separate public `storage_get_public_business_logo(bigint)` lookup is deliberately present in the runtime allow-list and is still used by the anonymous public-logo redirect. It must remain separately reviewed/authorized; do not accidentally revoke it as part of the five metadata-function cutover.
+- Before the legacy grant cutover, add a separately named storage-metadata cutover group with an exact five-signature set, update the modeled stage count/assertions/tests (the current code models 9 groups / 512 combinations), and prove startup accepts both pre-cutover and post-storage-cutover ACL stages while rejecting partial/unreviewed combinations. This is source/test work not yet implemented by this trace.
+
+No source code, production ACL, migration, deployment or configuration was changed by this follow-on inspection. Production storage grants remain untouched.
