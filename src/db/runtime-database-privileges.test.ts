@@ -22,12 +22,12 @@ const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) 
 
 const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 
-test('runtime startup accepts all 256 modeled combinations of the eight identified manual cutovers', () => {
+test('runtime startup accepts all 512 modeled combinations of the nine identified manual cutovers', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
-  assert.equal(CUTOVER_GROUPS.length, 8);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 3, 3, 2, 1, 1, 1]);
-  assert.equal(ALL_STAGES.length, 256);
-  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 15);
+  assert.equal(CUTOVER_GROUPS.length, 9);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 2, 14, 3, 3, 2, 1, 1, 1]);
+  assert.equal(ALL_STAGES.length, 512);
+  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
 
   for (const functions of ALL_STAGES) {
     assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
@@ -40,7 +40,7 @@ test('runtime startup accepts all 256 modeled combinations of the eight identifi
   }
 });
 
-test('the modeled eight-cutover SECURITY DEFINER inventory retains thirteen explicitly reviewed functions', () => {
+test('the modeled nine-cutover SECURITY DEFINER inventory retains thirteen explicitly reviewed functions', () => {
   assert.deepEqual(
     [...RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS].map(postgresSignature).sort(),
     [
@@ -51,14 +51,12 @@ test('the modeled eight-cutover SECURITY DEFINER inventory retains thirteen expl
       'ghm.get_public_trust_score(bigint)',
       'ghm.is_business_capability_publicly_evidence_eligible(bigint)',
       'ghm.list_public_trust_scores(text)',
-      'ghm.read_business_registration_identity(bigint,bigint)',
       'ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)',
       'ghm.storage_get_object(bigint,bigint)',
       'ghm.storage_get_public_business_logo(bigint)',
       'ghm.storage_mark_available(bigint,text)',
       'ghm.storage_mark_deleted(bigint)',
       'ghm.storage_mark_deletion_pending(bigint)',
-      'ghm.update_business_registration_identity(bigint,bigint,text,text,text)',
     ].sort(),
   );
 });
@@ -101,14 +99,22 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
   }
 });
 
-test('registration identity legacy RPCs remain in every modeled stage until an evidenced cutover exists', () => {
+test('registration identity legacy RPCs are removed only in stages that include the qualified manual cutover', () => {
+  const registrationCutoverIndex = Object.keys(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS).indexOf('registrationIdentity');
+  assert.ok(registrationCutoverIndex >= 0);
   for (const signature of [
     'ghm.read_business_registration_identity(bigint, bigint)',
     'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
   ]) {
     assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
-    assert.ok(!CUTOVER_GROUPS.some(group => (group as readonly string[]).includes(signature)));
-    for (const functions of ALL_STAGES) assert.ok((functions as readonly string[]).includes(signature), signature);
+    for (let mask = 0; mask < ALL_STAGES.length; mask += 1) {
+      const cutoverApplied = (mask & (1 << registrationCutoverIndex)) !== 0;
+      assert.equal(
+        (ALL_STAGES[mask] as readonly string[]).includes(signature),
+        !cutoverApplied,
+        `registration cutover mask=${mask}: ${signature}`,
+      );
+    }
   }
 });
 
