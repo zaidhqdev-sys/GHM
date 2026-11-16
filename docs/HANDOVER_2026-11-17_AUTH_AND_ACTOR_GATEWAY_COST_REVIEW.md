@@ -149,3 +149,23 @@ No Actor Gateway Render service has been created. No hosting option is being sel
 3. Qualify the exact migration chain on disposable PostgreSQL, including negative tests proving `ghm_runtime` cannot execute the three legacy functions while `ghm_actor_gateway` can execute only the signed gateway operations.
 4. Refresh production backup and obtain the supported administrator ledger/ACL report before any production migration planning.
 5. Only after those gates pass, return to the hosting choice and use the already-approved USD 7/month allowance if the dedicated service remains the lowest-cost acceptable isolated option.
+
+
+## Follow-up: capability governance call-site trace and correction — 2026-11-17
+
+The preceding note correctly identified that the three legacy capability SECURITY DEFINER functions retain their original `ghm_runtime` EXECUTE grants after the signed gateway wrappers are introduced. The proposed corrective action in that note needs an important correction: the repository already contains a deliberately separate, qualified **manual post-deployment cutover**, not a missing ordinary migration.
+
+Evidence reviewed at branch head `f6e62e5606178d4536a656d03dc5cd8952d282f3`:
+
+- `src/http/app.ts` constructs `HttpCapabilityGovernanceGatewayClient` from `GHM_ACTOR_GATEWAY_URL` and registers the capability catalogue routes with that gateway client.
+- `src/http/capability-catalogue-router.ts` sends list/create/update/transition admin operations through the gateway client using the incoming bearer token. If the gateway client is absent, these admin operations return HTTP 503; they do not fall back to direct `CapabilityService` writes. The direct service remains in use for public catalogue reads.
+- `src/http/capability-governance-gateway-client.ts` maps all four admin operations to the Actor Gateway HTTP API.
+- `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql` explicitly revokes the legacy functions from PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway`. Its header says manual cutover only and requires Actor Gateway deployment, `GHM_ACTOR_GATEWAY_URL` configuration, and end-to-end route verification first.
+- `scripts/qualify-capability-governance-cutover-postgres.mjs` applies that cutover only to the explicitly named disposable local PostgreSQL database, then checks that runtime and gateway logins cannot directly execute the legacy functions while signed gateway wrappers continue to work. It checks list, create, update, transition and resulting runtime ACLs.
+
+Therefore:
+- Do **not** add this revocation as an ordinary production migration or apply it before gateway hosting and end-to-end route verification. Doing so would intentionally break the legacy runtime capability RPC path before the gateway is live.
+- The existing manual cutover SQL is the intended operational boundary. Run its disposable qualification as part of release readiness; after the dedicated Actor Gateway is deployed and the production route is verified, execute the documented manual cutover through the supported administrator process and capture the resulting ACL evidence.
+- The prior recommendation to add a new ordered migration is withdrawn. The actual remaining dependency is deployment sequencing and a supported production administrator cutover, not absence of revocation SQL.
+
+No source code or production state was changed by this follow-up. No Render service was created and no spend occurred.
