@@ -26,12 +26,12 @@ const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) 
 
 const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 
-test('runtime startup accepts all 512 reviewed combinations of the nine manual cutovers', () => {
+test('runtime startup accepts all 1,024 reviewed combinations of the ten manual cutovers', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
-  assert.equal(CUTOVER_GROUPS.length, 9);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 2, 3, 3, 2, 1, 1, 1]);
-  assert.equal(ALL_STAGES.length, 512);
-  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
+  assert.equal(CUTOVER_GROUPS.length, 10);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 2, 3, 3, 2, 1, 1, 1, 5]);
+  assert.equal(ALL_STAGES.length, 1024);
+  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 8);
 
   for (const functions of ALL_STAGES) {
     assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
@@ -44,7 +44,7 @@ test('runtime startup accepts all 512 reviewed combinations of the nine manual c
   }
 });
 
-test('the fully cut-over runtime state retains only the thirteen explicitly reviewed read/lookup/storage legacy functions', () => {
+test('the fully cut-over runtime state retains only the eight explicitly reviewed read/lookup functions', () => {
   assert.deepEqual(
     [...RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS].map(postgresSignature).sort(),
     [
