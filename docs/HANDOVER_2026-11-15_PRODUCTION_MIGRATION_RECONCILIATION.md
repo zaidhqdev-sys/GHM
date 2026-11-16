@@ -1625,3 +1625,35 @@ No production database query/mutation, migration, ledger repair, role/grant chan
 Do not invent or run a registration identity revoke. The Resource API registration routes and their gateway client, migration grants, and production runtime version must be reconciled first. If a manual revoke is required, author a forward cutover and an explicitly qualified rollback that match the deployed route contract and exact effective ACL state. Until then, the registration identity functions remain a documented unresolved boundary, not a completed cutover.
 
 No runner code, migration SQL, production catalog, database role/grant, secret, deployment or application data was changed. Preserve the local untracked `.bak` file.
+
+
+## 54. Registration identity removed from modeled completed-cutover stages (2026-11-16 01:43 UTC)
+
+### CI and PR state before this change
+
+- Section 53 handover commit `b52a6ef2a3942d070ded8d51fcaa143734b852a4` passed exact-head CI workflow #5049; both `quality` and `web-quality` succeeded.
+- The source-comment correction commit `b405bec35957627440d62edb81d3a6318a5f9df2` had workflow #5048 cancelled by the newer commit run, not a test failure. The subsequent handover commit's successful CI covered the accumulated branch state.
+- PR #285 remains OPEN, DRAFT and UNMERGED.
+
+### Corrective source change
+
+The previous nine-group privilege model treated registration identity as a completed manual cutover group, despite the absence of an authoritative registration-identity revoke/rollback SQL artifact and despite migrations explicitly preserving the legacy Resource API grants until a separately qualified Resource API cutover.
+
+Corrected the model:
+- Removed registration identity from `RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS`.
+- Removed the four derived post-registration stage exports.
+- Reduced the modeled group count from nine to eight, and modeled combinations from 512 to 256.
+- Updated the fully modeled post-cutover function inventory from 13 to 15, retaining both `ghm.read_business_registration_identity(bigint,bigint)` and `ghm.update_business_registration_identity(bigint,bigint,text,text,text)` in every modeled state.
+- Replaced the misleading test that claimed registration functions were absent after a manual cutover with a test asserting they remain present in every modeled stage until a real cutover artifact is identified, authored and qualified.
+
+Commits:
+- Source: `7af4979ec45476bf732d2cbf26ff0fc4cd92fd51`
+- Tests: `1bf1b35508697365ba0f06e58c3090f6b284ebe3`
+
+### Scope and limitations
+
+This is a correction to a disposable-baseline privilege-stage model and its unit tests only. It does not revoke any production privilege, establish production ACL truth, add a Resource API registration identity route, create a manual cutover, or approve migration execution. The existing SQL still retains the legacy registration identity runtime grants; that is the honest modeled state.
+
+The migration runner semantic stop-boundary guard remains unimplemented. Its design still requires production-reconciled effective role privileges and coverage of function, relation/column, sequence, PUBLIC and inherited membership grants. The existing query's `session_user` behavior remains unsuitable for checking `ghm_runtime` when the runner session is `ghm_migrator`.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
