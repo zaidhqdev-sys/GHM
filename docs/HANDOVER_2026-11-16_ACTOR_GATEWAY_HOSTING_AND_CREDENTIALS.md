@@ -2018,3 +2018,30 @@ Owner reminder: do not restart the backup/restore investigation with another bro
 Next action is a narrowly scoped restore plan against a uniquely named disposable local database on the already-used local PostgreSQL 18.6 instance. Before executing, use an explicit localhost-only connection string and a new target database name; never reuse `ghm_payfast_qualification`, never point `pg_restore` at Render, never overwrite the extracted backup, and preserve the original `.dir.tar.gz`. If the existing local server is not currently reachable, stop and report that specific fact rather than launching another broad inspection sequence.
 
 The previous assistant request for a full service/listener/disk inventory was unnecessary given this established handover context. No further general inventory is required.
+
+
+### Local logical restore completed and verified — 2026-11-16 22:32Z
+
+The November 14 Render-generated logical export was successfully restored into an isolated disposable local PostgreSQL database.
+
+Restore target and execution:
+- Local PostgreSQL: 127.0.0.1:5433, PostgreSQL 18.6 on Windows.
+- Target database: ghm_restore_20261116.
+- Source directory: C:\Users\zaidh\AppData\Local\Temp\GHM-production-export-inspection-20261114\2026-11-14T14_26Z\ghm_db.
+- Preflight confirmed the local server accepted connections, the archive TOC could be read with pg_restore --list (exit code 0; 770 output lines / 760 entries), and the target database did not already exist.
+- Created the target with CREATE DATABASE ... TEMPLATE template0.
+- Restored with pg_restore --format=directory --no-owner --no-privileges --exit-on-error --jobs=2 against the explicit localhost connection.
+- Restore exit code: **0**.
+
+Post-restore read-only verification:
+- current_database() = ghm_restore_20261116.
+- Server version: PostgreSQL 18.6, x86_64 Windows.
+- Non-system schemas: ghm and public (plus PostgreSQL's pg_toast system schema).
+- Migration ledger ghm.ghm_schema_migrations contains **105 rows**, first version 00000000000000, latest version 20261109210000. These match the previously exported production ledger snapshot exactly on row count and version boundaries.
+- Restored table inventory: 59 tables in schema ghm and 5 in schema public (64 total).
+
+**Recovery conclusion:** the November 14 logical export has passed a successful restore into a disposable local PostgreSQL 18.6 database, and its migration-ledger count and version boundaries match the independently exported 105-row production ledger snapshot. Record this as **local logical restore validated**. This materially closes the prior backup/restore evidence gap for this artifact.
+
+**Limitations:** this is not a Render-side PITR test, does not prove recovery of changes made after the November 14 export, and does not prove production restore time/object-level application consistency beyond the checks recorded above. No restore was directed at Render. The original archive and extracted source were not modified. The disposable local restore database is preserved for further read-only inspection; do not drop it without an explicit decision.
+
+No production database, migration, DDL, role, ACL, credential, secret, Render setting, service, deployment, payment or consent state was changed. No recurring cost was incurred.
