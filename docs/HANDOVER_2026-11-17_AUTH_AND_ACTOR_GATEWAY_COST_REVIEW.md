@@ -118,3 +118,34 @@ This run includes the embedded authentication startup code and the owner-accepte
 ## Standalone issuer cleanup boundary
 
 The production start command `start:auth-issuer` has been removed and the existing GHM runtime now mounts the auth routes. The remaining `src/auth-issuer/app.ts` is a testable Express app factory and `src/auth-issuer/app.test.ts` exercises its standalone app behavior; the database principal/privilege/SSL modules under that directory are actively imported by the embedded runtime. Do not delete those shared database security modules. The standalone server entry file is no longer referenced by the package start command. Retire obsolete standalone-only app/test files only as a separate cleanup after equivalent embedded-runtime tests cover their behavior; avoid broad deletion that removes useful security qualification.
+
+
+## Actor Gateway migration-chain review — 2026-11-17
+
+A source-level review of the exact pending migration files found one concrete ACL gap that must be resolved before any production batch is selected:
+
+- `20261110160000_add_admin_capability_catalogue_governance.sql` creates `ghm.create_capability_draft`, `ghm.update_capability_draft` and `ghm.transition_capability_lifecycle` as SECURITY DEFINER functions and grants EXECUTE to `ghm_runtime`.
+- `20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql` adds signed-assertion gateway wrappers and removes the earlier unsigned gateway overloads, but does not revoke the original direct EXECUTE grants from `ghm_runtime` on those three underlying functions.
+- Unlike the supplier-classification path, whose cutover migration explicitly revokes `ghm_runtime` from the original `ghm.update_business_supplier_classification` function, the capability-governance chain has no corresponding runtime revocation in the reviewed pending inventory.
+- The signed gateway wrappers call the underlying capability functions under their SECURITY DEFINER owner, so the runtime grant appears unnecessary for the gateway path. Before adding a corrective migration, verify all current GHM runtime call sites and confirm the client uses only the signed Actor Gateway operations.
+
+This is a source-level finding, not a live production privilege observation. Production currently has not applied this pending chain according to the last recorded inventory, and the live administrator-authorized ledger read remains a separate gate. Do not manually revoke privileges in production. The corrective action, if call-site review confirms no direct runtime dependency, is a new ordered migration that revokes PUBLIC and `ghm_runtime` EXECUTE on the three legacy direct capability functions, followed by disposable-PostgreSQL qualification and inventory/manifest reconciliation.
+
+Other reviewed points:
+- `20261110210000_add_actor_gateway_principal_guard.sql` checks the restricted login and bounded `ghm_db_user` membership, grants schema USAGE, and grants only the initial assertion helper to the gateway login.
+- The initial `ghm.assert_actor_gateway(bigint)` helper only checks that the session is the gateway login and that the supplied account is active; by itself it does not cryptographically bind the actor ID.
+- The capability signed-assertion migration adds a separate HMAC-protected, one-use, 60-second assertion verifier and grants its typed gateway functions only to `ghm_actor_gateway`.
+- The supplier signed-assertion migration extends the operation allowlist and wraps supplier writes with the HMAC assertion. The later legacy-helper revocation removes EXECUTE on the original unsigned helper from application roles.
+- The gateway server has fail-closed startup checks for the expected login, role attributes, memberships, schema privileges and approved function privileges. This is code readiness only; it does not provision the production database.
+
+### Hosting decision remains unchanged
+
+No Actor Gateway Render service has been created. No hosting option is being selected by this review. The existing dedicated always-on Render service remains the isolated option at the previously discussed USD 7/month; co-hosting would put both runtime and gateway credentials/secrets in one process and is not an equivalent security boundary. The user's approval of embedded Authentication Issuer applies only to authentication, not Actor Gateway co-hosting. No spend or deployment is authorized by this review.
+
+### Next bounded actions
+
+1. Verify all runtime capability-governance call sites against the signed gateway client.
+2. If no direct runtime dependency exists, add the missing revocation migration and update the pending inventory.
+3. Qualify the exact migration chain on disposable PostgreSQL, including negative tests proving `ghm_runtime` cannot execute the three legacy functions while `ghm_actor_gateway` can execute only the signed gateway operations.
+4. Refresh production backup and obtain the supported administrator ledger/ACL report before any production migration planning.
+5. Only after those gates pass, return to the hosting choice and use the already-approved USD 7/month allowance if the dedicated service remains the lowest-cost acceptable isolated option.
