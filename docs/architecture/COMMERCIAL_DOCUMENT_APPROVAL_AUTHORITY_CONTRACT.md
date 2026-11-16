@@ -101,3 +101,15 @@ Migration `20261116170000_add_founder_only_commercial_document_authority_gateway
 - Only the Actor Gateway principal receives EXECUTE; no direct table grants or runtime/PUBLIC access are added.
 
 This branch currently adds the SQL boundary and migration contract test. It does not yet wire the HTTP route, TypeScript reader, or signer integration. Until that integration and exact-head CI pass, the function is not exposed through an application route. No authority row or approved document is seeded.
+
+
+## 10. Founder-only grant/revoke qualification result — 2026-11-16
+
+The database-side owner authority operation passed exact-head CI on code commit `174d10aece78ceacdecdfe8d701f1bcaff1256b2`:
+- Workflow run `43902840161`: `quality` and `web-quality` both succeeded.
+- All repository migrations applied to disposable PostgreSQL.
+- The isolated Actor Gateway principal qualification exercised successful founder grant, revoke and re-grant; duplicate grant/revoke denial; non-founder denial; forged, scope-transplanted, replayed and expired assertion denial.
+- The test founder bootstrap/account/credential fixture and authority writes were isolated to disposable PostgreSQL and rolled back/cleaned up.
+- The exact Actor Gateway function allow-list and no-direct-table-access boundary passed.
+
+The PR adds only the SQL boundary, ACL allow-list entries, migration contract and disposable qualification. The HTTP route/reader is intentionally not yet wired. No authority row is present in production, and no document is approved. Next slice is the authenticated Actor Gateway HTTP/TypeScript integration with strict request validation and tests, followed by the separate governed document-approval transition. Production backup, migration-ledger, gateway hosting/cost and service deployment gates remain unchanged.
