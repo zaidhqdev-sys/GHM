@@ -2012,3 +2012,38 @@ The owner ran the existing repository command `npm run preflight:first-four-prod
 - Before any production batch, review the exact first-four ordered migration set and downstream storage/Actor Gateway cutover contract together. In particular, explicitly resolve the lifecycle and eventual revocation of direct `ghm_runtime` EXECUTE on `storage_mark_deletion_pending(bigint)`; do not infer that the later gateway wrapper alone revokes legacy direct access.
 - No production schema, data, migration ledger, role, grant, secret, Render setting, or deployment was changed.
 
+## 63. Storage lifecycle caller and Actor Gateway cutover source trace (2026-11-16)
+
+A repository-wide source trace was completed after the production first-four read-only preflight.
+
+### Confirmed current legacy caller
+
+- `src/storage/repository.ts` still implements `TransactionalPostgresStorageMetadataStore` using the legacy runtime functions:
+  - `ghm.storage_create_pending(...)`
+  - `ghm.storage_mark_available(...)`
+  - `ghm.storage_mark_deletion_pending(bigint)`
+  - `ghm.storage_mark_deleted(bigint)`
+  - `ghm.storage_get_object(bigint,bigint)`
+- `markDeletionPending(id)` specifically still calls `SELECT * FROM ghm.storage_mark_deletion_pending($1)`.
+- The class runs through `withAuthorizedTransaction(context,...)`, so the application path has an AuthContext authorization boundary. That does not prevent a holder of the shared `ghm_runtime` credential from invoking the SECURITY DEFINER function directly.
+
+### Gateway implementation exists, but this is not proof of completed cutover
+
+- `src/actor-gateway/storage-metadata-reader.ts` implements signed Actor Gateway v2 calls to `gateway_storage_create_pending`, `gateway_storage_get_object`, `gateway_storage_mark_deletion_pending`, and provider-attested availability/deletion completion wrappers.
+- Migrations `20261112140000` and `20261112150000` create the gateway wrappers and provider-attestation boundary.
+- Those migrations revoke PUBLIC/runtime/migrator execution from the new gateway wrapper functions and grant them to `ghm_actor_gateway`.
+- They do **not** revoke the legacy direct-runtime EXECUTE grants on `storage_create_pending`, `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted`, or `storage_get_object(bigint,bigint)`.
+- The repository trace did not establish that the existing `src/storage/repository.ts` caller has been replaced in the active Resource API path. The existence of the gateway reader is not cutover evidence.
+
+### Migration 4 interpretation and disposition
+
+- Migration `20261110140000_allow_pending_storage_object_cleanup` intentionally broadens the legacy deletion-pending transition to accept both `pending` and `available` objects and deliberately retains `ghm_runtime` EXECUTE.
+- The production preflight confirms the observed production function/ACL matches that pre-migration legacy boundary and that all four existing storage rows satisfy the proposed new lifecycle predicate.
+- **Do not revoke the legacy grant as an isolated action.** Doing so before confirming and qualifying every active upload, completion, read, deletion, retry, and cleanup caller risks breaking storage functionality.
+- Migration 4's narrow lifecycle/schema change is not itself a gateway cutover. The direct-runtime storage boundary remains an explicit open cutover item.
+
+### Next required repository qualification
+
+Before any production batch that includes the storage Actor Gateway cutover, trace the concrete Resource API composition root and every caller of `createPostgresStorageMetadataStore` / `TransactionalPostgresStorageMetadataStore`. Establish whether the signed gateway reader is actually injected into active routes/services, and qualify upload completion, read/download, deletion, retry and abandoned-pending cleanup end to end. The legacy grants may only be revoked in a separately qualified cutover after all those paths are moved and rollback behavior is documented.
+
+No source, production schema, data, migration ledger, role, grant, secret, Render setting, or deployment was changed by this source inspection.
