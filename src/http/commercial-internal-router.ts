@@ -10,6 +10,7 @@ import { PostgresConnectServiceAssertionReplayStore, requireFreshConnectServiceA
 import { DefaultCommercialService } from '../resources/commercial/service';
 import { PostgresCommercialRepository } from '../resources/commercial/repository';
 import { PayfastHttpBoundary } from '../resources/commercial/payfast-http';
+import { config } from '../config';
 
 export const resolveCommercialPaymentActor = async (
   accountId: number,
@@ -153,7 +154,7 @@ export const registerCommercialInternalRoutes = (
         return;
       }
 
-      const service = new DefaultCommercialService(new PostgresCommercialRepository());
+      const service = new DefaultCommercialService(new PostgresCommercialRepository(undefined, config.commercial.paymentProvider));
       const paymentAttempt = await service.prepareCommercialPayment(
         actor,
         {

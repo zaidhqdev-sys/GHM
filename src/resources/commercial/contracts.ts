@@ -22,6 +22,7 @@ export type CommercialSubscriptionLifecycle = 'trialing' | 'active' | 'past_due'
 export type CommercialPaymentAttemptLifecycle = 'pending_checkout' | 'pending_payment' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
 export type CommercialPaymentTransactionKind = 'payment' | 'refund' | 'reversal' | 'chargeback';
 export type CommercialPaymentTransactionStatus = 'pending' | 'succeeded' | 'failed';
+export type CommercialProviderCode = string;
 
 export type CommercialEventType =
   | 'trial_activated'
@@ -160,7 +161,7 @@ export interface CommercialPaymentAttempt {
   readonly subscriptionId: CommercialSubscriptionId | null;
   readonly priceId: CommercialPlanPriceId;
   readonly initiatedByAccountId: AccountId;
-  readonly providerCode: 'payfast';
+  readonly providerCode: CommercialProviderCode;
   readonly amountMinorUnits: number;
   readonly currencyId: CurrencyId;
   readonly billingInterval: 'month';
@@ -250,7 +251,7 @@ export interface ScheduleCommercialCancellationInput {
 
 export interface ApplyCommercialPaymentResultInput {
   readonly paymentAttemptId: CommercialPaymentAttemptId;
-  readonly providerCode: 'payfast';
+  readonly providerCode: CommercialProviderCode;
   readonly externalProviderEventId: string;
   readonly providerEventType: string;
   readonly providerPayloadHash: string;

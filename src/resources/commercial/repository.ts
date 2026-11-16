@@ -14,6 +14,7 @@ import type {
   CommercialTrial,
   ActivateCommercialTrialInput,
   PrepareCommercialPaymentInput,
+  CommercialProviderCode,
 } from './contracts';
 import { COMMERCIAL_EVENT_SOURCE } from './contracts';
 
@@ -383,6 +384,7 @@ const preparePayment = async (
   client: PoolClient,
   context: AuthContext,
   input: PrepareCommercialPaymentInput,
+  providerCode: CommercialProviderCode,
 ): Promise<CommercialPaymentAttempt> => {
   requireBusinessId(input.businessId);
   const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
@@ -415,7 +417,7 @@ const preparePayment = async (
 
   if (existingResult.rowCount === 1) {
     const existing = existingResult.rows[0];
-    if (existing.provider_code !== 'payfast') {
+    if (existing.provider_code !== providerCode) {
       throw new Error('Payment preparation idempotency conflict: provider reconciliation required');
     }
     if (
@@ -486,13 +488,13 @@ const preparePayment = async (
        $2,
        $3,
        $4,
-       'payfast',
-        'pending_checkout',
        $5,
+       'pending_checkout',
        $6,
        $7,
        $8,
-       $9
+       $9,
+       $10
      )
      RETURNING
        id,
@@ -517,6 +519,7 @@ const preparePayment = async (
       subscription.id,
       Number(price.id),
       context.userId,
+      providerCode,
       Number(price.amount_minor_units),
       Number(price.currency_id),
       price.billing_interval,
@@ -569,7 +572,10 @@ const preparePayment = async (
 };
 
 export class PostgresCommercialRepository implements CommercialRepository {
-  constructor(private readonly transactionPool?: TransactionPool) {}
+  constructor(
+    private readonly transactionPool?: TransactionPool,
+    private readonly paymentProviderCode: CommercialProviderCode = 'payfast' as CommercialProviderCode,
+  ) {}
 
   async getAdminCommercialLaunchState(
     context: AuthContext,
@@ -792,7 +798,7 @@ export class PostgresCommercialRepository implements CommercialRepository {
 
     return withAuthorizedTransaction(
       context,
-      (client) => preparePayment(client, context, input),
+      (client) => preparePayment(client, context, input, this.paymentProviderCode),
       this.transactionPool,
     );
   }
