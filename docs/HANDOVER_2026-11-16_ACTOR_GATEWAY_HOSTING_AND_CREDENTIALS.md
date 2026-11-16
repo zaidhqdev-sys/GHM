@@ -905,3 +905,62 @@ Wire the approved-document transition through the Actor Gateway HTTP/TypeScript 
 - test revoked/stale grant, wrong version, duplicate approval, non-founder, replay and failure rollback.
 
 After that, implement document registration and GHM-native consent/payment preparation. Do not register/approve real legal documents until the owner supplies and reviews the actual documents. Production hosting/backup/admin/migration/secret gates remain. No production migration, approval, consent, payment attempt, Render service or deployment occurred. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+## 24. 2026-11-16 follow-up — Amanda confirms Render privilege model; temporary ledger-read grant attempt rejected
+
+Amanda replied through Render support chat and confirmed:
+
+1. Render does not provide PostgreSQL superuser access. The Dashboard Default credential maps `ghm_app_user` to `ghm_db_user`, the highest-privileged Render-provided database account.
+2. The observed `session_user=ghm_app_user` / `current_user=ghm_db_user` mapping is expected. The ledger SELECT denial is expected because `ghm_schema_migrations` is owned by `ghm_schema_owner`, and the existing membership has `SET` and `INHERIT` disabled.
+3. Amanda says role, membership, ownership and effective privilege catalogues are readable from the existing connection. She suggests either a direct schema-owner login (not available: current `ghm_schema_owner` is NOLOGIN), a dedicated auditor role granted SELECT by the owner, or temporarily enabling SET on the existing membership.
+4. Amanda recommends the dedicated auditor role as the durable auditable option, but that requires an owner-authorized grant and is not currently available from the observed NOLOGIN owner identity.
+
+### Attempted temporary membership change — rejected, no change made
+
+The user attempted the temporary option using the Dashboard Default connection. PostgreSQL returned:
+
+```text
+ERROR: ADMIN option cannot be granted back to your own grantor
+```
+
+The attempted statement was:
+
+```sql
+GRANT ghm_schema_owner TO ghm_db_user
+WITH ADMIN OPTION, INHERIT FALSE, SET TRUE;
+```
+
+The grantor relationship prevents `ghm_db_user` from re-granting ADMIN OPTION to itself in this way. Consequently, `SET LOCAL ROLE ghm_schema_owner` was denied because the membership's `SET` option remained false, and SELECT on `ghm.ghm_schema_migrations` remained denied.
+
+The first attempted transaction was not successfully started because the connection dropped during `BEGIN`; psql reconnected. The subsequent attempt was inside an explicit transaction, failed at GRANT, and was ended with `ROLLBACK`. A later standalone `ROLLBACK` also returned successfully. **No membership option, role attribute, table privilege, ownership, migration, credential or other production database state was changed by these attempts.**
+
+### Correct next action
+
+Do not retry the GRANT with altered ADMIN/INHERIT/SET clauses and do not try to work around the error by changing ownership or granting table privileges.
+
+First use a read-only catalogue query to capture the exact grantor for the existing membership, along with its options:
+
+```sql
+SELECT
+    granted.rolname AS granted_role,
+    member.rolname AS member_role,
+    grantor.rolname AS grantor_role,
+    m.admin_option,
+    m.inherit_option,
+    m.set_option
+FROM pg_auth_members AS m
+JOIN pg_roles AS granted ON granted.oid = m.roleid
+JOIN pg_roles AS member ON member.oid = m.member
+JOIN pg_roles AS grantor ON grantor.oid = m.grantor
+WHERE granted.rolname = 'ghm_schema_owner'
+  AND member.rolname = 'ghm_db_user';
+```
+
+Then return the exact PostgreSQL error and grantor result to Amanda and ask how Render supports changing the SET option when the existing membership was granted by `ghm_db_user` itself and Render provides no superuser. Ask whether Render support can arrange the owner-authorized dedicated auditor grant or provide an administrator-authorized read-only ledger report. Do not assume Amanda's suggested temporary command is executable under this exact grantor topology.
+
+The remaining read-only catalogue audit (roles, memberships including grantor, ownership and Actor Gateway effective privileges) can proceed using the current connection. The production migration ledger remains unread pending a supported owner-authorized route.
+
+### Change record
+
+Only attempted the temporary role-membership operation; it was rejected before changing membership state. Transactions were rolled back. No production migration, permission, credential, ownership, secret, service, deployment or application-data change occurred. No new recurring cost was incurred.
