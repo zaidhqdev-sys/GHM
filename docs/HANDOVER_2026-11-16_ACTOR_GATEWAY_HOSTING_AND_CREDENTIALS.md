@@ -1049,3 +1049,13 @@ The route is `POST /v1/owner/commercial-document-approval`. Its only body fields
 The database-side positive/negative authorization behavior was qualified separately by PR #292 on disposable PostgreSQL. The merged route is source-only: no production route call, authority grant, legal document registration/approval, consent/payment write, production migration, production ACL/credential change, Render service creation, deployment, secret change or launch activation occurred. The owner is the only human approver; the assistant is not an employee, approver or legal signatory.
 
 Main-branch CI for merge commit `f6e75dc91636ecb76b00485736afd69b6c92d768` was queued when this handover entry was written; record its final result in a follow-up handover entry. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 25.1 Main-branch qualification passed (2026-11-16)
+
+Merge commit `f6e75dc91636ecb76b00485736afd69b6c92d768` passed main workflow `43913244198`:
+- `quality`: success (73/73 steps).
+- `web-quality`: success (11/11 steps).
+- Disposable PostgreSQL migration application, full test suite and existing gateway/auth/database qualifications passed.
+
+This confirms the merged source on main. It does not authorize a production migration, route call, Render deployment, authority assignment, legal-document approval, consent or payment activation.
