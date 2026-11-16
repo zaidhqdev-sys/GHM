@@ -218,3 +218,30 @@ The successful Cloudflare Pages preview reported on the PR was a Pages preview o
 **Production impact:** none intended or performed. This merge did not deploy the Actor Gateway Worker or Render service, provision secrets, apply production migrations, alter database roles/memberships/grants, or change production environment variables. The production Actor Gateway hosting, backup, administrator-ledger access, and migration gates in this handover remain unchanged.
 
 **Next step:** continue with the previously recorded production administrator/backup/hosting prerequisites. Do not treat this test-only merge as authorization to perform production DDL, ACL cutover, or service provisioning.
+
+
+## 10. 2026-11-16 follow-up — PayFast sandbox readiness audit
+
+The owner reports that PayFast sandbox access has returned and authorized an audit before setting up a sandbox account. This is an owner-reported provider-access change; it does not establish that the historical Render sandbox database or callback/runtime services have been restored.
+
+### Existing implementation and PR dispositions
+
+- GHM current-state records the PayFast checkout/redirect, ITN verification, and server-to-server ITN confirmation implementation as merged to `main`. Deterministic local qualification is recorded as passing (22 focused tests, no skips); this is not a real provider round-trip.
+- GHM PR #233 (`fix/payfast-payment-date-timezone-20261108`, head `ea028a20967b686e90ea0fbe451a8e4b9dee57ef`) remains draft/open. Its change treats timezone-less payment_date as UTC and preserves explicit offsets. Do not merge until provider timestamp semantics are confirmed using sandbox evidence.
+- GHM current-state and the 2026-11-11 security handover record the payment-provider principal as having two narrow PayFast settlement operations qualified against disposable PostgreSQL. This is not production ACL qualification; callback startup ACL verification remains a pre-reactivation hardening gate.
+- Connect PR #33 (`construction/connect-ghm-payfast-sandbox-bridge`, head `163171c35c99d1a459e657` as recorded in PR metadata) remains draft/open and is explicitly historical/superseded. It authenticates through Supabase and uses a legacy external Business UUID mapping; it is incompatible with the approved GHM-native identity boundary. Do not merge, enable, or configure it.
+- GHM PR #245 (authenticated commercial access/subscription reads) and #283 (admin commercial launch-state read) are merged. They are read-only; neither implements trial activation, checkout preparation, payment webhook lifecycle, or provider activation.
+- Connect PR #68 is open and contains broad GHM workflow migration and commercial/payment freeze contracts. Its current branch must be reconciled against Connect `main` before any new payment implementation. Its preview/deployment comments are not proof of production cutover.
+
+### Current decision
+
+No new checkout bridge, credentials, sandbox account, callback activation, database migration, production ACL change, or payment attempt was performed during this audit. Preserve `launchAuthorized=false` and `onlineSubscriptionActivation=false`; no production payment activation is authorized.
+
+### Required next sequence
+
+1. Verify Render workspace/service inventory for the historical `ghm-payfast-sandbox-runtime`, `ghm-payfast-callback-sandbox`, `ghm-payfast-sandbox-db`, and `ghm-identity-qualification`. The Render service-list call could not be completed because no workspace was selected; do not guess a workspace. The historical sandbox database was previously recorded as billing-suspended/expired on 2026-11-08.
+2. Inspect the current GHM mainline commercial/payment prepare, checkout and callback contracts, plus current Connect mainline callers and PR #68, before designing a GHM-native checkout flow. Do not reuse PR #33's Supabase bridge.
+3. Confirm the PayFast sandbox merchant account state and whether an account already exists before registration. Do not duplicate an account or expose credentials in chat/handover.
+4. Only after the service/database and GHM-native identity/business/subscription prerequisites are verified, perform sandbox-only account setup and non-payment checks. Checkout/callback/settlement round-trip requires a separate explicit go-ahead after the readiness gates.
+5. Keep PR #233 parked until a sandbox ITN provides evidence for payment_date timezone semantics. Add exact startup ACL verification before any callback reactivation.
+
