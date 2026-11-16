@@ -42,7 +42,7 @@ CREATE TABLE ghm.commercial_document_status_event (
   document_version_id bigint NOT NULL
     REFERENCES ghm.commercial_document_version(id) ON DELETE RESTRICT,
   status text NOT NULL,
-  actor_account_id bigint REFERENCES ghm.account_identity(id) ON DELETE SET NULL,
+  actor_account_id bigint REFERENCES ghm.account_identity(id) ON DELETE RESTRICT,
   source text NOT NULL,
   reason text,
   occurred_at timestamptz NOT NULL DEFAULT now(),
