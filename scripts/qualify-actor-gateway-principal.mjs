@@ -292,10 +292,10 @@ try {
       'EXPIRED COMMERCIAL AUTHORITY ASSERTION IS DENIED',
     );
 
-    const authorityRows = await authorityClient.query(
-      "SELECT count(*)::int AS event_count FROM ghm.commercial_document_approval_authority_event",
+    assert.deepEqual(
+      [grant.rows[0].event_type, revoke.rows[0].event_type, regrant.rows[0].event_type, firstReplayUse.rows[0].event_type],
+      ['granted', 'revoked', 'granted', 'granted'],
     );
-    assert.equal(authorityRows.rows[0].event_count, 4);
     console.log('COMMERCIAL APPROVAL AUTHORITY GRANT/REVOKE HISTORY QUALIFICATION: PASS');
   } finally {
     await authorityClient.query('ROLLBACK').catch(() => {});
