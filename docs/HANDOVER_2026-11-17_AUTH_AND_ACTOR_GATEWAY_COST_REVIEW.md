@@ -89,3 +89,19 @@ This code change is not authorized for production deployment merely because it i
 ### Actor Gateway cost decision
 
 The current source still routes numerous actor-sensitive operations through gateway clients and requires `GHM_ACTOR_GATEWAY_URL` in production for storage-related workflows. A gateway process co-hosted in the Resource API would hold both the ordinary runtime DB credential and the privileged gateway DB credential in one process, materially weakening the process boundary. It may save the USD 7/month service cost, but it is not equivalent security. Do not implement co-hosting or provision the dedicated service until this trade-off is presented and agreed with the owner.
+
+
+## Owner decision — temporary launch-phase security trade-off (2026-11-17)
+
+The owner explicitly accepts the reduced process isolation from embedding authentication in the existing GHM Internal Runtime for the current launch/revenue phase. This is a conscious temporary risk acceptance to avoid an additional paid hosting service while ZAID Technologies products are not yet generating revenue.
+
+Conditions:
+- Keep the dedicated `ghm_auth_issuer` database login and separate PostgreSQL pool. Do not merge auth persistence into the broad runtime DB identity.
+- Keep startup identity, role-membership and privilege assertions; fail startup/readiness if they do not pass.
+- Keep existing authentication, token validation, password hashing, password-reset and rate-limit behavior. Do not relax these controls as part of the hosting change.
+- Keep the ES256 signing key secret in the existing approved runtime environment; never commit it, log it, expose it to clients or include it in diagnostics.
+- Record the process-isolation reduction as temporary and revisit it when product revenue can fund stronger isolation.
+- This acceptance applies to embedded Authentication Issuer only. It is not blanket approval to weaken Actor Gateway controls, expose privileged database credentials, add services, or incur recurring costs.
+- No production deployment is authorized by this decision alone; code qualification and the existing production rollout gates still apply.
+
+Launch priority reaffirmed: stabilize GHM, bring Zaid Connect and QuoteFlow to market, remove remaining Supabase dependencies, and prioritize revenue. Additional architecture hardening should be proportionate to immediate launch risk and revisited as revenue allows.
