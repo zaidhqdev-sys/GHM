@@ -167,6 +167,19 @@ BEGIN
   v_prepared_at := clock_timestamp();
   v_effective_expiry := coalesce(p_expires_at, v_prepared_at + interval '30 minutes');
 
+  -- Lock the active owner/administrator membership so a concurrent role
+  -- revocation cannot race the consent and payment-attempt write.
+  PERFORM 1
+    FROM ghm.business_membership m
+   WHERE m.business_id = p_business_id
+     AND m.account_id = p_actor
+     AND m.membership_status = 'active'
+     AND m.membership_role IN ('owner', 'administrator')
+   FOR SHARE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Active Business owner or administrator membership required' USING ERRCODE = '42501';
+  END IF;
+
   -- Serialize identical requests before looking up either immutable consent
   -- evidence or the unique payment attempt.
   PERFORM pg_advisory_xact_lock(hashtextextended('commercial-payment:' || p_idempotency_key, 0));
@@ -188,7 +201,8 @@ BEGIN
        OR v_existing_attempt.provider_code IS DISTINCT FROM p_provider_code
        OR v_existing_consent.business_id IS DISTINCT FROM p_business_id
        OR v_existing_consent.account_id IS DISTINCT FROM p_actor
-       OR v_existing_consent.document_version_id IS DISTINCT FROM p_document_version_id THEN
+       OR v_existing_consent.document_version_id IS DISTINCT FROM p_document_version_id
+       OR v_existing_consent.context->>'countryId' IS DISTINCT FROM p_country_id::text THEN
       RAISE EXCEPTION 'Commercial payment preparation idempotency conflict' USING ERRCODE = 'P0001';
     END IF;
 
@@ -206,19 +220,6 @@ BEGIN
       v_existing_attempt.idempotency_key,
       v_existing_attempt.expires_at;
     RETURN;
-  END IF;
-
-  -- Lock the active owner/administrator membership so a concurrent role
-  -- revocation cannot race the consent and payment-attempt write.
-  PERFORM 1
-    FROM ghm.business_membership m
-   WHERE m.business_id = p_business_id
-     AND m.account_id = p_actor
-     AND m.membership_status = 'active'
-     AND m.membership_role IN ('owner', 'administrator')
-   FOR SHARE;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Active Business owner or administrator membership required' USING ERRCODE = '42501';
   END IF;
 
   SELECT s.id, s.plan_version_id, p.code
@@ -314,7 +315,8 @@ BEGIN
       'subscriptionId', v_subscription_id,
       'planCode', v_plan_code,
       'priceId', v_price_id,
-      'providerCode', p_provider_code
+      'providerCode', p_provider_code,
+      'countryId', p_country_id
     ),
     v_prepared_at
   )
