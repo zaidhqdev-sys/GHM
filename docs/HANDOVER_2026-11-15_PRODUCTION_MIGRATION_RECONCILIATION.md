@@ -1737,3 +1737,53 @@ No production database query/mutation, migration, ledger repair, role/grant chan
 
 - Handover update is being committed after the source and test corrections. Exact-head CI must be checked on the final handover commit, not inferred from intermediate commits.
 - PR #285 remains draft and unmerged. No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
+
+
+## 58. Registration identity cutover modeled and exact-head CI passed (2026-11-16 03:14 UTC)
+
+### Exact-head verification
+
+- PR #285 head: `b90e959b9cfae6dcd5e64dcda9fc8fd12bf15d09`.
+- Workflow run #5063 / run ID `43796446852`.
+- `quality` and `web-quality` both completed successfully; the PR reports all 3 required checks successful.
+- PR #285 remains OPEN, DRAFT and UNMERGED.
+
+### Root cause of the 38-function qualification mismatch
+
+The previous sections correctly identified that the expected incompatible-constraint exception in the Business registration migration is a deliberate negative test. It is not the cause of the earlier runtime EXECUTE inventory failure.
+
+The missing stage-model evidence was the existing manual registration-identity cutover:
+- `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql` explicitly revokes ordinary `ghm_runtime` EXECUTE on the two legacy registration identity RPCs.
+- The signed Actor Gateway registration identity wrappers are the intended access path after this cutover.
+- The previous stage model accounted for the Campaign/Review cutover but did not include this separate registration-identity cutover. Its expected count therefore did not describe the qualified post-cutover state.
+
+### Corrective commits
+
+- Source model: `47ad842d413908634db71d971b622cfafff03031`.
+- Unit tests: `b90e959b9cfae6dcd5e64dcda9fc8fd12bf15d09`.
+
+The model now includes registration identity as its own independent manual cutover group:
+- 9 identified cutover groups and 512 modeled combinations.
+- 43-function pre-cutover SECURITY DEFINER baseline retained.
+- Both registration legacy signatures remain present before the registration cutover and are removed from the modeled runtime EXECUTE inventory only in stages where that cutover is applied.
+- Fully modeled post-cutover inventory: 13 functions.
+- Tests assert the registration cutover's effect at every modeled stage rather than treating the two functions as absent from the baseline.
+
+### Disposable PostgreSQL evidence in CI #5063
+
+The isolated Actor Gateway principal qualification passed. The registration identity cutover qualification explicitly reported:
+- Manual registration identity cutover SQL applied to the disposable database.
+- Ordinary runtime denied on both legacy registration RPCs after cutover.
+- Signed Gateway read and write remained available.
+- Cross-business read/write substitution denied.
+- Altered-payload replay denied.
+- Disabled actor read/write denied.
+- Ordinary runtime could not execute the unsigned identity helper or Gateway wrappers, assume the Gateway role, or assume schema-owner authority.
+
+The full workflow also passed runtime-boundary verification, the SECURITY DEFINER authority comparison, and the remaining quality job steps. The expected incompatible-constraint exception was again followed by the qualification's explicit PASS result and transaction rollback.
+
+### Scope and release gate
+
+This resolves the CI stage-model mismatch; it does not mean the manual cutover has been applied to `ghm_db` or production runtime privileges. CI used disposable PostgreSQL only. No production migration, manual cutover, ledger change, grant/revoke, role membership, Render/Cloudflare setting, deployment, secret or application data was changed.
+
+PR #285 stays draft/unmerged. The successful checks do not authorize production migration execution or merge by themselves. Continue with the separately required production read-only migration inventory, production-only Project↔Opportunity reconciliation, and explicit release gates before any production rollout.
