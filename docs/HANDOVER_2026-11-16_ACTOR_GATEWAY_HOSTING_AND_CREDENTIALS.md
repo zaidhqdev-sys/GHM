@@ -1643,3 +1643,76 @@ PR #296 remains a separate draft hardening candidate on `hardening/business-iden
 ### Change record
 
 This was source and handover review only. No production ledger query, migration execution, DDL, role/grant/ACL, RLS, credential, secret, Render configuration, deployment, payment, consent, or legal-document state was changed.
+
+
+## 37. 2026-11-16 — explicit production migration batch runner PR #297
+
+A draft implementation has been opened:
+https://github.com/zaidhqdev-sys/GHM/pull/297
+
+Branch: `feature/explicit-production-migration-batches`
+Current code head: `84a5fe49874b12babc2d8aabdbe402c3c833d078`
+Base: main `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`
+
+### Implementation
+
+New files:
+- `config/production-pending-migration-inventory.json` — exact 48 version/name pairs currently later than the evidenced production ledger head `20261109210000`.
+- `config/production-migration-batches.json` — currently contains an empty `batches` array intentionally. No batch is approved yet.
+- `src/db/production-migration-batch.ts` — pure fail-closed validator and selector.
+- `src/db/production-migration-batch.test.ts` — unit tests for batch selection.
+- `src/db/production-migration-batch-runner-contract.test.ts` — runner wiring and plan-mode contract tests.
+
+Updated:
+- `src/db/migrate.ts` — production no longer treats the old seven-entry pending allowlist as execution authorization. It compares the complete live pending queue against the separate committed inventory, then requires `GHM_MIGRATION_BATCH_ID` to select a named batch. A selected batch must be an exact contiguous prefix of the pending queue. Only selected migrations are executed.
+- `package.json` — both new tests are included in `npm test`.
+
+### Fail-closed behavior
+
+For production:
+1. The complete repository migration list is sorted and duplicate versions rejected.
+2. The runner computes all repository migrations absent from the live ledger.
+3. That exact ordered version/name list must match the committed pending inventory. Missing, extra, reordered or renamed entries fail closed.
+4. A separately committed batch manifest must contain unique valid IDs, reasons and ordered migration identities.
+5. `GHM_MIGRATION_BATCH_ID` is mandatory when pending work exists.
+6. The selected batch must exactly match the beginning of the pending queue; skipped, reordered, wrong-name or non-prefix batches are rejected.
+7. The execution loop iterates only the selected prefix, not every repository migration.
+8. `GHM_MIGRATION_PLAN_ONLY=true` prints the selected ordered migration filenames and explicitly rolls back the transaction without executing migration SQL.
+9. Non-production execution retains its prior behavior.
+
+### Deliberately no production batch yet
+
+The batch manifest is empty. This is intentional: the 48 migration version/name inventory is not the same as checksum/provenance reconciliation or operational approval. A production run with pending migrations now refuses unless a named batch exists, and currently no batch ID can be selected. Do not populate a batch merely to make the runner executable.
+
+The existing `config/pending-migrations.production.json` remains unchanged for historical/audit reference but is no longer imported by the production runner as an execution authorization list. It must not be expanded to 48.
+
+### Test coverage authored
+
+- explicit batch ID required;
+- exact contiguous prefix selected;
+- stale/incomplete inventory refused;
+- skipped earlier migration refused;
+- wrong migration name refused;
+- duplicate batch IDs and duplicate migration versions refused;
+- applied migrations correctly removed from the pending prefix;
+- runner source confirms production uses selected execution list, plan mode rolls back, and inventory and batch manifest are distinct.
+
+### CI
+
+PR #297 was opened draft at code head `84a5fe49874b12babc2d8aabdbe402c3c833d078`. Exact-head checks have started:
+- `quality`: queued
+- `web-quality`: queued
+- Cloudflare Pages: in progress
+
+No CI result is yet green. Do not merge until exact-head checks pass and review confirms the runner contract.
+
+### Outstanding before any real batch is added
+
+- Complete all 105 production ledger row version/name/checksum comparisons against current repository SQL, legacy CRLF hashes, retained historical records and documented provenance exceptions.
+- Confirm the exact production pending inventory from a fresh read-only live ledger export at rollout time.
+- Finish migration-by-migration dependency and service/secret readiness mapping for the proposed first prefix.
+- Verify a current recoverable backup and rollback procedure.
+- Qualify the runner against disposable PostgreSQL 18 using the production-like 105-row ledger fixture, including a safe prefix success, intentional gaps, checksum mismatch, transaction rollback, repeat execution and advisory-lock behavior.
+- Only then add a separately reviewed small batch manifest and use plan-only output before any controlled execution.
+
+No production ledger query, migration execution, DDL, grants, role changes, credentials, secrets, Render settings, deployments, payment or consent operations were performed for PR #297.
