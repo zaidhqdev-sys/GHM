@@ -8,6 +8,7 @@ import {
   migrationChecksum,
   legacyCrlfMigrationChecksum,
   resolveMigrationAuditTarget,
+  comparePendingMigrationInventory,
   stripPostgresSslConnectionStringOptions,
 } from './migration-audit-checksum.mjs';
 
@@ -20,6 +21,9 @@ const auditTarget = resolveMigrationAuditTarget(expectedDatabase, process.env.GH
 const exceptionsPath = path.resolve(process.cwd(), auditTarget.exceptionsPath);
 const retainedPath = path.resolve(process.cwd(), auditTarget.retainedPath);
 const allowPending = process.argv.includes('--allow-pending');
+const productionInventoryMode = process.argv.includes('--production-inventory');
+if (allowPending && productionInventoryMode) fail('Choose either the legacy pending allowlist or the production pending inventory mode, not both');
+if (productionInventoryMode && auditTarget.target !== 'production') fail('Production pending inventory mode is restricted to ghm_db');
 const migrationPattern = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
@@ -46,7 +50,7 @@ const main = async () => {
     `);
     const beforeIdentity = before.rows[0];
     if (!beforeIdentity) fail('No database identity row returned');
-    await client.query('SET ROLE ghm_schema_owner');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
     const after = await client.query('SELECT current_user, session_user, current_database()');
     const afterIdentity = after.rows[0];
     if (!afterIdentity) fail('No post-SET ROLE identity row returned');
@@ -178,10 +182,15 @@ const main = async () => {
     const redundantExceptions = exceptionAudit.filter((item) => item.status === 'REDUNDANT');
 
     const actualPending = missing.map(({ version, name }) => ({ version, name })).sort((a, b) => a.version.localeCompare(b.version));
-    const expectedPending = [...pendingAllowlist].sort((a, b) => a.version.localeCompare(b.version));
-    const pendingAllowlistMatches = !allowPending
-      ? missing.length === 0
-      : JSON.stringify(actualPending) === JSON.stringify(expectedPending);
+    const expectedPending = productionInventoryMode ? productionPendingInventory
+      : allowPending ? pendingAllowlist : [];
+    const pendingInventoryComparison = productionInventoryMode
+      ? comparePendingMigrationInventory(actualPending, productionPendingInventory)
+      : null;
+    const pendingAllowlistMatches = productionInventoryMode
+      ? pendingInventoryComparison.matches
+      : !allowPending ? missing.length === 0
+        : JSON.stringify(actualPending) === JSON.stringify([...pendingAllowlist].sort((a, b) => a.version.localeCompare(b.version)));
 
     const verdict =
       authorityPass && pendingAllowlistMatches && unrecognizedExtra.length === 0 &&
@@ -194,8 +203,12 @@ const main = async () => {
         before: beforeIdentity, after: afterIdentity,
       },
       migrations: {
-        target: auditTarget.target, pending_migrations_allowed: allowPending,
-        pending_allowlist_match: pendingAllowlistMatches, expected_pending_migrations: expectedPending,
+        target: auditTarget.target, pending_migrations_allowed: allowPending || productionInventoryMode,
+        pending_inventory_mode: productionInventoryMode,
+        pending_inventory_source: productionInventoryMode ? 'config/production-pending-migration-inventory.json' : allowPending ? auditTarget.pendingPath : null,
+        pending_allowlist_match: pendingAllowlistMatches,
+        pending_inventory_comparison: pendingInventoryComparison,
+        expected_pending_migrations: expectedPending,
         repository_count: repository.length, live_ledger_count: ledger.rows.length,
         canonical_match_count: exactMatches.length,
         supported_legacy_crlf_match_count: legacyLineEndingMatches.length,
@@ -214,7 +227,7 @@ const main = async () => {
         pending_allowlist_mismatch_count: pendingAllowlistMatches ? 0 : 1, retained_history_audit: retainedAudit,
         historical_exception_audit: exceptionAudit,
       },
-      verdict: verdict ? (missing.length && allowPending ? 'PASS_WITH_PENDING' : 'PASS') : 'INVESTIGATE',
+      verdict: verdict ? (missing.length && (allowPending || productionInventoryMode) ? 'PASS_WITH_PENDING' : 'PASS') : 'INVESTIGATE',
     }, null, 2));
     if (!verdict) process.exitCode = 2;
   } finally {
