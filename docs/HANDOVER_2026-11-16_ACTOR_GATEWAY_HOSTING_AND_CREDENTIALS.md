@@ -1512,3 +1512,68 @@ A Render application-log query for the GHM Internal Runtime resource `srv-damups
 5. Establish safe deployed identity evidence without reading Render secrets.
 
 No database mutation, migration, role/grant/revoke change, credential rotation, secret read/write, service/environment change or deployment occurred. All production queries in this section were read-only.
+
+
+## 34. 2026-11-16 — runtime ACL source-to-caller mapping and RLS boundary finding
+
+A further read-only review compared the exact live table/column ACLs against current-main repository SQL and PostgreSQL row-security catalog state.
+
+### Corrected relation inventory counts
+
+The production `ghm` schema currently contains 59 ordinary/partitioned tables and one view. Of those:
+- 38 tables have effective `ghm_runtime` SELECT.
+- One view (`project_public`) has effective `ghm_runtime` SELECT.
+- Three tables have table-level INSERT: `business`, `business_membership`, `opportunity`.
+- One table has table-level UPDATE: `opportunity`.
+- One table has table-level DELETE: `opportunity_capability_requirement`.
+- No table-level runtime privilege observed was grantable.
+- The exact ACL inventory shows no direct PUBLIC table/sequence grants among the objects in the runtime-access set. Column-level ACLs are separate and numerous.
+
+### Critical finding — no RLS on runtime-accessible tables
+
+Exactly three tables in the entire `ghm` schema currently have row-level security enabled:
+- `business_directory_review_event`
+- `business_registration_identity`
+- `directory_listing_founder_reviewer`
+
+None of these three is in the set of relations with direct `ghm_runtime` privileges. All 38 tables and the `project_public` view currently accessible to `ghm_runtime` have RLS disabled (and none force RLS).
+
+This means the PostgreSQL role does **not** independently enforce account/tenant row isolation for the shared runtime's direct table reads/writes. The current Resource API enforces caller/tenant authorization in application repositories/services (for example `withAuthorizedTransaction`, `resolveTenantContext`, ownership and membership checks). That is a meaningful security boundary, but it is not equivalent to database-enforced RLS. A party obtaining the `ghm_runtime` credential or arbitrary SQL execution through the service could query rows beyond the authenticated user's tenant scope, subject to the role's table/column/function privileges.
+
+This is a design-level security finding to resolve deliberately. Do not enable RLS in bulk: existing repositories use direct SQL, and adding policies without a complete actor-context and transaction-pooling contract would break legitimate workflows or create a false sense of isolation.
+
+### Direct table-level write grants mapped to current callers
+
+1. `business` — table-level INSERT and SELECT. Current-main `src/resources/business-identity/repository.ts` uses `createBusinessInTransaction` to insert only `name`, `slug`, `verification_status='unverified'`, `is_active=true`; it first verifies the authenticated account. The table-level INSERT grant is broader than this repository's insert column list and could set other business fields if the DB credential were used outside this code path. Candidate hardening: replace table-level INSERT with a narrow column INSERT grant matching the legitimate creation contract, or move creation behind a narrowly scoped SECURITY DEFINER/gateway operation after caller compatibility is proven.
+2. `business_membership` — table-level INSERT and SELECT. The same repository creates the initial owner membership with authenticated `account_id`, fixed role `owner`, status `active`, and `created_by` equal to the authenticated account. The table-level INSERT grant permits writing more columns than this caller uses. Candidate hardening: column-scoped INSERT grant limited to the exact creation fields; do not revoke until all callers and any triggers are mapped.
+3. `opportunity` — table-level INSERT, UPDATE and SELECT. Current-main `src/resources/opportunity/repository.ts` validates active type and owner-business membership before insert; update checks creator ownership and restricts update fields in code; lifecycle changes are checked against an explicit transition map and use a compare-on-current-status predicate. These are application-level controls, not DB-enforced row policies. The table-level UPDATE grant also exceeds the repository's ordinary update field set and includes lifecycle/ownership fields. Candidate hardening: replace broad UPDATE with explicit column grants and/or move lifecycle transitions to governed SECURITY DEFINER operations; test all current Opportunity and Project↔Opportunity workflows first.
+4. `opportunity_capability_requirement` — table-level DELETE and SELECT plus column-scoped INSERT. Current-main `src/resources/opportunity-requirements/repository.ts` asserts opportunity-manager authority before deleting all existing requirements and inserting the replacement set in one authorized transaction. The direct DELETE grant is necessary for this replacement path as currently implemented, but PostgreSQL itself does not enforce the manager check. Candidate hardening: move the replacement operation behind a scoped function that asserts actor/manager authority, or introduce a verified actor context and policy before changing this grant.
+
+The source review confirms these are not random grants: each maps to an actual application repository operation. However, the current grant breadth exceeds the exact columns/row scopes used by the repositories in several places.
+
+### Other column-scoped write surfaces
+
+The live catalog also has explicit column-level INSERT/UPDATE grants on business capability/evidence, category assignments, business offerings, commercial events/payment attempts/subscriptions/trials, customer/enquiry, notification read-state, opportunity requirements/participants, project/project quote/quote/line items, review moderation, and support requests/messages.
+
+These need the same caller-by-caller mapping. The presence of a column grant alone does not establish a vulnerability; verify repository input validation, authenticated actor derivation, tenant resolution, and whether status/authority fields are intentionally excluded. The review must also inspect table-level grants because table-level privileges override the practical narrowing effect of column grants for the same operation.
+
+### Default privileges observed
+
+Read-only `pg_default_acl` inspection returned:
+- `ghm_schema_owner`, schema `ghm`: default USAGE on future sequences granted to `ghm_runtime`.
+- `postgres`, global defaults: PUBLIC EXECUTE on future functions; PUBLIC USAGE on future types; and broad default privileges for `ghm_db_user` on objects created by `postgres`.
+- The global defaults owned by `postgres` are distinct from `ghm_schema_owner` defaults. The pending migration `20261112050000_revoke_public_default_function_execution.sql` alters defaults for `ghm_schema_owner`; do not assume it changes global defaults owned by `postgres`. Verify actual object owners and execution paths before changing any defaults.
+
+### Current conclusion
+
+The existing runtime privilege model is intentionally a mixture of direct SELECT, carefully column-scoped writes, a small number of table-level DML grants, and SECURITY DEFINER operations. The key gap is that application-level tenant checks are not backed by RLS on the runtime-accessible relations. This makes protecting the runtime credential and preventing arbitrary SQL execution especially important. It also gives us a clear hardening direction: progressively replace broad direct writes with narrow column grants or governed actor-bound functions, then consider RLS only after actor context is designed and qualified.
+
+### Next implementation tranche (still no production changes)
+
+1. Complete the column-level write matrix against every current repository/route, with particular focus on verification/moderation/lifecycle fields and tenant ownership.
+2. Determine whether `business` and `business_membership` INSERT can be narrowed immediately in a new migration without breaking business onboarding/provisioning paths.
+3. Design the actor-bound DB operation for Opportunity lifecycle and requirement replacement; do not expose generic arbitrary actor IDs.
+4. Define a database-verifiable tenant actor context before proposing RLS. It must survive pooled connections safely, be transaction-scoped, and be cryptographically/structurally bound to the authenticated identity rather than a caller-settable account ID.
+5. Keep production role/ACL state unchanged until a small migration is source-tested, qualified against the exact production prefix, and can be rolled out with rollback/verification.
+
+All production SQL in this section was read-only catalogue inspection. No migrations, grants, revokes, RLS policies, role changes, credentials, secrets, Render settings, service deployments, or payment/consent actions were changed.
