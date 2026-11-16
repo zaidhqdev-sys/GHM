@@ -2170,3 +2170,20 @@ A follow-on trace inspected `src/db/runtime-database-privileges.ts` after identi
 - Before the legacy grant cutover, add a separately named storage-metadata cutover group with an exact five-signature set, update the modeled stage count/assertions/tests (the current code models 9 groups / 512 combinations), and prove startup accepts both pre-cutover and post-storage-cutover ACL stages while rejecting partial/unreviewed combinations. This is source/test work not yet implemented by this trace.
 
 No source code, production ACL, migration, deployment or configuration was changed by this follow-on inspection. Production storage grants remain untouched.
+
+## 69. Render deployment evidence — Actor Gateway host is the active production blocker (2026-11-16 12:26 SAST)
+
+Read-only inspection through the connected Render workspace confirmed:
+
+- GHM-Internal-Runtime (srv-damupsek1f9s73eq8kkg) is configured on main, auto-deploy OFF, Frankfurt, and is currently live on the prior successful release c7cf1ebaf4db5912983bfa45bd42747c0854cfaf.
+- Latest attempted deploy dep-dbsva6c9v7es73bordlg, source commit fe5a82d856f8733d0094e7d4599733da93537719, built successfully with npm ci --include=dev && npm run build but the application exited at startup: GHM_ACTOR_GATEWAY_URL is required when production storage is enabled. Render event evt-dbsvaenj5k9c73f58d20 reports deploy_ended, nonZeroExit=1.
+- The preceding attempt 8f3ee574... failed during tsc because dev type packages were not installed; the build command was corrected before the later successful build. The remaining failure is runtime gateway configuration/host absence, not TypeScript.
+- Render inventory shows no production Actor Gateway service. The existing identity qualification and PayFast services are not eligible for repurposing. ghm-db / ghm_db is available in Frankfurt, PostgreSQL 18. No service, DB, secret, environment variable, role, grant or deployment was changed during this read-only inspection.
+
+Architecture decision retained: keep Identity Issuer, Resource API and Actor Gateway isolated. No new paid Render infrastructure; do not co-host the gateway in the Resource API, repurpose qualification/PayFast services, weaken the fail-closed startup guard, or invent/configure a gateway URL. Cloudflare Worker + Hyperdrive/Workers VPC + Tunnel is only a candidate and remains unapproved until an always-on isolated host, database network path, TLS identity, and principal separation are proven. The missing gateway host/network prerequisite is now the immediate production blocker.
+
+Related qualification: PR #286's five-function storage ACL cutover/rollback passed disposable PostgreSQL on exact implementation CI #5104; its documentation head e3ea8ef1... passed exact-head CI #5107. PR #286 remains draft/unmerged. This does not authorize production cutover.
+
+Migration status unchanged: PR #285 remains draft/unmerged at 9ac5aeb01872cf38abd99e0b187ebc0f5d33e8c6, with exact-head CI #5077 passed (quality and web-quality). Production migration inventory remains 42 pending and allowlist-reconciled; first-four live preflight was read-only. GHM_PRODUCTION_MIGRATION_BATCH remains unset. Do not run migrations until the separate backup, role-administration, gateway/network and ordered-batch gates are satisfied.
+
+No production state was changed by this inspection.
