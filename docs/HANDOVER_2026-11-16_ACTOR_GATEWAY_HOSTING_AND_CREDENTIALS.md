@@ -1632,3 +1632,12 @@ No CI result has yet been observed as passed. Do not merge or apply the migratio
 ### CI exact-HEAD clarification — 2026-11-16 20:30 UTC
 
 The quality job rerun was requested for code commit `9ed825ee6a179ce16b1a47262173b7b7bb49d615` (workflow run 43949522719). Its `web-quality` job passed; its `quality` job is still executing through the repository's broader disposable-PostgreSQL qualification suite. The handover-only commit `3d7342a4e3091d2cfffb45c0fa5c27a7e8a0a591` subsequently became the PR head. Therefore, even a green result on 9ed825e is not sufficient to call checks green for the current PR head. A fresh exact-head CI run is required after this note is committed. No merge or production rollout is authorized by the in-progress run.
+
+
+### CI runner cancellation investigation — 2026-11-16 20:33 UTC
+
+The quality job for workflow run 43949522719 (PR #296 merge ref checked out at merge commit `f0b49210a133a953740a26567edef89d3e3fc3f0`, containing code commit `9ed825e`) was canceled again while progressing through the broad disposable-PostgreSQL suite. Its logs show the job completed substantial database qualification work and then ended with GitHub's generic `The operation was canceled`; no failing assertion or migration-contract failure was reported in the captured tail. This is a cancellation, not a pass and not evidence that the new ACL migration failed.
+
+The current branch head is now `accaad33f5b18c45c59835400ac569592b93f751`. A subsequent documentation-only handover commit `b2c9cd2691013a7c3e674c8282b96a863aa6aedd` was excluded from CI by the workflow's `paths-ignore: '**/*.md', 'docs/**'` rule. A SQL comment-only commit `accaad3` was added to ensure a non-doc change exists at the current head; at inspection time only Cloudflare Pages had reported a check and no fresh CI run was returned for this head.
+
+Do not represent CI as green. The earlier quality rerun was canceled; web-quality passed on the earlier code commit; Cloudflare Pages is a preview/build check only. The next action is to obtain a fresh, non-canceled CI quality run on the latest PR head, or identify the external cancellation/concurrency cause before relying on any test status. The PR remains draft and unmerged. Production remains unchanged.
