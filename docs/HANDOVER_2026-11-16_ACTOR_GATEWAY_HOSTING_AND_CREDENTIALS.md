@@ -638,3 +638,32 @@ The Render session restriction means the production singleton row/account ID has
 Architecture contract update: commit `e5040d897e842f37df1390da155071ab551649e0`.
 
 No production account lookup, role/grant change, authority assignment, migration, service deployment, credential change, or commercial activation was performed.
+
+
+## 21. Founder-only commercial approval authority gateway — PR in progress (2026-11-16)
+
+A bounded implementation branch now adds the database-side owner-only grant/revoke boundary:
+- Branch: `feat/founder-only-commercial-approval-authority-20261116`
+- Migration: `database/migrations/20261116170000_add_founder_only_commercial_document_authority_gateway.sql`
+- Contract test: `src/db/founder-only-commercial-document-authority-migration-contract.test.ts`
+- Standard `npm test` includes the new contract test.
+
+### Owner identity and authorization
+
+- The operation accepts no target approver account ID. It derives the only permitted authority account from the singleton `ghm.founder_system_admin_bootstrap_state`.
+- It verifies the caller equals that recorded founder account, the singleton contains the expected canonical founder login, the account remains active and system-admin, and exactly one matching canonical password credential exists.
+- The caller must be `session_user='ghm_actor_gateway'` and supply a valid, short-lived, one-use HMAC assertion bound to the exact operation context and document scope.
+- Grant/revoke events are serialized per exact account/document/jurisdiction scope. Duplicate grant and revoke-without-active-grant are rejected.
+- A unique NULLS NOT DISTINCT scope index prevents duplicate authority identities for the same owner and document scope.
+- Only `ghm_actor_gateway` receives EXECUTE on the two SECURITY DEFINER functions. No direct table privileges or runtime/PUBLIC access are added.
+
+### Current boundary
+
+This PR adds the database operation and contract test only; it does not yet wire a new HTTP route/reader into Actor Gateway. The database operation is not reachable through a new application endpoint until that next integration slice is implemented. No founder row is seeded, no authority is granted, and no document is approved.
+
+### Qualification gate
+
+- Exact-head CI and disposable PostgreSQL migration application are pending.
+- Review must verify function ownership/search path, HMAC context binding, replay handling, founder bootstrap checks, advisory-lock serialization, and exact EXECUTE grants.
+- Do not merge until all exact-head checks pass and SQL review is complete.
+- No production migration, role/grant/credential change, Actor Gateway hosting, deployment, legal approval, consent/payment write or launch activation is authorized.
