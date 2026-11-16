@@ -102,3 +102,49 @@ The production backup/recovery point also remains unverified; the latest known a
 This handover is documentation-only. The Render queries were read-only. No production database role, membership, grant, migration, password, secret, environment variable, Render service, Cloudflare resource, deployment, or application data was changed. No new recurring cost was incurred.
 
 **Current blocker:** the gateway's dedicated always-on Render service requires additional recurring spend, and the production DB migration/backup/administrator gates remain unresolved. The selected architecture is now explicit; do not reopen the Cloudflare Hyperdrive route as a parallel implementation.
+
+
+## 7. 2026-11-16 follow-up — administrator route and Render inventory rechecked
+
+### Read-only database confirmation
+
+A fresh query through the connected Render PostgreSQL tool returned:
+
+- Database: `ghm_db`.
+- `session_user=ghm_app_user`.
+- `current_user=ghm_db_user`.
+- `ghm.ghm_schema_migrations` exists.
+- `has_table_privilege(current_user, 'ghm.ghm_schema_migrations', 'SELECT') = false`.
+- No `ghm.gateway_*` or `ghm.assert_actor_gateway*` functions were found.
+
+This confirms the connector cannot supply the administrator-only ledger read. The connector accepts only a read-only SQL query and exposes no parameter for choosing a different database credential. Do not retry with elevated SQL, attempt to reveal Render environment secrets, or weaken ACLs to make this connector query work.
+
+The administrator route must therefore be the Render Dashboard's supported database administrator connection (or an administrator-assisted read from Amanda/Render support). The user should enter credentials only into their local secure connection or Render interface; never paste a password or full connection URL into ChatGPT or Git.
+
+### Render service inventory refreshed
+
+The ZAID Technologies workspace was queried read-only on 2026-11-16. The production environment still has:
+- `GHM-Internal-Runtime`: Free Web Service, Frankfurt, auto-deploy OFF.
+- `ghm-db`: PostgreSQL 18, Frankfurt, plan `0.1c-256mb`, available.
+- `zaid-ai-workforce`: separate Free Web Service, not an approved gateway host.
+
+The account-wide service listing also returned sandbox/qualification services, including PayFast callback/runtime and identity qualification. They are not production gateway candidates and remain excluded.
+
+No `ghm-actor-gateway` service exists. No service was created. The database inventory still reports inbound IP allowlist `0.0.0.0/0`; do not mistake this broad setting for a gateway network qualification or change it as part of this read-only step.
+
+### Tooling boundary and next actionable step
+
+The connected Render tool has no operation to open a support ticket or switch the read-only SQL connector to the Dashboard-managed administrator credential. No connected support/email action is available in this workspace session. The next useful action is therefore not another query through the same connector.
+
+Use the Render Dashboard's database connection details to open an administrator-authorized SQL session locally. Run a read-only audit of:
+1. `session_user`, `current_user`, database name and server version;
+2. exact rows in `ghm.ghm_schema_migrations` (version/name/checksum/status columns as defined by the live table);
+3. `ghm_actor_gateway` role attributes and all incoming/outgoing membership options;
+4. ownership of the gateway schema, migration ledger and gateway-related functions;
+5. effective schema/function privileges for `ghm_actor_gateway`.
+
+Do not include passwords or connection strings in the output. Capture only query results and the administrator session identity. If the Dashboard administrator credential is not available or cannot perform the required read, ask Amanda/Render support to provide the read-only ledger/role/ownership report or restore the supported admin access. Do not grant the app user more rights as a workaround.
+
+### Change record for this follow-up
+
+Only read-only Render inventory and catalogue queries were performed. No role, membership, grant, migration, secret, service, environment variable, deployment, database setting or allowlist was changed. No recurring cost was incurred.
