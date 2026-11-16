@@ -16,6 +16,7 @@ import type { BusinessLogoGatewayReader } from './business-logo-reader';
 import type { StorageMetadataGatewayReader } from './storage-metadata-reader';
 import type { ConnectBusinessProvisioningReader } from '../integrations/connect/business-provisioning-contracts';
 import type { CampaignDirectoryReviewGatewayReader } from './campaign-directory-review-reader';
+import type { CommercialDocumentApprovalAuthorityReader } from './commercial-document-approval-authority-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -39,6 +40,7 @@ export interface ActorGatewayDependencies {
   storageMetadataReader?: StorageMetadataGatewayReader;
   connectBusinessProvisioningReader?: ConnectBusinessProvisioningReader;
   campaignDirectoryReviewReader?: CampaignDirectoryReviewGatewayReader;
+  commercialDocumentApprovalAuthorityReader?: CommercialDocumentApprovalAuthorityReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -1071,6 +1073,66 @@ export const createActorGatewayApp = (
     } catch (error) {
       if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) { res.status(404).json({ error: 'not_found' }); return; }
       console.error(JSON.stringify({ event: 'actor_gateway_operation_failed', operation: 'directory_review.presentation.read', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+
+  app.post('/v1/owner/commercial-document-approval-authority', async (req: Request, res: Response) => {
+    const reader = dependencies.commercialDocumentApprovalAuthorityReader;
+    if (!reader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body as Record<string, unknown>
+      : null;
+    const allowed = new Set(['action', 'documentType', 'documentKey', 'jurisdictionCountryId', 'reason']);
+    if (
+      !body ||
+      Object.keys(body).length !== allowed.size ||
+      Object.keys(body).some((key) => !allowed.has(key)) ||
+      (body.action !== 'grant' && body.action !== 'revoke') ||
+      (body.documentType !== 'trial_terms' && body.documentType !== 'subscription_terms') ||
+      typeof body.documentKey !== 'string' ||
+      !/^[a-z][a-z0-9_-]{2,79}$/.test(body.documentKey) ||
+      (body.jurisdictionCountryId !== null &&
+        (!Number.isSafeInteger(body.jurisdictionCountryId) || Number(body.jurisdictionCountryId) <= 0)) ||
+      typeof body.reason !== 'string' ||
+      body.reason.trim().length < 1 ||
+      body.reason.trim().length > 1000
+    ) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+
+    try {
+      const authority = await reader.manage(res.locals.actorAccountId as number, {
+        action: body.action,
+        documentType: body.documentType,
+        documentKey: body.documentKey,
+        jurisdictionCountryId: body.jurisdictionCountryId as number | null,
+        reason: body.reason.trim(),
+      });
+      res.status(200).json({ authority });
+    } catch (error) {
+      if (isSqlState(error, '42501')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      if (isSqlState(error, '22023') || isSqlState(error, '23503')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (isSqlState(error, 'P0001') || isSqlState(error, '23505')) {
+        res.status(409).json({ error: 'conflict' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'commercial.document.authority.manage',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
       res.status(503).json({ error: 'service_unavailable' });
     }
   });
