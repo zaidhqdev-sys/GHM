@@ -1577,3 +1577,69 @@ The existing runtime privilege model is intentionally a mixture of direct SELECT
 5. Keep production role/ACL state unchanged until a small migration is source-tested, qualified against the exact production prefix, and can be rolled out with rollback/verification.
 
 All production SQL in this section was read-only catalogue inspection. No migrations, grants, revokes, RLS policies, role changes, credentials, secrets, Render settings, service deployments, or payment/consent actions were changed.
+
+
+## 36. 2026-11-16 — production pending-prefix source review (48 migrations)
+
+A read-only source review was completed against the current `main` tree at `7236c82aff4fe6f100e20740c0bac8b9b94fe789`.
+
+### Inventory basis
+
+- Repository SQL migration files: 143.
+- Production ledger export previously supplied by the user: 105 rows.
+- Latest applied version in that export: `20261109210000_deactivate_unrecognized_public_directory_records`.
+- Repository versions later than that version: 48.
+- The seven-entry `config/pending-migrations.production.json` is still only a partial exact inventory; it is not an execution batch.
+- The 48 pending items comprise the 42 migrations listed in section 2 of `docs/HANDOVER_2026-11-15_PRODUCTION_MIGRATION_RECONCILIATION.md`, plus six new commercial migrations:
+  - `20261116140000_generalize_commercial_payment_provider_code`
+  - `20261116150000_create_commercial_consent_evidence`
+  - `20261116160000_add_commercial_document_approval_authority`
+  - `20261116170000_add_founder_only_commercial_document_authority_gateway`
+  - `20261116180000_add_founder_only_commercial_document_approval_transition`
+  - `20261116190000_add_commercial_consent_payment_prepare_gateway`
+
+The 105-row ledger export is the evidence basis for the count/latest version. This source review did not re-read the live ledger or recalculate all 105 checksum comparisons. The full checksum/provenance verdict therefore remains open; do not describe this tranche as a completed checksum reconciliation.
+
+### Pending-prefix dependency/risk classification
+
+The source review of all 48 migration SQL files confirms the queue contains several independently meaningful operational groups:
+
+1. **Business supplier/profile and capability governance (20261110010000–20261110270000).** Adds supplier classification and admin capability operations; creates/guards catalogue invariants; introduces gateway versions and cuts over supplier classification and Business profile mutation by revoking the old `ghm_runtime` SECURITY DEFINER entry points. The registration-identity gateway-write migration explicitly preserves the old runtime grant pending a separately authorized cutover. These migrations have different cutover states and must not be treated as one generic gateway deployment.
+2. **Signed Actor Gateway assertion and business mutations (20261111020000–20261111170000).** Replaces unsigned gateway function signatures with signed, request-bound assertions; drops earlier unsigned overloads; adds capability/evidence, saved-business, business-hours, trust-score and logo operations/read projections. Several operations are only valid after the dedicated gateway service and secret/nonce material are provisioned and the matching API routes are deployed.
+3. **Auth and QuoteFlow privilege cutovers (20261111210000–20261112040000).** Removes direct runtime access to external identity mapping tables and revokes selected auth session/password/account administration and QuoteFlow migration/reset registration functions. These directly affect auth and QuoteFlow workflows and require their deployed replacement paths to be confirmed before applying.
+4. **Global/default privilege and signed Connect provisioning (20261112050000–20261112090000).** Removes PUBLIC EXECUTE from future functions created by `ghm_schema_owner`; removes an unsigned gateway assertion overload; installs signed Connect business provisioning and revokes the old business external-mapping helper. The default-privilege migration is owner-scoped to `ghm_schema_owner`; it does not cancel global defaults owned by `postgres`.
+5. **Storage metadata/provider workflow (20261112140000–20261112150000).** Adds signed gateway storage metadata functions and provider workflow attestation secret/nonce tables, with explicit revocation of legacy runtime execution. This is a distinct provider callback/attestation dependency and cannot be assumed ready from the presence of the storage gateway code alone.
+6. **Commercial payment provider and consent/legal authority (20261116140000–20261116190000).** Generalizes the provider code constraint; creates immutable commercial document/consent evidence and append-only approval-authority event structures; adds founder-only grant/revoke and exact-version approval gateway transitions; adds consent/payment preparation. These are not payment activation: the preparation operation does not call a provider or settle/activate a subscription. The commercial chain must remain launch-disabled and must not be combined with unrelated Actor Gateway cutovers.
+
+### Critical source-level ordering observation
+
+The pending migrations include function replacement/drop sequences. For example, earlier gateway operations are created with unsigned actor arguments and later migrations drop those overloads and replace them with signed request-context versions. Applying only a later migration without its exact prerequisites is unsafe; applying the entire pending queue as one transaction is also unsafe because multiple legacy runtime functions are revoked before the corresponding separate gateway/API/service deployment and secret provisioning gates have been satisfied.
+
+The repository migration runner currently:
+- checks the production pending inventory against `config/pending-migrations.production.json`;
+- detects out-of-order pending migrations;
+- validates existing checksums and documented historical exceptions;
+- then loops over every not-yet-applied repository migration and executes all pending SQL in a single transaction.
+
+It has no explicit approved batch identifier, exact ordered batch manifest, or through-version execution boundary. Therefore the seven-item pending file is not a safe batching mechanism, and changing it to 48 would authorize all 48 in one invocation. Do not edit it to 48 and do not run `npm run migrate`.
+
+### Required staged-runner contract before rollout
+
+A production staged runner should require all of the following:
+1. A separate immutable pending-inventory snapshot (version + name) and an explicit named execution-batch manifest; the inventory must never itself authorize execution.
+2. The batch manifest contains the exact ordered version/name pairs and a batch identifier/reason. It must be a contiguous prefix of the currently pending queue, with no skipped earlier pending migration and no unlisted extra.
+3. The runner refuses production pending work when no explicit batch is selected; no implicit “all pending” default.
+4. Before execution, it revalidates database identity, migrator principal, complete ledger checksums/provenance, exact pending inventory, exact batch manifest, and that the batch begins at the first unapplied repository migration.
+5. Each batch is atomic, holds the advisory migration lock, writes the ledger rows in the same transaction, and fails closed on any checksum/name/order mismatch.
+6. A dry-run/plan mode prints the exact SQL filenames and order without executing SQL. Tests cover no-batch refusal, wrong batch, gaps, wrong names, duplicate entries, checksum mismatch, already-applied entry, rollback, repeat-run/idempotency, and preservation of historical retained/exception handling.
+7. Batch manifests are committed and reviewed with the code; a production run must explicitly identify the batch. No dynamic arbitrary through-version environment string.
+
+The first implementation should be qualified on disposable PostgreSQL 18 using the current production-like 105-row ledger fixture and full repository migration tree. It must prove both safe-prefix success and refusal of skipped/reordered migrations. Do not use the live production DB for runner experiments.
+
+### PR #296 relationship
+
+PR #296 remains a separate draft hardening candidate on `hardening/business-identity-insert-column-acl`. Its migration version `20261116200000` is later than the six commercial migrations above. It is not part of the current 143-file main inventory or the 48-item pending prefix. If merged, the repository inventory becomes 144 migrations and the version-later count becomes 49; this must be reflected in the pending inventory/audit before any rollout. Do not add it to production allowlist or execute it out of sequence.
+
+### Change record
+
+This was source and handover review only. No production ledger query, migration execution, DDL, role/grant/ACL, RLS, credential, secret, Render configuration, deployment, payment, consent, or legal-document state was changed.
