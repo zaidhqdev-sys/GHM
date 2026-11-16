@@ -21,12 +21,12 @@ BEGIN
     v_oid := to_regprocedure(v_signature);
     IF v_oid IS NULL THEN RAISE EXCEPTION 'required legacy storage function is missing: %', v_signature; END IF;
     SELECT p.proowner,p.prosecdef,p.proconfig INTO v_owner,v_security_definer,v_settings FROM pg_catalog.pg_proc p WHERE p.oid=v_oid;
-    IF v_owner <> 'ghm_schema_owner'::regrole OR v_security_definer IS DISTINCT FROM true
+    IF pg_catalog.pg_get_userbyid(v_owner) IS DISTINCT FROM 'ghm_schema_owner' OR v_security_definer IS DISTINCT FROM true
        OR NOT (
          COALESCE(v_settings,ARRAY[]::text[]) @> ARRAY['search_path=pg_catalog, ghm']
          OR COALESCE(v_settings,ARRAY[]::text[]) @> ARRAY['search_path=pg_catalog, ghm, pg_temp']
        ) THEN
-      RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %',v_signature;
+      RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %, owner=%, security_definer=%, settings=%',v_signature,pg_catalog.pg_get_userbyid(v_owner),v_security_definer,v_settings;
     END IF;
     SELECT EXISTS(SELECT 1 FROM pg_catalog.aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
       WHERE p.oid=v_oid AND a.grantee=0 AND a.privilege_type='EXECUTE') INTO v_public_execute
