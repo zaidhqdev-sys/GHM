@@ -1061,7 +1061,7 @@ Merge commit `f6e75dc91636ecb76b00485736afd69b6c92d768` passed main workflow `43
 This confirms the merged source on main. It does not authorize a production migration, route call, Render deployment, authority assignment, legal-document approval, consent or payment activation.
 
 
-## 26. GHM-native explicit consent + payment preparation — database PR in progress (2026-11-16)
+## 26. GHM-native explicit consent + payment preparation — PR #294 merged (2026-11-16)
 
 After PR #293, the next bounded implementation is a GHM-native database boundary for recording customer acceptance of an exact approved subscription-terms version and preparing a Business payment attempt atomically.
 
@@ -1113,3 +1113,8 @@ PR #294 exact implementation head `e1cd4e56ec90123eb3614c2f4297a08af6f26cba` pas
 - Existing Actor Gateway, Auth Issuer, Connect provisioning, Capability and Opportunity qualifications passed.
 
 The payment qualification demonstrated synthetic exact-document approval, atomic payment-attempt + consent-event return, original evidence on idempotent retry, denial of changed-document idempotency reuse, false acceptance, non-member, unapproved document, forged assertion and replay. It explicitly confirmed that `ghm_actor_gateway` cannot directly read `commercial_consent_event`. All payment/consent/commercial-event writes were rolled back and a schema-owner check confirmed zero residual rows. No real legal content or production write was used.
+
+
+### 26.2 PR #294 merge record
+
+PR [#294](https://github.com/zaidhqdev-sys/GHM/pull/294) was squash-merged after exact-head qualification. Merge commit: `4614c70ba506914de1ebfe1f6e77c5a6a19971f9`. Exact final PR head `048f94d500d457d207b0d23a1d6ae279b3941029` passed workflow `43916734126` (`quality` 73/73, `web-quality` 11/11). No production migration or live commercial operation was performed.
