@@ -1,0 +1,194 @@
+[
+  {
+    "version": "20261110010000",
+    "name": "add_business_supplier_classification"
+  },
+  {
+    "version": "20261110100000",
+    "name": "create_account_onboarding_progress"
+  },
+  {
+    "version": "20261110120000",
+    "name": "create_business_relationship_outcome_read_models"
+  },
+  {
+    "version": "20261110140000",
+    "name": "allow_pending_storage_object_cleanup"
+  },
+  {
+    "version": "20261110160000",
+    "name": "add_admin_capability_catalogue_governance"
+  },
+  {
+    "version": "20261110210000",
+    "name": "add_actor_gateway_principal_guard"
+  },
+  {
+    "version": "20261110220000",
+    "name": "add_actor_gateway_self_identity_read"
+  },
+  {
+    "version": "20261110230000",
+    "name": "add_gateway_business_registration_identity_read"
+  },
+  {
+    "version": "20261110233000",
+    "name": "add_gateway_business_registration_identity_write"
+  },
+  {
+    "version": "20261110240000",
+    "name": "enforce_capability_catalogue_cross_row_invariants"
+  },
+  {
+    "version": "20261110250000",
+    "name": "add_gateway_capability_governance"
+  },
+  {
+    "version": "20261110260000",
+    "name": "gateway_supplier_classification_cutover"
+  },
+  {
+    "version": "20261110265000",
+    "name": "reconcile_business_profile_legacy_contract"
+  },
+  {
+    "version": "20261110270000",
+    "name": "gateway_business_profile_update"
+  },
+  {
+    "version": "20261111020000",
+    "name": "bind_capability_gateway_actor_to_signed_assertion"
+  },
+  {
+    "version": "20261111030000",
+    "name": "bind_supplier_gateway_actor_to_signed_assertion"
+  },
+  {
+    "version": "20261111040000",
+    "name": "bind_business_profile_gateway_actor_to_signed_assertion"
+  },
+  {
+    "version": "20261111050000",
+    "name": "bind_registration_and_self_identity_to_signed_gateway_actor"
+  },
+  {
+    "version": "20261111060000",
+    "name": "bind_gateway_assertions_to_request_context"
+  },
+  {
+    "version": "20261111070000",
+    "name": "add_signed_business_capability_mutations"
+  },
+  {
+    "version": "20261111100000",
+    "name": "add_signed_saved_business_gateway"
+  },
+  {
+    "version": "20261111130000",
+    "name": "add_signed_business_hours_gateway"
+  },
+  {
+    "version": "20261111140000",
+    "name": "add_business_hours_read_projections"
+  },
+  {
+    "version": "20261111150000",
+    "name": "add_signed_trust_score_gateway"
+  },
+  {
+    "version": "20261111160000",
+    "name": "add_signed_business_logo_gateway"
+  },
+  {
+    "version": "20261111170000",
+    "name": "add_trust_score_read_projections"
+  },
+  {
+    "version": "20261111210000",
+    "name": "revoke_runtime_account_external_identity_table_access"
+  },
+  {
+    "version": "20261111220000",
+    "name": "revoke_unused_auth_runtime_entry_points"
+  },
+  {
+    "version": "20261111230000",
+    "name": "add_token_bound_recovery_revocation_result"
+  },
+  {
+    "version": "20261111240000",
+    "name": "revoke_runtime_quoteflow_migration_provisioning"
+  },
+  {
+    "version": "20261111250000",
+    "name": "revoke_runtime_external_identity_link"
+  },
+  {
+    "version": "20261111260000",
+    "name": "revoke_runtime_external_identity_bootstrap"
+  },
+  {
+    "version": "20261112020000",
+    "name": "add_token_bound_password_recovery_reset"
+  },
+  {
+    "version": "20261112030000",
+    "name": "add_conditional_password_rehash"
+  },
+  {
+    "version": "20261112040000",
+    "name": "revoke_runtime_quoteflow_reset_enrollment_registration"
+  },
+  {
+    "version": "20261112050000",
+    "name": "revoke_public_default_function_execution"
+  },
+  {
+    "version": "20261112070000",
+    "name": "revoke_legacy_unsigned_actor_gateway_overloads"
+  },
+  {
+    "version": "20261112080000",
+    "name": "signed_connect_business_provisioning_gateway"
+  },
+  {
+    "version": "20261112090000",
+    "name": "pin_security_definer_search_path"
+  },
+  {
+    "version": "20261112140000",
+    "name": "add_signed_storage_metadata_actor_gateway"
+  },
+  {
+    "version": "20261112150000",
+    "name": "add_storage_provider_workflow_attestation"
+  },
+  {
+    "version": "20261112170000",
+    "name": "revoke_redundant_migrator_business_mapping_lookup"
+  },
+  {
+    "version": "20261116140000",
+    "name": "generalize_commercial_payment_provider_code"
+  },
+  {
+    "version": "20261116150000",
+    "name": "create_commercial_consent_evidence"
+  },
+  {
+    "version": "20261116160000",
+    "name": "add_commercial_document_approval_authority"
+  },
+  {
+    "version": "20261116170000",
+    "name": "add_founder_only_commercial_document_authority_gateway"
+  },
+  {
+    "version": "20261116180000",
+    "name": "add_founder_only_commercial_document_approval_transition"
+  },
+  {
+    "version": "20261116190000",
+    "name": "add_commercial_consent_payment_prepare_gateway"
+  }
+]
