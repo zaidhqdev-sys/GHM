@@ -436,3 +436,12 @@ PR #286 exact head `d8d6640fd48dfc03cbc4dbf65ed2968acabb1704` passed exact-head 
 Correction to the preceding qualification note: the test uses actual function invocations inside rollback transactions, not PREPARE. The preceding failure returned `permission denied for schema ghm`; PostgreSQL rejected the qualified reference at schema USAGE before function EXECUTE. The assertion now accepts either schema-level or function-level permission denial, while separate effective-ACL checks still assert no effective EXECUTE privilege on the legacy functions. The test output confirms both direct-call denial and rollback passed.
 
 This result is not production authorization. Production wrappers remain absent and their migrations pending. Do not run either SQL artifact against `ghm_db`; the existing production blockers remain deployed gateway/Resource API and isolated-principal proof, reviewed wrapper migration sequence, provider lifecycle E2E, Amanda/Render role escalation, and fresh verified backup. PR #286 remains draft/open/unmerged; no production grant, role, migration, secret or deployment changed.
+
+
+## 2026-11-16 — exact storageMetadata stage assertion restored; exact-head CI PASS
+
+A review found the intended exact five-signature assertion in the runtime ACL stage test had been swallowed by a literal escaped newline inside a line comment. The test was corrected in PR #286 commit `8660a91e9523a3729ceecac0797cdb0f0c5bb516`, restoring an executable deep equality check against the exact reviewed five-function `storageMetadata` group.
+
+Exact-head CI run [#5109](https://github.com/zaidhqdev-sys/GHM/actions/runs/43850805507) passed both `quality` and `web-quality`. The Cloudflare Pages integration check passed as well; no Cloudflare hosting option was reconsidered or changed.
+
+This remains code/test qualification, not production authorization. PR #286 stays draft/open/unmerged. The production Actor Gateway hosting/network blocker and all previously recorded production cutover gates remain. No production SQL, grants, roles, secrets, migrations, Render settings or deployments changed.
