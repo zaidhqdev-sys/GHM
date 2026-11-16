@@ -1171,3 +1171,84 @@ Do not apply any of the five manual cutovers until the compatible Resource API a
 Continue through the ordered authentication and identity hardening migrations beginning `20261111210000`, including recovery-token, QuoteFlow provisioning and runtime entry-point revocations. Reconcile each automatic migration with its separate cutover/rollback and existing issuer handover; PayFast remains paused and out of scope.
 
 No production database, migration ledger, role/grant, secret, Render/Cloudflare setting, service, deployment, provider bucket/object or application data was changed. Preserve the untracked local `.bak` file.
+
+
+
+## 43. Authentication lifecycle and QuoteFlow reset authority migration review (2026-11-16 00:23 UTC)
+
+### Exact-head CI and PR state
+
+- PR #285 remains OPEN, DRAFT and UNMERGED.
+- Exact source/handover head reviewed: `1e0f440fae24c283ff6064c08b1e2b5f3cabb224`.
+- CI workflow #5036, run ID `43779637883`, completed SUCCESS; both `quality` and `web-quality` passed.
+- This qualifies section 42's documentation update and the reviewed source snapshot. No production migration, service or cutover.
+
+### Migrations 21–26: direct identity and auth entry-point removal
+
+**21 — `20261111210000_revoke_runtime_account_external_identity_table_access`**
+- Removes all direct runtime privileges on `account_external_identity` and its sequence.
+- Preserves narrow SECURITY DEFINER identity lookup/link/bootstrap/provision functions for a staged transition. Subsequent migrations revoke runtime EXECUTE on provisioning, link and bootstrap individually.
+- This is a staged authority reduction, not a complete identity cutover by itself. The runtime retains only the explicitly intended mapping lookups after the full issuer and Actor Gateway cutovers; Connect Business mapping creation is separately moved to signed Actor Gateway provisioning.
+
+**22 — `20261111220000_revoke_unused_auth_runtime_entry_points`**
+- Removes runtime/PUBLIC EXECUTE on legacy session revoke, password change and account-disable functions that are not part of the supported Resource API route contract.
+- Keep these disabled; do not restore them as a workaround for issuer deployment.
+
+**23 — `20261111230000_add_token_bound_recovery_revocation_result`**
+- Adds an internal SECURITY DEFINER recovery redemption routine keyed by a 32-byte token hash, atomically consumes one unexpired unused token and revokes that account's sessions; returns the account and revoked-session count.
+- The externally granted compatibility wrappers are token-bound (no caller-supplied account ID), but this is a transitional Resource API runtime grant. The final Authentication Issuer allow-list does not include either `auth_redeem_recovery` wrapper; no application persistence callsite for these wrappers was found in the reviewed source. Do not add them to the issuer allow-list merely because the migration creates them. The supported password reset route uses migration 1202's combined token-bound reset operation.
+- Migration also revokes the caller-supplied-account-ID all-session revocation wrapper from runtime.
+
+**24–26 — `20261111240000`, `20261111250000`, `20261111260000`**
+- Revoke runtime/PUBLIC EXECUTE on QuoteFlow migration account provisioning, external identity linking and external identity bootstrap, respectively.
+- Provisioning remains an operator/migrator capability. Identity link/bootstrap are not ordinary Resource API runtime operations; Business provisioning is through the signed Actor Gateway transaction.
+- These are forward-only privilege reductions in the ordered migration chain; do not restore old runtime function grants to get an older API artifact working.
+
+### Migrations 1202–1204: token-bound recovery and operator-only enrollment
+
+**1202 — `20261112020000_add_token_bound_password_recovery_reset`**
+- The reset function requires a 32-byte token hash, normalized login email and non-empty new password hash.
+- It locks and validates one unused, unrevoked, unexpired recovery token; requires an active account and active credential whose normalized login email matches; excludes accounts with a `reset_required` QuoteFlow migration enrollment; consumes the token, updates only the password hash and Argon2 parameters, and revokes all sessions in the same transaction.
+- It preserves the existing login email and returns account ID plus revoked-session count. EXECUTE is granted to runtime only as a staged pre-issuer state; the issuer cutover later revokes runtime and grants this function to the issuer.
+- This is the supported token-bound reset path. The HTTP/application layer hashes the supplied password and opaque token before invoking SQL.
+
+**1203 — `20261112030000_add_conditional_password_rehash`**
+- Performs an optimistic compare-and-swap: it updates an active account's hash only if the stored hash still equals the exact hash the login flow verified. This prevents a stale login from overwriting a concurrent reset/change.
+- The SQL function accepts an account ID, so it is safe only behind the trusted Authentication Issuer login path after cutover; it must not be exposed as a general caller-controlled runtime authority. Its staged runtime grant is removed by the issuer manual cutover, which grants the exact function to `ghm_auth_issuer`.
+
+**1204 — `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration`**
+- Removes PUBLIC/runtime EXECUTE on enrollment registration. Recording approved migration provenance remains a migrator/operator action.
+- The issuer may look up and complete an already-approved enrollment through its separate allow-list; it cannot create or modify the approval provenance.
+
+### Authentication Issuer cutover — source and disposable evidence versus production state
+
+Reviewed:
+- `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql`
+- `scripts/qualify-auth-issuer-cutover.mjs`
+- `src/auth-issuer/database-privileges.ts`
+- `src/auth-issuer/database-principal.ts`
+- `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`
+
+The manual cutover is deliberately outside the automatic migration chain. It checks `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, validates the isolated issuer LOGIN/NOINHERIT and bounded Render administrator membership exception, clears accidental issuer relation/sequence/function grants, revokes runtime auth lifecycle EXECUTE and grants the exact ten-function issuer allow-list. The issuer receives schema USAGE but no schema CREATE or direct relation/sequence privileges. Resource API runtime is expected to retain exactly two external identity/mapping lookup functions. The cutover also revokes direct application execution of the Business external mapping-link helper, which is now called only inside signed Actor Gateway provisioning.
+
+The disposable qualification exercises separate runtime, issuer, Actor Gateway and migrator connections, exact allow-lists, default function ACLs, PUBLIC/runtime/unexpected-role EXECUTE denial, lifecycle and runtime denials, and rollback. This is strong source/isolated test evidence only. The authoritative runbook states:
+- no production `ghm_auth_issuer` role exists and no issuer service is deployed;
+- no production issuer secret, route or client origin has been configured;
+- GHM Internal Runtime remains on main with auto-deploy OFF;
+- QuoteFlow native app needs a reachable HTTPS issuer origin; Connect native bearer calls require exact CORS origin handling; a private-only Render issuer would not satisfy those clients;
+- the current issuer has no recovery email delivery adapter; generic password recovery and QuoteFlow migration-reset recovery intentionally fail closed with 503 until approved delivery exists;
+- current external DB TLS mode encrypts but disables certificate verification; internal mode is acceptable only on a verified private same-region path;
+- client compatibility, signing-key overlap, refresh pepper continuity and exact rollback artifact must be proven before cutover.
+
+Do not apply the issuer manual cutover. It would remove Resource API auth lifecycle calls and break registration/login/refresh/logout/reset if traffic is not already routed to the deployed issuer. No issuer role, service, secret, network setting or client configuration has been created in production.
+
+### Release decision and next review boundary
+
+- Migrations 21–26 and 1202–1204 are a coherent staged reduction of legacy authentication and QuoteFlow operator authority, not an independently executable production batch.
+- Keep the issuer manual cutover separate from migrations and blocked until an issuer service is actually deployable within the existing no-additional-spend constraint, reachable by GHM web/Connect/QuoteFlow over reviewed HTTPS, and passes full client lifecycle tests.
+- Recovery delivery remains a distinct functional blocker; do not claim password recovery is end-to-end ready.
+- Fresh verified production backup/recovery, Amanda/Render role authority and membership reconciliation, TLS/network design, compatible Actor Gateway/issuer deployment, secret/key continuity, client origin configuration and rollback remain mandatory gates.
+- Continue the next ordered migration review after `20261112040000`, reconciling each automatic migration with its existing manual cutover, runtime allow-list state and application callsites. Do not repeat issuer/storage/capability cutover qualification already recorded.
+- Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset; do not run `npm run migrate` and do not execute any manual cutover.
+
+No production database, migration ledger, role/grant, secret, Render/Cloudflare setting, service, deployment, routing, client configuration or application data was changed during this review. Preserve the untracked local `.bak` file.
