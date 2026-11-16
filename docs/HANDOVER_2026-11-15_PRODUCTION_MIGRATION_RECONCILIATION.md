@@ -1425,3 +1425,31 @@ Direct inspection confirms:
 - Migrations 1–3 remain subject to their individual disposable qualification and production backup/role gates. Migration 4 remains the separate storage-gateway hard stop already documented. Nothing in this review authorizes production execution.
 
 No production query or mutation, migration, ledger repair, grant/role change, secret, deployment, service/configuration change, or application routing change was performed. The local untracked `.bak` file remains protected.
+
+## 48. Registration identity and capability-chain compatibility review (2026-11-16 01:08 UTC)
+
+### Migrations 10230000–10270000
+
+- `20261110230000_add_gateway_business_registration_identity_read` adds a gateway-only read wrapper while explicitly retaining the existing Resource API runtime RPC pending a separate API cutover.
+- `20261110233000_add_gateway_business_registration_identity_write` fixes the legacy write function's ambiguous `ON CONFLICT (business_id)` target by using the named primary-key constraint. It deliberately retains the legacy runtime EXECUTE grant and adds a gateway wrapper; therefore the gateway wrapper's presence alone is not a completed application cutover.
+- `20261110240000_enforce_capability_catalogue_cross_row_invariants` installs a SECURITY DEFINER trigger for hierarchy and replacement invariants, with schema-owner ownership and direct EXECUTE revoked from PUBLIC/runtime/gateway. Trigger execution is not dependent on application-role EXECUTE.
+- `20261110250000_add_gateway_capability_governance` adds gateway wrappers but deliberately retains the three legacy runtime capability grants. The already-existing manual cutover and its disposable qualification are recorded in Section 47; migration 5 remains the first hard stop.
+- `20261110260000_gateway_supplier_classification_cutover` installs the transitional gateway wrapper and revokes legacy supplier function runtime EXECUTE. The later 11030000/11060000 migrations upgrade the wrapper to the signed context-bound assertion contract.
+- `20261110265000_reconcile_business_profile_legacy_contract` is a forward-only reconciliation of the live Business profile function/schema contract; it is not a gateway cutover by itself. It must be reviewed against the actual production schema and Resource API contract before execution.
+- `20261110270000_gateway_business_profile_update` installs a gateway wrapper and revokes the legacy Resource API runtime function grant. Its route must be released compatibly with the signed gateway contract before the migration is considered safe for production.
+
+### Signed assertion transition — migrations 11020000–11060000
+
+- These migrations progressively replace login-only/caller-asserted gateway interfaces with signed assertions, nonce replay protection, and finally v2 assertions bound to the exact request context.
+- The final migration recreates the gateway wrapper signatures and removes the earlier overloads; therefore a Worker/client deployed against the intermediate signatures is not compatible with the final database contract.
+- The final signed assertion functions are explicitly limited to the Actor Gateway database principal, with PUBLIC/runtime/migrator execution revoked and gateway execution granted.
+- This chain is source-level security design, not a live deployment. The gateway Worker must be released against the final v2 signatures and exact canonical context serialization; do not apply the chain while any live gateway/client uses the earlier contract.
+
+### Compatibility and execution disposition
+
+- Registration identity retains legacy runtime EXECUTE at this point in the chain; confirm the corresponding Resource API route integration and any later cutover before selecting the relevant migration batch.
+- Supplier classification and Business profile have database revocation steps in their migrations; they require compatible Resource API-to-gateway route deployment before those migrations are applied.
+- Capability governance is separately blocked by its manual cutover at migration 5.
+- No production migration or manual cutover is approved by this review. The strict prefix runner, backup/restore gate, Amanda/Render role-authority gate, and Section 45 no-additional-cost deployment NO-GO remain binding.
+
+No production database or application state was changed. No migration, ledger, role/grant, secret, service, network, routing, deployment or storage object was touched. Preserve the local untracked `.bak` file.
