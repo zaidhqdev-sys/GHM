@@ -13,14 +13,14 @@ The existing commercial consent foundation stores immutable document versions, a
 
 ## 2. Authority scope
 
-An authority grant is scoped by:
+An immutable authority identity fixes:
 - authority identifier (stable UUID shared by grant and revoke events);
 - authority account (the person permitted to approve);
 - document type (`trial_terms` or `subscription_terms`);
 - document key;
 - optional jurisdiction country.
 
-The recorded-by account identifies the GHM account that recorded the grant/revocation. The reason, request identifier, timestamp and metadata preserve provenance. Revocation is a new event; historical grant events are never edited or deleted.
+A separate event ledger records each grant/revocation against that fixed identity. The recorded-by account identifies the GHM account that recorded the event. The reason, request identifier, timestamp and metadata preserve provenance. Revocation is a new event; historical identity and grant events are never edited or deleted.
 
 A later approval operation must prove all of the following inside one database transaction:
 1. The authenticated actor is the same account as the authority account on the cited grant event.
@@ -40,8 +40,8 @@ Before any grant is recorded, the owner must explicitly designate the person/acc
 ## 4. Immutable evidence and access
 
 Migration `20261116160000_add_commercial_document_approval_authority.sql` adds:
-- `ghm.commercial_document_approval_authority_event`, append-only `granted` / `revoked` events;
-- scope fields, authority account, recording account, reason, request ID, timestamp and metadata;
+- `ghm.commercial_document_approval_authority`, immutable authority principal and document scope;
+- `ghm.commercial_document_approval_authority_event`, append-only `granted` / `revoked` events referencing that fixed identity, with recording account, reason, request ID, timestamp and metadata;
 - `approval_authority_event_id` on `ghm.commercial_document_status_event`;
 - a constraint requiring the authority-event reference for approval events and forbidding it for non-approval lifecycle events;
 - UPDATE/DELETE/TRUNCATE rejection triggers;
