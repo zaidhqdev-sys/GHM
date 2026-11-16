@@ -50,15 +50,21 @@ CREATE INDEX commercial_document_authority_scope_idx
 -- The eventual write function must also verify that the latest event is a
 -- grant and that the actor/document scope match; this FK is not authorization.
 ALTER TABLE ghm.commercial_document_status_event
-  ADD COLUMN approval_authority_event_id bigint
-    REFERENCES ghm.commercial_document_approval_authority_event(id) ON DELETE RESTRICT;
-
-ALTER TABLE ghm.commercial_document_status_event
+  ADD COLUMN approval_authority_event_id bigint,
+  ADD COLUMN approval_authority_event_type text,
+  ADD CONSTRAINT commercial_document_approval_authority_grant_fk
+    FOREIGN KEY (approval_authority_event_id, approval_authority_event_type)
+    REFERENCES ghm.commercial_document_approval_authority_event(id, event_type)
+    ON DELETE RESTRICT,
   ADD CONSTRAINT commercial_document_approval_authority_required
   CHECK (
-    (status = 'approved' AND approval_authority_event_id IS NOT NULL)
+    (status = 'approved'
+      AND approval_authority_event_id IS NOT NULL
+      AND approval_authority_event_type = 'granted')
     OR
-    (status <> 'approved' AND approval_authority_event_id IS NULL)
+    (status <> 'approved'
+      AND approval_authority_event_id IS NULL
+      AND approval_authority_event_type IS NULL)
   );
 
 -- Reuse the existing append-only trigger function for both fixed authority
@@ -92,6 +98,8 @@ COMMENT ON TABLE ghm.commercial_document_approval_authority IS
 COMMENT ON TABLE ghm.commercial_document_approval_authority_event IS
   'Append-only grant/revoke history for an immutable scoped commercial legal-document approval authority.';
 COMMENT ON COLUMN ghm.commercial_document_status_event.approval_authority_event_id IS
-  'Exact authority grant event cited by an approval; the governed write function must verify actor, scope and continuing grant validity.';
+  'Exact authority grant event cited by an approval; composite FK and CHECK require event_type=granted. The governed write function must also verify actor, scope and continuing grant validity.';
+COMMENT ON COLUMN ghm.commercial_document_status_event.approval_authority_event_type IS
+  'Must be granted for approved status events; paired with approval_authority_event_id to enforce grant-only references.';
 
 COMMIT;
