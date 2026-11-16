@@ -113,3 +113,17 @@ The database-side owner authority operation passed exact-head CI on code commit 
 - The exact Actor Gateway function allow-list and no-direct-table-access boundary passed.
 
 The PR adds only the SQL boundary, ACL allow-list entries, migration contract and disposable qualification. The HTTP route/reader is intentionally not yet wired. No authority row is present in production, and no document is approved. Next slice is the authenticated Actor Gateway HTTP/TypeScript integration with strict request validation and tests, followed by the separate governed document-approval transition. Production backup, migration-ledger, gateway hosting/cost and service deployment gates remain unchanged.
+
+
+## 11. Authenticated Actor Gateway owner route — qualification in progress
+
+The next integration slice adds `POST /v1/owner/commercial-document-approval-authority`.
+
+- ES256 bearer middleware supplies the actor account from the verified token. The body cannot specify an actor or approver account.
+- Strict request validation permits only action, document type/key, jurisdiction country ID and reason.
+- The TypeScript reader creates the one-use HMAC assertion using the configured gateway secret and binds it to the exact operation payload.
+- The database function remains the authorization authority: it checks the gateway session, assertion, founder bootstrap singleton, active founder account and canonical active founder credential.
+- The route returns only the authority identifier, event identifier and resulting event type; it does not disclose the founder account ID or login.
+- Authorization denial is 403, invalid input is 400, duplicate/invalid transition is 409, and internal failure is 503 without SQL detail leakage.
+
+This is still only an owner authority grant/revoke route. It does not approve a document version. The separate approval transition must validate the latest grant event, actor equality, document type/key/jurisdiction/plan and immutable version before appending an approved status event. No production deployment or write has been performed.
