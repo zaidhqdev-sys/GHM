@@ -20,6 +20,19 @@ const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
 });
 
 const databaseSsl = process.env.DATABASE_SSL === 'true';
+const batchQualificationMode =
+  process.env.NODE_ENV === 'test' &&
+  process.env.GHM_MIGRATION_BATCH_QUALIFICATION === 'true';
+
+if (batchQualificationMode &&
+    (approvedTarget.databaseName === 'ghm_db' ||
+      !['localhost', '127.0.0.1'].includes(approvedTarget.host))) {
+  throw new Error('Production batch qualification is restricted to a non-production database on localhost');
+}
+
+const usesProductionBatchControls =
+  approvedTarget.databaseName === 'ghm_db' || batchQualificationMode;
+
 if (approvedTarget.databaseName === 'ghm_db' && !databaseSsl) {
   throw new Error('Production migrations require DATABASE_SSL=true with certificate verification enabled');
 }
@@ -205,7 +218,7 @@ const migrate = async (): Promise<void> => {
     }
 
     let executionMigrations = migrations;
-    if (approvedTarget.databaseName === 'ghm_db') {
+    if (usesProductionBatchControls) {
       const pendingMigrations = migrations.filter((migration) => !appliedByVersion.has(migration.version));
       if (pendingMigrations.length > 0) {
         executionMigrations = selectProductionMigrationBatch(
@@ -219,7 +232,7 @@ const migrate = async (): Promise<void> => {
     }
 
     const executionVersions = new Set(executionMigrations.map((migration) => migration.version));
-    const planOnly = approvedTarget.databaseName === 'ghm_db' && process.env.GHM_MIGRATION_PLAN_ONLY === 'true';
+    const planOnly = usesProductionBatchControls && process.env.GHM_MIGRATION_PLAN_ONLY === 'true';
     const plannedMigrations: Migration[] = [];
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
