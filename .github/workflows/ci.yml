@@ -223,6 +223,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Qualify production migration batch runner on isolated disposable PostgreSQL databases
+        env:
+          GHM_BATCH_QUALIFICATION_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+          GHM_BATCH_QUALIFICATION_HOST: localhost
+        run: npm run qualify:production-migration-batch-runner
+
       - name: Bundle Actor Gateway Cloudflare Worker without deploying
         run: |
           mkdir -p tmp/actor-gateway-worker-build
