@@ -148,3 +148,8 @@ Migration `20261116180000_add_founder_only_commercial_document_approval_transiti
 - Only Actor Gateway EXECUTE is granted; no direct table access is added.
 
 The disposable qualification uses synthetic immutable version/draft fixtures and rolls back all grant/revoke/approved events. No real legal document, production approval, consent or payment is created. A future HTTP route/reader must derive actor only from ES256 bearer identity and call this transition. The owner must still provide and inspect the actual legal document before any production version is registered or approved.
+
+
+### 12.1 Exact document approval transition qualification passed (2026-11-16)
+
+PR #292 code head `0e9c4fe1ebb59054b17c15ab6af28348e2ac6bde` passed workflow `43908611434` (`quality` and `web-quality`). Disposable PostgreSQL verified exact-version approval under a current grant, denial after revocation, approval after re-grant, duplicate approval denial, wrong-scope denial, non-founder denial, forged/context-transplanted/replayed/expired assertion denial. Synthetic immutable draft fixtures remain only in ephemeral CI; grant/revoke/approval events were rolled back. No production legal document or approval was created.
