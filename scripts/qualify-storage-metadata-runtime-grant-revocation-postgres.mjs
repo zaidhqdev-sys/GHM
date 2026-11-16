@@ -145,9 +145,14 @@ try {
   for (const item of snapshots) {
     for (const [role, pool] of [['ghm_runtime', runtime], ['ghm_migrator', migrator], ['ghm_actor_gateway', gateway]]) {
       let denied = false;
-      try { await pool.query(`SELECT ghm.${item.proname}(${item.null_arguments})`); }
-      catch (error) { denied = error && typeof error === 'object' && 'code' in error && error.code === '42501'; }
-      if (!denied) throw new Error(`${role} direct call was not denied for ${item.signature}`);
+      try {
+        await pool.query(`PREPARE storage_acl_probe AS SELECT ghm.${item.proname}(${item.null_arguments})`);
+        await pool.query('DEALLOCATE storage_acl_probe');
+      } catch (error) {
+        denied = error && typeof error === 'object' && 'code' in error && error.code === '42501';
+        if (!denied) throw error;
+      }
+      if (!denied) throw new Error(`${role} direct function reference was not denied for ${item.signature}`);
     }
   }
   console.log('RUNTIME, MIGRATOR AND ACTOR GATEWAY DIRECT CALLS DENIED FOR ALL FIVE LEGACY FUNCTIONS: PASS');
