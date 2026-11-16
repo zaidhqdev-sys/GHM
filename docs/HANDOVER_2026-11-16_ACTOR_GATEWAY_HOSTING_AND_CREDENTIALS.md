@@ -1716,3 +1716,19 @@ No CI result is yet green. Do not merge until exact-head checks pass and review 
 - Only then add a separately reviewed small batch manifest and use plan-only output before any controlled execution.
 
 No production ledger query, migration execution, DDL, grants, role changes, credentials, secrets, Render settings, deployments, payment or consent operations were performed for PR #297.
+
+
+### Important runner review correction before merge
+
+A follow-up review caught a subtle integrity regression in the first draft: iterating only the selected batch would have skipped checksum verification for already-applied repository migrations outside that batch. This is unacceptable because a staged runner must retain the existing full-history checksum/provenance check.
+
+Corrected on the branch:
+- The runner now iterates the full ordered repository migration list for checksum validation of every already-applied migration.
+- It only executes SQL for versions present in the selected batch's explicit `executionVersions` set.
+- The runner contract test now asserts checksum verification occurs before the execution-version gate.
+
+Correction commits:
+- `ef664766f3dbcdad39b9b8b4993f366a1a217d12` — preserve full applied migration checksum verification.
+- `5f17b61796389e1d10361c7de45ee6601e4dada5` — assert this contract in tests.
+
+This correction is included before merge. The earlier CI run on `84a5fe4` does not validate these later changes; a fresh exact-head CI run is required. Do not merge on the earlier green results.
