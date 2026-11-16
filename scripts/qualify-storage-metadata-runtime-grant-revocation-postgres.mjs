@@ -24,8 +24,13 @@ const migrator = new Pool({ connectionString: migratorUrl, ssl: false });
 const readSqlBody = relativePath => {
   const path = new URL(relativePath, import.meta.url);
   const sql = readFileSync(path, 'utf8');
-  if (!/^\s*BEGIN;\s*/i.test(sql) || !/\s*COMMIT;\s*$/.test(sql)) throw new Error(`Expected one outer BEGIN/COMMIT in ${path.pathname}`);
-  return sql.replace(/^\s*BEGIN;\s*/i, '').replace(/\s*COMMIT;\s*$/, '');
+  const withoutHeaderComments = sql.replace(/^\s*(?:--[^\n]*\n\s*)*/i, '');
+  if (!/^BEGIN;\s*/i.test(withoutHeaderComments) || !/\s*COMMIT;\s*$/.test(withoutHeaderComments)) {
+    throw new Error(`Expected one outer BEGIN/COMMIT in ${path.pathname}`);
+  }
+  const body = withoutHeaderComments.replace(/^BEGIN;\s*/i, '').replace(/\s*COMMIT;\s*$/, '');
+  if (/^\s*(?:BEGIN|COMMIT);/im.test(body)) throw new Error(`Nested transaction boundary in ${path.pathname}`);
+  return body;
 };
 const cutoverSql = readSqlBody('../database/cutovers/20261116010000_revoke_legacy_storage_metadata_runtime.sql');
 const rollbackSql = readSqlBody('../database/cutovers/20261116010000_restore_legacy_storage_metadata_runtime.sql');
