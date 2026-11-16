@@ -173,7 +173,7 @@ if (duplicateCutoverSignatures.length > 0 || cutoverSignaturesOutsideBaseline.le
   throw new Error('Runtime manual cutover groups overlap or contain signatures outside the reviewed baseline');
 }
 
-// There are 2^9 independently qualified manual cutover combinations. The
+// There are 2^10 independently qualified manual cutover combinations. The
 // guard accepts only an exact combination of these reviewed revocations.
 const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
   { length: 2 ** cutoverGroups.length },
