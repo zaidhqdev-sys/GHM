@@ -127,3 +127,9 @@ The next integration slice adds `POST /v1/owner/commercial-document-approval-aut
 - Authorization denial is 403, invalid input is 400, duplicate/invalid transition is 409, and internal failure is 503 without SQL detail leakage.
 
 This is still only an owner authority grant/revoke route. It does not approve a document version. The separate approval transition must validate the latest grant event, actor equality, document type/key/jurisdiction/plan and immutable version before appending an approved status event. No production deployment or write has been performed.
+
+
+### 11.1 Owner authority HTTP/TypeScript qualification passed (2026-11-16)
+
+PR #291 exact code head `13923a1c538ce23aacd491d65f5bca65bbbe8c85` passed workflow `43905417391` (`quality` and `web-quality`).
+The route and reader tests verify ES256 actor derivation, strict request shape, HMAC context binding, transaction commit/rollback, forbidden founder checks and conflict handling. This remains an authenticated grant/revoke route only; it does not approve a legal document version. No production deployment or authority write occurred.
