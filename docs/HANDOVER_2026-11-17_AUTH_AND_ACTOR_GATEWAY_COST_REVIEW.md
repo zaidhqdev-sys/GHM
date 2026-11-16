@@ -227,3 +227,41 @@ At startup, the server checks `session_user=current_user=ghm_actor_gateway`, log
 - Only then configure `GHM_ACTOR_GATEWAY_URL` on GHM-Internal-Runtime, deploy that runtime manually, verify real capability routes, and execute the documented manual legacy-function cutover through the supported administrator process.
 
 No production state, Render service, credential, secret, environment variable, migration, grant, deployment or payment setting was changed by this readiness review. No recurring cost was incurred.
+
+
+## Live production Actor Gateway ACL preflight — 2026-11-17
+
+A fresh read-only query was run against the existing Render production Postgres resource `ghm-db` (ID `dpg-dag0sdtbedkc7389vi2g-a`, database `ghm_db`). No write statements were issued.
+
+### Connection identity and privilege boundary
+
+- The Render read-only query connection reported `session_user=ghm_app_user`, `current_user=ghm_db_user`. This is the Render connector's effective database identity, not the Actor Gateway login and not the GHM runtime's direct connection.
+- `ghm_actor_gateway` exists as LOGIN / NOINHERIT, with SUPERUSER, CREATEDB, CREATEROLE, REPLICATION and BYPASSRLS all false.
+- The only membership into `ghm_actor_gateway` is `ghm_db_user` with ADMIN OPTION=true, INHERIT=false, SET=false. The gateway role has no outgoing memberships. This matches the intended bounded membership rule.
+- The trusted `ghm_db_user` itself has CREATEDB and CREATEROLE and administrative memberships; do not confuse this trusted Render database-administration identity with the restricted application login `ghm_app_user` or with `ghm_actor_gateway`. No role attributes or memberships were changed.
+- Gateway CONNECT is true and database CREATE is false.
+- Gateway schema `ghm` USAGE is **false**, CREATE is false.
+- Gateway direct relation privileges count is zero.
+- The production catalogue query for `ghm.gateway_*` and `ghm.assert_actor_gateway*` returned **zero rows**. The 14 functions for which the gateway role currently resolves EXECUTE are unrelated existing `touch_*` / enforcement functions inherited through default PUBLIC function execution; they are not the required gateway API and do not satisfy the gateway startup allowlist.
+- Therefore the production Actor Gateway database API is not installed and the gateway service would fail its startup privilege checks today.
+
+### Ledger access remains blocked
+
+An explicit read-only query of `ghm.ghm_schema_migrations` returned PostgreSQL `42501 permission denied for table ghm_schema_migrations`. The connector's effective `ghm_db_user` identity cannot provide the required live migration ledger. Do not grant ledger SELECT to the runtime or gateway to work around this. Obtain the supported Render administrator ledger export/report or use the documented owner-supported admin process.
+
+### Render resource inventory refreshed
+
+The current workspace inventory confirms:
+- Existing production `GHM-Internal-Runtime`: Free Web Service, Frankfurt, auto-deploy OFF.
+- Existing production database `ghm-db`: Postgres 18, Frankfurt, plan `0.1c-256mb`, available.
+- No `ghm-actor-gateway` service exists.
+- The identity qualification and PayFast sandbox services/databases are excluded from production target scope and must not be repurposed.
+- `zaid-ai-workforce` is a separate application and is not a gateway host.
+
+### Immediate conclusion
+
+The production database is not ready for Actor Gateway deployment: required gateway schema USAGE and API function allowlist are absent, and the live migration ledger cannot be read through the available connector identity. The correct next move is administrator-led ledger/ACL evidence and a fresh backup, not service creation or manual grants.
+
+The owner has previously approved a maximum incremental hosting allowance of USD 7/month for one dedicated, always-on Actor Gateway service. This approval is a spending ceiling, not an instruction to provision before the database and backup gates pass. No cost has been incurred and no service has been created.
+
+No production writes, migrations, grants, revocations, role changes, secrets, environment variables, service changes or deployments were performed during this preflight.
