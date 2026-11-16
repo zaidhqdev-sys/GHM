@@ -683,3 +683,22 @@ Corrections:
 - `src/actor-gateway/database-startup-acl-contract.test.ts` asserts those signatures remain present in the allow-list.
 
 A fresh exact-head run is required. Do not weaken the ACL verifier or remove its exact-function check to make CI pass.
+
+
+### 21.2 Disposable migration syntax defect and correction (2026-11-16)
+
+The first corrected ACL run advanced past the Actor Gateway ACL check but the migration application failed with PostgreSQL syntax error at the function body opener. Inspection of the committed SQL showed the two function openers had a single-dollar delimiter while the closers used double-dollar delimiters.
+
+Both functions now use explicit paired tags (`$assertion$` and `$manage$`). This is a migration-source syntax correction; no SQL execution against production occurred.
+
+The disposable Actor Gateway principal qualification script was also extended to exercise the new operation with a temporary founder fixture inside a rolled-back transaction:
+- canonical founder grant succeeds;
+- duplicate grant is rejected;
+- revocation succeeds;
+- duplicate revocation is rejected;
+- re-grant after revocation appends a new event;
+- a non-founder administrator is denied;
+- forged, scope-transplanted, replayed and expired assertions are denied;
+- test founder singleton/account fixtures are cleaned up only when the script created them.
+
+The authority event writes are enclosed in a gateway transaction and rolled back after qualification, so the disposable fixture leaves no persistent authority evidence. A fresh exact-head CI run is required after these changes.
