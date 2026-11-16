@@ -1198,3 +1198,50 @@ The next provider-boundary slice must remove the hard-coded PayFast-only allow-l
 - Keep both commercial preparation/launch environment gates false; keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
 
 The next work should address the provider-neutral adapter boundary and the real Actor Gateway hosting/production prerequisite path in bounded slices. Do not create another endless disposable qualification-only branch while the hosting/production blocker remains unresolved.
+
+## 29. Production migration-ledger auditor established and verified (2026-11-16)
+
+This section supersedes earlier statements in sections 3, 5, 6, 7 and 8 that the production migration ledger remained unreadable through the available local psql session or that no production role/privilege changes had occurred. The earlier observations remain historically accurate for the time they were made; the state below is the later, committed state.
+
+### Session identity and initial state
+
+The user connected locally using the Render external database connection, without sharing the connection URL or password. The psql session reported:
+
+- `current_database=ghm_db`
+- `session_user=ghm_app_user`
+- `current_user=ghm_db_user`
+
+Before the change, `ghm_auditor` did not exist. The existing membership catalogue showed:
+
+- `ghm_schema_owner` granted to `ghm_db_user` by `postgres`: ADMIN=true, INHERIT=false, SET=false.
+- `ghm_schema_owner` granted to `ghm_migrator` by `ghm_db_user`: ADMIN=false, INHERIT=false, SET=true.
+
+### Auditor provisioning — committed
+
+Within a transaction, the user created `ghm_auditor NOLOGIN`. A temporary membership granted by `ghm_db_user` with SET=true / INHERIT=false was used to `SET LOCAL ROLE ghm_schema_owner` and grant:
+
+- USAGE on schema `ghm` to `ghm_auditor`.
+- SELECT on table `ghm.ghm_schema_migrations` to `ghm_auditor`.
+
+The temporary `ghm_schema_owner` membership was explicitly revoked with `GRANTED BY CURRENT_USER`. A separate temporary `ghm_auditor` membership (SET=true / INHERIT=false, granted by `ghm_db_user`) allowed a real identity-switch test. Under `current_user=ghm_auditor`, the query `SELECT COUNT(*) FROM ghm.ghm_schema_migrations` succeeded and returned **105 rows**. The temporary auditor membership was then explicitly revoked with `GRANTED BY CURRENT_USER`.
+
+The transaction was committed successfully. Post-commit verification confirmed:
+
+- `ghm_auditor`: NOLOGIN; SUPERUSER=false; CREATEDB=false; CREATEROLE=false; BYPASSRLS=false.
+- `has_schema_privilege('ghm_auditor', 'ghm', 'USAGE') = true`.
+- `has_table_privilege('ghm_auditor', 'ghm.ghm_schema_migrations', 'SELECT') = true`.
+- No temporary SET membership remains for `ghm_db_user`.
+- Original `ghm_schema_owner` membership remains: grantor `postgres`, ADMIN=true, INHERIT=false, SET=false.
+- Original `ghm_migrator` membership remains: grantor `ghm_db_user`, ADMIN=false, INHERIT=false, SET=true.
+
+PostgreSQL automatically recorded the role-creator administration membership for `ghm_auditor`: `ghm_auditor` granted to `ghm_db_user`, grantor `postgres`, ADMIN=true, INHERIT=false, SET=false. This is the creator's administrative membership, not an application login or inherited auditor data access; the auditor is NOLOGIN and the membership does not permit SET ROLE or privilege inheritance. It was observed after commit and intentionally left unchanged.
+
+### Scope and safety
+
+This was a narrowly scoped production role/privilege change to enable read-only migration-ledger inspection. No production migration was applied; no application or gateway role was granted ledger SELECT; no table ownership changed; no gateway function, password, secret, service, deployment, environment variable, payment, consent, legal approval or application data was changed. No new recurring cost was incurred.
+
+### Next step — authoritative reconciliation
+
+The production ledger is now readable through the non-login auditor role. The verified count is 105 rows, but the version/name/checksum/status contents have not yet been reconciled against the current repository migration set. The next step is to export/read the exact ledger rows as `ghm_auditor`, compare them with the exact main-branch migration files and migration policy, and report applied, missing, checksum-mismatched, historical/approved-extra and unexplained entries. Do not run migrations or change the production Actor Gateway ACL as part of this read-only reconciliation.
+
+The production backup/recovery gate, migration execution qualification, dedicated always-on Actor Gateway hosting/cost gate, gateway credential/ACL provisioning and deployment gates remain unresolved.
