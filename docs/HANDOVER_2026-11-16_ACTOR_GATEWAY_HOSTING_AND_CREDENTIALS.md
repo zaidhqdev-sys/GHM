@@ -328,3 +328,68 @@ Next engineering sequence:
 - Never use the legacy Render sandbox services/database or production `ghm_db` for sandbox testing. Do not configure credentials or initiate a payment until the isolated GHM-native test path and explicit test authorization are ready.
 
 No provider credentials, environment variables, source code, database state, hosting resources, payment settings, or commercial launch flags were changed by this clarification. This section records the owner's provider strategy and the revised engineering gate.
+
+
+## 13. Source-level payment architecture audit — 2026-11-16
+
+Read-only review of GHM `main`, Connect `main`, Connect PR #68, and the PayFast developer documentation was completed after the owner selected PayFast as the current operational provider while reaffirming provider neutrality.
+
+### GHM findings — exact current implementation boundary
+
+**Canonical lifecycle foundation exists.**
+- GHM owns `commercial_payment_attempt`, `commercial_payment_transaction`, `commercial_provider_event`, `commercial_subscription`, founding allocation, and commercial event state.
+- The generic SQL function `ghm.commercial_apply_payment_result` accepts a provider code, checks that it matches the attempt, and records provider/event identity with idempotency keyed by provider + external event ID. This is a useful provider-neutral settlement core.
+- The TypeScript `PostgresCommercialProviderBoundary` delegates to that generic function, but the current contracts still narrow `providerCode` to the literal `'payfast'`.
+
+**Provider coupling remains in the current GHM implementation.**
+- Migration `20261104120000_bind_commercial_payment_attempt_provider.sql` constrains `commercial_payment_attempt.provider_code` to `payfast` only.
+- `src/resources/commercial/contracts.ts` types payment attempts and settlement input as `providerCode: 'payfast'`.
+- `src/resources/commercial/repository.ts` hardcodes `'payfast'` when creating a payment attempt and rejects an idempotency-key collision bound to another provider.
+- `src/resources/commercial/payfast-http.ts` is a PayFast-specific checkout adapter and correctly rejects attempts assigned to another provider.
+- `src/resources/commercial/payfast-callback.ts` is a PayFast-specific ITN adapter. Its database access is restricted to PayFast-specific functions; it validates merchant, amount, signature, source IP, server-side PayFast confirmation, provider event identity and payload hash before settlement.
+- Migration `20261104130000_isolate_payfast_settlement_identity.sql` creates PayFast-specific lookup/settlement wrappers and grants them to `ghm_payment_provider`. This is intentional least-privilege isolation for the current adapter, not evidence that another provider can reuse the same callback identity.
+- The reusable core should remain provider-neutral; provider-specific checkout, callback parsing, signature validation, source verification, transaction references, timestamps and narrow database wrappers should remain adapter-owned. Do not weaken the payment-provider DB role by granting it broad direct table access or unrestricted settlement access.
+
+**Callback hosting is not currently part of the GHM API process.**
+- The callback listener is a separate executable, `src/payfast-callback-server.ts`, started by `npm run start:payfast-callback`.
+- It requires `PAYFAST_CALLBACK_DATABASE_URL` to authenticate exactly as `ghm_payment_provider`, plus TLS in production, and exposes `/api/v1/commercial/payfast/itn` and readiness checks.
+- GHM's main `src/http/app.ts` registers `commercial-internal-router` but does not register the public PayFast ITN route. The callback executable is therefore a separate process/hosting unit in the current source layout.
+- The old Render PayFast callback/runtime services and expired sandbox database remain legacy and must not be revived. No additional paid service is authorized. Before provider-facing ITN tests, design a hosting approach that preserves the dedicated database identity without reviving legacy services or adding unapproved recurring cost. A possible same-service process/router arrangement must be security-reviewed and qualified; do not assume it is already implemented.
+
+**The current payment-preparation HTTP bridge is not GHM-native.**
+- `src/http/commercial-internal-router.ts` accepts an external Business UUID plus `externalIdentity.provider = 'supabase'`, resolves the old Supabase external identity and Business mapping, then calls the canonical commercial repository.
+- That route is server-to-server assertion protected, but its identity and Business mapping assumptions are incompatible with the approved GHM-native Connect migration target.
+- The user-authenticated `src/http/commercial-router.ts` currently exposes commercial offer/access/subscription reads only. It does not expose a GHM-native payment-preparation or checkout-write path.
+- Connect PR #33 remains unusable as the migration answer because it builds on this Supabase identity bridge and legacy Render sandbox runtime.
+- Before any checkout, create a GHM-native authenticated user-token write contract that resolves canonical GHM account identity and enforces active Business owner/administrator membership server-side. Do not accept caller-supplied identity as authority or use Supabase external IDs as the target identity.
+
+### Connect findings — current branch and approved provider documentation
+
+- Connect mainline Milestone 52 still describes Paystack as the initial adapter and records Paystack TEST evidence. That evidence should be retained as historical Paystack adapter qualification, not interpreted as a permanent provider lock or current provider selection.
+- The owner has now selected PayFast as the current operational provider because Paystack did not respond. Provider choice is operational and replaceable; GHM remains canonical.
+- Connect PR #68 is open/draft at head `e0df7f84b10a54f94ff3a74086a87b98c9268102` (base SHA recorded by GitHub: `1e92f85cdd99dea2070ede58a875cec45d5f2047`). Its Business Pro panel migration uses GHM offer reads and deliberately removes trial-activation and checkout writes from the UI. This is the correct fail-closed read-only posture while GHM native write contracts and consent/legal acceptance are not ready.
+- PR #68's payment-provider integration test still contains historical Paystack implementation assertions; its documentation/test names must be reconciled so Paystack TEST evidence is preserved as history and PayFast is named as the currently selected adapter only when its GHM-native path is qualified.
+- PR #68 is not ready to merge based on this payment audit. Its broader GHM dependencies, exact-head CI, branch ancestry and cutover gates remain independently open. No PR #68 merge or Connect production cutover was performed.
+- Connect PR #69 is a documentation-only GHM auth trust-boundary handover and is unrelated to payment-provider implementation.
+- The Connect mainline M52 and integration-specification documents currently state the commercial freeze remains active. Preserve `launchAuthorized=false` and `onlineSubscriptionActivation=false`; neither provider selection nor sandbox account setup changes those flags.
+
+### PayFast documentation findings
+
+The official PayFast custom integration documentation requires the Merchant ID and Merchant Key in the hosted checkout form and uses the merchant-set passphrase only as a salt appended to the signature input; the passphrase itself is not a checkout field. Therefore:
+- Merchant ID and Merchant Key are checkout form fields as specified by PayFast, not values to embed in source or expose as frontend configuration.
+- The Salt Passphrase remains server-side only and is used to compute the signature.
+- The implementation must preserve PayFast's documented parameter ordering/URL-encoding rules and validate against the current official documentation before provider-facing qualification.
+- The official ITN guidance requires signature, source, and amount checks plus server-to-server validation; the sandbox documentation says sandbox transactions can generate ITNs and do not move real funds.
+- PayFast's published ITN field reference does not establish the timezone semantics of `payment_date`. Keep GHM PR #233 parked until the provider confirms the convention or a captured sandbox ITN gives reliable evidence. Do not assume the host's local timezone is UTC.
+
+### Revised implementation sequence
+
+1. Keep Connect PR #68 draft and read-only for commercial actions. Reconcile its branch against current Connect main before editing or merging; preserve its broader GHM migration gates.
+2. Add a provider-neutral GHM payment-provider contract/selection boundary. The selected provider must come from trusted server configuration or an approved server-owned policy, never from the browser. Add a typed adapter registry with PayFast as the only currently qualified adapter; adding another provider later must not require rewriting canonical subscription/payment lifecycle.
+3. Replace the Supabase-identity payment preparation bridge with a GHM-native authenticated user-token route and canonical Business membership authorization. Keep the legacy bridge disabled and historical.
+4. Keep PayFast checkout and ITN implementation in a provider-specific adapter, but qualify its callback hosting with the dedicated `ghm_payment_provider` identity without reviving old Render resources or incurring unapproved service cost.
+5. Add exact tests for provider mismatch, unsupported provider, idempotency, amount/currency integrity, signature, source IP, server confirmation, duplicate/replay events, malformed payload, transient provider/database failure and timestamp semantics.
+6. Reconcile Connect M52 documentation/tests to provider-neutral architecture and preserve Paystack TEST verification as historical evidence. Connect UI remains read-only until GHM legal-consent and write contracts are implemented and separately approved.
+7. Only after local/disposable PostgreSQL and CI qualification may a separately authorized PayFast sandbox checkout/ITN round-trip be considered. No live payment, production credential configuration, production migration, callback deployment, or commercial activation is authorized by this audit.
+
+**Audit scope:** repository/documentation inspection and official PayFast documentation review only. No source code, secrets, environment variables, database state, role/grants, Render services, deployment, provider settings, payment attempts or transactions were changed.
