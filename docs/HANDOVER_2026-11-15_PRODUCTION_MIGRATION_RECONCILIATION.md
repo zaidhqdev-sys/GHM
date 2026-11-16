@@ -186,3 +186,21 @@ The runtime startup ACL model includes the five-signature `storageMetadata` grou
 **Qualification status:** the earlier source-only PR head passed CI run #5078 before the SQL artifacts were added. Runs #5079–#5082 were cancelled as successive fixes landed. Run #5083 was started for the SQL parser change; subsequent direct-call probe and documentation commits are newer than that run. Do not call the current PR head green until exact-head CI passes. The latest change uses PREPARE to verify permission denial at parse time rather than calling functions with NULL arguments (which could produce a false-positive 42501 from the function body).
 
 **Production remains blocked:** wrappers are absent in the live production catalog and their migrations remain pending; no grant was revoked or restored in production. Do not execute either SQL artifact against `ghm_db` until the Actor Gateway is actually deployed and reachable, the isolated DB principal is proven in that environment, the exact Resource API runtime ACL model is deployed, all wrapper migrations are applied in an approved sequence, provider lifecycle E2E is qualified, Amanda/Render role-administration escalation is resolved, and a fresh verified production backup/recovery point exists. No change to the current production migration gate; `GHM_PRODUCTION_MIGRATION_BATCH` remains unset.
+
+
+## 68. Storage metadata legacy grant cutover qualification — exact-head PASS (2026-11-16 04:55 UTC)
+
+The exact current PR #286 head `d8d6640fd48dfc03cbc4dbf65ed2968acabb1704` passed GitHub Actions CI run [#5104](https://github.com/zaidhqdev-sys/GHM/actions/runs/43806583544). Both `quality` and `web-quality` jobs passed. The PostgreSQL qualification log confirms:
+
+- Five legacy storage function signatures and pre-cutover ACL snapshot: PASS.
+- Disposable cutover SQL applied: PASS.
+- PUBLIC and runtime EXECUTE revoked on all five legacy functions: PASS.
+- Actual direct function execution denied for `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway` across all five functions: PASS.
+- Actor Gateway storage wrappers retain EXECUTE: PASS.
+- Exact legacy function ACL rollback: PASS.
+
+The previous failing probe returned `permission denied for schema ghm`. That is a valid denial: PostgreSQL checks schema USAGE before function EXECUTE. The test was corrected to accept schema-level or function-level permission denial, while independent effective-ACL checks still verify the legacy function EXECUTE privileges are absent. The probe now performs actual SELECT invocation inside a transaction that is rolled back; it does not use PREPARE. No function body mutation is retained even if an unexpected call succeeds.
+
+**Qualification conclusion:** the guarded five-function cutover and rollback pair is qualified on disposable PostgreSQL at the exact current PR head. This does not qualify production application or production deployment. PR #286 remains draft/open/unmerged. Production inspection previously confirmed all five legacy functions still grant `ghm_runtime` EXECUTE and the five Actor Gateway wrappers are absent; their migrations remain pending. No production SQL, grant, role membership, migration, secret, Render setting or deployment was changed.
+
+**Production gate remains CLOSED.** Do not execute either artifact on `ghm_db` until deployed/reachable Actor Gateway and Resource API plus isolated database-principal proof, an approved wrapper-migration sequence, provider lifecycle E2E in the target environment, Amanda/Render role-administration escalation resolution, and a fresh verified backup/recovery point are all established. `GHM_PRODUCTION_MIGRATION_BATCH` remains unset. PayFast remains paused.
