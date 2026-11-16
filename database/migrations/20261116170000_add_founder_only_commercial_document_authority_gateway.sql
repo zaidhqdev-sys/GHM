@@ -19,8 +19,8 @@ CREATE OR REPLACE FUNCTION ghm.assert_actor_gateway_commercial_document_authorit
 ) RETURNS bigint
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, ghm
-AS $$
+SET search_path = pg_catalog, ghm, pg_temp
+AS $
 DECLARE
   v_secret bytea;
   v_expected bytea;
@@ -132,8 +132,8 @@ CREATE OR REPLACE FUNCTION ghm.gateway_manage_commercial_document_approval_autho
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, ghm
-AS $$
+SET search_path = pg_catalog, ghm, pg_temp
+AS $
 DECLARE
   v_authority_id uuid;
   v_latest_event_type text;
