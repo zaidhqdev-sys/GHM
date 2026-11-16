@@ -58,6 +58,7 @@ test('the modeled eight-cutover runtime state retains fifteen explicitly reviewe
       'ghm.storage_mark_available(bigint,text)',
       'ghm.storage_mark_deleted(bigint)',
       'ghm.storage_mark_deletion_pending(bigint)',
+      'ghm.update_business_registration_identity(bigint,bigint,text,text,text)',
     ].sort(),
   );
 });
