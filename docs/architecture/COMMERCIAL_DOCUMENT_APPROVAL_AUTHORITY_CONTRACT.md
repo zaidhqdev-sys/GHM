@@ -75,3 +75,15 @@ The operating arrangement is the owner and the assistant only. There is no third
 - Until the real account identity and controlled owner-designation path are verified, do not create authority rows, approve document versions, or expose approval/consent/payment writes.
 
 The next implementation must make the owner-only designation explicit and test denial for every other account. The assistant's technical actions and recommendations are not legal approval.
+
+
+## 8. Existing founder identity is the owner anchor — no invented account lookup
+
+Repository review found the existing one-time founder bootstrap authority:
+- `ghm.founder_system_admin_bootstrap_state` records the canonical founder account ID and designated founder login.
+- The controlled bootstrap function only promotes the pre-existing active canonical founder account and records that one-time state.
+- This is a stronger owner anchor than selecting an account by display name, email supplied by a request, generic `role='admin'`, or `is_system_admin=true` alone.
+
+The future owner-only authority operation must derive/verify the actor against the singleton founder bootstrap state inside the database transaction, also requiring the founder account to remain active and retain the expected canonical founder identity. It must never accept a target approver account ID from the request. For this project, the only permitted authority account is the account recorded by the founder bootstrap state; no delegation is implemented.
+
+The production presence and account ID in that bootstrap state have not been independently verified through the restricted Render session. Therefore the function must fail closed if the singleton row is absent, ambiguous, or inconsistent. This avoids asking the owner to supply an account ID and avoids inventing one.
