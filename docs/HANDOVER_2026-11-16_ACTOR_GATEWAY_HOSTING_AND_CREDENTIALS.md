@@ -1921,3 +1921,20 @@ Important limitation:
 No production migration, DDL, grant, role membership, credential, secret, Render setting, service, deployment, payment or consent state was changed. The detached audit worktree remained clean.
 
 **Migration audit conclusion:** the 105-row production ledger snapshot reconciles fully against current main under the repository's supported checksum and provenance rules. This does not authorize execution of any of the 48 pending migrations, prove backup recoverability, qualify service/secret readiness, or satisfy the separate Actor Gateway hosting/cost gate. PR #297 remains draft/unmerged; its production batch manifest must remain empty until the separate operational and staged-runner qualification gates are complete.
+
+### PR #297 staged-runner qualification follow-up — 2026-11-16 21:57Z
+
+PR #297's description was refreshed to reflect the completed production ledger reconciliation and the remaining rollout gates. The seven redundant historical provenance exception entries remain unchanged pending a separate disposition decision.
+
+Latest PR head: `a3a092df581e6e6d3f5420546fa8a4a25a4cd1b7`; base main: `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`. PR remains open, draft and unmerged. Latest workflow run `43965007482` is still in progress at the time of this note: `web-quality` passed; `quality` was still running.
+
+Source review confirmed:
+- Production inventory is separate from the batch manifest, which remains an empty `batches` array.
+- The runner checks complete pending-inventory equality, requires a named batch, and accepts only an exact contiguous prefix.
+- All already-applied migrations are checksum/provenance checked before the execution-version gate.
+- Plan-only mode reports the selected migrations and rolls back without executing SQL.
+- Existing CI applies all 143 repository migrations to a disposable PostgreSQL 18 service and runs unit/contract tests, but does not yet exercise the production batch selector through the full migration runner in an explicit batch integration scenario.
+
+The next qualification increment is therefore a dedicated disposable-PostgreSQL integration exercise for production batch selection and execution: explicit batch success, empty-manifest/no-batch refusal, stale inventory refusal, skipped-prefix refusal, plan-only rollback/no ledger writes, injected migration failure/atomic rollback, and repeat-run/idempotency. It must use only the CI disposable PostgreSQL service or another already available local disposable database. Do not create a paid Render database/service or use production for qualification.
+
+The CI run on the current PR head must finish before reporting exact-head CI as passed. No production batch is defined or authorized. No production migration, DDL, ACL, role, credential, secret, Render setting, deployment, payment or consent state changed.
