@@ -322,3 +322,17 @@ This is repository/disposable-database qualification only. It does not refresh t
 5. Only after those gates pass, use the previously approved USD 7/month allowance for the dedicated gateway, manually deploy, verify authenticated routes and then perform the documented post-deployment manual cutovers.
 
 No production query, DDL, migration, role/grant change, secret, Render setting, service, deployment or recurring cost was changed by this handover reconciliation.
+
+
+## Audit command compatibility correction — 2026-11-17
+
+The previous chat instruction to run `npm run audit:migrations` against the new 48-entry production pending inventory was premature. I inspected the exact script at the current PR head.
+
+- `audit:migrations` invokes `scripts/forensic-migration-reconciliation.mjs` without `--allow-pending`, so any pending migrations make its verdict `INVESTIGATE`.
+- `audit:migrations:predeploy` adds `--allow-pending`, but the script reads the older `config/pending-migrations.production.json` seven-entry legacy allowlist. It does not read the new `config/production-pending-migration-inventory.json` 48-entry inventory.
+- Therefore neither existing command currently performs the exact 48-entry live reconciliation requested in this handover. Do not tell the owner to run either as if it were the correct final audit; the predeploy command would report a pending-allowlist mismatch if all 48 are live-pending.
+- The old seven-entry allowlist is historical audit policy and must not be expanded to 48 to force a pass.
+
+Next implementation task: add a distinct, explicitly named read-only production reconciliation mode that reads `config/production-pending-migration-inventory.json`, verifies exact live missing version/name pairs against all 48 entries, retains all existing checksum/name/retained-history/provenance checks, verifies `ghm_migrator` then `SET LOCAL ROLE ghm_schema_owner` inside `BEGIN READ ONLY`, and always rolls back. Keep existing `audit:migrations` and `audit:migrations:predeploy` semantics unchanged for the legacy audit policy. Add unit/contract coverage for exact inventory match, stale/missing/extra inventory entries, checksum mismatch, role identity failure and rollback. Do not print the connection string or any secret. After CI passes, run the new command locally against the existing `GHM_MIGRATOR_DATABASE_URL` in `C:\\GHM\\.env` and capture only its JSON output.
+
+This correction changes no source code, production state, manifest, migration, credential, service or cost. The production batch manifest remains empty.
