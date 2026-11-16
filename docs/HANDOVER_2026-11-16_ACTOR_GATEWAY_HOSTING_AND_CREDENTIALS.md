@@ -528,9 +528,9 @@ Following PR #288, a bounded follow-up branch has been opened:
 
 ### Foundation added
 
-- A scoped, append-only authority event ledger records `granted` / `revoked` events, authority account, recording account, document type/key, optional jurisdiction, reason, request ID, timestamp and metadata.
+- An immutable authority identity fixes the authority account, document type/key and optional jurisdiction; append-only `granted` / `revoked` events reference that identity and record the acting account, reason, request ID, timestamp and metadata.
 - Document status approval now requires an exact `approval_authority_event_id`; non-approval lifecycle events must not cite one.
-- Authority ledger UPDATE/DELETE/TRUNCATE is rejected.
+- Authority identity and event ledger UPDATE/DELETE/TRUNCATE are rejected.
 - Only `ghm_migrator` receives explicit table/sequence grants. No runtime, Actor Gateway or PUBLIC access is introduced.
 - No authority, approver, legal document, hash, approved status or consent is seeded.
 - A separate architecture contract defines the future cross-row checks: authenticated actor must match the scoped authority grant; the latest event must still be granted; document scope/version must match; approval and evidence must commit atomically.
@@ -544,7 +544,7 @@ No GHM administrator is implicitly treated as legal approver. The owner must exp
 ### Qualification and next gate
 
 - The migration contract test is included in the standard `npm test` list.
-- Exact-head CI, full migration application against disposable PostgreSQL, complete test suite and SQL review are pending.
+- Exact-head CI, full migration application against disposable PostgreSQL, complete test suite and SQL review are pending. The schema was tightened before qualification so grant/revoke events reference a separate immutable authority identity; this prevents later events from silently changing the principal or scope.
 - Do not merge until exact-head CI passes and migration review confirms the FK/constraint/trigger/access model.
 - Do not apply this migration to production `ghm_db`, insert authority rows, grant application access, deploy services, or enable payment writes.
 
