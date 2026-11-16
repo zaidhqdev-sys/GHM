@@ -28,6 +28,7 @@ function workspace(label, inventory, batches, sqlMigrations = migrations) {
   fs.mkdirSync(path.join(dir, 'database', 'migrations'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'config'), { recursive: true });
   fs.cpSync(dist, path.join(dir, 'dist'), { recursive: true });
+  fs.symlinkSync(path.join(root, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
   fs.copyFileSync(path.join(root, 'config', 'historical-migration-provenance-exceptions.json'),
     path.join(dir, 'config', 'historical-migration-provenance-exceptions.json'));
   writeJson(path.join(dir, 'config', 'production-pending-migration-inventory.json'), inventory);
