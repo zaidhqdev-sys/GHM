@@ -1422,3 +1422,17 @@ Baseline catalog observations (103 SECURITY DEFINER functions):
 **Artifact completeness limitation:** only one artifact was attached to failed run 43330297297. No second post-cutover authority inventory was produced by that failed run. Do not compare the baseline against a presumed final state or infer that the issuer received the intended ten-function allow-list. The next successful exact-head run must retain and publish both before/after (or otherwise independently captured pre/post) inventories and compare full signatures, owners, direct ACLs, effective role reachability, PUBLIC, global/schema default ACLs, table/column/sequence privileges and memberships.
 
 The qualification script's allow-list currently names ten issuer functions. The manual cutover file is explicitly non-migration and documents that it must not be applied until issuer routes, service, private ingress, client configuration, credentials and rollback gates are ready. This remains disposable qualification only; production remains untouched. No merge/deploy/production role or grant changes were made. PayFast and legal publication remain paused.
+
+
+## 2026-11-16 — live storage ACL confirmation
+
+Read-only production catalog inspection of Render `ghm-db` / `ghm_db` completed at 04:06 UTC. Identity: `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, read-only transaction enabled, verified TLS.
+
+- All five legacy storage metadata functions exist as SECURITY DEFINER routines owned by `ghm_schema_owner`, with pinned `pg_catalog, ghm` search path.
+- For each legacy function: PUBLIC EXECUTE=false; `ghm_runtime` EXECUTE=true; `ghm_actor_gateway` EXECUTE=false; `ghm_migrator` EXECUTE=false; `ghm_schema_owner` EXECUTE=true.
+- All five signed `gateway_storage_*` wrapper functions are absent from the production catalog; their migrations remain pending.
+- Production storage therefore remains on the legacy direct-runtime database authority boundary. Disposable wrapper/revocation qualification is not production cutover evidence.
+- Do not revoke legacy grants or execute storage gateway migrations in isolation. First establish active Resource API gateway wiring, deployed gateway/provider configuration, full lifecycle qualification on a dedicated non-production target, traffic-drain/rollback design, fresh verified backup, and the resolved Render role-administration path. The wrapper migrations do not themselves revoke the legacy grants.
+- No production state, migration, grant, role, secret, Render setting, deployment, bucket, or traffic was changed.
+
+The production migration batch remains blocked; `GHM_PRODUCTION_MIGRATION_BATCH` must remain unset.
