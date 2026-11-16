@@ -20,7 +20,7 @@ CREATE OR REPLACE FUNCTION ghm.assert_actor_gateway_commercial_document_authorit
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, ghm, pg_temp
-AS $
+AS $assertion$
 DECLARE
   v_secret bytea;
   v_expected bytea;
@@ -112,7 +112,7 @@ BEGIN
 
   RETURN p_actor;
 END;
-$$;
+$assertion$;
 
 CREATE OR REPLACE FUNCTION ghm.gateway_manage_commercial_document_approval_authority(
   p_actor bigint,
@@ -133,7 +133,7 @@ CREATE OR REPLACE FUNCTION ghm.gateway_manage_commercial_document_approval_autho
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, ghm, pg_temp
-AS $
+AS $manage$
 DECLARE
   v_authority_id uuid;
   v_latest_event_type text;
@@ -226,7 +226,7 @@ BEGIN
     v_event_id,
     CASE WHEN p_action = 'grant' THEN 'granted' ELSE 'revoked' END;
 END;
-$$;
+$manage$;
 
 ALTER FUNCTION ghm.assert_actor_gateway_commercial_document_authority(bigint,bigint,uuid,text,text)
   OWNER TO ghm_schema_owner;
