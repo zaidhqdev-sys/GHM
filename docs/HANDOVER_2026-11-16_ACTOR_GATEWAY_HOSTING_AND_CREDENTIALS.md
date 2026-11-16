@@ -1819,3 +1819,35 @@ Tried the connected Render read-only SQL query against Postgres resource `dpg-da
 Render returned `permission denied for table ghm_schema_migrations (SQLSTATE 42501)`. This is consistent with the established restricted ledger access: the read-only connector uses the default mapped role and cannot SET the temporary `ghm_auditor` membership. No privileges or roles were changed by this attempt.
 
 The exact 105-row export was previously produced successfully in the user's psql session on 2026-11-16, but the raw row values are not present in the accessible handover/search result now. Do not reconstruct or invent them. To finish deterministic checksum reconciliation, re-export the exact ledger through the already-qualified temporary `ghm_auditor` transaction and save CSV for processing. No production DDL, migration execution, grant, credential, service, deployment, environment, payment or consent change occurred.
+
+
+### PR #297 latest exact-head CI and ledger export procedure — 2026-11-16 21:16Z
+
+Latest branch head: `56777b74169b254fee090f2236d14b5b8b01a0f3`.
+Latest workflow run: `43957404667`.
+- `quality`: success.
+- `web-quality`: success.
+PR #297 remains draft/open/unmerged. Main remains at tree SHA `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`, with 143 migration SQL files.
+
+The Render SQL connector cannot read the ledger using its default restricted role. The previously established safe export route is the user's psql connection, using a transaction-scoped SET grant to the persistent NOLOGIN `ghm_auditor` role, then explicit revoke before commit. Export should be made client-side with psql `\copy` so no additional server-side file privileges are required.
+
+Exact interactive psql sequence (run while connected to production `ghm_db` as the existing mapped Render default identity):
+
+```sql
+BEGIN;
+GRANT ghm_auditor TO ghm_db_user
+WITH SET TRUE, INHERIT FALSE
+GRANTED BY CURRENT_USER;
+SET LOCAL ROLE ghm_auditor;
+SELECT current_user, session_user, current_database();
+\copy (SELECT version, name, checksum, applied_at FROM ghm.ghm_schema_migrations ORDER BY version) TO 'C:/GHM/production-ledger-20261116.csv' WITH (FORMAT csv, HEADER true)
+RESET ROLE;
+REVOKE ghm_auditor FROM ghm_db_user GRANTED BY CURRENT_USER;
+COMMIT;
+```
+
+Expected identity while selected: `current_user=ghm_auditor`, `session_user=ghm_app_user`, `current_database=ghm_db`. Expected exported row count based on the prior successful read: 105. Verify the count and final version locally before sharing the CSV. If any command fails before COMMIT, issue `ROLLBACK;` (the temporary membership and read transaction are both rolled back). Confirm the file is client-side local and contains only migration metadata, no credentials or application data.
+
+After receiving the CSV, compare all 105 live rows against all 143 repository migration SQL files using canonical LF SHA-256, supported legacy CRLF SHA-256, exact version/name, the 10 retained-history records and 16 provenance exceptions. Report exact matches, checksum/name mismatches, ledger-only rows, retained historical rows and pending repository migrations. Do not infer or reconstruct missing ledger rows.
+
+No production DDL, migration, persistent grant, credential, secret, service, deployment, environment, payment or consent state changed in this step.
