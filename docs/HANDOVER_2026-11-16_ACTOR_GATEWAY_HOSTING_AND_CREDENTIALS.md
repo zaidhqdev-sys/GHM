@@ -602,3 +602,22 @@ PR #289, `feat: add scoped commercial document approval authority`, was squash-m
 The merged migration/test foundation enforces an immutable scoped authority identity, append-only grant/revoke events, and a grant-only composite FK reference for approved document status. It does not enforce current grant state, authenticated actor match or cross-row document scope; those remain mandatory for the future governed approval transaction.
 
 No authority has been assigned. No runtime or Actor Gateway access was granted. No production migration, production ACL/role change, deployment, provider credential change, payment attempt or commercial activation occurred. Preserve `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 19. Owner-only approver clarification and main CI — 2026-11-16
+
+The user explicitly clarified that the working arrangement is the owner and assistant only; there is no additional employee/reviewer. The commercial approval architecture contract now records:
+
+- The user/owner is the intended sole human legal approver for ZAID Technologies commercial documents unless the owner explicitly changes that decision.
+- The assistant may draft, inspect, implement, test and maintain handovers, but is not a legal person, has no GHM account and cannot be an approver or grantor.
+- No placeholder/ghost employee or invented GHM identity may be created.
+- Authority rows must reference the owner's real authenticated GHM account. Never invent or infer its account ID.
+- A GHM admin flag alone does not confer legal approval authority. A controlled owner-designation mechanism must establish the owner's authority, and all other accounts must be denied.
+- Until the real owner account identity and designation path are verified, no authority row, approved document version, consent/payment write API or commercial activation may be created/enabled.
+
+PR #289 merge commit `599d6359404557c2e25a4c159d0a9c2820469176` received its own main-branch CI run:
+- Workflow run: `43898706914`
+- `quality`: success.
+- `web-quality`: success.
+
+The architecture contract was updated on main to make the owner/assistant boundary explicit (commit `699d5e267869a15f925aed25cf3907c8b4c6c4ce`). No production DB query/mutation, account ID lookup, authority assignment, role/grant change, deployment, payment attempt or launch-flag change was performed in this clarification.
