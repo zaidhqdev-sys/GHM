@@ -393,3 +393,30 @@ The official PayFast custom integration documentation requires the Merchant ID a
 7. Only after local/disposable PostgreSQL and CI qualification may a separately authorized PayFast sandbox checkout/ITN round-trip be considered. No live payment, production credential configuration, production migration, callback deployment, or commercial activation is authorized by this audit.
 
 **Audit scope:** repository/documentation inspection and official PayFast documentation review only. No source code, secrets, environment variables, database state, role/grants, Render services, deployment, provider settings, payment attempts or transactions were changed.
+
+
+## 14. PR #287 merged — server-selected commercial provider (2026-11-16)
+
+PR #287 was marked ready after exact-head CI completed successfully and was squash-merged to `main`.
+
+- PR: https://github.com/zaidhqdev-sys/GHM/pull/287
+- Exact tested head: `e04a2a4daf70624cb2e3813ede4a058cec18388f`
+- CI run: `43876746481`; both `quality` and `web-quality` passed.
+- Merge commit: `7701d2342f8196aa8e1b5e16d10ee3f56ff82f0e`.
+- Adds `GHM_COMMERCIAL_PAYMENT_PROVIDER`, default `payfast`, and injects the server-selected provider into payment-attempt preparation. Browser/request input does not select the provider.
+- Generalizes the TypeScript provider-code types and the commercial payment-attempt provider-code database constraint to a bounded provider identifier format.
+- Adds configuration and repository qualification coverage.
+- Unsupported providers currently fail startup because PayFast is the only installed adapter. This is a fail-closed adapter availability guard, not a claim that Stripe, Paystack, or any other adapter exists.
+- PayFast checkout/ITN remains adapter-specific; dedicated settlement wrappers and the `ghm_payment_provider` identity remain intact.
+
+**Important implementation caveat:** PR #287 is the first provider-selection seam, not the completed adapter registry. The current config guard explicitly accepts only `payfast`; future providers require a separately implemented and qualified adapter before the guard is expanded. The existing callback server, payment prep bridge, and provider-specific SQL wrappers remain PayFast-specific. Do not advertise multi-provider production readiness yet.
+
+**Next stage — native GHM payment preparation (not yet implemented):**
+- Current `/api/v1/internal/commercial/payment-prepare` remains protected by a Connect service assertion, but its body requires `externalIdentity.provider='supabase'` and an external Business UUID resolved through the legacy external-mapping table.
+- GHM already has user ES256 bearer authentication (`requireAuth`), `AuthContext` populated from the verified token, and canonical `ghm.business_membership` authorization. The commercial repository already checks active owner/administrator membership in its transaction.
+- The intended replacement is a user-authenticated GHM route that takes canonical numeric GHM Business ID and server-derived actor identity from `req.authContext`, then calls the existing commercial service/repository. It must validate registered operation permissions, active membership, business state, commercial/legal consent, idempotency, and frozen launch state.
+- The generic commercial resource registry currently exposes `commercial: read` only. Do not silently add write permission or activate a payment preparation route until consent/legal and launch-state gates are designed and tested.
+- Legacy Supabase internal preparation route should remain disabled/historical once a safe cutover is approved; do not delete its history or enable it as a fallback.
+- No payment attempt, checkout, callback, PayFast sandbox transaction, credential configuration, production migration, deployment, or commercial activation was performed by PR #287.
+- No live provider or online subscription activation is authorized. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
