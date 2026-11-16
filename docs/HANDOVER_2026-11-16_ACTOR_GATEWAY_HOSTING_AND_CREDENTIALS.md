@@ -702,3 +702,10 @@ The disposable Actor Gateway principal qualification script was also extended to
 - test founder singleton/account fixtures are cleaned up only when the script created them.
 
 The authority event writes are enclosed in a gateway transaction and rolled back after qualification, so the disposable fixture leaves no persistent authority evidence. A fresh exact-head CI run is required after these changes.
+
+
+### 21.3 Qualification avoids direct evidence-table access (2026-11-16)
+
+The disposable qualification was tightened to respect the intended no-direct-table-access boundary for `ghm_actor_gateway`. It now validates the returned grant/revoke event types from the SECURITY DEFINER operation instead of querying `commercial_document_approval_authority_event` directly. The authority test transaction still rolls back all fixture events.
+
+This correction is included in commit `546f5be6a97802bd1cec2bb7add9eb893b914c5f`; exact-head CI must run on the final branch head.
