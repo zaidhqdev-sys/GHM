@@ -859,3 +859,24 @@ The Actor Gateway qualification adds disposable immutable document-version and d
 - No production approval, authority assignment, consent or payment write.
 - No production migration, ACL/credential change, Render service, deployment or launch activation.
 - Exact-head CI and SQL review are pending. Do not merge until migration application, Actor Gateway behavioral qualification and full suite pass.
+
+
+### 23.1 Founder-only document approval transition qualification passed (2026-11-16)
+
+PR #292 code head `0e9c4fe1ebb59054b17c15ab6af28348e2ac6bde` passed exact-head workflow `43908611434`:
+- `quality`: success.
+- `web-quality`: success.
+- All migrations applied to disposable PostgreSQL.
+- The Actor Gateway principal qualification passed with the new document approval behavior.
+- The complete test suite passed, including the new migration contract.
+
+Behavioral qualification verifies:
+- Founder approves an exact draft version under a current grant.
+- Duplicate approval is denied.
+- Approval after revocation is denied.
+- Re-grant permits approval of a subsequent exact version.
+- Authority for one document key cannot approve another key.
+- Non-founder admin, forged assertion, document-version context transplant, replay and expiry are denied.
+- Authority and approved-status events are rolled back; synthetic immutable draft/version fixtures remain only in ephemeral CI.
+
+No production legal document, approval, authority grant, consent or payment record was created. The branch remains database-side only; HTTP approval route/reader is a separate next slice.
