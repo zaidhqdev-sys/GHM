@@ -245,3 +245,33 @@ No new checkout bridge, credentials, sandbox account, callback activation, datab
 4. Only after the service/database and GHM-native identity/business/subscription prerequisites are verified, perform sandbox-only account setup and non-payment checks. Checkout/callback/settlement round-trip requires a separate explicit go-ahead after the readiness gates.
 5. Keep PR #233 parked until a sandbox ITN provides evidence for payment_date timezone semantics. Add exact startup ACL verification before any callback reactivation.
 
+
+
+### 2026-11-16 — owner clarification and Render legacy inventory
+
+The owner explicitly confirmed permission to inspect the ZAID Technologies Render workspace and clarified that the historical PayFast sandbox infrastructure is **legacy and must not be revived** because there is no budget to spend. This supersedes any earlier suggestion to recover/reactivate the old Render sandbox. Do not resume, unsuspend, redeploy, reconfigure, upgrade, recreate, or attach paid resources to any legacy sandbox resource.
+
+Read-only Render inventory was completed in the owner-confirmed ZAID Technologies workspace.
+
+| Legacy resource | Observed state | Notes |
+|---|---|---|
+| `ghm-payfast-sandbox-runtime` | Free web service, not suspended; auto-deploy off | Existing legacy service; do not use or redeploy |
+| `ghm-payfast-callback-sandbox` | Free web service, not suspended; auto-deploy off | Existing legacy service; do not use or redeploy |
+| `ghm-identity-qualification` | Free web service, not suspended; auto-deploy on / checks pass | Legacy qualification service; do not trigger deploys or use as current target |
+| `ghm-payfast-sandbox-db` / `ghm_payfast_sandbox_db` | Free Postgres, suspended by billing; expired 2026-11-08 01:17 UTC | Do not restore, unsuspend, renew, or repurpose |
+
+The current production database `ghm-db` / `ghm_db` is a separate available Postgres 18 instance in the production environment. It is not the legacy sandbox and must not be used as a substitute for sandbox qualification or for test payment data.
+
+The three legacy web services were observed as not suspended, but this audit did not inspect logs, invoke health endpoints, deploy, change environment variables, alter service state, or test callback delivery. Their current status does not make them approved or suitable for payment testing.
+
+### Updated PayFast strategy — no legacy Render dependency
+
+- Keep the old Render sandbox DB and three web services out of the target architecture. No spend, paid resource, service recovery, database recreation, or production database reuse is authorized.
+- Continue source/contract/test qualification against disposable CI PostgreSQL and local test doubles where possible.
+- For provider-facing PayFast sandbox checks, use PayFast's own sandbox account and provider endpoints, but only through a GHM-native, isolated test path that does not depend on the legacy Render sandbox services/database and does not point tests at production `ghm_db`.
+- Before creating a PayFast sandbox merchant account, verify with the owner whether one already exists and keep credentials out of chat and handovers. No account has been created in this audit.
+- Do not initiate checkout or send a payment until the GHM-native identity/business/subscription preparation path and callback verification path are qualified; a separate explicit authorization is required for a payment attempt.
+- Continue to keep PayFast production credentials, live activation, and online subscription activation frozen.
+
+**Audit scope:** read-only Render service and database inventory only. No service state, deployment, database, role, grant, environment variable, secret, payment setting, or billing configuration was changed. No paid resource was created.
+
