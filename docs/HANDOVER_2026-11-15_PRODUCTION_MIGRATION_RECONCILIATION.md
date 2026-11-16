@@ -1868,3 +1868,72 @@ Do not update rows, create missing Opportunities, delete records, or repair link
 - Production migration audit: NOT YET RE-RUN against current `ghm_db`; no fresh result claimed.
 - Project ↔ Opportunity production reconciliation: NOT YET RUN; no data-integrity conclusion claimed.
 - No production migrations, manual cutovers, ledger edits, role/grant changes, deployments, Render settings, secrets or application data have been changed by this work.
+
+## 60. Production audit evidence reconciled and repository audit paths confirmed (2026-11-16 03:36 UTC)
+
+This section supersedes the *current-status* statements in Section 59. Section 59 remains as the historical operator instructions that existed before the owner supplied the new evidence.
+
+### Production migration ledger/provenance audit — PASS_WITH_PENDING
+
+The owner reran `scripts/forensic-migration-reconciliation.mjs` against Render `ghm-db` / `ghm_db` on 2026-11-16. The successful invocation explicitly used `--allow-pending`, selecting the production pending-allowlist comparison mode. This is an audit-policy flag only; it does not execute, authorize, or apply any migration.
+
+Captured result:
+- Target database: `ghm_db`.
+- Repository migrations: **137**.
+- Pending migrations: **42**.
+- Pending version/name inventory: exact match to `config/pending-migrations.production.json`.
+- Approved retained historical ledger entries: **10**, all verified.
+- Unexplained checksum mismatches: **0**.
+- Migration name mismatches: **0**.
+- Unrecognized extra ledger rows: **0**.
+- Orphaned historical exceptions: **0**.
+- Invalid retained-history entries: **0**.
+- Authority: `session_user=ghm_migrator`; after `SET ROLE`, `current_user=ghm_schema_owner`; database `ghm_db`.
+- Transaction: `BEGIN READ ONLY`; the script rolls back the transaction. TLS certificate verification is enforced by the script (`rejectUnauthorized: true`).
+- Final verdict: **`PASS_WITH_PENDING`**, process exit code **0**.
+
+The initial run without `--allow-pending` returned `INVESTIGATE` because the script's strict mode requires zero missing migrations. The subsequent allowlist-mode run proved the 42 live pending migrations exactly match the reviewed production allowlist. Neither result means those migrations have been applied. All 42 remain unapplied and individually subject to the separate execution/dependency/security gates in this handover.
+
+The owner retained the full local report as `production-migration-audit-20261116.txt`; it is an untracked local evidence file, not part of this documentation commit. Do not add local environment backups or unrelated preflight files to Git.
+
+### Project ↔ Opportunity production reconciliation — already completed 2026-11-15
+
+The separate production-only reconciliation is **not outstanding**. The authoritative recorded evidence is in `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md`, section dated 2026-11-15. It records a read-only aggregate/join inspection against Render `ghm-db` / `ghm_db` with:
+- `ghm.project` rows: **0**.
+- Projects without Opportunity links: **0**.
+- Invalid/missing/non-project Opportunity links: **0**.
+- Project/Opportunity creator-account mismatches: **0**.
+- Active project-type Opportunities: **0**.
+- Orphan project-type Opportunities: **0**.
+- Projects with active creator participant: **0**; missing expected active creator participants: **0**.
+- Active project Opportunity type definitions: **1**.
+- Restrictive `project_opportunity_fk` and partial unique `project_opportunity_unique` index: both present.
+
+Recorded disposition: **PASS — zero-row baseline; no backfill required**. This is the November 15 production evidence, not a claim that this data reconciliation was rerun on November 16. Section 59's statements that this work was not yet run are superseded.
+
+### Repository audit coverage — existing entry points, no duplicate tool required
+
+The current repository already separates offline policy checks from live production inspection:
+
+- `npm run test:migration-audit-policy` runs `scripts/migration-audit-checksum.test.mjs`, covering checksum normalization, historical provenance, retained-history classification, production/qualification target separation, the pinned production pending allowlist, and strict TLS policy. CI invokes this command in its `Migration audit policy tests` step.
+- `npm test` also includes the compiled migration checksum/target-guard tests.
+- `npm run audit:migrations` invokes the live forensic reconciliation in strict mode; it requires the migrator database credential and a live database connection.
+- `npm run audit:migrations:predeploy` invokes the same live audit with `--allow-pending`; this verifies the live pending inventory against the production allowlist. It does not apply migrations.
+
+Therefore, repository-only migration policy checks already run in CI, while the full ledger reconciliation necessarily requires the authorised production connection. Do not add a second overlapping audit implementation. The remaining useful consolidation is to make the operator runbook call these named npm scripts consistently and preserve their output as evidence.
+
+### Exact-head CI and release disposition
+
+- Branch: `feat/production-migration-batch-execution-20261115`.
+- Exact PR #285 head at this checkpoint: `7bc093ac2de83a26f8dab7a973c0de933a6b9a11`.
+- GitHub Actions CI run **#5065** (`43797488894`) for that exact commit completed successfully.
+- PR #285 remains open, draft and unmerged.
+- No production migration, manual cutover, ledger edit, role/grant change, deployment, Render setting, secret, or application-data mutation was performed by these audits or this handover update.
+
+### Current release gate
+
+- Production migration inventory/provenance audit: **PASS_WITH_PENDING**; 42 migrations remain unapplied and allowlisted.
+- Production Project ↔ Opportunity reconciliation: **PASS** on the November 15 zero-row evidence; no backfill required.
+- Repository migration audit policy: covered by the existing CI command and tests; no duplicate audit script is warranted.
+- Production migration execution: **BLOCKED** pending the remaining ordered migration review, exact prerequisites, verified backup/recovery point, and Actor Gateway hosting/credential/network gates.
+- PR #285: keep open and draft. A passing CI run and reconciled audit documentation do not authorise merge or production execution.
