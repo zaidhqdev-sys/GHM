@@ -90,3 +90,8 @@ test('founder-only commercial approval functions are part of the exact gateway A
   assert.ok(privilegeSource.includes('ghm.gateway_manage_commercial_document_approval_authority('));
   assert.ok(privilegeSource.includes("search_path=pg_catalog, ghm, pg_temp"));
 });
+
+test('founder-only document approval functions are part of the exact gateway ACL allow-list', () => {
+  assert.ok(privilegeSource.includes('ghm.assert_actor_gateway_commercial_document_approval('));
+  assert.ok(privilegeSource.includes('ghm.gateway_approve_commercial_document_version('));
+});
