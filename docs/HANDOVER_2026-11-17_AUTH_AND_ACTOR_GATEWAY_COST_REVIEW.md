@@ -61,3 +61,31 @@ Do not describe co-hosting as equivalent security. It preserves a separate datab
 4. Keep production migrations and deployments stopped until their existing backup, ledger, identity and contiguous-prefix gates are satisfied.
 
 This review is a repository/source and previously recorded Render inventory assessment. It is not a production deployment, production ACL change, or live service test.
+
+
+## Implementation update — embedded authentication work (2026-11-17)
+
+Branch `feature/explicit-production-migration-batches` now contains an initial code change:
+- `src/server.ts` mounts the existing auth routes in the existing GHM Internal Runtime.
+- Authentication uses a separate PostgreSQL pool and the existing `GHM_AUTH_ISSUER_DATABASE_URL` / SSL mode, retaining the `ghm_auth_issuer` identity and existing startup identity/privilege assertions.
+- The ordinary runtime database pool remains separate and continues its existing identity/privilege checks.
+- Auth lifecycle routes use the existing GHM runtime app's CORS, proxy, security headers and HTTP server.
+- The standalone `start:auth-issuer` package command was removed.
+- The auth route registration comment now describes the embedded runtime and separate DB principal.
+
+Commits:
+- `257bc03da35b6167695134956c4eee423fd4935f` — embed auth routes and separate auth DB pool in existing runtime.
+- `c64072c58c39e6955073b7e4424f3ce4922ef6a2` — remove standalone auth issuer start command.
+- `ed4309803b5df9b843112d57cf2b928f566951cf` — clarify embedded auth boundary.
+
+CI run `43977343017` was queued for head `ed4309803b5df9b843112d57cf2b928f566951cf` at handover update time. No pass is claimed until its result is checked.
+
+### Security trade-off that must remain explicit
+
+The embedded runtime now loads the ES256 private signing key in the same OS process as the ordinary Resource API. This removes the standalone issuer's process isolation for that key, even though the auth database connection and least-privilege principal remain separate. The ordinary runtime process therefore has a larger credential/secret blast radius than it did with a separate issuer process.
+
+This code change is not authorized for production deployment merely because it is committed. Before deployment, assess whether this key-isolation loss is acceptable for the zero-new-service cost target. If not, keep the standalone issuer isolated and do not pretend that removing its monthly hosting cost is security-neutral. No production Render environment variables, secrets, service settings or deployment have been changed.
+
+### Actor Gateway cost decision
+
+The current source still routes numerous actor-sensitive operations through gateway clients and requires `GHM_ACTOR_GATEWAY_URL` in production for storage-related workflows. A gateway process co-hosted in the Resource API would hold both the ordinary runtime DB credential and the privileged gateway DB credential in one process, materially weakening the process boundary. It may save the USD 7/month service cost, but it is not equivalent security. Do not implement co-hosting or provision the dedicated service until this trade-off is presented and agreed with the owner.
