@@ -339,7 +339,8 @@ test('Commercial payment preparation resolves price and persists a PayFast-bound
   const attemptInsert = calls.find((sql) => sql.includes('INSERT INTO ghm.commercial_payment_attempt'));
   assert.ok(attemptInsert);
   assert.match(attemptInsert, /provider_code/);
-  assert.match(attemptInsert, /'payfast'/);
+  assert.match(attemptInsert, /\$5/);
+  assert.equal(params[calls.indexOf(attemptInsert!)][4], 'payfast');
   assert.equal(calls.filter((sql) => sql.includes('INSERT INTO ghm.commercial_event')).length, 1);
   assert.equal(calls[0], 'BEGIN');
   assert.equal(calls.at(-1), 'COMMIT');
@@ -528,4 +529,38 @@ test('Admin commercial launch state returns a bounded read-only projection witho
     () => new PostgresCommercialRepository(pool).getAdminCommercialLaunchState(context('admin'), 251),
     /limit must be between 1 and 250/,
   );
+});
+
+
+test('Commercial payment preparation persists the server-selected provider without accepting it from request input', async () => {
+  const preparedAt = new Date('2026-10-03T10:00:00.000Z');
+  const calls: string[] = [];
+  const params: unknown[][] = [];
+  const client = {
+    async query(sql: string, queryParams?: unknown[]): Promise<{ rowCount: number; rows: Record<string, unknown>[] }> {
+      calls.push(sql); params.push(queryParams ?? []);
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.business_membership')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM ghm.commercial_payment_attempt')) return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.commercial_subscription')) return { rowCount: 1, rows: [subscriptionRow] };
+      if (sql === 'SELECT now() AS prepared_at') return { rowCount: 1, rows: [{ prepared_at: preparedAt }] };
+      if (sql.includes('FROM ghm.commercial_plan_price')) return { rowCount: 1, rows: [{ id: 41, amount_minor_units: 19900, currency_id: 1, billing_interval: 'month' }] };
+      if (sql.includes('INSERT INTO ghm.commercial_payment_attempt')) return { rowCount: 1, rows: [{
+        id: 72, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId, provider_code: 'payfast',
+        attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
+        billing_interval: 'month', idempotency_key: 'idem-key-456', checkout_reference: null,
+        expires_at: null, failure_code: null, failure_message: null, created_at: preparedAt, updated_at: preparedAt,
+      }] };
+      if (sql.includes('INSERT INTO ghm.commercial_event')) return { rowCount: 1, rows: [] };
+      throw new Error(`Unexpected SQL in provider selection test: ${sql}`);
+    },
+    release(): void {},
+  };
+  const pool: TransactionPool = { async connect(): Promise<PoolClient> { return client as unknown as PoolClient; } };
+  const selected = new PostgresCommercialRepository(pool, 'payfast' as never);
+  const result = await selected.prepareCommercialPayment(context(), { businessId, idempotencyKey: 'idem-key-456' });
+  assert.equal(result.providerCode, 'payfast');
+  const insert = calls.find(sql => sql.includes('INSERT INTO ghm.commercial_payment_attempt'));
+  assert.ok(insert);
+  assert.equal(params[calls.indexOf(insert!)][4], 'payfast');
 });
