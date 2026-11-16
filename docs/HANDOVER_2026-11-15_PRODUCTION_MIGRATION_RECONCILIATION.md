@@ -1683,3 +1683,32 @@ No production database query/mutation, migration, ledger repair, role/grant chan
 This model only describes the query's SECURITY DEFINER function EXECUTE inventory. It is not a complete inventory of all functions, function grants, table/column grants, sequence grants, PUBLIC privileges or inherited role memberships. Registration identity's actual function existence, `prosecdef` flags and effective runtime EXECUTE privileges must be inspected separately through the approved catalog audit before any registration-identity cutover decision. Do not infer a revoke or a cutover from omission in this filtered result.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. PR #285 remains draft and unmerged. Preserve the local untracked `.bak` file.
+
+
+## 56. Actor Gateway principal CI failure — registration identity inventory state is inconsistent (2026-11-16 02:29 UTC)
+
+### Exact-head CI #5057
+
+- Exact PR head: `0e63461b2efc6e2940d62dd6b6b3411b56b9cba9`.
+- Workflow #5057 failed. `web-quality`, build, migration application, supplier classification qualification, first-four migration qualification, SECURITY DEFINER inventory syntax, and isolated Authentication Issuer principal qualification passed.
+- Failure: `Qualify isolated actor gateway database principal`. Later steps were skipped.
+- The failure occurs at `assertRuntimeDatabaseFunctionPrivileges`, before the gateway-specific ACL and signed-assertion tests.
+
+### Exact failure evidence
+
+The disposable pre-Campaign-cutover runtime query returned 43 SECURITY DEFINER functions, including both:
+- `ghm.read_business_registration_identity(bigint,bigint)`
+- `ghm.update_business_registration_identity(bigint,bigint,text,text,text)`
+
+The Section 55 source correction incorrectly reduced the baseline to 41 and therefore made these two observed pre-cutover functions unexpected. The 41-entry correction is not valid for this pre-cutover state.
+
+There is also an unresolved cross-qualification discrepancy: CI #5054's Campaign/directory-review qualification reported a 38-function inventory after applying the Campaign cutover, with the two registration identity functions absent. The inspected Campaign cutover SQL revokes only the three Campaign/directory-review legacy functions; it does not revoke either registration identity function. Thus the 38-function result cannot currently be explained by the inspected cutover SQL. Do not assume the Campaign cutover removes registration identity authority.
+
+### Corrective disposition
+
+- Do not make another allow-list count edit based only on these two runs.
+- Reconcile the exact database state and full catalog evidence immediately before and after the Campaign qualification: `pg_proc.prosecdef`, function existence, effective `EXECUTE` for `ghm_runtime`, PUBLIC and inherited memberships, and the qualification script's transaction/connection lifecycle.
+- Verify whether the two registration functions change owner, SECURITY DEFINER status, or effective privileges during an earlier qualification step. Identify the exact statement and stage if they do.
+- The SECURITY DEFINER inventory model must represent actual observed stages, not force an expected count. Keep registration identity unresolved until the catalog transition is explained and the Resource API route/cutover/rollback contract is evidenced.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. PR #285 remains draft and unmerged. Preserve the local untracked `.bak` file.
