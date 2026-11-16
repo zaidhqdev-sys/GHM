@@ -20,6 +20,7 @@ import { PostgresBusinessLogoGatewayReader } from './business-logo-reader';
 import { PostgresStorageMetadataGatewayReader } from './storage-metadata-reader';
 import { PostgresConnectBusinessProvisioningReader } from './connect-business-provisioning-reader';
 import { PostgresCampaignDirectoryReviewGatewayReader } from './campaign-directory-review-reader';
+import { PostgresCommercialDocumentApprovalAuthorityReader } from './commercial-document-approval-authority-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
 import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from './database-privileges';
 
@@ -63,6 +64,7 @@ const app = createActorGatewayApp({
   storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
   connectBusinessProvisioningReader: new PostgresConnectBusinessProvisioningReader(pool, capabilityAssertionSecret),
   campaignDirectoryReviewReader: new PostgresCampaignDirectoryReviewGatewayReader(pool, capabilityAssertionSecret),
+  commercialDocumentApprovalAuthorityReader: new PostgresCommercialDocumentApprovalAuthorityReader(pool, capabilityAssertionSecret),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
