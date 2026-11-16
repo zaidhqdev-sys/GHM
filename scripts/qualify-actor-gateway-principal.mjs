@@ -670,13 +670,25 @@ try {
     await paymentGateway.query('ROLLBACK').catch(() => {});
     paymentGateway.release();
   }
-  const paymentRollbackEvidence = await cleanupPool.query(
-    `SELECT
-       (SELECT count(*)::int FROM ghm.commercial_payment_attempt WHERE idempotency_key LIKE $1) AS attempts,
-       (SELECT count(*)::int FROM ghm.commercial_consent_event WHERE idempotency_key LIKE $1) AS consents,
-       (SELECT count(*)::int FROM ghm.commercial_event WHERE idempotency_key LIKE $1) AS events`,
-    [`${fixture.marker}%`],
-  );
+  const paymentRollbackCheck = await cleanupPool.connect();
+  let paymentRollbackEvidence;
+  try {
+    await paymentRollbackCheck.query('BEGIN');
+    await paymentRollbackCheck.query('SET LOCAL ROLE ghm_schema_owner');
+    paymentRollbackEvidence = await paymentRollbackCheck.query(
+      `SELECT
+         (SELECT count(*)::int FROM ghm.commercial_payment_attempt WHERE idempotency_key LIKE $1) AS attempts,
+         (SELECT count(*)::int FROM ghm.commercial_consent_event WHERE idempotency_key LIKE $1) AS consents,
+         (SELECT count(*)::int FROM ghm.commercial_event WHERE idempotency_key LIKE $1) AS events`,
+      [`${fixture.marker}%`],
+    );
+    await paymentRollbackCheck.query('ROLLBACK');
+  } catch (error) {
+    await paymentRollbackCheck.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    paymentRollbackCheck.release();
+  }
   assert.deepEqual(paymentRollbackEvidence.rows[0], { attempts: 0, consents: 0, events: 0 });
   console.log('DISPOSABLE COMMERCIAL CONSENT/PAYMENT QUALIFICATION WRITES ROLLED BACK: PASS');
 
