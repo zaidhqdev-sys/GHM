@@ -1608,3 +1608,20 @@ Further, the nine-group function mask does not inspect the direct relation and s
 No runner code was changed in this step: the mapping review exposed unresolved source artifacts and the current privilege query's session-user mismatch. Implementing against the unverified disposable baseline would create false assurance. Continue source reconciliation and close these prerequisites first.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
+
+
+## 53. Registration identity cutover evidence correction (2026-11-16 01:38 UTC)
+
+### Exact CI and source correction
+
+- Section 52 commit `d18b619f0743cf92e3a5f85538629a3f8345f1d0` passed exact-head CI workflow #5047; the workflow completed SUCCESS.
+- PR #285 remains OPEN, DRAFT and UNMERGED.
+- A targeted repository search for registration-identity cutover SQL found no matching manual revoke/rollback artifact. The migrations create signed gateway wrappers but explicitly retain the Resource API legacy RPCs. The test's statement that the functions are accepted only before an explicit manual cutover is therefore not backed by an identified cutover artifact in the inspected branch.
+- Corrected the misleading source comment in `src/db/runtime-database-privileges.ts`: the nine groups are a function-only modeled stage inventory; they do not prove the corresponding cutover/rollback SQL exists or that any cutover stage is active in production.
+- Source correction commit: `b405bec35957627440d62edb81d3a6318a5f9df2`. Its exact-head CI must be checked separately.
+
+### Registration identity disposition
+
+Do not invent or run a registration identity revoke. The Resource API registration routes and their gateway client, migration grants, and production runtime version must be reconciled first. If a manual revoke is required, author a forward cutover and an explicitly qualified rollback that match the deployed route contract and exact effective ACL state. Until then, the registration identity functions remain a documented unresolved boundary, not a completed cutover.
+
+No runner code, migration SQL, production catalog, database role/grant, secret, deployment or application data was changed. Preserve the local untracked `.bak` file.
