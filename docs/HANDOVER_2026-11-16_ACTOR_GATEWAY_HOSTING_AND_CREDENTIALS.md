@@ -827,3 +827,35 @@ Merge commit `f480a463c4e24182d47809c9638b6afb9b4f9d3e` passed main-branch workf
 - Full disposable PostgreSQL migrations, full test suite and Actor Gateway database qualification passed.
 
 The handover was updated after the merge. This does not authorize production migration, deployment or commercial writes.
+
+
+## 23. Founder-only exact document-version approval transition — PR in progress (2026-11-16)
+
+A separate bounded database transition branch is open after PR #291:
+- Branch: `feat/founder-only-commercial-document-approval-transition-20261116`
+- Migration: `database/migrations/20261116180000_add_founder_only_commercial_document_approval_transition.sql`
+- Contract test: `src/db/founder-only-commercial-document-approval-transition-migration-contract.test.ts`
+- Disposable behavioral qualification extended in `scripts/qualify-actor-gateway-principal.mjs`.
+- Standard `npm test` includes the new migration contract test.
+
+### Approval transition contract
+
+- Uses a distinct HMAC operation name `commercial.document.status.approve`; authority-management signatures cannot be replayed as document-approval signatures.
+- Revalidates the canonical founder bootstrap account, active system-admin account and active canonical credential.
+- Binds the assertion to one exact immutable `document_version_id` and reason.
+- Locks the immutable version and the same account/document/jurisdiction advisory-lock scope used by grant/revoke.
+- Requires the exact founder authority identity and the latest authority event to remain `granted`.
+- Requires the latest status event for that exact version to be `draft`.
+- Appends an `approved` status event with the authenticated founder account and exact grant-event ID/type in the same transaction.
+- No direct runtime/PUBLIC/table privileges are added; only the Actor Gateway principal receives EXECUTE on the two SECURITY DEFINER functions with pinned search paths.
+
+### Disposable behavioral tests
+
+The Actor Gateway qualification adds disposable immutable document-version and draft-status fixtures, then tests successful approval, duplicate approval denial, approval denial after revocation, approval after re-grant, wrong-document-scope denial, non-founder denial, forged signature, version-context transplant, replay and expiry. Authority and approved-status writes occur inside a transaction that is rolled back. The disposable draft version rows are retained in the ephemeral CI database because the evidence tables are deliberately append-only; they contain only synthetic fixture hashes/titles and are not production/legal documents.
+
+### Explicit boundaries
+
+- No legal document or hash is registered in production.
+- No production approval, authority assignment, consent or payment write.
+- No production migration, ACL/credential change, Render service, deployment or launch activation.
+- Exact-head CI and SQL review are pending. Do not merge until migration application, Actor Gateway behavioral qualification and full suite pass.
