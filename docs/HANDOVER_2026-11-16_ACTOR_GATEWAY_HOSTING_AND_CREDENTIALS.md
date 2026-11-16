@@ -562,3 +562,15 @@ Final review found that a simple FK to the authority event ID would also accept 
 This enforces that an approval cannot cite a revocation event. It still does not prove that the grant is the latest event, actor-matched, or scope-matched; those remain mandatory checks for the future transactional approval operation.
 
 The correction is on the latest branch head `1670dd9d0e72847be33b8753aa6205bd92aebbab`. A fresh exact-head CI run is required; the earlier successful run `43896672192` applies to superseded head `69e751684f2b9b783abc040c3fbb78a57fd336ca` and is not valid qualification for the corrected migration. Do not merge until the new run passes and the corrected migration applies to disposable PostgreSQL.
+
+
+### 18.2 Disposable PostgreSQL failure and correction (2026-11-16)
+
+The first disposable PostgreSQL run of the grant-only composite FK failed because the referenced authority event table did not yet have a matching unique key on `(id, event_type)`. This was a genuine migration defect, not an infrastructure failure.
+
+Corrected migration now declares `UNIQUE (id, event_type)` on `ghm.commercial_document_approval_authority_event`, satisfying PostgreSQL's composite FK requirement. The contract test asserts this unique key, both paired columns, the composite FK and the grant-only CHECK.
+
+- Failed run: `43897565313`, migration application step; do not treat earlier passing run on superseded code as qualification.
+- Correction commit: `0c053cb01caab27da8fd58ea2db1ea48d1267f74`.
+- PR #289 has been marked ready for review to ensure CI runs on the corrected branch state.
+- A fresh exact-head full CI run remains mandatory. Merge remains blocked until PostgreSQL applies the corrected migration and the complete quality suite passes.
