@@ -200,3 +200,21 @@ The Render Dashboard's current Default external credential is not sufficient for
 ### Change record for this follow-up
 
 The local psql session ran only SELECT/catalogue inspection statements. No role, membership, grant, ownership, migration, password, secret, environment variable, service, deployment, or database setting was changed. The Default credential was not rotated. No recurring cost was incurred.
+
+
+## 9. 2026-11-16 follow-up — PR #284 merged after exact-head qualification
+
+PR [#284](https://github.com/zaidhqdev-sys/GHM/pull/284), **test: qualify Actor Gateway assertion replay and timestamp boundaries**, was approved by the user for merge and merged to `main` using squash merge.
+
+- Reviewed PR head: `b6b5443607938943086a17db4ea52070c70f7551`.
+- Exact-head CI run #5120 completed successfully before merge; `quality` and `web-quality` passed.
+- Local checks before push/review passed: TypeScript build, the Actor Gateway request-context migration contract tests (2/2), and Node syntax check for the qualification script.
+- The change is limited to two qualification/test files: the disposable PostgreSQL principal qualification now proves exact signed-assertion replay is denied and expired/future-dated assertions are rejected; the migration contract pins the 60-second timestamp boundary.
+- Squash merge commit: `11f4e492d86a4c632c72c8ad6cb49401f56601de`.
+- GitHub confirmed PR #284 is closed and merged.
+
+The successful Cloudflare Pages preview reported on the PR was a Pages preview only; it is not the production Actor Gateway host and does not change the Render hosting decision.
+
+**Production impact:** none intended or performed. This merge did not deploy the Actor Gateway Worker or Render service, provision secrets, apply production migrations, alter database roles/memberships/grants, or change production environment variables. The production Actor Gateway hosting, backup, administrator-ledger access, and migration gates in this handover remain unchanged.
+
+**Next step:** continue with the previously recorded production administrator/backup/hosting prerequisites. Do not treat this test-only merge as authorization to perform production DDL, ACL cutover, or service provisioning.
