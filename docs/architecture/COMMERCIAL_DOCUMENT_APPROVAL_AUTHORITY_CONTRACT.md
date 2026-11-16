@@ -87,3 +87,17 @@ Repository review found the existing one-time founder bootstrap authority:
 The future owner-only authority operation must derive/verify the actor against the singleton founder bootstrap state inside the database transaction, also requiring the founder account to remain active and retain the expected canonical founder identity. It must never accept a target approver account ID from the request. For this project, the only permitted authority account is the account recorded by the founder bootstrap state; no delegation is implemented.
 
 The production presence and account ID in that bootstrap state have not been independently verified through the restricted Render session. Therefore the function must fail closed if the singleton row is absent, ambiguous, or inconsistent. This avoids asking the owner to supply an account ID and avoids inventing one.
+
+
+## 9. Founder-only grant/revoke database operation — qualification in progress
+
+Migration `20261116170000_add_founder_only_commercial_document_authority_gateway.sql` introduces the database-side grant/revoke operation.
+
+- No request-supplied approver/target account ID exists. The authority account is always the authenticated actor, and the function requires that actor to equal the singleton founder bootstrap account.
+- The operation verifies the canonical founder login and exactly one matching credential, plus active account status and system-admin state. Missing or inconsistent founder bootstrap state fails closed.
+- The database call is restricted to `session_user='ghm_actor_gateway'` and a one-use HMAC assertion with operation name `commercial.document.authority.manage`, exact JSON context, timestamp and nonce.
+- Grant/revoke is serialized by exact owner/document/jurisdiction scope. A repeated grant or revoke without a current grant is rejected.
+- The authority scope has a unique NULLS NOT DISTINCT index to avoid duplicate identities when jurisdiction is NULL.
+- Only the Actor Gateway principal receives EXECUTE; no direct table grants or runtime/PUBLIC access are added.
+
+This branch currently adds the SQL boundary and migration contract test. It does not yet wire the HTTP route, TypeScript reader, or signer integration. Until that integration and exact-head CI pass, the function is not exposed through an application route. No authority row or approved document is seeded.
