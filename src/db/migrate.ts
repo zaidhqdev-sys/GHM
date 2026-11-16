@@ -10,6 +10,7 @@ import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from '.
 import { findOutOfOrderPendingMigration } from './migration-order';
 import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
+import { parseProductionMigrationBatch, selectProductionMigrationBatch } from './production-migration-batch';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -193,7 +194,8 @@ const migrate = async (): Promise<void> => {
       ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
       : { rows: [] as Array<{ version: string; checksum: string }> };
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
-    if (approvedTarget.databaseName === 'ghm_db') {
+    const productionTarget = approvedTarget.databaseName === 'ghm_db';
+    if (productionTarget) {
       assertProductionPendingMigrationAllowlist(
         migrations,
         new Set(appliedByVersion.keys()),
@@ -210,20 +212,36 @@ const migrate = async (): Promise<void> => {
       );
     }
 
+    const executionMigrations = productionTarget
+      ? selectProductionMigrationBatch(
+          migrations,
+          new Set(appliedByVersion.keys()),
+          parseProductionMigrationBatch(process.env.GHM_PRODUCTION_MIGRATION_BATCH),
+        )
+      : migrations.filter((migration) => !appliedByVersion.has(migration.version));
+    console.info(
+      productionTarget
+        ? `Production migration batch selected: ${executionMigrations.map((migration) => migration.filename).join(', ')}`
+        : `Non-production pending migrations selected: ${executionMigrations.length}`,
+    );
+
+    // Validate the checksum of every already-applied migration, not only the
+    // selected execution batch. Batch limiting must not weaken history integrity.
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
-      if (existingChecksum) {
-        if (existingChecksum !== migration.checksum) {
-          if (matchesMigrationSqlChecksum(existingChecksum, migration.sql)) {
-            console.warn(`Accepted legacy line-ending checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
-          } else if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
-            throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
-          } else {
-            console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
-          }
+      if (!existingChecksum) continue;
+      if (existingChecksum !== migration.checksum) {
+        if (matchesMigrationSqlChecksum(existingChecksum, migration.sql)) {
+          console.warn(`Accepted legacy line-ending checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
+        } else if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
+          throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
+        } else {
+          console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
         }
-        continue;
       }
+    }
+
+    for (const migration of executionMigrations) {
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
       await client.query(normalizeMigrationSqlForExecution(migration.sql));

@@ -413,3 +413,108 @@ The broader whole-database audit discovered a separate runtime function allow-li
 - The latest documentation head at the time of this entry is `4d9a75b52a41f218fc117064dc8db403c3539e5d`; it also requires exact-head CI confirmation.
 
 No storage production grants, roles, secrets, provider credentials, buckets, objects, deployments, traffic or data were changed. No PR was merged.
+
+
+---
+
+## Live production ACL confirmation — 2026-11-16 04:06 UTC
+
+A repository-root read-only inspector was run against Render `ghm-db` / `ghm_db` using verified TLS. Connection identity was `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, and `transaction_read_only=on`.
+
+### Production catalog result
+
+The five legacy functions exist and share these properties: owner `ghm_schema_owner`, SECURITY DEFINER, pinned `search_path=pg_catalog, ghm`, PUBLIC EXECUTE=false, `ghm_runtime` EXECUTE=true, `ghm_actor_gateway` EXECUTE=false, `ghm_migrator` EXECUTE=false, and `ghm_schema_owner` EXECUTE=true:
+
+- `storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)`.
+- `storage_get_object(bigint,bigint)`.
+- `storage_mark_available(bigint,text)`.
+- `storage_mark_deleted(bigint)`.
+- `storage_mark_deletion_pending(bigint)`.
+
+All five signed gateway wrappers are absent from the live production catalog: `gateway_storage_create_pending`, `gateway_storage_get_object`, `gateway_storage_mark_available`, `gateway_storage_mark_deleted`, and `gateway_storage_mark_deletion_pending`. The corresponding source and disposable qualification do not establish production installation; the wrapper migrations remain pending.
+
+### Corrected live-state interpretation
+
+The legacy direct-runtime storage authority is still active in production. The Actor Gateway does not yet have the replacement wrapper functions in `ghm_db`. Therefore, the prior disposable revocation/rollback rehearsal is evidence of qualification only, not evidence of a production cutover.
+
+Do not revoke the five legacy grants before the deployed Resource API is demonstrably using the signed gateway for every storage operation and the provider-attested lifecycle has passed against a dedicated non-production target. The wrapper migrations also do not, by themselves, revoke legacy function grants. A separate, ordered grant-cutover and rollback procedure is required.
+
+The inspector performed no DDL/DML and changed no production data, migration ledger, roles, grants, secrets, Render settings, deployments, buckets, or traffic. Existing restrictions remain: no mutation against `zaid-ghm-production`, no new paid infrastructure, and no production cutover without a fresh verified backup and resolved Render role-administration path (including the Amanda/Render support escalation recorded in the role-separation handover).
+
+
+
+---
+
+## Resource API composition-root trace and deployment boundary — 2026-11-16 04:13 UTC
+
+The current repository source has now been traced end to end through `src/http/app.ts`, `src/http/storage-router.ts`, `src/storage/service.ts`, `src/http/storage-metadata-gateway-client.ts`, the Actor Gateway routes, `PostgresStorageMetadataGatewayReader`, and the two storage gateway migrations.
+
+### Source-level integration is present
+
+- Production Resource API startup requires both `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` when storage is enabled.
+- Production sets `storageMetadataGatewayRequired=true`; storage routes receive the gateway store factory and forward the original bearer token.
+- Missing gateway factory in required mode fails closed; the direct PostgreSQL metadata store is only a non-required fallback or explicit test seam.
+- All five metadata operations are wired to the matching gateway HTTP routes and five SQL wrapper functions: create, read, mark-deletion-pending, mark-available and mark-deleted.
+- Actor Gateway routes are behind verified JWT authentication; actor identity is taken from the verified token. Its PostgreSQL reader signs one-use actor assertions for the database.
+- Provider-confirmed availability/deletion additionally require a separate Resource API HMAC attestation. The Actor Gateway does not possess that signing secret.
+- The storage service checks provider HEAD metadata and bytes before marking availability, and marks deletion-pending before provider deletion; final deleted state is written only after provider success.
+
+This supersedes the earlier open source-trace question about whether the signed gateway reader was injected into the active Resource API composition root: **the current source does inject it for production storage**. The old direct metadata repository remains in source as a non-production fallback; production's required flag prevents silent fallback.
+
+### Remaining separate SQL paths
+
+- Tenant membership/authorization checks still use Resource API authorized/tenant transactions; they are not invocations of the five legacy metadata SECURITY DEFINER functions.
+- Public Business Logo redirect lookup still invokes the distinct `ghm.storage_get_public_business_logo(bigint)` function directly. Keep this as a separate public-read ACL/caller review item.
+- Business Logo binding uses its own Actor Gateway client and production-required gate.
+
+### Not yet proven in production
+
+Source wiring does not prove the currently deployed Render Resource API is this revision, that the Actor Gateway is deployed/reachable, or that its DB session is the isolated `ghm_actor_gateway` principal. The Worker config checked into the branch still has a placeholder Hyperdrive ID. The five gateway SQL wrappers are absent from the live production catalog, while the five legacy functions remain executable by `ghm_runtime` (see the live ACL confirmation above).
+
+The deployment path therefore remains blocked by the real Hyperdrive/network binding and supported role separation, fresh verified production backup, required ordered migration installation, deployment/health/identity verification, dedicated non-production provider lifecycle, and a separate five-function legacy grant cutover/rollback. Do not use `zaid-ghm-production` for qualification and do not revoke legacy grants now.
+
+No production state or external infrastructure was changed by this source trace.
+
+
+
+---
+
+## Additional Resource API startup ACL gate for the five-function cutover — 2026-11-16
+
+The Resource API's `src/db/runtime-database-privileges.ts` exact SECURITY DEFINER EXECUTE allow-list currently includes all five legacy storage metadata functions. However, those five signatures are not yet represented as a group in `RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS`.
+
+The startup guard accepts only an exact combination of its modeled cutover groups. Therefore, revoking the five legacy runtime grants before updating and qualifying the startup ACL model would cause the Resource API privilege assertion to reject the post-cutover catalog. This is a separate release dependency; the signed HTTP client wiring alone does not make the application ready for the database grant revocation.
+
+The distinct `ghm.storage_get_public_business_logo(bigint)` remains in the runtime allow-list and is called by the anonymous public-logo redirect route. It is not one of the five metadata functions and must not be swept into the five-function revoke. Keep its scope and caller under separate review.
+
+Before production grant cutover, implement and test a named five-signature storage metadata cutover group, update the 9-group/512-stage exact allow-list model and its count assertions to include the additional group (1,024 modeled combinations), and prove both pre-cutover and fully cut-over states pass while partial/unreviewed states fail. Do not change production grants until this application release and the gateway deployment are qualified together.
+
+## 2026-11-16 — Render runtime failure confirms missing gateway host prerequisite
+
+Read-only Render inspection of GHM-Internal-Runtime confirmed that the latest attempted deploy (fe5a82d856f8733d0094e7d4599733da93537719, 2026-11-15 18:08 UTC) completed its build successfully, then failed during application startup with the explicit error GHM_ACTOR_GATEWAY_URL is required when production storage is enabled. Render recorded nonZeroExit=1; the prior live deployment at c7cf1ebaf4db5912983bfa45bd42747c0854cfaf remained live. Auto-deploy is OFF. The earlier 18:04 attempt failed at TypeScript build due omitted dev type packages; the corrected npm ci --include=dev build succeeded, so that is not the remaining blocker.
+
+The Render workspace service inventory has no production Actor Gateway service. Do not repurpose the qualification/PayFast services, create paid Render infrastructure, weaken fail-closed startup, co-host the Actor Gateway in the Resource API, or set a placeholder gateway URL. The previously agreed zero-additional-cost separation of Resource API, Identity Issuer and Actor Gateway remains mandatory. Cloudflare Worker + Hyperdrive/Workers VPC + Tunnel remains an unapproved candidate: its hostname, network route, DB connectivity and TLS identity have not been established. Resolve the compliant always-on isolated gateway/network host first. No Render settings, secrets, services, deployment, production database, grants or roles were changed by this inspection.
+
+The disposable five-function storage ACL cutover/rollback qualification passed exact implementation CI #5104; PR #286 handover head e3ea8ef1... passed CI #5107. This does not clear the deployment/network blocker or authorize production ACL changes.
+
+
+## 2026-11-16 — superseding gateway-host decision and startup ACL model status
+
+The earlier wording calling Cloudflare Worker + Hyperdrive/Workers VPC + Tunnel an unapproved candidate is superseded. The feasibility investigation is complete and recorded as **NO-GO under current resources**: private DB access requires Hyperdrive/VPC plus a continuously running tunnel agent; the existing Render Free Resource API is not an approved tunnel host; the laptop is not continuously available and a mobile phone is not a supported DB tunnel host. Worker Free Argon2id failed the Authentication Issuer CPU requirement, combining Issuer and Actor Gateway violates isolation, and no paid infrastructure is authorized. Do not repeat this investigation or recommend Cloudflare absent new evidence/resources.
+
+The Resource API startup ACL model dependency is now implemented and qualified on PR #286. It has the exact five-signature `storageMetadata` cutover group, 10 groups / 1,024 modeled combinations, and preserves the separate public-logo lookup. The exact-signature assertion correction and updated handovers passed all exact-head checks on `a1981c15e56ebbc8f5ddc61de38749f33ccd6d6a` (quality, web-quality and Cloudflare Pages integration). PR #286 remains draft/open/unmerged.
+
+This completes only the application startup ACL model qualification. Production gateway hosting/network, isolated principal, wrapper migration sequence, provider E2E, Render role-admin escalation, fresh verified backup and operational cutover/rollback gates remain. No production state changed.
+
+
+## 2026-11-16 — new Actor Gateway public-origin Hyperdrive route identified (not deployed)
+
+The previous Cloudflare NO-GO applies to the private-origin Hyperdrive + Workers VPC/Tunnel design requiring a continuously running tunnel agent. A different route is now identified: configure the existing Cloudflare Actor Gateway Worker with Hyperdrive against Render Postgres's public external hostname. Cloudflare Hyperdrive supports publicly reachable PostgreSQL origins and is included in Workers Free (100,000 database statements/day); this route needs no Tunnel, Workers VPC, laptop/mobile process, or extra Render service. References: https://developers.cloudflare.com/hyperdrive/ ; https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/ ; https://developers.cloudflare.com/hyperdrive/platform/pricing/ .
+
+Read-only Render inventory confirms `ghm-db` is PostgreSQL 18 in Frankfurt and currently has external IP allow-list `0.0.0.0/0`. Render external Postgres connections require TLS. References: https://render.com/docs/postgresql-creating-connecting and https://render.com/tutorials/postgres-on-render/connection-strings . No Render setting was changed.
+
+The repository already has `workers/actor-gateway/index.ts`, using `HYPERDRIVE.connectionString`, and a `workers/actor-gateway/wrangler.jsonc` binding whose ID remains the all-zero placeholder. The Worker verifies ES256 tokens with public-key-only material; it does not perform password hashing, so the prior Argon2 Free CPU benchmark was for the separate Issuer and is not a direct Actor Gateway blocker. Workers Free has a 10 ms/request CPU limit and 100,000 requests/day; Hyperdrive Free has 100,000 statements/day and ~20 soft origin connections. These limits and actual workload must be tested: https://developers.cloudflare.com/workers/platform/limits/ and https://developers.cloudflare.com/hyperdrive/platform/limits/ .
+
+Candidate configuration must use the dedicated `ghm_actor_gateway` login only, TLS, and the existing Worker binding. Do not use `ghm_db_user`, `ghm_runtime`, or Issuer credentials. The dedicated gateway credential/Render administrator membership escalation remains unresolved; this is the immediate prerequisite to creating a Hyperdrive config. Verify `session_user=current_user=ghm_actor_gateway`, startup ACL, JWT validation, replay protection, route behavior, quotas, CPU, and rollback before production use. Hyperdrive's default `require` mode uses TLS and WebPKI certificate validation; `verify-full` requires a suitable CA certificate: https://developers.cloudflare.com/hyperdrive/configuration/tls-ssl-certificates-for-hyperdrive/ .
+
+This public-origin route supersedes the blanket Cloudflare hosting NO-GO as a new candidate only; it has not been qualified or deployed. No Cloudflare resources/secrets, Render settings, database roles/grants, migrations, deployments or production traffic were changed. Keep production cutover blocked until all gates pass.

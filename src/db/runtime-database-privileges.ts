@@ -54,6 +54,11 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)'
 ] as const;
 
+const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
+  'ghm.read_business_registration_identity(bigint, bigint)',
+  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
+] as const;
+
 const CAMPAIGN_REVIEW_LEGACY_FUNCTIONS = [
   'ghm.create_campaign(bigint, bigint, text)',
   'ghm.update_campaign(bigint, bigint, text, text)',
@@ -75,11 +80,6 @@ const AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS = [
   'ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)',
   'ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)',
   'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
-] as const;
-
-const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
-  'ghm.read_business_registration_identity(bigint, bigint)',
-  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
 ] as const;
 
 const CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS = [
@@ -111,13 +111,15 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
 ] as const;
 
-// Every independently qualified manual runtime cutover is represented here.
-// These are exact legacy signatures revoked by the corresponding SQL files in
-// database/cutovers/. No unrelated function is accepted as a stage transition.
+// Only groups with an identified manual cutover artifact are modeled here.
+// Registration identity has an explicit manual revoke artifact and disposable-PostgreSQL
+// qualification. No standalone rollback artifact exists; this ACL model does not imply
+// rollback authority or prove that any cutover is active in production.
+// Verify operational cutover state and production catalog state separately.
 export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
-  authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
   registrationIdentity: REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+  authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
   capabilityGovernance: CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS,
   businessCapabilityMutations: BUSINESS_CAPABILITY_LEGACY_FUNCTIONS,
   savedBusiness: SAVED_BUSINESS_LEGACY_FUNCTIONS,
@@ -139,19 +141,6 @@ export const RUNTIME_POST_AUTH_ISSUER_FUNCTIONS = without(
 export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS = without(
   RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
 );
-export const RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-export const RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-export const RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-
 const cutoverGroups = Object.values(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS);
 const allCutoverSignatures = cutoverGroups.flat();
 const duplicateCutoverSignatures = allCutoverSignatures.filter(
@@ -164,7 +153,7 @@ if (duplicateCutoverSignatures.length > 0 || cutoverSignaturesOutsideBaseline.le
   throw new Error('Runtime manual cutover groups overlap or contain signatures outside the reviewed baseline');
 }
 
-// There are 2^9 independently qualified manual cutover combinations. The
+// There are 2^8 modeled manual cutover combinations. The
 // guard accepts only an exact combination of these reviewed revocations.
 const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
   { length: 2 ** cutoverGroups.length },
