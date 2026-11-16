@@ -33,6 +33,7 @@ test('payment preparation binds every acceptance, provider, business, document a
 test('payment preparation requires active owner/admin membership and a current subscription price', () => {
   assert.match(migration, /m\.membership_status = 'active'/);
   assert.match(migration, /m\.membership_role IN \('owner', 'administrator'\)/);
+  assert.ok(migration.indexOf('Lock the active owner/administrator membership') < migration.indexOf('Serialize identical requests'));
   assert.match(migration, /FOR SHARE/);
   assert.match(migration, /commercial_subscription s[\s\S]*s\.business_id = p_business_id/);
   assert.match(migration, /commercial_plan_price price[\s\S]*price\.lifecycle_status = 'active'/);
@@ -62,6 +63,7 @@ test('idempotent retry returns only a matching attempt with its exact consent ev
   assert.match(migration, /commercial_payment_attempt a[\s\S]*a\.idempotency_key = p_idempotency_key/);
   assert.match(migration, /commercial_consent_event c[\s\S]*c\.idempotency_key = p_idempotency_key/);
   assert.match(migration, /v_existing_consent\.document_version_id IS DISTINCT FROM p_document_version_id/);
+  assert.match(migration, /v_existing_consent\.context->>'countryId' IS DISTINCT FROM p_country_id::text/);
   assert.match(migration, /Commercial payment preparation idempotency conflict/);
 });
 
