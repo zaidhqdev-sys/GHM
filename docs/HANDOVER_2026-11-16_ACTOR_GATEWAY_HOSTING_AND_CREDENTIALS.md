@@ -420,3 +420,30 @@ PR #287 was marked ready after exact-head CI completed successfully and was squa
 - No payment attempt, checkout, callback, PayFast sandbox transaction, credential configuration, production migration, deployment, or commercial activation was performed by PR #287.
 - No live provider or online subscription activation is authorized. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
 
+
+
+## 15. Native payment-preparation gate — legal consent dependency confirmed (2026-11-16)
+
+The next-stage review compared GHM commercial schema/repository/authentication with Connect mainline Milestone 52, the current commercial panel, and the legacy Supabase payment-readiness migrations.
+
+### Confirmed GHM-native pieces
+- The normal API already authenticates GHM ES256 bearer tokens via `requireAuth` / `requireResourceAuth`; the resulting `req.authContext` is derived from the verified token plus current database account state.
+- The commercial repository already checks the canonical `ghm.business_membership` row for an active `owner` or `administrator` before trial activation/payment preparation.
+- The public authenticated commercial router currently exposes read-only endpoints; the resource registry grants only `commercial: read`.
+- Therefore a native GHM endpoint can derive actor identity from `req.authContext` and pass canonical GHM Business IDs, with no Connect service assertion, Supabase subject, or external Business UUID.
+
+### Blocking contract that must be migrated, not omitted
+- Connect's legacy `prepare_business_subscription_payment` explicitly requires `p_document_version`, checks it is present, and appends a `commercial_terms` acceptance to `commercial_consents` in the same transaction as payment preparation.
+- Connect UI requires explicit user acceptance of the relevant Trial or Business Pro subscription terms before invoking those operations. Current version identifiers in the UI are `za-business-pro-trial-v1` and `za-business-pro-subscription-v1`.
+- GHM's canonical commercial schema currently has no equivalent commercial consent table/append-only acceptance event and its payment preparation contract accepts no document version/consent input.
+- The user previously paused legal-document work until systems are stable. The actual approved current terms documents/version hashes therefore have not been established in GHM.
+- **Do not implement a GHM-native payment-preparation write route that silently drops this acceptance requirement, accepts arbitrary document versions from the browser, or treats the old Supabase consent rows as the canonical GHM record.** This would weaken the existing consent contract and make the migration incomplete.
+
+### Correct next bounded stage
+1. Define the GHM-owned commercial consent evidence model (document type, immutable approved version/hash, actor account, Business, consent action/time, source/context, and idempotency/replay semantics) and its append-only write boundary.
+2. Confirm which currently approved Trial and subscription document versions are valid. If no approved legal text/version exists, keep the write path unavailable; do not invent versions or hashes.
+3. Add transactional repository support so the same authorized operation validates owner/admin membership, approved server-known document version, records consent, and prepares the payment attempt atomically.
+4. Add native GHM ES256 route using `req.authContext`; request carries canonical Business ID and explicit acceptance/version reference, never caller-supplied actor identity. Preserve the commercial launch/online activation freeze as an independent server-side gate.
+5. Only after this boundary is qualified should the Connect UI migrate from Supabase consent/payment RPCs to the GHM route. Keep Connect PR #68's commercial writes hidden while the gate is unresolved.
+
+**Decision:** Stage 2 identity route is not yet opened as a write-enabled PR because its required consent/audit contract is absent from GHM and the approved document versions are not established. This is a concrete migration dependency, not a hosting or provider limitation. No code, migration, credentials, database, deployment, payment attempt or consent record was changed during this review.
