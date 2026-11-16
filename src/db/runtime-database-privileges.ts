@@ -36,6 +36,7 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.get_public_trust_score(bigint)',
   'ghm.is_business_capability_publicly_evidence_eligible(bigint)',
   'ghm.list_public_trust_scores(text)',
+  'ghm.read_business_registration_identity(bigint, bigint)',
   'ghm.replace_business_capability_assertions(bigint, bigint, jsonb)',
   'ghm.replace_business_hours(bigint, bigint, jsonb)',
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
@@ -48,6 +49,7 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.transition_business_capability_evidence(bigint, text, bigint, text)',
   'ghm.transition_business_capability_verification(bigint, text, text, bigint, text)',
   'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
+  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
   'ghm.update_campaign(bigint, bigint, text, text)',
   'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)'
 ] as const;
@@ -178,8 +180,8 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
     stage.map(normalizeSignature).sort(),
   );
-  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 41
-      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
+  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
+      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 15
       || stages.length !== 256) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
