@@ -964,3 +964,24 @@ The remaining read-only catalogue audit (roles, memberships including grantor, o
 ### Change record
 
 Only attempted the temporary role-membership operation; it was rejected before changing membership state. Transactions were rolled back. No production migration, permission, credential, ownership, secret, service, deployment or application-data change occurred. No new recurring cost was incurred.
+
+
+### 24.1 Grantor provenance confirmed — original grantor is postgres (2026-11-16)
+
+The follow-up read-only `pg_auth_members` query returned exactly one membership row:
+
+| granted_role | member_role | grantor_role | admin_option | inherit_option | set_option |
+|---|---|---|---:|---:|---:|
+| ghm_schema_owner | ghm_db_user | postgres | true | false | false |
+
+This corrects the earlier working assumption that `ghm_db_user` was the original grantor. The catalog records `postgres` as grantor. The membership remains ADMIN OPTION=true / INHERIT=false / SET=false.
+
+The earlier attempted statement to grant `ghm_schema_owner` to `ghm_db_user` with ADMIN OPTION and SET TRUE was rejected with:
+
+```text
+ERROR: ADMIN option cannot be granted back to your own grantor
+```
+
+The precise reason for that error under this recorded grantor topology is not yet established. Do not claim that the catalog proves ghm_db_user was its own grantor, and do not attempt further GRANT/REVOKE variations. Ask Amanda/Render support to explain the error against this exact catalog row and provide a supported owner-authorized auditor route or administrator-generated ledger report.
+
+The query was read-only. No membership, role, privilege, ownership, migration or other production state changed.
