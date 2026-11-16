@@ -1763,3 +1763,30 @@ Commits:
 - `5703e6801c8c25bb34e105cecc2dd35fd97c3753` — test plan-only checksum validation ordering.
 
 A fresh PR workflow was queued for exact head `5703e6801c8c25bb34e105cecc2dd35fd97c3753`, run `43953816972`. Do not rely on the earlier successful run for the newer plan-only correction. PR #297 remains draft/unmerged.
+
+
+### Exact-head CI qualification completed — 2026-11-16 20:53Z
+
+PR #297 current tested code head at this qualification: `72375f2951a5188a54276277e6d118300a312fa9`.
+Workflow run: `43953881811` (run 5190).
+
+All exact-head checks passed:
+- `quality`: success.
+- `web-quality`: success.
+- Cloudflare Pages: success.
+
+The quality job also completed successfully:
+- TypeScript build.
+- Full test suite, including production batch validator and runner contract tests.
+- All repository SQL migrations applied in disposable PostgreSQL.
+- Actor Gateway smoke test in local Cloudflare Workers runtime.
+- Business Capability, Saved Business, Business Hours, Trust Score and Business Logo signed gateway qualification on disposable PostgreSQL.
+- Supplier classification/membership authorization and Business profile gateway compatibility qualification.
+- Commercial payment settlement identity qualification.
+- Migration audit policy tests and runtime boundary verification.
+- Auth issuer manual cutover qualification in disposable PostgreSQL, including pre/post SECURITY DEFINER authority inventories and comparison.
+- Evidence preservation and container cleanup.
+
+No failing steps were reported. This establishes code/CI qualification only; it is not production migration approval and does not replace the pending 105-row live checksum/provenance reconciliation or current backup verification.
+
+PR #297 remains draft and unmerged. Its production batch manifest remains intentionally empty. Do not populate or execute a production batch based solely on this CI result.
