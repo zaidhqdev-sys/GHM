@@ -733,3 +733,25 @@ The disposable qualification proves:
 PR #290 remains the SQL/database boundary only; it does not yet expose an HTTP route or TypeScript reader. The next bounded slice is Actor Gateway route/reader integration. After that, implement the separate document approval transition that verifies current grant, actor and exact immutable document version. No production authority row or approved document exists.
 
 No production migration, DB role/ACL change, secret change, Render service, deployment, legal approval, consent/payment write or commercial activation occurred. Launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 21.5 PR #290 merged — founder-only authority database boundary (2026-11-16)
+
+PR [#290](https://github.com/zaidhqdev-sys/GHM/pull/290), `feat: add founder-only commercial document approval authority`, was squash-merged after exact-head qualification.
+
+- Tested code head: `174d10aece78ceacdecdfe8d701f1bcaff1256b2`.
+- Final handover/documentation-only branch head: `b7a29706f5912041d650845c72d8aa5b9a3e9ab8`.
+- Exact final-head workflow run: `43903583244` — `quality` and `web-quality` both passed.
+- Merge commit: `e580303332b8bff27e2e8bc85d82d0c97a41ba4d`.
+
+The merged SQL boundary derives the only approver from the existing founder bootstrap singleton, verifies active founder account and canonical active credential, requires a signed one-use Actor Gateway assertion, serializes scoped grant/revoke events, and rejects duplicate or invalid transitions. The exact Actor Gateway function allow-list includes the two SECURITY DEFINER functions, with pinned search paths and no direct evidence-table privileges.
+
+### Still deliberately not implemented
+
+- No HTTP route or TypeScript reader for this operation yet.
+- No owner authority row or grant has been created in production.
+- No legal document version has been approved.
+- No document-approval transition endpoint, commercial consent write route, or payment-preparation route has been enabled.
+- No production migration/ACL change, Actor Gateway service hosting/deployment, credential change, checkout or payment activation has occurred.
+
+Next bounded implementation: wire the owner-only operation through the authenticated Actor Gateway HTTP/TypeScript layer, deriving actor identity exclusively from the verified bearer token and rejecting any caller-supplied actor/approver field. Then implement the separate transactional document-approval transition that verifies current grant, actor, document scope and immutable version. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
