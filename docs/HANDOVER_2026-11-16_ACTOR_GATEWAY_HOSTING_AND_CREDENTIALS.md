@@ -1059,3 +1059,44 @@ Merge commit `f6e75dc91636ecb76b00485736afd69b6c92d768` passed main workflow `43
 - Disposable PostgreSQL migration application, full test suite and existing gateway/auth/database qualifications passed.
 
 This confirms the merged source on main. It does not authorize a production migration, route call, Render deployment, authority assignment, legal-document approval, consent or payment activation.
+
+
+## 26. GHM-native explicit consent + payment preparation — database PR in progress (2026-11-16)
+
+After PR #293, the next bounded implementation is a GHM-native database boundary for recording customer acceptance of an exact approved subscription-terms version and preparing a Business payment attempt atomically.
+
+- Branch: `feat/commercial-consent-payment-preparation-gateway-20261116`
+- Migration: `database/migrations/20261116190000_add_commercial_consent_payment_prepare_gateway.sql`
+- Migration contract test: `src/db/commercial-consent-payment-prepare-gateway-migration-contract.test.ts`
+- Exact gateway ACL allow-list: `src/actor-gateway/database-privileges.ts`
+- Disposable behavioral qualification extended in `scripts/qualify-actor-gateway-principal.mjs`
+- Standard `npm test` includes the new migration contract test.
+
+### Database transaction
+
+The new `ghm.gateway_prepare_commercial_payment_with_consent` operation:
+- Requires a one-use, short-lived HMAC assertion with distinct operation `commercial.payment.prepare_with_consent`.
+- Binds Business ID, exact document version, country, idempotency key, server-selected provider code, explicit `accepted=true`, expiry and request ID.
+- Rechecks active GHM account and active Business owner/administrator membership; membership is row-locked before idempotency replay is returned.
+- Locks the current Business subscription and selects an active effective price for the exact plan version/country.
+- Requires exact immutable `subscription_terms` version, plan-compatible scope, jurisdiction-compatible scope and latest status `approved`.
+- Inserts payment attempt, append-only customer consent evidence and `subscription_payment_prepared` commercial event in one transaction.
+- Serializes by idempotency key. Retry returns only the matching original payment attempt and consent evidence; a changed document/country/provider/business/actor conflicts.
+- Grants EXECUTE only to `ghm_actor_gateway`; no direct table grants or runtime/PUBLIC access.
+
+Provider identity remains provider-neutral and server-selected. The Actor Gateway HTTP layer must verify that the configured provider adapter is installed; a browser cannot choose the provider. This database function does not call a provider, create a checkout redirect, settle a payment or activate a subscription.
+
+### Disposable qualification plan
+
+The existing Actor Gateway principal qualification now creates synthetic Business/plan/price/subscription/document fixtures, grants and approves a synthetic subscription document inside a disposable transaction, then tests successful consent/payment preparation, exact consent linkage, idempotent replay, idempotency-key document transplant denial, explicit-acceptance requirement, non-member denial, unapproved-document denial, forged assertion denial and assertion replay denial. All mutable grant/approval/consent/payment/event writes are rolled back. Synthetic immutable draft/version rows remain only in ephemeral CI and contain no real legal content.
+
+### Explicit boundaries
+
+- This PR is database-side only; no HTTP route/reader is exposed yet.
+- No legal document/hash has been supplied, registered or approved in production.
+- No owner authority assignment, customer consent, payment attempt, checkout, provider API call, settlement or activation in production.
+- No production migration, ACL/credential change, Render service, secret or deployment.
+- Existing Supabase-mapped internal payment preparation is legacy and is not the approved GHM-native path. It must be reconciled/retired in a later Connect cutover; do not treat it as customer-consent-qualified.
+- Payment launch remains frozen: `launchAuthorized=false`, `onlineSubscriptionActivation=false`. PayFast activation remains frozen and no provider round-trip is authorized.
+
+Exact-head CI and disposable PostgreSQL qualification are pending. Do not merge until SQL application, Actor Gateway ACL, full suite and behavioral tests pass.
