@@ -2010,3 +2010,11 @@ Render's current official Postgres backup documentation states:
 - PITR is a separate feature: recovery window is 3 days for Hobby workspace and 7 days for Pro or higher; PITR is unavailable for Free compute instances.
 
 Thus the 2026-11-14 Render export is still within the documented seven-day Render-side retention window as of this note, and its downloaded local copy has already passed archive SHA-256 and PostgreSQL directory TOC inspection. It has **not** passed a restore test. The recovery gate remains open until a disposable local PostgreSQL 18 restore is completed and validated. Do not create a duplicate export just because the Render-side copy expires; preserve the downloaded local file and verify its hash before restore.
+
+### Restore work should reuse established local PostgreSQL context — 2026-11-16 22:24Z
+
+Owner reminder: do not restart the backup/restore investigation with another broad machine, service, port, disk or file inventory. Earlier GHM qualification work already used the user's local PostgreSQL 18.6 instance on port `5433` (including local qualification database `ghm_payfast_qualification`). Reuse that established local PostgreSQL context for the November 14 archive restore, subject only to the minimum connection/target confirmation required to avoid accidentally connecting to Render. The archive path, SHA-256, extracted directory, TOC validation, PostgreSQL tool versions and 105-row ledger evidence are already recorded immediately above. Do not ask the user to repeat those details or recreate the Render export.
+
+Next action is a narrowly scoped restore plan against a uniquely named disposable local database on the already-used local PostgreSQL 18.6 instance. Before executing, use an explicit localhost-only connection string and a new target database name; never reuse `ghm_payfast_qualification`, never point `pg_restore` at Render, never overwrite the extracted backup, and preserve the original `.dir.tar.gz`. If the existing local server is not currently reachable, stop and report that specific fact rather than launching another broad inspection sequence.
+
+The previous assistant request for a full service/listener/disk inventory was unnecessary given this established handover context. No further general inventory is required.
