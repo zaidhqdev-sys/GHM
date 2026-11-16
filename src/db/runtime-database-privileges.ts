@@ -77,11 +77,6 @@ const AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS = [
   'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
 ] as const;
 
-const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
-  'ghm.read_business_registration_identity(bigint, bigint)',
-  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
-] as const;
-
 const CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS = [
   'ghm.create_capability_draft(bigint, text, text, text, uuid, integer, text, integer)',
   'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)',
@@ -111,15 +106,14 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
 ] as const;
 
-// The nine modeled manual runtime cutover groups are represented here.
-// This function-only stage model does not prove that each group has an authoritative
-// cutover/rollback SQL artifact or that any stage is active in production. Verify
-// those artifacts and production catalog state separately before enforcement.
-// No unrelated function is accepted as a modeled stage transition.
+// Only groups with an identified manual cutover artifact are modeled here.
+// Registration identity is deliberately excluded: signed wrappers exist, but no
+// authoritative legacy-function revoke/rollback artifact has been identified.
+// This function-only model does not prove that any cutover is active in production.
+// Verify cutover/rollback artifacts and production catalog state separately.
 export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
   authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
-  registrationIdentity: REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
   capabilityGovernance: CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS,
   businessCapabilityMutations: BUSINESS_CAPABILITY_LEGACY_FUNCTIONS,
   savedBusiness: SAVED_BUSINESS_LEGACY_FUNCTIONS,
@@ -141,19 +135,6 @@ export const RUNTIME_POST_AUTH_ISSUER_FUNCTIONS = without(
 export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS = without(
   RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
 );
-export const RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-export const RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-export const RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-);
-
 const cutoverGroups = Object.values(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS);
 const allCutoverSignatures = cutoverGroups.flat();
 const duplicateCutoverSignatures = allCutoverSignatures.filter(
@@ -166,7 +147,7 @@ if (duplicateCutoverSignatures.length > 0 || cutoverSignaturesOutsideBaseline.le
   throw new Error('Runtime manual cutover groups overlap or contain signatures outside the reviewed baseline');
 }
 
-// There are 2^9 independently qualified manual cutover combinations. The
+// There are 2^8 modeled manual cutover combinations. The
 // guard accepts only an exact combination of these reviewed revocations.
 const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
   { length: 2 ** cutoverGroups.length },
@@ -200,8 +181,8 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
     stage.map(normalizeSignature).sort(),
   );
   if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
-      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
-      || stages.length !== 512) {
+      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 15
+      || stages.length !== 256) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
