@@ -30,3 +30,13 @@ test('production pending inventory and batch manifests are distinct configuratio
   assert.match(runner, /productionMigrationBatches/);
   assert.doesNotMatch(runner, /assertProductionPendingMigrationAllowlist\(/);
 });
+
+test('plan-only mode validates applied checksums before reporting the plan', () => {
+  const checksumCheck = runner.indexOf('const existingChecksum = appliedByVersion.get(migration.version)');
+  const planGate = runner.indexOf('if (planOnly)');
+  const planOutput = runner.indexOf('Production migration plan (no SQL executed)');
+  assert.ok(checksumCheck >= 0);
+  assert.ok(planGate > checksumCheck);
+  assert.ok(planOutput > planGate);
+  assert.match(runner, /if \(planOnly\)[\s\S]*?await client\.query\('ROLLBACK'\);[\s\S]*?return;/);
+});
