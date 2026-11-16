@@ -43,6 +43,7 @@ async function createDatabase(label) {
   await admin.query('CREATE DATABASE "' + name + '"');
   databases.push(name);
   await admin.query('GRANT CONNECT ON DATABASE "' + name + '" TO ghm_migrator');
+  await admin.query('GRANT CREATE ON DATABASE "' + name + '" TO ghm_schema_owner');
   const pool = new pg.Pool({ connectionString: databaseUrl(name), max: 1 });
   try {
     await pool.query('CREATE SCHEMA ghm AUTHORIZATION ghm_schema_owner');
