@@ -153,3 +153,19 @@ The disposable qualification uses synthetic immutable version/draft fixtures and
 ### 12.1 Exact document approval transition qualification passed (2026-11-16)
 
 PR #292 code head `0e9c4fe1ebb59054b17c15ab6af28348e2ac6bde` passed workflow `43908611434` (`quality` and `web-quality`). Disposable PostgreSQL verified exact-version approval under a current grant, denial after revocation, approval after re-grant, duplicate approval denial, wrong-scope denial, non-founder denial, forged/context-transplanted/replayed/expired assertion denial. Synthetic immutable draft fixtures remain only in ephemeral CI; grant/revoke/approval events were rolled back. No production legal document or approval was created.
+
+
+## 12. Founder-only exact document approval route — implementation in progress (2026-11-16)
+
+PR #292 has merged the database transition and its disposable behavioral qualification. The next bounded branch wires that already-qualified operation through the authenticated Actor Gateway:
+
+- Route: `POST /v1/owner/commercial-document-approval`.
+- The only request fields are `documentVersionId` and `reason`; caller-supplied actor/approver fields and extra fields are rejected.
+- Actor identity is derived only from the verified ES256 bearer token.
+- The TypeScript reader signs operation `commercial.document.status.approve`, binding the exact immutable version ID and reason, then calls `ghm.gateway_approve_commercial_document_version` inside a transaction.
+- The database rechecks canonical founder identity, active account/credential, one-use assertion, current scoped grant, exact version and latest draft state.
+- Success returns status-event ID, document-version ID, authority-event ID and `approved`; denial, conflict and missing-version responses are mapped without exposing SQL details.
+
+The route is source code only pending exact-head CI. It is not deployed or callable in production. No owner authority has been assigned, no legal document has been registered or approved, and no consent/payment write has occurred. The existing founder-only database operation has only been exercised using synthetic fixtures in disposable CI.
+
+The human approver remains the owner alone. The assistant is the technical implementation/review partner, not a person, employee, approver, or legal signatory. No ghost reviewer is to be added.
