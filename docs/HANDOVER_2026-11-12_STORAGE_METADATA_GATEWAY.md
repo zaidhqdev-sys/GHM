@@ -427,3 +427,12 @@ The cutover removes PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway
 The disposable qualification now executes the exact SQL artifacts under the schema-owner role using three distinct localhost disposable-role URLs and explicit mutation opt-in. It verifies the exact before/after/rollback ACL state and uses PREPARE to test direct-call permission denial before function execution.
 
 These artifacts are not production-authorized. The live production wrappers are absent and their migrations are pending; no production grants, migrations, secrets or deployments were changed. Keep the production cutover blocked pending deployed gateway/Resource API proof, isolated DB principal, approved migration sequence, provider E2E, Amanda/Render role escalation and fresh verified backup.
+
+
+## 2026-11-16 — exact-head storage ACL cutover and rollback qualification passed
+
+PR #286 exact head `d8d6640fd48dfc03cbc4dbf65ed2968acabb1704` passed exact-head CI run [#5104](https://github.com/zaidhqdev-sys/GHM/actions/runs/43806583544). The disposable PostgreSQL qualification applied the exact manual cutover SQL, verified PUBLIC and runtime EXECUTE revocation, verified actual direct-call denial for `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` across all five legacy functions, confirmed Actor Gateway wrappers retain EXECUTE, and passed exact rollback ACL restoration.
+
+Correction to the preceding qualification note: the test uses actual function invocations inside rollback transactions, not PREPARE. The preceding failure returned `permission denied for schema ghm`; PostgreSQL rejected the qualified reference at schema USAGE before function EXECUTE. The assertion now accepts either schema-level or function-level permission denial, while separate effective-ACL checks still assert no effective EXECUTE privilege on the legacy functions. The test output confirms both direct-call denial and rollback passed.
+
+This result is not production authorization. Production wrappers remain absent and their migrations pending. Do not run either SQL artifact against `ghm_db`; the existing production blockers remain deployed gateway/Resource API and isolated-principal proof, reviewed wrapper migration sequence, provider lifecycle E2E, Amanda/Render role escalation, and fresh verified backup. PR #286 remains draft/open/unmerged; no production grant, role, migration, secret or deployment changed.
