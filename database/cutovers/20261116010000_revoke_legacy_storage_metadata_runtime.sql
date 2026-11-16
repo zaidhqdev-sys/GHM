@@ -22,7 +22,10 @@ BEGIN
     IF v_oid IS NULL THEN RAISE EXCEPTION 'required legacy storage function is missing: %', v_signature; END IF;
     SELECT p.proowner,p.prosecdef,p.proconfig INTO v_owner,v_security_definer,v_settings FROM pg_catalog.pg_proc p WHERE p.oid=v_oid;
     IF v_owner <> 'ghm_schema_owner'::regrole OR v_security_definer IS DISTINCT FROM true
-       OR NOT (COALESCE(v_settings,ARRAY[]::text[]) @> ARRAY['search_path=pg_catalog, ghm']) THEN
+       OR NOT (
+         COALESCE(v_settings,ARRAY[]::text[]) @> ARRAY['search_path=pg_catalog, ghm']
+         OR COALESCE(v_settings,ARRAY[]::text[]) @> ARRAY['search_path=pg_catalog, ghm, pg_temp']
+       ) THEN
       RAISE EXCEPTION 'legacy storage function owner/security/search_path mismatch: %',v_signature;
     END IF;
     SELECT EXISTS(SELECT 1 FROM pg_catalog.aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
