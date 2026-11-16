@@ -574,3 +574,16 @@ Corrected migration now declares `UNIQUE (id, event_type)` on `ghm.commercial_do
 - Correction commit: `0c053cb01caab27da8fd58ea2db1ea48d1267f74`.
 - PR #289 has been marked ready for review to ensure CI runs on the corrected branch state.
 - A fresh exact-head full CI run remains mandatory. Merge remains blocked until PostgreSQL applies the corrected migration and the complete quality suite passes.
+
+
+### 18.3 Corrected migration qualification passed (2026-11-16)
+
+The corrected migration now passes full exact-head CI on commit `cac2683448c5efd627f21e18f3ce54bacf00d90c`:
+- Workflow run: `43898034405`
+- `quality`: success, including full migration application to disposable PostgreSQL and the complete test suite.
+- `web-quality`: success.
+- The composite unique key `(id, event_type)` now satisfies PostgreSQL's composite-FK requirement, and the CHECK constraint requires `granted` for approved document status events.
+
+Final diff review covered the migration, contract test, standard test command, architecture contract and this handover. The migration remains isolated to repository/CI qualification: no production migration, role/grant change, service deployment, credential change, authority assignment, consent/payment write or launch authorization.
+
+PR #289 remains open and unmerged pending the owner's merge direction. Launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
