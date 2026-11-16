@@ -175,7 +175,7 @@ A dedicated manual cutover/rollback pair has now been authored on PR #286. These
 - `database/cutovers/20261116010000_revoke_legacy_storage_metadata_runtime.sql`
 - `database/cutovers/20261116010000_restore_legacy_storage_metadata_runtime.sql`
 
-Both artifacts are transactional and fail closed unless the session is exactly `session_user=ghm_migrator` and `current_user=ghm_schema_owner`. They verify all five exact legacy function signatures exist, are owned by `ghm_schema_owner`, remain SECURITY DEFINER with pinned `search_path=pg_catalog, ghm`, have no PUBLIC EXECUTE, and that all five signed Actor Gateway wrappers exist and are executable by `ghm_actor_gateway`.
+Both artifacts are transactional and fail closed unless the session is exactly `session_user=ghm_migrator` and `current_user=ghm_schema_owner`. They verify all five exact legacy function signatures exist, are owned by `ghm_schema_owner`, remain SECURITY DEFINER with one of the two explicitly allowed pinned search paths (`pg_catalog, ghm` or `pg_catalog, ghm, pg_temp`), have no PUBLIC EXECUTE, and that all five signed Actor Gateway wrappers exist and are executable by `ghm_actor_gateway`.
 
 The cutover requires the reviewed pre-state (effective EXECUTE only for `ghm_runtime` among the three application/operator logins) then revokes PUBLIC, runtime, migrator and Actor Gateway EXECUTE on the five legacy functions. The rollback accepts only the fully cut-over state and restores only `ghm_runtime` EXECUTE; PUBLIC, migrator and Actor Gateway remain denied. The separate `ghm.storage_get_public_business_logo(bigint)` function is explicitly outside the cutover and retained.
 
