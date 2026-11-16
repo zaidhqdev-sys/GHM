@@ -1436,3 +1436,17 @@ Read-only production catalog inspection of Render `ghm-db` / `ghm_db` completed 
 - No production state, migration, grant, role, secret, Render setting, deployment, bucket, or traffic was changed.
 
 The production migration batch remains blocked; `GHM_PRODUCTION_MIGRATION_BATCH` must remain unset.
+
+
+
+## 2026-11-16 — Resource API storage gateway source trace
+
+The current GHM source has now been traced from the Resource API composition root through all five storage metadata HTTP operations, the Actor Gateway JWT boundary, PostgreSQL reader, and signed/provider-attested SQL wrappers.
+
+- Source-level integration is present: production storage requires `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`; the Resource API injects the gateway metadata store factory and sets gateway-required mode. Missing gateway configuration fails startup; missing per-request gateway factory fails closed rather than falling back to direct metadata SQL.
+- Create, read, deletion request, availability confirmation and deletion completion all route through the corresponding Actor Gateway endpoint and SQL wrapper. User identity is derived from the verified JWT and bound through one-use database actor assertions.
+- Availability and deletion completion additionally require Resource API HMAC provider attestations; the Actor Gateway does not possess that secret.
+- The legacy direct PostgreSQL metadata repository remains as a non-production fallback/test seam. The production composition root requires the gateway.
+- Separate SQL paths remain: Resource API tenant authorization transactions and the distinct `ghm.storage_get_public_business_logo(bigint)` public-logo lookup. The latter needs its own ACL/caller review and must not be confused with the five legacy metadata functions.
+- This is source evidence only. Live production inspection still shows all five gateway wrappers absent and all five legacy metadata functions directly executable by `ghm_runtime`. Current Render Resource API release SHA, deployed gateway availability/identity, and production Hyperdrive binding have not been verified. Checked-in Worker config still uses a placeholder Hyperdrive ID.
+- No production grant revocation, migration, deployment or configuration change is authorized. Fresh verified backup, supported role separation/Amanda escalation, viable gateway network binding, ordered migration batch, deployed end-to-end lifecycle qualification and rollback remain open.
