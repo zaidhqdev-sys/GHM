@@ -152,7 +152,9 @@ BEGIN
     p_actor, p_issued, p_nonce, p_context, p_signature
   );
 
-  IF p_action NOT IN ('grant', 'revoke')
+  IF p_action IS NULL
+     OR p_document_type IS NULL
+     OR p_action NOT IN ('grant', 'revoke')
      OR p_document_type NOT IN ('trial_terms', 'subscription_terms')
      OR p_document_key IS NULL
      OR p_document_key <> lower(p_document_key)
