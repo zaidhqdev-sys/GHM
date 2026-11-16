@@ -62,3 +62,16 @@ After this schema foundation is qualified:
 ## 6. Production boundary
 
 This is a repository migration/test foundation only. CI must apply it to disposable PostgreSQL. It is not authorization to apply the migration to production `ghm_db`, provision authority, grant runtime access, deploy Actor Gateway, configure provider credentials, create payment attempts, or activate commercial services. Production backup, administrator, migration-ledger, Actor Gateway hosting/cost and deployment gates remain independent.
+
+
+## 7. Owner and assistant boundary — confirmed 2026-11-16
+
+The operating arrangement is the owner and the assistant only. There is no third-party employee, invented reviewer, placeholder approver, or synthetic GHM account.
+
+- The user is the human owner and the intended sole legal approver for ZAID Technologies commercial documents unless the owner explicitly changes that decision.
+- The assistant supports drafting, technical review, implementation, qualification and handover maintenance. The assistant is not a natural/legal person, does not possess a GHM account, cannot accept legal responsibility, and must never be recorded as an approver or grantor.
+- Any approval-authority record must reference the owner's real, authenticated GHM account identity. Never invent or infer an account ID.
+- The owner's authority must be established through a controlled owner-designation mechanism, not merely because an account has a GHM administrator flag.
+- Until the real account identity and controlled owner-designation path are verified, do not create authority rows, approve document versions, or expose approval/consent/payment writes.
+
+The next implementation must make the owner-only designation explicit and test denial for every other account. The assistant's technical actions and recommendations are not legal approval.
