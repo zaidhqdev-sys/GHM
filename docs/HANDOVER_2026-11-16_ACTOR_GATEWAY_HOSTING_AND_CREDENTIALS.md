@@ -515,3 +515,37 @@ The migration seeds no legal text, content hashes, approved versions or consent 
 - Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
 
 **Production impact:** none. Merge did not run the migration against production `ghm_db`, change roles/grants/credentials, deploy Render services, configure provider credentials, perform checkout/ITN, create consent records, or change commercial launch flags. Disposable PostgreSQL CI qualification is not production migration authorization.
+
+
+## 18. Commercial document approval authority foundation — PR in progress (2026-11-16)
+
+Following PR #288, a bounded follow-up branch has been opened:
+- Branch: `docs/commercial-document-approval-governance-20261116`
+- Base: `main` at `61cd8cbe57933500dd86ede80860b30ecd4ce1d2`
+- Migration: `database/migrations/20261116160000_add_commercial_document_approval_authority.sql`
+- Contract test: `src/db/commercial-document-approval-authority-migration-contract.test.ts`
+- Architecture contract: `docs/architecture/COMMERCIAL_DOCUMENT_APPROVAL_AUTHORITY_CONTRACT.md`
+
+### Foundation added
+
+- A scoped, append-only authority event ledger records `granted` / `revoked` events, authority account, recording account, document type/key, optional jurisdiction, reason, request ID, timestamp and metadata.
+- Document status approval now requires an exact `approval_authority_event_id`; non-approval lifecycle events must not cite one.
+- Authority ledger UPDATE/DELETE/TRUNCATE is rejected.
+- Only `ghm_migrator` receives explicit table/sequence grants. No runtime, Actor Gateway or PUBLIC access is introduced.
+- No authority, approver, legal document, hash, approved status or consent is seeded.
+- A separate architecture contract defines the future cross-row checks: authenticated actor must match the scoped authority grant; the latest event must still be granted; document scope/version must match; approval and evidence must commit atomically.
+
+### Important limitation
+
+The foreign key/CHECK constraint requires an approval event to cite a grant event, but does not by itself prove that the grant is current, scope-matched, or belongs to the actor. Those checks must be enforced by a future governed database operation. The migration-principal-only grant is a foundation, not a finished authority-management workflow.
+
+No GHM administrator is implicitly treated as legal approver. The owner must explicitly designate the person/account and scope before any authority grant can be recorded. Until then, approval and commercial writes remain unavailable.
+
+### Qualification and next gate
+
+- The migration contract test is included in the standard `npm test` list.
+- Exact-head CI, full migration application against disposable PostgreSQL, complete test suite and SQL review are pending.
+- Do not merge until exact-head CI passes and migration review confirms the FK/constraint/trigger/access model.
+- Do not apply this migration to production `ghm_db`, insert authority rows, grant application access, deploy services, or enable payment writes.
+
+Commercial launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
