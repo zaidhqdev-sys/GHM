@@ -1657,3 +1657,29 @@ This is a correction to a disposable-baseline privilege-stage model and its unit
 The migration runner semantic stop-boundary guard remains unimplemented. Its design still requires production-reconciled effective role privileges and coverage of function, relation/column, sequence, PUBLIC and inherited membership grants. The existing query's `session_user` behavior remains unsuitable for checking `ghm_runtime` when the runner session is `ghm_migrator`.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
+
+
+## 55. SECURITY DEFINER inventory reconciliation after Campaign/Review qualification (2026-11-16 02:26 UTC)
+
+### Exact-head CI failure and diagnosis
+
+- CI #5054 ran against commit `6e336f049f6f0cf3b8d6d98492a0d4c567a6d5ad`.
+- `web-quality` passed and the complete Node test suite passed (the prior stale 14-versus-15 expected-array failure was corrected).
+- The disposable PostgreSQL Campaign/directory-review signed Actor Gateway qualification then failed at its post-cutover call to `assertRuntimeDatabaseFunctionPrivileges`.
+- The qualification had successfully applied `database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql`, verified the ACL matrix and completed cleanup. Its resulting SECURITY DEFINER EXECUTE inventory contained 38 functions.
+- The 43-entry baseline had included three Campaign/Review legacy functions that this just-applied manual cutover correctly removed, plus two registration-identity legacy signatures that were not present in the actual query result. The inventory query explicitly filters on `p.prosecdef`; absence from this result does not prove that a function was dropped or that its EXECUTE grant was revoked.
+
+### Corrective model and test changes
+
+- Removed the two registration-identity signatures from the 43-entry SECURITY DEFINER baseline, yielding 41 entries.
+- Updated the fully modeled eight-cutover inventory from 15 to 13 functions.
+- Updated the unit test's expected post-cutover list and renamed/replaced the registration-identity assertion so it no longer claims these two RPCs are entries in the SECURITY DEFINER inventory.
+- Source correction commit: `6f465db19889e32c76b86c10cd86d587ae82937e`.
+- Test correction commit: `573e84368dee3a66a229a074739d8b926556201e`.
+- CI #5055 was queued for the source-only commit and may be superseded by the test commit. Exact-head CI for `573e84368dee3a66a229a074739d8b926556201e` is the required verification; do not treat this correction as passed until both jobs and all later qualification steps succeed.
+
+### Important unresolved ACL distinction
+
+This model only describes the query's SECURITY DEFINER function EXECUTE inventory. It is not a complete inventory of all functions, function grants, table/column grants, sequence grants, PUBLIC privileges or inherited role memberships. Registration identity's actual function existence, `prosecdef` flags and effective runtime EXECUTE privileges must be inspected separately through the approved catalog audit before any registration-identity cutover decision. Do not infer a revoke or a cutover from omission in this filtered result.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. PR #285 remains draft and unmerged. Preserve the local untracked `.bak` file.
