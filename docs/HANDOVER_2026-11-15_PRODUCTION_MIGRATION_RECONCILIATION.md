@@ -1927,7 +1927,7 @@ Therefore, repository-only migration policy checks already run in CI, while the 
 - Branch: `feat/production-migration-batch-execution-20261115`.
 - Source/test head before this documentation-only update: `7bc093ac2de83a26f8dab7a973c0de933a6b9a11`.
 - GitHub Actions CI run **#5065** (`43797488894`) for that source/test head completed successfully.
-- This handover correction was committed as `94c1930fe451392adfbaa06234d4043c2fb65a91`. The workflow configuration ignores Markdown-only changes (`paths-ignore: '**/*.md'` and `docs/**`), so no new CI run was triggered for this documentation-only commit. No source or test files changed in that commit.
+- The handover correction was committed as `94c1930fe451392adfbaa06234d4043c2fb65a91`. A subsequent documentation-only handover commit `a3a107779a4c53c7bbcece8b871ac21bc006179f` corrected this CI record. Exact-head CI run **#5067** (`43799580578`) for `a3a10777` completed successfully: both `web-quality` and `quality` passed. No source or test files changed in either documentation-only commit.
 - PR #285 remains open, draft and unmerged.
 - No production migration, manual cutover, ledger edit, role/grant change, deployment, Render setting, secret, or application-data mutation was performed by these audits or this handover update.
 
