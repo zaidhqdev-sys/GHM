@@ -1118,8 +1118,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
   registerCommercialRoutes(app, commercialService, resourceAuthMiddleware);
   if (dependencies.authRoutesEnabled !== false) {
-    // Auth lifecycle routes belong to the isolated Authentication Issuer.
-    // Keep registration enabled for explicit test/embedded fixtures only.
+    // Auth lifecycle routes run inside the existing GHM runtime while using
+    // their own restricted database principal and connection pool.
     const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
     const passwordResetService =
       dependencies.passwordResetService
