@@ -2100,3 +2100,59 @@ This is consistent with the two storage gateway migrations still being pending i
 ### Next gate
 
 Repository/source qualification must establish the concrete active Resource API composition root and every create, read, availability, deletion, retry, and abandoned-pending cleanup caller. Then qualify the deployed end-to-end gateway/provider lifecycle and design the legacy grant cutover with rollback. Production migration execution remains blocked; do not set `GHM_PRODUCTION_MIGRATION_BATCH`.
+
+
+
+## 65. Resource API storage gateway composition-root trace (2026-11-16 04:13 UTC)
+
+The production source path has now been traced through the actual Resource API composition root, router, service, HTTP client, Actor Gateway routes, PostgreSQL reader, and both storage gateway migrations. This closes the earlier source-inspection question in section 63: the current repository source does wire the signed gateway client into the production storage routes. It does not establish that this source revision is deployed in Render.
+
+### Resource API composition root and fail-closed behavior
+
+- `src/http/app.ts` constructs `HttpStorageMetadataGatewayClient` using `GHM_ACTOR_GATEWAY_URL`, the caller's bearer token, and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`.
+- When `NODE_ENV` is production and storage is enabled, the app throws at startup if either the Actor Gateway URL or provider-attestation secret is absent.
+- In production, `storageMetadataGatewayRequired` is true. The gateway store factory is passed to `registerStorageRoutes`.
+- `src/http/storage-router.ts` uses the gateway store factory when present. If no factory exists while gateway-required is true, it returns unavailable; the direct PostgreSQL metadata repository fallback is reachable only when the gateway is not required (or through explicit test seams).
+- The router extracts the authenticated caller's original bearer token and forwards it to the gateway client. The client validates the HTTPS origin, rejects redirects, applies a bounded timeout/response size, and does not silently fall back to direct SQL on HTTP failure.
+
+### All five metadata operations are wired
+
+| Resource API storage operation | Gateway endpoint | Database wrapper |
+|---|---|---|
+| Create pending | `POST /v1/storage/metadata` | `gateway_storage_create_pending` |
+| Read metadata | `GET /v1/storage/metadata/:objectId` | `gateway_storage_get_object` |
+| Request deletion | `POST /v1/storage/metadata/:objectId/deletion-pending` | `gateway_storage_mark_deletion_pending` |
+| Confirm availability | `POST /v1/storage/metadata/:objectId/available` | `gateway_storage_mark_available` |
+| Confirm deletion | `POST /v1/storage/metadata/:objectId/deleted` | `gateway_storage_mark_deleted` |
+
+The Actor Gateway applies JWT verification to all `/v1` routes, derives the actor account from the verified token, and calls `PostgresStorageMetadataGatewayReader` using its separate `GHM_ACTOR_GATEWAY_DATABASE_URL` connection. The reader constructs one-use actor assertions and invokes the corresponding gateway SQL wrappers.
+
+### Provider workflow separation
+
+- Create, read and deletion-request operations use the user actor assertion.
+- Availability and deletion completion additionally carry a Resource API HMAC provider-workflow attestation bound to the object/business/provider metadata and operation.
+- The provider signing secret is held by the Resource API; the Actor Gateway only forwards the attestation and does not mint it.
+- The database wrapper verifies both proofs, their context and replay boundaries before calling the legacy lifecycle transition function.
+- The storage service sequence is: persist pending metadata before issuing upload grant; on completion, provider HEAD plus byte fetch/content validation before availability; on deletion, mark deletion-pending before provider delete and mark deleted only after provider success. Retry of deletion-pending objects is supported.
+
+### Separate database calls that remain outside the five metadata wrappers
+
+- Storage authorization still uses the Resource API's tenant/authorized transactions to verify the authenticated user's current membership and public Business eligibility. These are not calls to the five legacy storage metadata SECURITY DEFINER functions.
+- Public Business Logo redirect lookup still calls the separately scoped `ghm.storage_get_public_business_logo(bigint)` function directly from the Resource API. This is a distinct public-logo projection/read path, not one of the five legacy metadata functions in the ACL matrix; retain it as a separate ACL/caller review item rather than claiming every storage-related SQL call is gateway-routed.
+- Business Logo binding has its own Actor Gateway client and required-mode gate in the Resource API composition root.
+
+### Deployment boundary and production disposition
+
+This is a source-level integration PASS, not a deployed-path PASS. Production catalog evidence from section 64 proves the five gateway wrappers are absent and the five legacy runtime grants remain. The Actor Gateway production network host/Hyperdrive binding and deployment credentials are not yet established in the handover; the checked-in Worker configuration still contains a placeholder Hyperdrive ID. Render's active Resource API release SHA and the deployed gateway's health, identity, database principal and route behavior have not been evidenced here.
+
+Therefore:
+
+1. Do not revoke any legacy runtime grant yet.
+2. Do not apply the storage wrapper migrations in isolation.
+3. Resolve the viable no-new-paid-infrastructure gateway deployment/network binding and supported Actor Gateway DB principal/role path (including the Amanda/Render support escalation).
+4. Obtain a fresh verified production backup/recovery point.
+5. Install the required migrations only within a reviewed, ordered, rollback-capable production batch after its dependencies are cleared.
+6. Deploy the exact compatible Resource API and Actor Gateway revisions, then verify the deployed end-to-end lifecycle on a dedicated non-production provider target before production traffic/grant cutover.
+7. Separately plan and rehearse revocation of the five legacy runtime grants, including the public-logo read exception and all retry/cleanup callers.
+
+No production database, migration ledger, data, grant, role, secret, Render setting, deployment, provider bucket, or traffic was changed by this source trace. The production migration batch remains blocked and `GHM_PRODUCTION_MIGRATION_BATCH` must remain unset.
