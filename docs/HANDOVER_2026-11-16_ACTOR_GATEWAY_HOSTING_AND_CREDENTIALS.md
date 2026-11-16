@@ -1156,3 +1156,15 @@ Both default false when absent. These are independent gates; the UI/request cann
 - Keep `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED=false`, `GHM_COMMERCIAL_LAUNCH_AUTHORIZED=false`, `launchAuthorized=false`, and `onlineSubscriptionActivation=false`.
 
 Exact-head CI and final route review are pending.
+
+
+### 27.1 Gated native consent/payment route exact-head CI passed (2026-11-16)
+
+PR #295 exact implementation head `47dee30d53c48fea9a816c0ca556207dccef0143` passed workflow `43918100477`:
+- `quality`: success (73/73 steps).
+- `web-quality`: success (11/11 steps).
+- TypeScript build, all migrations on disposable PostgreSQL and full test suite passed.
+- Reader tests verify HMAC binding to Business/document/country/idempotency/provider/acceptance/request ID, transaction commit/rollback and fail-closed provider adapter selection.
+- HTTP tests verify both launch gates are independently required, bearer-derived actor identity, strict body allow-list, explicit acceptance, rejection of browser provider/actor fields and safe denial/conflict/not-found mapping.
+
+The implementation remains source-only and disabled by default. No Render environment variables were changed, no service deployed, no production route called, no legal document or consent/payment row created, and no provider request made.
