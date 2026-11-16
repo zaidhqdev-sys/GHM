@@ -24,7 +24,7 @@ const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
-const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [] };
+const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [], founderBootstrapCreated: false };
 const signAssertion = (accountId,operation,context={},issuedAtOverride) => {
   const issuedAt=issuedAtOverride ?? Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex');
   const payload=`ghm-actor-gateway:v2|${accountId}|${operation}|${issuedAt}|${nonce}|${contextHex}`;
@@ -112,6 +112,7 @@ const createFounderFixtureAccount = async () => {
     );
     await client.query('COMMIT');
     fixture.accountIds.push(accountId);
+    fixture.founderBootstrapCreated = true;
     return accountId;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -635,7 +636,9 @@ try {
       'DELETE FROM ghm.business WHERE id = ANY($1::bigint[])',
       [fixture.businessIds],
     );
-    await cleanupPool.query('DELETE FROM ghm.founder_system_admin_bootstrap_state WHERE id = true');
+    if (fixture.founderBootstrapCreated) {
+      await cleanupPool.query('DELETE FROM ghm.founder_system_admin_bootstrap_state WHERE id = true');
+    }
     await cleanupPool.query(
       'DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])',
       [fixture.accountIds],
