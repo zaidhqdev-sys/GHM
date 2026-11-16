@@ -474,3 +474,17 @@ Source wiring does not prove the currently deployed Render Resource API is this 
 The deployment path therefore remains blocked by the real Hyperdrive/network binding and supported role separation, fresh verified production backup, required ordered migration installation, deployment/health/identity verification, dedicated non-production provider lifecycle, and a separate five-function legacy grant cutover/rollback. Do not use `zaid-ghm-production` for qualification and do not revoke legacy grants now.
 
 No production state or external infrastructure was changed by this source trace.
+
+
+
+---
+
+## Additional Resource API startup ACL gate for the five-function cutover — 2026-11-16
+
+The Resource API's `src/db/runtime-database-privileges.ts` exact SECURITY DEFINER EXECUTE allow-list currently includes all five legacy storage metadata functions. However, those five signatures are not yet represented as a group in `RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS`.
+
+The startup guard accepts only an exact combination of its modeled cutover groups. Therefore, revoking the five legacy runtime grants before updating and qualifying the startup ACL model would cause the Resource API privilege assertion to reject the post-cutover catalog. This is a separate release dependency; the signed HTTP client wiring alone does not make the application ready for the database grant revocation.
+
+The distinct `ghm.storage_get_public_business_logo(bigint)` remains in the runtime allow-list and is called by the anonymous public-logo redirect route. It is not one of the five metadata functions and must not be swept into the five-function revoke. Keep its scope and caller under separate review.
+
+Before production grant cutover, implement and test a named five-signature storage metadata cutover group, update the 9-group/512-stage exact allow-list model and its count assertions to include the additional group (1,024 modeled combinations), and prove both pre-cutover and fully cut-over states pass while partial/unreviewed states fail. Do not change production grants until this application release and the gateway deployment are qualified together.
