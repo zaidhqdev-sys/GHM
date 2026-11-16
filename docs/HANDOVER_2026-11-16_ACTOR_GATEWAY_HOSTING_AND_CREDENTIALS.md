@@ -755,3 +755,44 @@ The merged SQL boundary derives the only approver from the existing founder boot
 - No production migration/ACL change, Actor Gateway service hosting/deployment, credential change, checkout or payment activation has occurred.
 
 Next bounded implementation: wire the owner-only operation through the authenticated Actor Gateway HTTP/TypeScript layer, deriving actor identity exclusively from the verified bearer token and rejecting any caller-supplied actor/approver field. Then implement the separate transactional document-approval transition that verifies current grant, actor, document scope and immutable version. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+## 22. Owner approval authority HTTP/TypeScript integration — PR in progress (2026-11-16)
+
+Following merged PR #290, a bounded Actor Gateway application integration branch is open:
+- Branch: `feat/actor-gateway-commercial-approval-authority-route-20261116`
+- Reader: `src/actor-gateway/commercial-document-approval-authority-reader.ts`
+- Reader tests: `src/actor-gateway/commercial-document-approval-authority-reader.test.ts`
+- HTTP route tests: `src/actor-gateway/commercial-document-approval-authority-app.test.ts`
+- Route: `POST /v1/owner/commercial-document-approval-authority`
+- Server wiring: `src/actor-gateway/server.ts`
+- Standard `npm test` includes both new test files.
+
+### Route contract
+
+- The route is authenticated by the existing ES256 bearer middleware. Actor account ID comes only from the verified JWT subject in `res.locals.actorAccountId`.
+- The request body is an exact allow-list: action, document type, document key, jurisdiction country ID and reason.
+- Caller-supplied `actorAccountId`, `approverAccountId`, or any extra fields are rejected.
+- The TypeScript reader signs the exact action/scope/reason context with the configured 32-byte gateway assertion secret and calls the SECURITY DEFINER database operation inside a transaction.
+- Database authorization remains decisive: only the canonical active founder account in the founder bootstrap singleton can grant/revoke. The route itself does not infer owner status from role or email.
+- HTTP errors map authorization denial to 403, invalid input to 400, duplicate/invalid state transitions to 409, and infrastructure failures to 503 without exposing SQL details.
+
+### Safety boundary
+
+No route call has been made against production. No authority row, approval, consent, payment attempt, production migration, ACL/credential change, Render service or deployment has occurred. The route is source code only and remains unavailable in production until the existing migration/Actor Gateway service/secret and deployment gates are separately qualified.
+
+### Qualification
+
+Exact-head CI, TypeScript build, complete test suite, and review of the request/actor binding are pending. Do not merge until all checks pass.
+
+
+### 22.1 Owner authority HTTP/TypeScript route qualification passed (2026-11-16)
+
+PR #291 code head `13923a1c538ce23aacd491d65f5bca65bbbe8c85` passed exact-head workflow `43905417391`:
+- `quality`: success, including TypeScript build, all migrations on disposable PostgreSQL, complete test suite and all existing Actor Gateway qualifications.
+- `web-quality`: success.
+- New reader tests verify the HMAC payload binds actor, action, document scope, jurisdiction and reason; the reader commits on success and rolls back on database denial.
+- New HTTP tests verify actor identity comes from the ES256 bearer token; caller-supplied actor/approver fields and extra fields are rejected; malformed scope is rejected before DB access; founder denial maps to 403; duplicate/state conflict maps to 409; missing bearer is rejected.
+- The existing disposable Actor Gateway database-principal qualification also passed with the new exact function allow-list.
+
+The route is source-level only. No production request was sent and no deployment, migration, authority assignment, approval, consent or payment write occurred. The branch is ready for final diff review and merge consideration.
