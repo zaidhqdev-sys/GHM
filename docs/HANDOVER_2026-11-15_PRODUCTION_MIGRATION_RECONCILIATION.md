@@ -1558,3 +1558,53 @@ The guard must be a migration-aware checkpoint matrix, not one global version st
 No runner code was changed in this continuation because the source confirms that a single migration-5 stop or migration-4 stop would deadlock the strict ordered chain. The correct next repository task is to finish the nine-group migration/cutover checkpoint matrix and then implement/test the guard against that matrix. This is repository-only work; production remains NO-GO under the existing no-additional-cost, backup/recovery, Amanda/Render role-authority, network and deployment constraints.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
+
+
+## 52. Nine-group cutover matrix — source-mapped boundaries and catalog-check design (2026-11-16 01:32 UTC)
+
+### Exact CI and branch state
+
+- Section 51 commit `458c04a9bb1a1ff53e55ff356fd2d485ffd50166` passed exact-head CI workflow #5046; both `quality` and `web-quality` succeeded.
+- PR #285 remains OPEN, DRAFT and UNMERGED. No production action was taken.
+
+### Source-mapped manual cutover groups
+
+The nine group definitions in `src/db/runtime-database-privileges.ts` were compared with the migration SQL, manual cutover SQL, rollback SQL where present, and the corresponding qualification commands. The mapping below distinguishes what is directly evidenced from what is still missing.
+
+| Group | Gateway/final source boundary | Manual cutover source | Status / caveat |
+|---|---|---|---|
+| Campaign / directory review | Signed campaign/review wrappers are created by the coordinated cutover itself, after the shared signed assertion infrastructure is present. | `database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql`; rollback `...12161000_campaign_directory_review_actor_gateway_rollback.sql`. | Explicit operator identity guard; old Resource API instances must be out of traffic. |
+| Authentication Issuer | Existing auth lifecycle functions; staged auth changes include migrations 1202–1204. | `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql`; rollback `...12020000_authentication_issuer_privilege_rollback.sql`. | Exact issuer role, ten-function allow-list, runtime revocations and two retained runtime identity lookups. Must not run before issuer/client traffic cutover. |
+| Registration identity | Read/write wrappers begin at 10230000/10233000; signed assertion-bound wrappers are upgraded by 11050000 and context-bound by 11060000. | No matching manual registration-identity revoke/rollback SQL was found in the inspected `database/cutovers/` paths. | **Unresolved inconsistency:** the runtime privilege test says this group is accepted only before an explicit manual gateway cutover, but the corresponding cutover/rollback artifact has not been located. Do not treat this group as cut over or machine-enforce a post-cutover state until its authoritative SQL and rollback are found or authored and qualified. |
+| Capability governance | Legacy functions introduced by 10160000; gateway wrappers 10250000; signed assertion progression 11020000 and final v2 context binding 11060000. | `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql`. | Manual-only; requires deployed and E2E-verified gateway/admin routes. Revokes the three legacy functions from PUBLIC/runtime/migrator/gateway. No rollback artifact was found in the inspected paths. |
+| Business Capability mutations | Signed wrappers: 11070000. | `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql`. | Also revokes evidence INSERT and sequence access. Header requires deployed/qualified routes, resolved Render role model and fresh verified backup. No rollback artifact was found in inspected paths. |
+| Saved Business | Signed gateway migration: 11100000. | `database/cutovers/20261111110000_revoke_legacy_saved_business_runtime.sql`. | Revokes table/column, sequence and legacy function access; gateway wrappers replace legacy calls. |
+| Business Hours | Signed gateway/read projection migrations: 11130000/11140000. | `database/cutovers/20261111130000_revoke_legacy_business_hours_runtime.sql`. | Revokes legacy function, direct table SELECT and sequence access. |
+| Trust Score | Signed gateway/projection migrations: 11150000/11170000. | `database/cutovers/20261111150000_revoke_legacy_trust_score_runtime.sql`. | Revokes legacy calculator, table SELECT and sequence; preserves constrained public projections. |
+| Business Logo | Signed binding migration: 11160000. | `database/cutovers/20261111160000_revoke_legacy_business_logo_runtime.sql`. | Revokes the legacy caller-account-ID binding function. Public approved-logo getter is intentionally retained. |
+
+The nine-group TypeScript model and its 512-combination unit tests describe function EXECUTE states, but they do not prove that every corresponding manual cutover file exists, has a rollback, or has been applied in production. In particular, registration identity's test/documentation mismatch must be resolved, and the capability/business-capability cutovers have no rollback SQL in the inspected source paths.
+
+### Separate storage boundary — not one of the nine groups
+
+Storage is not represented in `RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS`. The disposable privilege baseline currently retains five legacy storage SECURITY DEFINER functions. Migrations 1214/1215 add the signed actor wrappers and separate provider attestation path, but the production Resource API is older than the gateway-required storage integration and the external provider E2E journey remains unproven. The authoritative storage design records only disposable cutover rehearsal; no production revocation occurred. Do not fold storage into the nine-group function mask or claim its cutover is represented by that mask. Its five-function ACL, direct table/sequence access, provider attestation provisioning, and rollback/traffic-drain procedure require a separate exact matrix and source artifact review.
+
+### Critical implementation detail for a safe migration runner guard
+
+The existing `RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL` uses `has_function_privilege(session_user, ...)`. In the migration runner, the connection identity is deliberately `session_user=ghm_migrator` while `current_user=ghm_schema_owner`. Reusing that query verbatim in the migration runner would inspect the migrator's function EXECUTE rather than the application's effective `ghm_runtime` authority. The runner guard must query the named role `ghm_runtime` explicitly (and fail if the role is absent), while preserving the migration session/operator identity checks.
+
+Further, the nine-group function mask does not inspect the direct relation and sequence privileges revoked by several cutovers (Business Capability evidence, Saved Business, Business Hours, Trust Score). A complete guard must check those exact table/column/sequence ACLs too; checking SECURITY DEFINER function EXECUTE alone is insufficient. PUBLIC grants and inherited memberships must be included in effective privilege evaluation, not only direct ACL rows.
+
+### Guard implementation prerequisites — still not satisfied
+
+1. Capture and reconcile the actual production `ghm_runtime` effective function, relation/column and sequence privileges through the approved read-only catalog process. The 43-function/512-stage disposable baseline is not production evidence.
+2. Resolve the registration-identity cutover/rollback artifact mismatch and identify the intended exact post-cutover ACL.
+3. Add or document rollback for manual cutovers whose current source only provides forward revoke SQL, or explicitly record why rollback is a coordinated application rollback plus exact GRANT restoration rather than a separate SQL file.
+4. Build a matrix that covers each migration bridge prefix, wrapper-ready point, manual cutover, post-cutover effective ACL, and any direct relation/sequence revocation. Include the separate storage boundary.
+5. Implement a guard that queries effective privileges for `ghm_runtime` from the migrator connection, compares only against production-reconciled states, and refuses both unexpected grants and missing required gateway/public grants. Do not accept a caller-controlled environment variable as proof.
+6. Add pure boundary tests and disposable PostgreSQL tests for every permitted bridge prefix, every blocked post-wrapper/pre-cutover state, each exact permitted post-cutover state, inherited/PUBLIC grants, table/column/sequence grants, and rollback state.
+7. Keep manual cutovers outside automatic migration execution. The runner must not execute them, skip migrations, alter the ledger, or bypass contiguous-prefix and maximum-five semantics.
+
+No runner code was changed in this step: the mapping review exposed unresolved source artifacts and the current privilege query's session-user mismatch. Implementing against the unverified disposable baseline would create false assurance. Continue source reconciliation and close these prerequisites first.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
