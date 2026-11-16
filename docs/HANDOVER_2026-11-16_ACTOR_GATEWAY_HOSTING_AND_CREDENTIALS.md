@@ -587,3 +587,18 @@ The corrected migration now passes full exact-head CI on commit `cac2683448c5efd
 Final diff review covered the migration, contract test, standard test command, architecture contract and this handover. The migration remains isolated to repository/CI qualification: no production migration, role/grant change, service deployment, credential change, authority assignment, consent/payment write or launch authorization.
 
 PR #289 remains open and unmerged pending the owner's merge direction. Launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 18.4 PR #289 merged (2026-11-16)
+
+PR #289, `feat: add scoped commercial document approval authority`, was squash-merged after corrected migration qualification passed.
+
+- PR: https://github.com/zaidhqdev-sys/GHM/pull/289
+- Tested code head: `cac2683448c5efd627f21e18f3ce54bacf00d90c`
+- Exact-head CI run: `43898034405` — `quality` and `web-quality` both passed.
+- A subsequent handover-only commit recorded the passing qualification; it did not change migration, test, package or application code.
+- Merge commit: `599d6359404557c2e25a4c159d0a9c2820469176`.
+
+The merged migration/test foundation enforces an immutable scoped authority identity, append-only grant/revoke events, and a grant-only composite FK reference for approved document status. It does not enforce current grant state, authenticated actor match or cross-row document scope; those remain mandatory for the future governed approval transaction.
+
+No authority has been assigned. No runtime or Actor Gateway access was granted. No production migration, production ACL/role change, deployment, provider credential change, payment attempt or commercial activation occurred. Preserve `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
