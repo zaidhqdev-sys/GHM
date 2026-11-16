@@ -119,9 +119,9 @@ const STORAGE_METADATA_LEGACY_FUNCTIONS = [
   'ghm.storage_mark_deletion_pending(bigint)',
 ] as const;
 
-// Every independently qualified manual runtime cutover is represented here.
-// These are exact legacy signatures revoked by the corresponding SQL files in
-// database/cutovers/. No unrelated function is accepted as a stage transition.
+// Each reviewed or planned manual runtime cutover is represented by its exact
+// legacy signature set. Modeling a stage does not authorize its execution or
+// prove an operational cutover artifact exists; each group retains its own gates.
 export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
   authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
