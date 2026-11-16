@@ -51,12 +51,14 @@ test('the modeled eight-cutover SECURITY DEFINER inventory retains thirteen expl
       'ghm.get_public_trust_score(bigint)',
       'ghm.is_business_capability_publicly_evidence_eligible(bigint)',
       'ghm.list_public_trust_scores(text)',
+      'ghm.read_business_registration_identity(bigint,bigint)',
       'ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)',
       'ghm.storage_get_object(bigint,bigint)',
       'ghm.storage_get_public_business_logo(bigint)',
       'ghm.storage_mark_available(bigint,text)',
       'ghm.storage_mark_deleted(bigint)',
       'ghm.storage_mark_deletion_pending(bigint)',
+      'ghm.update_business_registration_identity(bigint,bigint,text,text,text)',
     ].sort(),
   );
 });
@@ -99,13 +101,14 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
   }
 });
 
-test('registration identity legacy RPCs are not asserted by the SECURITY DEFINER inventory', () => {
+test('registration identity legacy RPCs remain in every modeled stage until an evidenced cutover exists', () => {
   for (const signature of [
     'ghm.read_business_registration_identity(bigint, bigint)',
     'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
   ]) {
-    assert.ok(!(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok(!CUTOVER_GROUPS.some(group => (group as readonly string[]).includes(signature)));
+    for (const functions of ALL_STAGES) assert.ok((functions as readonly string[]).includes(signature), signature);
   }
 });
 
