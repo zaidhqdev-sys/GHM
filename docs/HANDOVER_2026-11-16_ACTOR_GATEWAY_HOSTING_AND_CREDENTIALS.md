@@ -1627,3 +1627,8 @@ No CI result has yet been observed as passed. Do not merge or apply the migratio
 2. If CI passes, review the migration against the exact production schema/ACL and migration prefix. Confirm all five membership fields and four Business fields remain valid against production defaults, triggers, constraints and repository code.
 3. Only after migration-prefix and backup/rollback gates are satisfied, consider a small production migration rollout. Do not include unrelated pending migrations.
 4. Then take the next separate write-surface candidate. Opportunity UPDATE is higher risk and should be handled with actor-bound lifecycle functions, not a simple broad column grant replacement.
+
+
+### CI exact-HEAD clarification — 2026-11-16 20:30 UTC
+
+The quality job rerun was requested for code commit `9ed825ee6a179ce16b1a47262173b7b7bb49d615` (workflow run 43949522719). Its `web-quality` job passed; its `quality` job is still executing through the repository's broader disposable-PostgreSQL qualification suite. The handover-only commit `3d7342a4e3091d2cfffb45c0fa5c27a7e8a0a591` subsequently became the PR head. Therefore, even a green result on 9ed825e is not sufficient to call checks green for the current PR head. A fresh exact-head CI run is required after this note is committed. No merge or production rollout is authorized by the in-progress run.
