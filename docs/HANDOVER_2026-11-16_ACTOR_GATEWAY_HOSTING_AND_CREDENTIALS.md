@@ -621,3 +621,20 @@ PR #289 merge commit `599d6359404557c2e25a4c159d0a9c2820469176` received its own
 - `web-quality`: success.
 
 The architecture contract was updated on main to make the owner/assistant boundary explicit (commit `699d5e267869a15f925aed25cf3907c8b4c6c4ce`). No production DB query/mutation, account ID lookup, authority assignment, role/grant change, deployment, payment attempt or launch-flag change was performed in this clarification.
+
+
+### 20. Canonical owner identity source found in existing GHM migrations (2026-11-16)
+
+Repository review identified an existing one-time founder bootstrap mechanism; therefore the commercial approval design does not need a user-supplied account ID or a newly invented employee identity.
+
+- `ghm.founder_system_admin_bootstrap_state` stores the canonical founder account ID and founder login used by the controlled bootstrap.
+- The bootstrap migration only promotes the pre-existing active canonical founder account and records the singleton state.
+- The next owner-only authority operation will derive/verify the caller against that singleton founder state inside the database transaction, and require the account to remain active and consistent with the canonical founder identity.
+- The request must not supply a target approver account ID. The only permitted authority account is the founder account already recorded in the singleton state; no delegation is included.
+- This is distinct from trusting a generic admin role or `is_system_admin` flag.
+
+The Render session restriction means the production singleton row/account ID has not been independently read. The future function must fail closed if the row is missing, duplicated, or inconsistent. It must not guess the ID or ask the owner to paste one into chat.
+
+Architecture contract update: commit `e5040d897e842f37df1390da155071ab551649e0`.
+
+No production account lookup, role/grant change, authority assignment, migration, service deployment, credential change, or commercial activation was performed.
