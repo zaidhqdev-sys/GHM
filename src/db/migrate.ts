@@ -8,8 +8,9 @@ import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
 import { findOutOfOrderPendingMigration } from './migration-order';
-import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
-import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
+import productionPendingMigrationInventory from '../../config/production-pending-migration-inventory.json';
+import productionMigrationBatches from '../../config/production-migration-batches.json';
+import { selectProductionMigrationBatch } from './production-migration-batch';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -193,13 +194,6 @@ const migrate = async (): Promise<void> => {
       ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
       : { rows: [] as Array<{ version: string; checksum: string }> };
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
-    if (approvedTarget.databaseName === 'ghm_db') {
-      assertProductionPendingMigrationAllowlist(
-        migrations,
-        new Set(appliedByVersion.keys()),
-        productionPendingMigrationAllowlist,
-      );
-    }
     const outOfOrderPending = findOutOfOrderPendingMigration(
       migrations,
       new Set(appliedByVersion.keys()),
@@ -210,7 +204,29 @@ const migrate = async (): Promise<void> => {
       );
     }
 
-    for (const migration of migrations) {
+    let executionMigrations = migrations;
+    if (approvedTarget.databaseName === 'ghm_db') {
+      const pendingMigrations = migrations.filter((migration) => !appliedByVersion.has(migration.version));
+      if (pendingMigrations.length > 0) {
+        executionMigrations = selectProductionMigrationBatch(
+          migrations,
+          new Set(appliedByVersion.keys()),
+          productionPendingMigrationInventory,
+          productionMigrationBatches,
+          process.env.GHM_MIGRATION_BATCH_ID?.trim() || undefined,
+        ) as Migration[];
+        if (process.env.GHM_MIGRATION_PLAN_ONLY === 'true') {
+          console.log('Production migration plan (no SQL executed):');
+          for (const migration of executionMigrations) {
+            console.log(`  ${migration.version}_${migration.name} — ${migration.filename}`);
+          }
+          await client.query('ROLLBACK');
+          return;
+        }
+      }
+    }
+
+    for (const migration of executionMigrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
         if (existingChecksum !== migration.checksum) {
