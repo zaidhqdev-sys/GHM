@@ -985,3 +985,50 @@ ERROR: ADMIN option cannot be granted back to your own grantor
 The precise reason for that error under this recorded grantor topology is not yet established. Do not claim that the catalog proves ghm_db_user was its own grantor, and do not attempt further GRANT/REVOKE variations. Ask Amanda/Render support to explain the error against this exact catalog row and provide a supported owner-authorized auditor route or administrator-generated ledger report.
 
 The query was read-only. No membership, role, privilege, ownership, migration or other production state changed.
+
+
+## 24. Founder-only exact document approval HTTP route — PR in progress (2026-11-16)
+
+Following merged PR #292, the next bounded source-only slice wires the qualified database approval transition through Actor Gateway.
+
+- Branch: `feat/actor-gateway-commercial-document-approval-route-v2-20261116`
+- Route: `POST /v1/owner/commercial-document-approval`
+- Reader: `src/actor-gateway/commercial-document-approval-reader.ts`
+- Route tests: `src/actor-gateway/commercial-document-approval-app.test.ts`
+- Reader tests: `src/actor-gateway/commercial-document-approval-reader.test.ts`
+- App dependency and HTTP route: `src/actor-gateway/app.ts`
+- Runtime reader wiring: `src/actor-gateway/server.ts`
+- Standard test script includes both new test files.
+
+### Request/identity boundary
+
+The only accepted body properties are `documentVersionId` and `reason`. The route rejects caller-supplied actor/approver identity, extra fields, invalid IDs and invalid reasons. The actor is derived exclusively from the existing verified ES256 bearer token. The reader signs the exact version ID/reason with the distinct HMAC operation `commercial.document.status.approve` and invokes `ghm.gateway_approve_commercial_document_version` inside a transaction.
+
+Response mapping: authorization denial 403, invalid request 400, already-transitioned/conflicting state 409, missing version 404, infrastructure failure 503. SQL detail is not returned to the caller.
+
+### Qualification status
+
+Exact-head CI is pending. Reader and HTTP tests cover HMAC context binding, transaction commit/rollback, actor derivation, rejection of caller-supplied approver fields, strict body validation, missing bearer, founder denial, conflict and missing-version mapping. The SQL function's deeper positive/negative behavioral qualification already passed in PR #292 disposable PostgreSQL CI.
+
+### Explicit boundaries
+
+- No route call has been made against production.
+- No owner authority row has been assigned and no legal document/version has been registered or approved in production.
+- No consent/payment write, production migration, production ACL/credential change, Render service creation, deployment, secret change or launch activation.
+- Do not mistake successful source/CI qualification for production readiness. Production backup, administrator privilege, migration-ledger, Actor Gateway hosting/cost and deployment gates remain.
+- The only human approver is the owner. The assistant is not an employee, legal person, approver or signatory. Do not create a placeholder/ghost reviewer.
+- Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 24.1 Founder-only document approval route qualification passed (2026-11-16)
+
+PR #293 exact code head `c5d1a256f4b896f447e9ee3f2115be15305d6ee5` passed workflow `43912090319`:
+- `web-quality`: success (11/11 steps).
+- `quality`: success (73/73 steps).
+- TypeScript build and all repository migrations on disposable PostgreSQL passed.
+- Full test suite passed, including the new Actor Gateway approval reader and HTTP route tests.
+- Existing Actor Gateway, Auth Issuer, migration, and database-principal qualifications passed.
+
+The new route tests verify verified-bearer actor derivation, strict request allow-list, rejection of caller-supplied actor/approver fields, invalid version/reason rejection before database access, 401 for missing bearer, 403 founder denial, 409 state conflict, 404 missing document version, and transaction rollback/release on database denial. The reader test verifies HMAC binding to the exact version ID and reason and commits only on successful database result.
+
+SQL positive/negative approval behavior (current grant, revocation denial, re-grant, duplicate denial, wrong scope, non-founder, forged/context-transplanted/replayed/expired assertion) was separately qualified in PR #292's disposable PostgreSQL CI. No production route call, owner authority assignment, legal document registration/approval, consent/payment write, production migration, ACL/credential change, Render service, deployment or launch activation occurred.
