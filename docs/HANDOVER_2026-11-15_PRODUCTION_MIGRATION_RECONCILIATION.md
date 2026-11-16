@@ -1453,3 +1453,37 @@ No production query or mutation, migration, ledger repair, grant/role change, se
 - No production migration or manual cutover is approved by this review. The strict prefix runner, backup/restore gate, Amanda/Render role-authority gate, and Section 45 no-additional-cost deployment NO-GO remain binding.
 
 No production database or application state was changed. No migration, ledger, role/grant, secret, service, network, routing, deployment or storage object was touched. Preserve the local untracked `.bak` file.
+
+## 49. Issuer cutover and downstream migration contract revalidation (2026-11-16 01:12 UTC)
+
+### Exact-head CI
+
+- The preceding handover commit `c42e5f3445d213b9ad7f5ff65227d01fabfcae25` passed exact-head CI workflow #5043: `quality` and `web-quality` both SUCCESS.
+- PR #285 remains OPEN, DRAFT and UNMERGED. This section is a new documentation-only commit; its own CI must be checked separately.
+
+### Revalidation against the actual manual issuer cutover SQL
+
+The source files `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql`, `database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql`, and `scripts/qualify-auth-issuer-cutover.mjs` were inspected against the existing issuer runbook. The source confirms:
+
+- The cutover is explicitly manual-only and rejects any execution unless `session_user=ghm_migrator` and `current_user=ghm_schema_owner`.
+- It requires a pre-existing `ghm_auth_issuer` LOGIN/NOINHERIT principal with the narrowly bounded Render administrator membership exception. It resets accidental direct relation, sequence and function grants, then grants the exact ten-function issuer allow-list.
+- The Resource API runtime's auth lifecycle functions are revoked at cutover. Its only retained authentication-related direct function authority is the two documented external person-identity and external Business-mapping lookups. The Business mapping-link helper is explicitly revoked from application principals and used inside signed Actor Gateway Business provisioning.
+- QuoteFlow reset-enrollment registration remains migrator/operator-only; the issuer can only read and complete an already approved enrollment.
+- Rollback is also manual-only and restores only the documented pre-issuer Resource API auth-function allow-list. It does not restore migration/operator privileges removed by earlier migrations, direct table/sequence access, application binaries, secrets or routing.
+- Disposable qualification requires local `ghm_disposable_test` and separate issuer, runtime, migrator and Actor Gateway connections. It is not production evidence.
+
+### Downstream migration contract cross-check
+
+- Migration 1205 removes global PUBLIC EXECUTE defaults for functions created by `ghm_schema_owner`; intended application functions must receive explicit per-role grants.
+- Migration 1207 revokes the obsolete caller-account-ID `ghm.assert_actor_gateway(bigint)` helper from PUBLIC and all application logins.
+- Migration 1208 moves Connect Business creation, owner membership and provider mapping into a single signed Actor Gateway transaction, and revokes direct application execution of the internal mapping-link helper.
+- Migration 1209 preflights that every GHM SECURITY DEFINER function is owned by `ghm_schema_owner` and pins its search path to `pg_catalog, ghm, pg_temp`.
+- Storage migrations 1214–1215 introduce separate actor and provider workflow attestations for storage state transitions. Their presence in source does not mean provider secrets, gateway routes or production storage cutover are live.
+
+These checks agree with the existing runbook and earlier sections; no contradictory SQL contract was found. They do not change the existing deployment NO-GO or authorize any manual cutover.
+
+### Next review boundary
+
+No additional pending migration follows the 1217 inventory endpoint. The remaining work is release/cutover evidence and reconciliation, not inventing another migration batch: exact integration of the dependent Issuer and Actor Gateway branches, application/client compatibility, non-production end-to-end tests, verified production backup/restore, Amanda/Render role-authority resolution, network/TLS decision and the existing no-additional-cost deployment constraints. Do not start a new branch, create paid resources, alter production or bypass the manual cutovers.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
