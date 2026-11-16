@@ -92,7 +92,8 @@ BEGIN
   SELECT count(*) INTO v_credential_count
     FROM ghm.account_password_credential pc
    WHERE pc.account_id = p_actor
-     AND pc.login_email_normalized = 'zaidhqdev@gmail.com';
+     AND pc.login_email_normalized = 'zaidhqdev@gmail.com'
+     AND pc.credential_status = 'active';
   IF v_credential_count <> 1 THEN
     RAISE EXCEPTION 'Canonical founder credential is missing or ambiguous' USING ERRCODE = '42501';
   END IF;
