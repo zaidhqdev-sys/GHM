@@ -6,6 +6,7 @@ const loadConfig = (overrides: Record<string, string | undefined>) => {
   const env = { ...process.env, ...overrides };
   env.DATABASE_SSL = overrides.DATABASE_SSL ?? '';
   env.GHM_RUNTIME_DATABASE_URL = overrides.GHM_RUNTIME_DATABASE_URL ?? '';
+  env.GHM_COMMERCIAL_PAYMENT_PROVIDER = overrides.GHM_COMMERCIAL_PAYMENT_PROVIDER ?? '';
   return spawnSync(
     process.execPath,
     ['-e', "const { config } = require('./dist/config.js'); console.log(JSON.stringify(config));"],

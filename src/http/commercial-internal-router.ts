@@ -11,7 +11,6 @@ import { DefaultCommercialService } from '../resources/commercial/service';
 import { PostgresCommercialRepository } from '../resources/commercial/repository';
 import { PayfastHttpBoundary } from '../resources/commercial/payfast-http';
 import { config } from '../config';
-import type { CommercialProviderCode } from '../resources/commercial/contracts';
 
 export const resolveCommercialPaymentActor = async (
   accountId: number,
