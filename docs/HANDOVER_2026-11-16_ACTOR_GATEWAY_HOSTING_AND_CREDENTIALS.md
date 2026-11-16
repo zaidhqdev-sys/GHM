@@ -1168,3 +1168,33 @@ PR #295 exact implementation head `47dee30d53c48fea9a816c0ca556207dccef0143` pas
 - HTTP tests verify both launch gates are independently required, bearer-derived actor identity, strict body allow-list, explicit acceptance, rejection of browser provider/actor fields and safe denial/conflict/not-found mapping.
 
 The implementation remains source-only and disabled by default. No Render environment variables were changed, no service deployed, no production route called, no legal document or consent/payment row created, and no provider request made.
+
+
+## 28. PR #295 merged — gated GHM-native consent/payment preparation route (2026-11-16)
+
+PR [#295](https://github.com/zaidhqdev-sys/GHM/pull/295) was squash-merged to main as `01add46c88eb8cae456420745c1ca20d8848fd41`.
+
+- Exact final PR head: `aacc1dd504ac71d4b4279fb85aa62d1ffe8270bc`.
+- Exact-head workflow `43918735589`: `quality` and `web-quality` both passed.
+- Implementation qualification workflow `43918100477` also passed on code head `47dee30d53c48fea9a816c0ca556207dccef0143`.
+- Route: `POST /v1/commercial/payment-prepare`.
+- Browser allow-list: `businessId`, `documentVersionId`, `countryId`, `idempotencyKey`, and `accepted=true`; browser cannot choose provider or supply actor/approver identity.
+- Actor identity is derived from verified ES256 bearer authentication. The reader signs the exact request context and invokes the atomic PR #294 database operation.
+- Both `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED` and `GHM_COMMERCIAL_LAUNCH_AUTHORIZED` default false and must independently be true for the route to accept requests.
+- The route prepares evidence/payment-attempt state only. It does not call a provider, create checkout, settle, or activate a subscription.
+
+### Provider portability requirement — explicit follow-up
+
+The PR #295 HTTP reader currently has a hard-coded installed-adapter set containing only `payfast`. That is a truthful reflection of the currently wired adapter, not an architectural decision to bind ZAID Technologies to PayFast. The commercial database operation accepts a provider code generically, and the browser cannot choose it.
+
+The next provider-boundary slice must remove the hard-coded PayFast-only allow-list in favor of a provider-neutral server-side adapter registry/capability contract. Provider choice must remain configuration-driven and accepted only when a matching adapter is actually installed and qualified. Adding Stripe or another provider later must not require rewriting the consent/payment database contract or browser API. Do not claim another provider is installed until its adapter, configuration, webhook/settlement boundary and tests exist.
+
+### Current hard stops — unchanged
+
+- No production migration, production authority grant, legal document registration/approval, consent/payment write, provider API call, checkout, settlement, subscription activation, Render environment change, credential change or deployment occurred through PR #295.
+- Actor Gateway production hosting remains the dedicated always-on Render Frankfurt Web Service decision; no additional paid service has been approved or created.
+- Production migration-ledger administrator read, fresh verified backup, migration reconciliation, gateway DB ACL installation/credential and hosting/cost gates remain unresolved.
+- PayFast remains excluded from activation until the owner explicitly resumes that work and the provider/production gates are met.
+- Keep both commercial preparation/launch environment gates false; keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+The next work should address the provider-neutral adapter boundary and the real Actor Gateway hosting/production prerequisite path in bounded slices. Do not create another endless disposable qualification-only branch while the hosting/production blocker remains unresolved.
