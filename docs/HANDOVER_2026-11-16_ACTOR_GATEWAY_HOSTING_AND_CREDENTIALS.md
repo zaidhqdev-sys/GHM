@@ -1118,3 +1118,53 @@ The payment qualification demonstrated synthetic exact-document approval, atomic
 ### 26.2 PR #294 merge record
 
 PR [#294](https://github.com/zaidhqdev-sys/GHM/pull/294) was squash-merged after exact-head qualification. Merge commit: `4614c70ba506914de1ebfe1f6e77c5a6a19971f9`. Exact final PR head `048f94d500d457d207b0d23a1d6ae279b3941029` passed workflow `43916734126` (`quality` 73/73, `web-quality` 11/11). No production migration or live commercial operation was performed.
+
+
+## 27. GHM-native commercial consent/payment HTTP route — PR in progress (2026-11-16)
+
+Following merged database boundary PR #294, this branch wires the exact approved-document consent/payment preparation operation through Actor Gateway.
+
+- Branch: `feat/actor-gateway-commercial-consent-payment-route-20261116`
+- Route: `POST /v1/commercial/payment-prepare`
+- Reader: `src/actor-gateway/commercial-consent-payment-preparation-reader.ts`
+- Reader tests: `src/actor-gateway/commercial-consent-payment-preparation-reader.test.ts`
+- HTTP tests: `src/actor-gateway/commercial-consent-payment-preparation-app.test.ts`
+- App route and dependencies: `src/actor-gateway/app.ts`
+- Runtime wiring and environment gates: `src/actor-gateway/server.ts`
+- Standard `npm test` includes reader and route tests.
+
+### Request and provider boundary
+
+The route accepts exactly `businessId`, `documentVersionId`, `countryId`, `idempotencyKey`, and `accepted=true`. It rejects browser-supplied provider codes, actor IDs, approver IDs and extra fields. Actor identity comes exclusively from the verified ES256 bearer token. Optional `x-request-id` is bounded and included in the signed assertion/evidence.
+
+The reader selects provider only from server-side `GHM_COMMERCIAL_PAYMENT_PROVIDER` (default `payfast`) and currently fails startup if it is not an installed adapter. No provider is chosen by the browser. The reader calls the merged PR #294 database operation in one transaction; it does not call a provider, create a checkout URL, settle a payment or activate a subscription.
+
+### Independent launch gates
+
+The route is unavailable unless both server-side settings are exactly true:
+- `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED=true`
+- `GHM_COMMERCIAL_LAUNCH_AUTHORIZED=true`
+
+Both default false when absent. These are independent gates; the UI/request cannot override them. No environment setting has been changed in Render. The source does not authorize online subscription activation; that remains a separate frozen lifecycle.
+
+### Explicit boundaries
+
+- No production route call, authority grant, real legal document registration/approval, customer consent, payment attempt, checkout, provider API call, settlement or activation.
+- No production migration, ACL/credential change, Render service, secret or deployment.
+- Existing Supabase-mapped internal payment preparation remains legacy and is not the native consent-qualified route.
+- Real legal terms and their SHA-256 hashes are not supplied; even with route gates opened, the database rejects missing/unapproved/mismatched document versions.
+- Keep `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED=false`, `GHM_COMMERCIAL_LAUNCH_AUTHORIZED=false`, `launchAuthorized=false`, and `onlineSubscriptionActivation=false`.
+
+Exact-head CI and final route review are pending.
+
+
+### 27.1 Gated native consent/payment route exact-head CI passed (2026-11-16)
+
+PR #295 exact implementation head `47dee30d53c48fea9a816c0ca556207dccef0143` passed workflow `43918100477`:
+- `quality`: success (73/73 steps).
+- `web-quality`: success (11/11 steps).
+- TypeScript build, all migrations on disposable PostgreSQL and full test suite passed.
+- Reader tests verify HMAC binding to Business/document/country/idempotency/provider/acceptance/request ID, transaction commit/rollback and fail-closed provider adapter selection.
+- HTTP tests verify both launch gates are independently required, bearer-derived actor identity, strict body allow-list, explicit acceptance, rejection of browser provider/actor fields and safe denial/conflict/not-found mapping.
+
+The implementation remains source-only and disabled by default. No Render environment variables were changed, no service deployed, no production route called, no legal document or consent/payment row created, and no provider request made.

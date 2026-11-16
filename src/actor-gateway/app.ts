@@ -18,6 +18,7 @@ import type { ConnectBusinessProvisioningReader } from '../integrations/connect/
 import type { CampaignDirectoryReviewGatewayReader } from './campaign-directory-review-reader';
 import type { CommercialDocumentApprovalAuthorityReader } from './commercial-document-approval-authority-reader';
 import type { CommercialDocumentApprovalReader } from './commercial-document-approval-reader';
+import type { CommercialConsentPaymentPreparationReader } from './commercial-consent-payment-preparation-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -43,6 +44,9 @@ export interface ActorGatewayDependencies {
   campaignDirectoryReviewReader?: CampaignDirectoryReviewGatewayReader;
   commercialDocumentApprovalAuthorityReader?: CommercialDocumentApprovalAuthorityReader;
   commercialDocumentApprovalReader?: CommercialDocumentApprovalReader;
+  commercialConsentPaymentPreparationReader?: CommercialConsentPaymentPreparationReader;
+  commercialPaymentPreparationEnabled?: boolean;
+  commercialLaunchAuthorized?: boolean;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -1194,6 +1198,83 @@ export const createActorGatewayApp = (
       res.status(503).json({ error: 'service_unavailable' });
     }
   });
+
+  app.post('/v1/commercial/payment-prepare', async (req: Request, res: Response) => {
+    if (
+      dependencies.commercialPaymentPreparationEnabled !== true ||
+      dependencies.commercialLaunchAuthorized !== true ||
+      !dependencies.commercialConsentPaymentPreparationReader
+    ) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body as Record<string, unknown>
+      : null;
+    const allowed = new Set(['businessId', 'documentVersionId', 'countryId', 'idempotencyKey', 'accepted']);
+    const idempotencyKey = typeof body?.idempotencyKey === 'string' ? body.idempotencyKey.trim() : '';
+    if (
+      !body ||
+      Object.keys(body).length !== allowed.size ||
+      Object.keys(body).some((key) => !allowed.has(key)) ||
+      !Number.isSafeInteger(body.businessId) ||
+      Number(body.businessId) <= 0 ||
+      !Number.isSafeInteger(body.documentVersionId) ||
+      Number(body.documentVersionId) <= 0 ||
+      (body.countryId !== null && (!Number.isSafeInteger(body.countryId) || Number(body.countryId) <= 0)) ||
+      idempotencyKey.length < 8 ||
+      idempotencyKey.length > 200 ||
+      body.accepted !== true
+    ) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+
+    const rawRequestId = req.header('x-request-id');
+    const requestId = rawRequestId && /^[A-Za-z0-9._:-]{1,200}$/.test(rawRequestId)
+      ? rawRequestId
+      : null;
+
+    try {
+      const paymentPreparation = await dependencies.commercialConsentPaymentPreparationReader.prepare(
+        res.locals.actorAccountId as number,
+        {
+          businessId: Number(body.businessId),
+          documentVersionId: Number(body.documentVersionId),
+          countryId: body.countryId as number | null,
+          idempotencyKey,
+          accepted: true,
+          requestId,
+        },
+      );
+      res.status(200).json({ paymentPreparation });
+    } catch (error) {
+      if (isSqlState(error, '42501')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      if (isSqlState(error, '22023')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (isSqlState(error, 'P0001') || isSqlState(error, '23505')) {
+        res.status(409).json({ error: 'conflict' });
+        return;
+      }
+      if (isSqlState(error, 'P0002')) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'commercial.payment.prepare_with_consent',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
 
   return app;
 };

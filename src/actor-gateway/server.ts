@@ -22,6 +22,7 @@ import { PostgresConnectBusinessProvisioningReader } from './connect-business-pr
 import { PostgresCampaignDirectoryReviewGatewayReader } from './campaign-directory-review-reader';
 import { PostgresCommercialDocumentApprovalAuthorityReader } from './commercial-document-approval-authority-reader';
 import { PostgresCommercialDocumentApprovalReader } from './commercial-document-approval-reader';
+import { PostgresCommercialConsentPaymentPreparationReader } from './commercial-consent-payment-preparation-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
 import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from './database-privileges';
 
@@ -43,6 +44,10 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 const keys = loadEs256VerificationKeys();
 const verifier = createAccessJwtVerifier(verificationKeyMapFromPublicKeys(keys));
 const capabilityAssertionSecret = required('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET');
+const commercialPaymentPreparationEnabled = process.env.GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED === 'true';
+const commercialLaunchAuthorized = process.env.GHM_COMMERCIAL_LAUNCH_AUTHORIZED === 'true';
+const commercialPaymentProviderCode = process.env.GHM_COMMERCIAL_PAYMENT_PROVIDER?.trim() || 'payfast';
+
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: databaseSsl,
@@ -67,6 +72,13 @@ const app = createActorGatewayApp({
   campaignDirectoryReviewReader: new PostgresCampaignDirectoryReviewGatewayReader(pool, capabilityAssertionSecret),
   commercialDocumentApprovalAuthorityReader: new PostgresCommercialDocumentApprovalAuthorityReader(pool, capabilityAssertionSecret),
   commercialDocumentApprovalReader: new PostgresCommercialDocumentApprovalReader(pool, capabilityAssertionSecret),
+  commercialConsentPaymentPreparationReader: new PostgresCommercialConsentPaymentPreparationReader(
+    pool,
+    capabilityAssertionSecret,
+    commercialPaymentProviderCode,
+  ),
+  commercialPaymentPreparationEnabled,
+  commercialLaunchAuthorized,
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
