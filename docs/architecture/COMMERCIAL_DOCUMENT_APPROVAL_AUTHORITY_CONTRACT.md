@@ -171,7 +171,7 @@ The route is source code only pending exact-head CI. It is not deployed or calla
 The human approver remains the owner alone. The assistant is the technical implementation/review partner, not a person, employee, approver, or legal signatory. No ghost reviewer is to be added.
 
 
-## 13. GHM-native explicit consent and payment preparation — database boundary in progress (2026-11-16)
+## 13. GHM-native explicit consent and payment preparation — database boundary merged (PR #294, 2026-11-16)
 
 The next database operation is `ghm.gateway_prepare_commercial_payment_with_consent`, exposed only to the restricted Actor Gateway principal.
 
@@ -188,3 +188,6 @@ The database operation does not call a provider, create a checkout redirect, set
 Qualification uses only synthetic disposable Business/plan/price/subscription/document fixtures. The approved synthetic document is approved inside the same disposable test transaction; all grant, approval, consent, payment-attempt and commercial-event writes are rolled back. Immutable synthetic draft/version fixtures may remain in the ephemeral CI database. No legal document, hash, approval, authority assignment, consent, or payment attempt is created in production.
 
 The operation is not yet wired to an HTTP route. Any future route must derive actor identity from ES256 bearer authentication, require explicit customer acceptance, preserve the separate commercial launch freeze, and remain unavailable until the owner supplies and approves the real legal document and the production/hosting gates are cleared. Existing legacy internal payment preparation remains a separate Supabase-mapped path and must not be treated as the approved native path.
+
+
+PR #294 merged as `4614c70ba506914de1ebfe1f6e77c5a6a19971f9` after exact-head CI `43916734126` passed both `quality` and `web-quality`. This remains a database-only capability with no HTTP route, production authority, real legal document, consent, payment, checkout or activation.
