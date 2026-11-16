@@ -1977,3 +1977,19 @@ The new runner qualification script's entire scenario sequence completed with ex
 CI run: `43966629021` (success), exact tested implementation head `18b0c3280d3b9443777e66fd021cb0eeb702c2b5`.
 
 This closes the dedicated disposable-PostgreSQL runner qualification gap for the tested code. It does not authorize production execution or close operational gates: current recoverable production backup/restore proof, live-ledger re-export immediately before rollout, service/credential/hosting readiness, Actor Gateway always-on hosting and cost decision, and explicit review of the first small contiguous production batch remain outstanding. Production batch manifest remains empty; PR #297 remains draft and unmerged. No production database, migration, role, ACL, credential, secret, Render setting/deployment, payment or consent state changed.
+
+### Documentation-only CI and Render inventory recheck — 2026-11-16 22:14Z
+
+The handover-only commit `b6750efae7d1764bded417a2c93a75a7f9c3cfb7` completed workflow run `43967257557` successfully. Both `quality` and `web-quality` passed. The quality job also re-ran the disposable PostgreSQL batch-runner qualification, all 143 migrations on disposable PostgreSQL, the full test suite and the existing database/gateway/storage/auth qualification steps. This is exact-head CI for the documentation commit; the implementation scenarios were already proven on `18b0c3280d3b9443777e66fd021cb0eeb702c2b5`.
+
+Read-only Render inventory rechecked in workspace `tea-d9svua6417fc73bhcutg`:
+- Production database `ghm-db`, id `dpg-dag0sdtbedkc7389vi2g-a`, PostgreSQL 18, Frankfurt, database `ghm_db`, status available/not suspended, plan `0.1c-256mb`, disk 1 GB, high availability disabled, no read replicas.
+- Production API `GHM-Internal-Runtime`, id `srv-damupsek1f9s73eq8kkg`, Frankfurt Free Web Service, branch main, auto-deploy off, health path `/healthz`.
+- No `ghm-actor-gateway` service is present in the account inventory.
+- The visible legacy PayFast callback/runtime and identity qualification services remain excluded; `zaid-ai-workforce` remains a separate Free Web Service and is not an approved gateway host.
+
+The account inventory does not expose a verified backup artifact, restore point timestamp, retention state, or successful restore test. The previously located November 4 archive remains the latest known local archive in the handover; it predates later role changes. Therefore the production backup/recovery gate is still OPEN. Do not infer backup coverage from database availability, plan name, disk size or Render dashboard existence.
+
+The current selected Actor Gateway architecture remains the dedicated always-on Frankfurt Render Web Service running `npm run start:actor-gateway`, with a separate `ghm_actor_gateway` database credential and startup principal/privilege assertions. The account inventory confirms that service does not exist. Do not co-host it in `GHM-Internal-Runtime`, repurpose `zaid-ai-workforce`, or revive sandbox services; the dedicated service's recurring cost is not approved. No Render service was created, no plan changed, no environment variable or secret changed, and no deploy was triggered.
+
+PR #297 remains open, draft and unmerged at head `b6750efae7d1764bded417a2c93a75a7f9c3cfb7`, base `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`. Production batch manifest remains empty. No production migration, DDL, grant, role, credential, secret, payment or consent state changed.
