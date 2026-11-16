@@ -191,3 +191,17 @@ The operation is not yet wired to an HTTP route. Any future route must derive ac
 
 
 PR #294 merged as `4614c70ba506914de1ebfe1f6e77c5a6a19971f9` after exact-head CI `43916734126` passed both `quality` and `web-quality`. This remains a database-only capability with no HTTP route, production authority, real legal document, consent, payment, checkout or activation.
+
+
+## 14. Authenticated GHM-native payment preparation route — implementation in progress (2026-11-16)
+
+The Actor Gateway HTTP route `POST /v1/commercial/payment-prepare` wires the merged database function from PR #294.
+
+- The browser can submit only Business ID, exact document-version ID, pricing country, idempotency key and explicit `accepted=true`.
+- Actor identity comes only from the verified ES256 bearer token.
+- Provider selection comes only from server-side `GHM_COMMERCIAL_PAYMENT_PROVIDER`; the currently installed adapter allow-list is PayFast only. No request body field can select a provider.
+- The route calls the database reader, which signs the exact request context and invokes the atomic database function. It does not call a provider or create a checkout redirect.
+
+The route is independently gated by `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED=true` and `GHM_COMMERCIAL_LAUNCH_AUTHORIZED=true`. Both default false; neither can be set by the client. Missing/unapproved/mismatched legal document versions are rejected by the database even if both gates are enabled. Online subscription activation and settlement remain separate and frozen.
+
+This route is source-only pending exact-head CI. No production environment variables, service, deployment, legal document, consent, payment attempt or provider round-trip have been created.
