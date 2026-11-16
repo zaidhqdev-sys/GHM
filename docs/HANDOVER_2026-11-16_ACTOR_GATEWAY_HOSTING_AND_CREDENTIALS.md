@@ -817,3 +817,13 @@ The merged route is `POST /v1/owner/commercial-document-approval-authority`. Act
 4. Then implement the separate GHM-native Business consent + payment-preparation transaction, preserving explicit customer acceptance and the independent launch freeze.
 
 No production route call, migration, authority grant, document approval, consent, payment attempt, Render Actor Gateway service, deployment or secret change has occurred. The production gateway hosting/backup/admin/migration gates remain. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 22.3 PR #291 main-branch qualification (2026-11-16)
+
+Merge commit `f480a463c4e24182d47809c9638b6afb9b4f9d3e` passed main-branch workflow `43906857428`:
+- `quality`: success.
+- `web-quality`: success.
+- Full disposable PostgreSQL migrations, full test suite and Actor Gateway database qualification passed.
+
+The handover was updated after the merge. This does not authorize production migration, deployment or commercial writes.
