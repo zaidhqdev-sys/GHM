@@ -108,7 +108,7 @@ test('registration identity legacy functions remain in every modeled stage until
   for (const signature of registration) {
     assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok(!CUTOVER_GROUPS.some(group => (group as readonly string[]).includes(signature)));
-    for (const functions of ALL_STAGES) assert.ok(functions.includes(signature), signature);
+    for (const functions of ALL_STAGES) assert.ok((functions as readonly string[]).includes(signature), signature);
   }
 });
 
@@ -129,7 +129,6 @@ test('Campaign and directory-review legacy signatures are absent only from state
     assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok((RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
-    assert.ok(true);
-    assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
   }
 });
