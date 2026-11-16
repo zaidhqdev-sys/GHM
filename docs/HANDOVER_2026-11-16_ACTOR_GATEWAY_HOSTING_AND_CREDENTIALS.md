@@ -515,3 +515,75 @@ The migration seeds no legal text, content hashes, approved versions or consent 
 - Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
 
 **Production impact:** none. Merge did not run the migration against production `ghm_db`, change roles/grants/credentials, deploy Render services, configure provider credentials, perform checkout/ITN, create consent records, or change commercial launch flags. Disposable PostgreSQL CI qualification is not production migration authorization.
+
+
+## 18. Commercial document approval authority foundation — PR in progress (2026-11-16)
+
+Following PR #288, a bounded follow-up branch has been opened:
+- Branch: `docs/commercial-document-approval-governance-20261116`
+- Base: `main` at `61cd8cbe57933500dd86ede80860b30ecd4ce1d2`
+- Migration: `database/migrations/20261116160000_add_commercial_document_approval_authority.sql`
+- Contract test: `src/db/commercial-document-approval-authority-migration-contract.test.ts`
+- Architecture contract: `docs/architecture/COMMERCIAL_DOCUMENT_APPROVAL_AUTHORITY_CONTRACT.md`
+
+### Foundation added
+
+- An immutable authority identity fixes the authority account, document type/key and optional jurisdiction; append-only `granted` / `revoked` events reference that identity and record the acting account, reason, request ID, timestamp and metadata.
+- Document status approval now requires an exact `approval_authority_event_id`; non-approval lifecycle events must not cite one.
+- Authority identity and event ledger UPDATE/DELETE/TRUNCATE are rejected.
+- Only `ghm_migrator` receives explicit table/sequence grants. No runtime, Actor Gateway or PUBLIC access is introduced.
+- No authority, approver, legal document, hash, approved status or consent is seeded.
+- A separate architecture contract defines the future cross-row checks: authenticated actor must match the scoped authority grant; the latest event must still be granted; document scope/version must match; approval and evidence must commit atomically.
+
+### Important limitation
+
+The foreign key/CHECK constraint requires an approval event to cite a grant event, but does not by itself prove that the grant is current, scope-matched, or belongs to the actor. Those checks must be enforced by a future governed database operation. The migration-principal-only grant is a foundation, not a finished authority-management workflow.
+
+No GHM administrator is implicitly treated as legal approver. The owner must explicitly designate the person/account and scope before any authority grant can be recorded. Until then, approval and commercial writes remain unavailable.
+
+### Qualification and next gate
+
+- The migration contract test is included in the standard `npm test` list.
+- Exact-head CI, full migration application against disposable PostgreSQL, complete test suite and SQL review are pending. The schema was tightened before qualification so grant/revoke events reference a separate immutable authority identity; this prevents later events from silently changing the principal or scope.
+- Do not merge until exact-head CI passes and migration review confirms the FK/constraint/trigger/access model.
+- Do not apply this migration to production `ghm_db`, insert authority rows, grant application access, deploy services, or enable payment writes.
+
+Commercial launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 18.1 Final SQL review correction — grant-only reference enforced (2026-11-16)
+
+Final review found that a simple FK to the authority event ID would also accept a `revoked` event. Before merge, the branch was corrected:
+- Authority events now have a unique `(id, event_type)` key.
+- Document status events carry the authority event ID and event type together under a composite FK.
+- The CHECK constraint requires `event_type='granted'` for `approved` status and NULL references for all other statuses.
+- The migration contract test explicitly checks the composite FK and grant-only CHECK.
+
+This enforces that an approval cannot cite a revocation event. It still does not prove that the grant is the latest event, actor-matched, or scope-matched; those remain mandatory checks for the future transactional approval operation.
+
+The correction is on the latest branch head `1670dd9d0e72847be33b8753aa6205bd92aebbab`. A fresh exact-head CI run is required; the earlier successful run `43896672192` applies to superseded head `69e751684f2b9b783abc040c3fbb78a57fd336ca` and is not valid qualification for the corrected migration. Do not merge until the new run passes and the corrected migration applies to disposable PostgreSQL.
+
+
+### 18.2 Disposable PostgreSQL failure and correction (2026-11-16)
+
+The first disposable PostgreSQL run of the grant-only composite FK failed because the referenced authority event table did not yet have a matching unique key on `(id, event_type)`. This was a genuine migration defect, not an infrastructure failure.
+
+Corrected migration now declares `UNIQUE (id, event_type)` on `ghm.commercial_document_approval_authority_event`, satisfying PostgreSQL's composite FK requirement. The contract test asserts this unique key, both paired columns, the composite FK and the grant-only CHECK.
+
+- Failed run: `43897565313`, migration application step; do not treat earlier passing run on superseded code as qualification.
+- Correction commit: `0c053cb01caab27da8fd58ea2db1ea48d1267f74`.
+- PR #289 has been marked ready for review to ensure CI runs on the corrected branch state.
+- A fresh exact-head full CI run remains mandatory. Merge remains blocked until PostgreSQL applies the corrected migration and the complete quality suite passes.
+
+
+### 18.3 Corrected migration qualification passed (2026-11-16)
+
+The corrected migration now passes full exact-head CI on commit `cac2683448c5efd627f21e18f3ce54bacf00d90c`:
+- Workflow run: `43898034405`
+- `quality`: success, including full migration application to disposable PostgreSQL and the complete test suite.
+- `web-quality`: success.
+- The composite unique key `(id, event_type)` now satisfies PostgreSQL's composite-FK requirement, and the CHECK constraint requires `granted` for approved document status events.
+
+Final diff review covered the migration, contract test, standard test command, architecture contract and this handover. The migration remains isolated to repository/CI qualification: no production migration, role/grant change, service deployment, credential change, authority assignment, consent/payment write or launch authorization.
+
+PR #289 remains open and unmerged pending the owner's merge direction. Launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
