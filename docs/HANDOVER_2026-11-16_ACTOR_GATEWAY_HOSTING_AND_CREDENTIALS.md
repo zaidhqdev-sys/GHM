@@ -1745,3 +1745,21 @@ A further source review caught an incorrectly escaped version-validation regular
   - `web-quality`: in progress.
 
 The preceding run on code commit `5f17b61` was cancelled while commits were arriving; it is not counted as a result. The current run is on the corrected code head. PR #297 remains draft and unmerged.
+
+
+### Plan-only integrity correction — 2026-11-16
+
+A deeper review of the runner found that the first plan-only implementation returned before walking the applied migration history. That meant it could print a plan without first validating all already-applied checksums and documented historical provenance exceptions.
+
+Corrected:
+- Plan-only now selects the explicit batch, then enters the same full ordered migration-history loop as execution.
+- Every already-applied migration is checksum/provenance validated before the plan is emitted.
+- For selected pending migrations, plan-only records the filename but skips SQL execution and ledger insertion.
+- After all history checks succeed, it prints the ordered plan, explicitly rolls back the transaction and returns.
+- Added a runner contract test asserting plan output occurs after the applied-checksum validation point and that plan mode rolls back.
+
+Commits:
+- `717abc90aedd3865051b972bb1ac1694b0b76eff` — move plan-only handling after full history validation.
+- `5703e6801c8c25bb34e105cecc2dd35fd97c3753` — test plan-only checksum validation ordering.
+
+A fresh PR workflow was queued for exact head `5703e6801c8c25bb34e105cecc2dd35fd97c3753`, run `43953816972`. Do not rely on the earlier successful run for the newer plan-only correction. PR #297 remains draft/unmerged.
