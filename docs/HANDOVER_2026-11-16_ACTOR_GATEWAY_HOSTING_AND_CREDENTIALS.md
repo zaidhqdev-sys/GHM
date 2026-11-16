@@ -1032,3 +1032,20 @@ PR #293 exact code head `c5d1a256f4b896f447e9ee3f2115be15305d6ee5` passed workfl
 The new route tests verify verified-bearer actor derivation, strict request allow-list, rejection of caller-supplied actor/approver fields, invalid version/reason rejection before database access, 401 for missing bearer, 403 founder denial, 409 state conflict, 404 missing document version, and transaction rollback/release on database denial. The reader test verifies HMAC binding to the exact version ID and reason and commits only on successful database result.
 
 SQL positive/negative approval behavior (current grant, revocation denial, re-grant, duplicate denial, wrong scope, non-founder, forged/context-transplanted/replayed/expired assertion) was separately qualified in PR #292's disposable PostgreSQL CI. No production route call, owner authority assignment, legal document registration/approval, consent/payment write, production migration, ACL/credential change, Render service, deployment or launch activation occurred.
+
+
+## 25. PR #293 merged — founder-only exact document approval route (2026-11-16)
+
+PR [#293](https://github.com/zaidhqdev-sys/GHM/pull/293) was squash-merged after exact-head qualification and final source review.
+
+- Exact final tested PR head: `7453a01b5f73d83650f50075221a05e5505f9f1d`.
+- Exact-head workflow: `43912686190`.
+- `quality`: success (73/73 steps).
+- `web-quality`: success (11/11 steps).
+- Merge commit: `f6e75dc91636ecb76b00485736afd69b6c92d768`.
+
+The route is `POST /v1/owner/commercial-document-approval`. Its only body fields are `documentVersionId` and `reason`; actor identity comes exclusively from the verified ES256 bearer token. The reader signs the exact version/reason with the separate one-use HMAC operation `commercial.document.status.approve`, calls the approved database transition inside a transaction, and commits only on a single successful result. Reader/HTTP tests verify exact HMAC binding, commit/rollback, no caller-supplied approver, strict request validation, missing bearer denial, founder denial, conflict and missing-version mapping.
+
+The database-side positive/negative authorization behavior was qualified separately by PR #292 on disposable PostgreSQL. The merged route is source-only: no production route call, authority grant, legal document registration/approval, consent/payment write, production migration, production ACL/credential change, Render service creation, deployment, secret change or launch activation occurred. The owner is the only human approver; the assistant is not an employee, approver or legal signatory.
+
+Main-branch CI for merge commit `f6e75dc91636ecb76b00485736afd69b6c92d768` was queued when this handover entry was written; record its final result in a follow-up handover entry. Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
