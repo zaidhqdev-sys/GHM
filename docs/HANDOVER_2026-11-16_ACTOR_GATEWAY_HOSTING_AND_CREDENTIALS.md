@@ -1577,3 +1577,53 @@ The existing runtime privilege model is intentionally a mixture of direct SELECT
 5. Keep production role/ACL state unchanged until a small migration is source-tested, qualified against the exact production prefix, and can be rolled out with rollback/verification.
 
 All production SQL in this section was read-only catalogue inspection. No migrations, grants, revokes, RLS policies, role changes, credentials, secrets, Render settings, service deployments, or payment/consent actions were changed.
+
+
+## 35. 2026-11-16 — staged Business Identity INSERT hardening PR #296
+
+A first narrowly scoped ACL hardening change has been authored on branch `hardening/business-identity-insert-column-acl`, PR #296:
+https://github.com/zaidhqdev-sys/GHM/pull/296
+
+### Exact source-to-privilege contract
+
+Current `src/resources/business-identity/repository.ts` performs the Business creation INSERT with exactly:
+- `ghm.business`: `name, slug, verification_status, is_active`
+- `ghm.business_membership`: `business_id, account_id, membership_role, membership_status, created_by`
+
+The current production table-level INSERT grants on these two relations are broader than the repository's required input. New migration `20261116200000_narrow_business_identity_runtime_insert.sql`:
+1. revokes table-level INSERT from `ghm_runtime` on `ghm.business`;
+2. grants INSERT only on the four repository-used Business columns;
+3. revokes table-level INSERT from `ghm_runtime` on `ghm.business_membership`;
+4. grants INSERT only on the five repository-used owner-membership columns.
+
+The migration intentionally preserves SELECT, existing UPDATE/DELETE boundaries, identity sequence privileges and all other grants. It does not alter account identity grants, SECURITY DEFINER functions, role memberships, RLS, or schema/default privileges.
+
+### Qualification artifact
+
+Added `src/db/business-identity-runtime-insert-acl-migration-contract.test.ts`, included in `npm test`. It asserts:
+- both table-level INSERT privileges are revoked;
+- only the exact repository-required column INSERT privileges are granted;
+- repository SQL still uses those exact field lists and fixed owner/unverified values;
+- no SELECT/sequence or unrelated privilege is revoked/granted.
+
+PR #296 is currently a draft and is not merged. Exact-head CI was observed starting for commit `9ed825ee6a179ce16b1a47262173b7b7bb49d615`:
+- `quality`: in progress
+- `web-quality`: in progress
+- Cloudflare Pages: in progress
+
+No CI result has yet been observed as passed. Do not merge or apply the migration until exact-head checks pass and the production-prefix migration qualification is completed.
+
+### Production status and sequencing
+
+- Production ledger latest evidenced version remains `20261109210000`.
+- This migration version `20261116200000` is therefore pending and intentionally NOT added to the production pending-migration allowlist. The allowlist is an audited production pre-deploy contract, not an automatic list of every new migration.
+- No production SQL, ACL, role, credentials, secrets, Render configuration, service, or deployment was changed.
+- No RLS policy was added. The existing finding that runtime-accessible relations lack RLS remains open.
+- This is the first low-risk direct-write narrowing candidate. Opportunity lifecycle and requirement replacement remain separate follow-up designs and must not be bundled into this change.
+
+### Next steps
+
+1. Wait for exact-head quality/web-quality/Cloudflare results; inspect and fix any failures on this branch.
+2. If CI passes, review the migration against the exact production schema/ACL and migration prefix. Confirm all five membership fields and four Business fields remain valid against production defaults, triggers, constraints and repository code.
+3. Only after migration-prefix and backup/rollback gates are satisfied, consider a small production migration rollout. Do not include unrelated pending migrations.
+4. Then take the next separate write-surface candidate. Opportunity UPDATE is higher risk and should be handled with actor-bound lifecycle functions, not a simple broad column grant replacement.
