@@ -26,7 +26,7 @@ const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) 
 
 const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 
-test('runtime startup accepts all 1,024 reviewed combinations of the ten manual cutovers', () => {
+test('runtime startup accepts all 1,024 modeled combinations of the ten cutover groups', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
   assert.equal(CUTOVER_GROUPS.length, 10);
   assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 2, 3, 3, 2, 1, 1, 1, 5]);
@@ -98,7 +98,7 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
   }
 });
 
-test('the five legacy storage metadata functions are removed only by the storage metadata cutover while the public logo lookup remains', () => {
+test('the modeled storage metadata cutover removes exactly five legacy functions while preserving the public logo lookup', () => {
   const storageCutoverIndex = Object.keys(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS).indexOf('storageMetadata');
   assert.ok(storageCutoverIndex >= 0);
   const signatures = [
@@ -108,7 +108,7 @@ test('the five legacy storage metadata functions are removed only by the storage
     'ghm.storage_mark_deleted(bigint)',
     'ghm.storage_mark_deletion_pending(bigint)',
   ];
-  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.storageMetadata, signatures);
+  // This models the future ACL state only; it does not assert a production cutover artifact exists.\n  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.storageMetadata, signatures);
   for (let mask = 0; mask < ALL_STAGES.length; mask += 1) {
     const cutoverApplied = (mask & (1 << storageCutoverIndex)) !== 0;
     for (const signature of signatures) {
