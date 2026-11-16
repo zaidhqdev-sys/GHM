@@ -549,3 +549,16 @@ No GHM administrator is implicitly treated as legal approver. The owner must exp
 - Do not apply this migration to production `ghm_db`, insert authority rows, grant application access, deploy services, or enable payment writes.
 
 Commercial launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+
+### 18.1 Final SQL review correction — grant-only reference enforced (2026-11-16)
+
+Final review found that a simple FK to the authority event ID would also accept a `revoked` event. Before merge, the branch was corrected:
+- Authority events now have a unique `(id, event_type)` key.
+- Document status events carry the authority event ID and event type together under a composite FK.
+- The CHECK constraint requires `event_type='granted'` for `approved` status and NULL references for all other statuses.
+- The migration contract test explicitly checks the composite FK and grant-only CHECK.
+
+This enforces that an approval cannot cite a revocation event. It still does not prove that the grant is the latest event, actor-matched, or scope-matched; those remain mandatory checks for the future transactional approval operation.
+
+The correction is on the latest branch head `1670dd9d0e72847be33b8753aa6205bd92aebbab`. A fresh exact-head CI run is required; the earlier successful run `43896672192` applies to superseded head `69e751684f2b9b783abc040c3fbb78a57fd336ca` and is not valid qualification for the corrected migration. Do not merge until the new run passes and the corrected migration applies to disposable PostgreSQL.
