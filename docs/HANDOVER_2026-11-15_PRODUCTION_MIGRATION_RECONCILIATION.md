@@ -1712,3 +1712,28 @@ There is also an unresolved cross-qualification discrepancy: CI #5054's Campaign
 - The SECURITY DEFINER inventory model must represent actual observed stages, not force an expected count. Keep registration identity unresolved until the catalog transition is explained and the Resource API route/cutover/rollback contract is evidenced.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. PR #285 remains draft and unmerged. Preserve the local untracked `.bak` file.
+
+
+## 57. Restore observed 43-function pre-Campaign SECURITY DEFINER baseline (2026-11-16 02:33 UTC)
+
+### Exact-head CI #5058
+
+- CI #5058 ran on the prior handover head `a869cb1c9d69fc59b6547a6cd1dca87aa879b615`.
+- `web-quality`, build, disposable migration application, supplier classification qualification, first-four migration qualification, inventory-script syntax, and isolated Authentication Issuer principal qualification passed.
+- `Qualify isolated actor gateway database principal` failed at the exact runtime function EXECUTE inventory comparison. Later steps were skipped.
+- The actual pre-Campaign inventory in this run contained 43 SECURITY DEFINER functions, including `ghm.read_business_registration_identity(bigint,bigint)` and `ghm.update_business_registration_identity(bigint,bigint,text,text,text)`.
+- This proves the Section 55 reduction from 43 to 41 was incorrect for the pre-Campaign state. Section 56's instruction not to adjust counts speculatively remains valid, but the pre-Campaign observed inventory is now direct evidence for restoring the two signatures.
+
+### Corrections made
+
+- Restored both registration identity signatures to `RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS`; expected baseline returns to 43.
+- Restored the fully modeled eight-cutover function inventory from 13 to 15; neither registration identity signature belongs to an identified manual cutover group.
+- Restored unit assertions that both signatures remain in every modeled state until a real, evidenced cutover exists.
+- Source correction commit: `ba7b246bc54dc2b9eb65424c4829e0fcf6b7f3f8`.
+- Test correction commit: `c3b3139e58050df0f24a08747255a2d0f49a594d`.
+- This restores the pre-Campaign model to direct observed evidence; it does not explain CI #5054's 38-function post-Campaign result. The discrepancy remains open and must be explained from exact before/after catalog snapshots and connection/session context. Do not invent a registration identity revoke or treat the two functions as cut over.
+
+### Current verification state
+
+- Handover update is being committed after the source and test corrections. Exact-head CI must be checked on the final handover commit, not inferred from intermediate commits.
+- PR #285 remains draft and unmerged. No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
