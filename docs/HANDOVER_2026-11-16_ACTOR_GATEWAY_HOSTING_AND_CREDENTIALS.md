@@ -1641,3 +1641,39 @@ The quality job for workflow run 43949522719 (PR #296 merge ref checked out at m
 The current branch head is now `accaad33f5b18c45c59835400ac569592b93f751`. A subsequent documentation-only handover commit `b2c9cd2691013a7c3e674c8282b96a863aa6aedd` was excluded from CI by the workflow's `paths-ignore: '**/*.md', 'docs/**'` rule. A SQL comment-only commit `accaad3` was added to ensure a non-doc change exists at the current head; at inspection time only Cloudflare Pages had reported a check and no fresh CI run was returned for this head.
 
 Do not represent CI as green. The earlier quality rerun was canceled; web-quality passed on the earlier code commit; Cloudflare Pages is a preview/build check only. The next action is to obtain a fresh, non-canceled CI quality run on the latest PR head, or identify the external cancellation/concurrency cause before relying on any test status. The PR remains draft and unmerged. Production remains unchanged.
+
+
+### Exact-head CI recovered — 2026-11-16
+
+A fresh CI workflow run was triggered automatically for the then-current PR head and completed successfully:
+- Workflow run: `43950351464` (run number 5179).
+- Tested commit: `350b0f3285a8fb4e5aa1815303fe88e56dc8f065`.
+- `quality`: success.
+- `web-quality`: success.
+- `Cloudflare Pages`: success.
+- PR #296 remains OPEN and DRAFT; no merge has occurred.
+
+The prior cancellations were therefore overcome by a fresh successful run. The successful run is on the current PR head; the documentation-only handover update that follows is covered by the workflow's docs path-ignore rule and does not alter executable code.
+
+### Additional production schema compatibility check — read-only
+
+The production catalog was queried for `ghm.business` and `ghm.business_membership` to validate the proposed column grants against actual column definitions, defaults, identity properties, constraints, and triggers.
+
+Confirmed:
+- All nine proposed INSERT columns exist with the expected names and compatible types.
+- Both `id` columns are generated identity primary keys; callers correctly omit them.
+- Business `verification_status` defaults to `unverified`; `is_active` defaults to true; other required Business fields omitted by the repository have defaults (including timestamps, verification flags, rating aggregates, tier and counters).
+- Membership `membership_status` defaults to `active`; timestamps default to `now()`; the repository explicitly supplies its status and creator.
+- Membership role CHECK permits `owner`; status CHECK permits `active`.
+- Membership foreign keys require valid Business and Account Identity rows; unique constraint enforces one membership per business/account.
+- Business constraints include non-empty name/slug and valid verification status; the repository's initial values satisfy those checks.
+- Neither table has user-defined triggers.
+- Existing column-level ACLs on Business are UPDATE-only for `updated_at`, `rating`, and `review_count`; no pre-existing column-level INSERT grants were present on either target table. Thus the proposed table-level INSERT revoke plus explicit column grants does not leave additional legacy column INSERT grants behind.
+
+This is a compatibility/catalog check, not a production migration dry-run. It does not validate the full outstanding migration prefix, backup/rollback readiness, or effects of migration-runner ordering.
+
+### Current decision
+
+PR #296 now has green exact-head CI and the production catalog supports the exact column contract. Keep it draft/unmerged for now because the production ledger is still at `20261109210000`, while this migration is `20261116200000`; the intervening migration prefix and its checksums/provenance have not yet been fully reconciled and qualified. Do not add it to the production pending allowlist or apply it independently.
+
+Next work is to finish deterministic production ledger↔repository reconciliation, classify the entire intervening prefix (including cutovers and retained historical provenance), and establish backup/rollback gates. Once that is complete, decide whether this small migration can be included in the next controlled prefix rollout. No production SQL or ACL was changed in this pass.
