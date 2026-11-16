@@ -784,3 +784,15 @@ No route call has been made against production. No authority row, approval, cons
 ### Qualification
 
 Exact-head CI, TypeScript build, complete test suite, and review of the request/actor binding are pending. Do not merge until all checks pass.
+
+
+### 22.1 Owner authority HTTP/TypeScript route qualification passed (2026-11-16)
+
+PR #291 code head `13923a1c538ce23aacd491d65f5bca65bbbe8c85` passed exact-head workflow `43905417391`:
+- `quality`: success, including TypeScript build, all migrations on disposable PostgreSQL, complete test suite and all existing Actor Gateway qualifications.
+- `web-quality`: success.
+- New reader tests verify the HMAC payload binds actor, action, document scope, jurisdiction and reason; the reader commits on success and rolls back on database denial.
+- New HTTP tests verify actor identity comes from the ES256 bearer token; caller-supplied actor/approver fields and extra fields are rejected; malformed scope is rejected before DB access; founder denial maps to 403; duplicate/state conflict maps to 409; missing bearer is rejected.
+- The existing disposable Actor Gateway database-principal qualification also passed with the new exact function allow-list.
+
+The route is source-level only. No production request was sent and no deployment, migration, authority assignment, approval, consent or payment write occurred. The branch is ready for final diff review and merge consideration.
