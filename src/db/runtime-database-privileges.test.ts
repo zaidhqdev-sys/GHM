@@ -108,7 +108,8 @@ test('the modeled storage metadata cutover removes exactly five legacy functions
     'ghm.storage_mark_deleted(bigint)',
     'ghm.storage_mark_deletion_pending(bigint)',
   ];
-  // This models the future ACL state only; it does not assert a production cutover artifact exists.\n  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.storageMetadata, signatures);
+  // This models the future ACL state only; it does not assert a production cutover artifact exists.
+  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.storageMetadata, signatures);
   for (let mask = 0; mask < ALL_STAGES.length; mask += 1) {
     const cutoverApplied = (mask & (1 << storageCutoverIndex)) !== 0;
     for (const signature of signatures) {
