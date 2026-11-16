@@ -24,7 +24,7 @@ const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
-const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [], founderBootstrapCreated: false };
+const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [], commercialPlanIds: [], commercialPlanVersionIds: [], commercialPriceIds: [], commercialSubscriptionIds: [], founderBootstrapCreated: false };
 const signAssertion = (accountId,operation,context={},issuedAtOverride) => {
   const issuedAt=issuedAtOverride ?? Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex');
   const payload=`ghm-actor-gateway:v2|${accountId}|${operation}|${issuedAt}|${nonce}|${contextHex}`;
@@ -431,6 +431,267 @@ try {
   }
 
 
+
+  // Exercise GHM-native customer consent and payment preparation using only
+  // synthetic approved terms in this disposable PostgreSQL database.
+  const paymentBusinessId = await createFixtureBusiness(founderAccountId, 'commercial-payment');
+  const paymentSetup = await cleanupPool.connect();
+  let paymentFixtures;
+  try {
+    await paymentSetup.query('BEGIN');
+    await paymentSetup.query('SET LOCAL ROLE ghm_schema_owner');
+    const planCode = `payment_qual_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+    const plan = (await paymentSetup.query(
+      `INSERT INTO ghm.commercial_plan (code, name, lifecycle_status)
+       VALUES ($1, 'Disposable consent payment qualification', 'active')
+       RETURNING id`,
+      [planCode],
+    )).rows[0];
+    const planVersion = (await paymentSetup.query(
+      `INSERT INTO ghm.commercial_plan_version
+         (plan_id, version, trial_days, effective_from, lifecycle_status)
+       VALUES ($1, 1, 0, now() - interval '1 day', 'active')
+       RETURNING id`,
+      [plan.id],
+    )).rows[0];
+    const currency = (await paymentSetup.query(
+      "SELECT id FROM ghm.currency WHERE code = 'ZAR' AND is_active = true LIMIT 1",
+    )).rows[0];
+    if (!currency) throw new Error('Canonical active ZAR currency is required for payment qualification');
+    const price = (await paymentSetup.query(
+      `INSERT INTO ghm.commercial_plan_price
+         (plan_version_id, currency_id, price_kind, amount_minor_units, billing_interval, effective_from, lifecycle_status)
+       VALUES ($1, $2, 'standard', 19900, 'month', now() - interval '1 day', 'active')
+       RETURNING id`,
+      [planVersion.id, currency.id],
+    )).rows[0];
+    const subscription = (await paymentSetup.query(
+      `INSERT INTO ghm.commercial_subscription
+         (business_id, plan_version_id, price_id, lifecycle_status)
+       VALUES ($1, $2, $3, 'active')
+       RETURNING id`,
+      [paymentBusinessId, planVersion.id, price.id],
+    )).rows[0];
+    const document = (await paymentSetup.query(
+      `INSERT INTO ghm.commercial_document_version
+         (document_type, document_key, version, title, content_sha256, plan_code)
+       VALUES ('subscription_terms', $1, 'qualification-v1',
+               'Disposable approved subscription terms', $2, $3)
+       RETURNING id`,
+      [`payment-terms-${randomUUID().replace(/-/g, '').slice(0, 12)}`, 'c'.repeat(64), planCode],
+    )).rows[0];
+    await paymentSetup.query(
+      `INSERT INTO ghm.commercial_document_status_event
+         (document_version_id, status, actor_account_id, source, reason)
+       VALUES ($1, 'draft', NULL, 'qualification_fixture', 'Synthetic disposable terms')`,
+      [document.id],
+    );
+    const draftDocument = (await paymentSetup.query(
+      `INSERT INTO ghm.commercial_document_version
+         (document_type, document_key, version, title, content_sha256, plan_code)
+       VALUES ('subscription_terms', $1, 'qualification-draft-v1',
+               'Disposable unapproved subscription terms', $2, $3)
+       RETURNING id`,
+      [`payment-draft-${randomUUID().replace(/-/g, '').slice(0, 12)}`, 'd'.repeat(64), planCode],
+    )).rows[0];
+    await paymentSetup.query(
+      `INSERT INTO ghm.commercial_document_status_event
+         (document_version_id, status, actor_account_id, source, reason)
+       VALUES ($1, 'draft', NULL, 'qualification_fixture', 'Synthetic draft terms')`,
+      [draftDocument.id],
+    );
+    paymentFixtures = {
+      planCode,
+      planId: Number(plan.id),
+      planVersionId: Number(planVersion.id),
+      priceId: Number(price.id),
+      subscriptionId: Number(subscription.id),
+      documentKey: (await paymentSetup.query(
+        'SELECT document_key FROM ghm.commercial_document_version WHERE id = $1',
+        [document.id],
+      )).rows[0].document_key,
+      documentVersionId: Number(document.id),
+      draftDocumentVersionId: Number(draftDocument.id),
+    };
+    fixture.commercialPlanIds.push(paymentFixtures.planId);
+    fixture.commercialPlanVersionIds.push(paymentFixtures.planVersionId);
+    fixture.commercialPriceIds.push(paymentFixtures.priceId);
+    fixture.commercialSubscriptionIds.push(paymentFixtures.subscriptionId);
+    await paymentSetup.query('COMMIT');
+  } catch (error) {
+    await paymentSetup.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    paymentSetup.release();
+  }
+
+  const paymentGateway = await gatewayPool.connect();
+  try {
+    await paymentGateway.query('BEGIN');
+    const paymentAuthority = async (action, documentKey, reason) => {
+      const context = { action, documentType: 'subscription_terms', documentKey, jurisdictionCountryId: null, reason };
+      const assertion = signAssertion(founderAccountId, 'commercial.document.authority.manage', context);
+      return paymentGateway.query(
+        'SELECT * FROM ghm.gateway_manage_commercial_document_approval_authority($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+        [founderAccountId, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature, action, 'subscription_terms', documentKey, null, reason],
+      );
+    };
+    const paymentApproval = async (documentVersionId, reason) => {
+      const context = { documentVersionId, reason };
+      const assertion = signAssertion(founderAccountId, 'commercial.document.status.approve', context);
+      return paymentGateway.query(
+        'SELECT * FROM ghm.gateway_approve_commercial_document_version($1,$2,$3,$4,$5,$6,$7)',
+        [founderAccountId, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature, documentVersionId, reason],
+      );
+    };
+    const preparePayment = async (actorId, documentVersionId, idempotencyKey, accepted = true, assertionOverride) => {
+      const context = {
+        businessId: paymentBusinessId,
+        documentVersionId,
+        countryId: null,
+        idempotencyKey,
+        providerCode: 'payfast',
+        accepted,
+        expiresAt: null,
+        requestId: null,
+      };
+      const assertion = assertionOverride ?? signAssertion(actorId, 'commercial.payment.prepare_with_consent', context);
+      return paymentGateway.query(
+        'SELECT * FROM ghm.gateway_prepare_commercial_payment_with_consent($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
+        [actorId, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature,
+          paymentBusinessId, documentVersionId, null, idempotencyKey, 'payfast', accepted, null, null],
+      );
+    };
+    const expectPaymentSqlState = async (work, code, label) => {
+      await paymentGateway.query('SAVEPOINT payment_expected_failure');
+      try {
+        await work();
+      } catch (error) {
+        if (error?.code !== code) {
+          throw new Error(`${label}: expected SQLSTATE ${code}; received ${error?.code ?? error?.message}`);
+        }
+        await paymentGateway.query('ROLLBACK TO SAVEPOINT payment_expected_failure');
+        await paymentGateway.query('RELEASE SAVEPOINT payment_expected_failure');
+        console.log(`${label}: PASS`);
+        return;
+      }
+      await paymentGateway.query('ROLLBACK TO SAVEPOINT payment_expected_failure');
+      await paymentGateway.query('RELEASE SAVEPOINT payment_expected_failure');
+      throw new Error(`${label}: operation unexpectedly succeeded`);
+    };
+
+    const granted = await paymentAuthority('grant', paymentFixtures.documentKey, 'Owner grants disposable subscription terms authority');
+    assert.equal(granted.rows[0].event_type, 'granted');
+    const approved = await paymentApproval(paymentFixtures.documentVersionId, 'Approve synthetic disposable subscription terms');
+    assert.equal(approved.rows[0].status, 'approved');
+    console.log('DISPOSABLE SUBSCRIPTION TERMS VERSION APPROVED UNDER FOUNDER AUTHORITY: PASS');
+
+    const idempotencyKey = `${fixture.marker}-consent-payment-${randomUUID()}`;
+    const prepared = await preparePayment(founderAccountId, paymentFixtures.documentVersionId, idempotencyKey);
+    assert.equal(prepared.rowCount, 1);
+    assert.equal(prepared.rows[0].attempt_status, 'pending_checkout');
+    assert.equal(prepared.rows[0].provider_code, 'payfast');
+    assert.ok(Number(prepared.rows[0].payment_attempt_id) > 0);
+    assert.ok(Number(prepared.rows[0].consent_event_id) > 0);
+    assert.equal(Number(prepared.rows[0].business_id), paymentBusinessId);
+    assert.equal(Number(prepared.rows[0].subscription_id), paymentFixtures.subscriptionId);
+    assert.equal(Number(prepared.rows[0].price_id), paymentFixtures.priceId);
+    await expectPaymentSqlState(
+      () => paymentGateway.query('SELECT id FROM ghm.commercial_consent_event LIMIT 1'),
+      '42501',
+      'ACTOR GATEWAY CANNOT READ IMMUTABLE CONSENT TABLE DIRECTLY',
+    );
+    console.log('ATOMIC APPROVED-DOCUMENT CONSENT AND PAYMENT ATTEMPT PREPARATION: PASS');
+
+    const retry = await preparePayment(founderAccountId, paymentFixtures.documentVersionId, idempotencyKey);
+    assert.equal(Number(retry.rows[0].payment_attempt_id), Number(prepared.rows[0].payment_attempt_id));
+    assert.equal(Number(retry.rows[0].consent_event_id), Number(prepared.rows[0].consent_event_id));
+    console.log('CONSENT + PAYMENT PREPARATION IDEMPOTENCY RETURNS ORIGINAL EVIDENCE: PASS');
+
+    await expectPaymentSqlState(
+      () => preparePayment(founderAccountId, paymentFixtures.draftDocumentVersionId, idempotencyKey),
+      'P0001',
+      'IDEMPOTENCY KEY CANNOT BE TRANSPLANTED TO ANOTHER DOCUMENT VERSION',
+    );
+    await expectPaymentSqlState(
+      () => preparePayment(founderAccountId, paymentFixtures.documentVersionId, `unaccepted-${randomUUID()}`, false),
+      '22023',
+      'PAYMENT PREPARATION REQUIRES EXPLICIT ACCEPTANCE',
+    );
+    await expectPaymentSqlState(
+      () => preparePayment(activeAccountId, paymentFixtures.documentVersionId, `nonmember-${randomUUID()}`),
+      '42501',
+      'NON-MEMBER CANNOT RECORD COMMERCIAL CONSENT OR PREPARE PAYMENT',
+    );
+    await expectPaymentSqlState(
+      () => preparePayment(founderAccountId, paymentFixtures.draftDocumentVersionId, `draft-doc-${randomUUID()}`),
+      '42501',
+      'UNAPPROVED DOCUMENT VERSION CANNOT BE ACCEPTED FOR PAYMENT',
+    );
+
+    const forgedContext = {
+      businessId: paymentBusinessId,
+      documentVersionId: paymentFixtures.documentVersionId,
+      countryId: null,
+      idempotencyKey: `forged-${randomUUID()}`,
+      providerCode: 'payfast',
+      accepted: true,
+      expiresAt: null,
+      requestId: null,
+    };
+    const forged = signAssertion(founderAccountId, 'commercial.payment.prepare_with_consent', forgedContext);
+    forged.signature = '0'.repeat(64);
+    await expectPaymentSqlState(
+      () => preparePayment(founderAccountId, paymentFixtures.documentVersionId, forgedContext.idempotencyKey, true, forged),
+      '42501',
+      'FORGED COMMERCIAL PAYMENT PREPARATION ASSERTION IS DENIED',
+    );
+
+    const replayKey = `${fixture.marker}-replay-${randomUUID()}`;
+    const replayContext = {
+      businessId: paymentBusinessId,
+      documentVersionId: paymentFixtures.documentVersionId,
+      countryId: null,
+      idempotencyKey: replayKey,
+      providerCode: 'payfast',
+      accepted: true,
+      expiresAt: null,
+      requestId: null,
+    };
+    const replayAssertion = signAssertion(founderAccountId, 'commercial.payment.prepare_with_consent', replayContext);
+    await preparePayment(founderAccountId, paymentFixtures.documentVersionId, replayKey, true, replayAssertion);
+    await expectPaymentSqlState(
+      () => preparePayment(founderAccountId, paymentFixtures.documentVersionId, replayKey, true, replayAssertion),
+      '42501',
+      'REPLAYED COMMERCIAL PAYMENT PREPARATION ASSERTION IS DENIED',
+    );
+    console.log('GHM-NATIVE COMMERCIAL CONSENT/PAYMENT PREPARATION BEHAVIORAL QUALIFICATION: PASS');
+  } finally {
+    await paymentGateway.query('ROLLBACK').catch(() => {});
+    paymentGateway.release();
+  }
+  const paymentRollbackCheck = await cleanupPool.connect();
+  let paymentRollbackEvidence;
+  try {
+    await paymentRollbackCheck.query('BEGIN');
+    await paymentRollbackCheck.query('SET LOCAL ROLE ghm_schema_owner');
+    paymentRollbackEvidence = await paymentRollbackCheck.query(
+      `SELECT
+         (SELECT count(*)::int FROM ghm.commercial_payment_attempt WHERE idempotency_key LIKE $1) AS attempts,
+         (SELECT count(*)::int FROM ghm.commercial_consent_event WHERE idempotency_key LIKE $1) AS consents,
+         (SELECT count(*)::int FROM ghm.commercial_event WHERE idempotency_key LIKE $1) AS events`,
+      [`${fixture.marker}%`],
+    );
+    await paymentRollbackCheck.query('ROLLBACK');
+  } catch (error) {
+    await paymentRollbackCheck.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    paymentRollbackCheck.release();
+  }
+  assert.deepEqual(paymentRollbackEvidence.rows[0], { attempts: 0, consents: 0, events: 0 });
+  console.log('DISPOSABLE COMMERCIAL CONSENT/PAYMENT QUALIFICATION WRITES ROLLED BACK: PASS');
+
   const disabledAccountId = await createFixtureAccount(`${fixture.marker}-disabled`, 'disabled');
   const otherOwnerAccountId = await createFixtureAccount(`${fixture.marker}-other-owner`);
   const businessId = await createFixtureBusiness(activeAccountId, 'primary');
@@ -760,6 +1021,18 @@ try {
       'DELETE FROM ghm.business_external_mapping WHERE business_id = ANY($1::bigint[])',
       [fixture.businessIds],
     );
+    if (fixture.commercialSubscriptionIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_subscription WHERE id = ANY($1::bigint[])', [fixture.commercialSubscriptionIds]);
+    }
+    if (fixture.commercialPriceIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_plan_price WHERE id = ANY($1::bigint[])', [fixture.commercialPriceIds]);
+    }
+    if (fixture.commercialPlanVersionIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_plan_version WHERE id = ANY($1::bigint[])', [fixture.commercialPlanVersionIds]);
+    }
+    if (fixture.commercialPlanIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_plan WHERE id = ANY($1::bigint[])', [fixture.commercialPlanIds]);
+    }
     await cleanupPool.query(
       'DELETE FROM ghm.business WHERE id = ANY($1::bigint[])',
       [fixture.businessIds],
