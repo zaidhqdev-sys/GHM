@@ -16,6 +16,7 @@ test('owner authority is derived only from the canonical founder bootstrap singl
   assert.match(migration, /ai\.is_system_admin = true/);
   assert.match(migration, /pc\.account_id = p_actor/);
   assert.match(migration, /pc\.login_email_normalized = 'zaidhqdev@gmail\.com'/);
+  assert.match(migration, /pc\.credential_status = 'active'/);
   assert.doesNotMatch(migration, /p_target_account_id|p_approver_account_id/);
 });
 
