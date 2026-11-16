@@ -1732,3 +1732,16 @@ Correction commits:
 - `5f17b61796389e1d10361c7de45ee6601e4dada5` — assert this contract in tests.
 
 This correction is included before merge. The earlier CI run on `84a5fe4` does not validate these later changes; a fresh exact-head CI run is required. Do not merge on the earlier green results.
+
+
+### Follow-up validation fixes and current exact-head CI
+
+A further source review caught an incorrectly escaped version-validation regular expression in the new pure batch validator. It was corrected so version identifiers are checked as exactly 14 decimal digits.
+
+- Fix commit: `1ba40df6d54b2545afc01264edc83ef28f69c66f`.
+- Cloudflare Pages preview: passed.
+- Exact-head workflow run 43953137530:
+  - `quality`: in progress.
+  - `web-quality`: in progress.
+
+The preceding run on code commit `5f17b61` was cancelled while commits were arriving; it is not counted as a result. The current run is on the corrected code head. PR #297 remains draft and unmerged.
