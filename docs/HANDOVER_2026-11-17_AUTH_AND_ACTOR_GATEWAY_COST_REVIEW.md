@@ -169,3 +169,61 @@ Therefore:
 - The prior recommendation to add a new ordered migration is withdrawn. The actual remaining dependency is deployment sequencing and a supported production administrator cutover, not absence of revocation SQL.
 
 No source code or production state was changed by this follow-up. No Render service was created and no spend occurred.
+
+
+## Actor Gateway qualification and deployment-readiness pass — 2026-11-17
+
+### Exact-head CI evidence
+
+The current PR #297 head `766ce84b6a9188fb91117033ca33b75de6f62207` completed GitHub Actions CI run `43980566967` (run #5220) successfully.
+
+- `quality`: passed.
+- `web-quality`: passed.
+- The quality job executed the disposable PostgreSQL step **“Qualify capability legacy RPC cutover and gateway-only access”** successfully (job step 53), in addition to applying all repository migrations to disposable PostgreSQL, Actor Gateway principal qualification, the gateway worker smoke test, all other gateway cutover qualifications, and the full test suite.
+- This is exact-head CI evidence for the repository's disposable test environment. It is not production database ACL evidence and does not authorize production DDL or cutover.
+
+### Dedicated Render Actor Gateway service contract rechecked
+
+The existing selected host remains one dedicated, always-on Render Web Service in Frankfurt. The existing code contract is:
+- Build: `npm ci --include=dev && npm run build`.
+- Start: `npm run start:actor-gateway`.
+- Health: `GET /healthz`.
+- Auto-deploy: OFF; manual controlled deploy.
+- Database: private/internal Render PostgreSQL URL, connecting as `ghm_actor_gateway`.
+- Runtime client target: set `GHM_ACTOR_GATEWAY_URL` on GHM-Internal-Runtime only after the gateway's HTTPS origin and authenticated routes have been verified.
+
+The gateway server fails startup unless these environment values are supplied:
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` (canonical base64 for exactly 32 bytes, consistent with the gateway reader constructors)
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM`
+- `GHM_JWT_ES256_KID`
+- `DATABASE_SSL_MODE=internal` for the same-region private Render database connection (or explicitly `external` only if the external database route is deliberately used).
+- Render supplies `PORT`; the server defaults to 10000 only when absent.
+
+Optional previous JWT verification key values must be supplied as a pair:
+- `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM`
+- `GHM_JWT_ES256_PREVIOUS_KID`
+
+The gateway uses public JWT verification material only; it must not receive the ES256 private signing key. The assertion secret is separate from JWT verification material and must never be placed in source, logs, chat, or handover. Do not paste secrets into PowerShell command history; enter them directly in the Render secret fields.
+
+At startup, the server checks `session_user=current_user=ghm_actor_gateway`, login/noinherit and all restricted role attributes/membership options, then checks the exact approved database function allowlist, schema/relation privileges, PUBLIC/runtime function access, SECURITY DEFINER ownership/search_path, and grant-option boundaries. A missing or extra function causes startup failure. This means the production migration chain must install the complete reviewed API and exact ACL before service startup can succeed; installing only the first gateway principal guard is insufficient.
+
+### Current gates and disposition
+
+1. **Code qualification:** exact-head CI passed, including the capability manual-cutover qualification.
+2. **Production migration/ACL:** still outstanding. The last recorded production catalogue showed no gateway functions and no schema USAGE for the gateway login. That is historical evidence; obtain a fresh administrator-authorized report before planning execution.
+3. **Production backup:** November 14 Render logical export has passed local PostgreSQL 18.6 restore validation. Obtain a fresh export/restore point before any production DDL or grants.
+4. **Administrator ledger access:** still outstanding. The Dashboard Default credential was confirmed not to have SELECT on the migration ledger. Use the supported Render administrator route or administrator-assisted report; do not elevate app roles to work around it.
+5. **Hosting:** no `ghm-actor-gateway` Render service exists. The previously approved maximum incremental hosting allocation remains USD 7/month for this one dedicated service only. It has not been spent. No second service or provider is approved.
+6. **Deployment and application cutover:** not performed. No gateway secret, DB credential reset, Render environment variable, service, deployment, production migration, or manual cutover was changed.
+
+### Next bounded sequence
+
+- Obtain the supported production administrator ledger and ACL report and verify the live gateway principal, ownership and membership state.
+- Refresh the production backup and retain the existing verified November 14 restore artifact.
+- Select and qualify the smallest contiguous production migration prefix that installs the complete gateway API and all signed assertion dependencies; keep the production batch manifest empty until exact inventory/ledger evidence supports that selection.
+- When the production migration/backup gates pass, provision the already-approved dedicated Render service, with auto-deploy OFF, and supply the secrets directly in its settings.
+- Verify startup ACL assertions, `/healthz`, JWT-authenticated operation tests, negative authorization cases, and restart behavior.
+- Only then configure `GHM_ACTOR_GATEWAY_URL` on GHM-Internal-Runtime, deploy that runtime manually, verify real capability routes, and execute the documented manual legacy-function cutover through the supported administrator process.
+
+No production state, Render service, credential, secret, environment variable, migration, grant, deployment or payment setting was changed by this readiness review. No recurring cost was incurred.
