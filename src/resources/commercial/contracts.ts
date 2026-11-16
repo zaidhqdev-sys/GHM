@@ -22,7 +22,7 @@ export type CommercialSubscriptionLifecycle = 'trialing' | 'active' | 'past_due'
 export type CommercialPaymentAttemptLifecycle = 'pending_checkout' | 'pending_payment' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
 export type CommercialPaymentTransactionKind = 'payment' | 'refund' | 'reversal' | 'chargeback';
 export type CommercialPaymentTransactionStatus = 'pending' | 'succeeded' | 'failed';
-export type CommercialProviderCode = string & { readonly __commercialProviderCode: unique symbol };
+export type CommercialProviderCode = string;
 
 export type CommercialEventType =
   | 'trial_activated'
