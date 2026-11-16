@@ -298,3 +298,33 @@ The Connect PR #68 payment-freeze and Milestone 52 contract checks are therefore
 - Preserve all commercial launch and online subscription activation freezes. The PayFast sandbox account does not change production authorization.
 
 **Audit scope:** read-only source and documentation inspection plus owner-reported account setup. No application secrets, environment variables, source code, payment settings, database state, deployment, or provider transactions were changed.
+
+
+## 12. Owner clarification — provider-neutral payment architecture and PayFast as current provider
+
+The owner clarified the intended architecture and current provider decision on 2026-11-16:
+
+**ZAID Technologies must remain payment-provider-neutral and must not be architecturally bound to Paystack, PayFast, Stripe, or any single provider.** GHM owns the canonical commercial/payment lifecycle and provider adapters are replaceable integration boundaries. Provider choice may change as commercial availability, support, geography, pricing, and operational suitability change.
+
+Current operational decision:
+- Paystack did not respond to the owner's contact; it is therefore not the current selected provider.
+- The owner has moved to PayFast and has successfully set up the PayFast sandbox merchant account.
+- Stripe was not pursued because the owner understood that account eligibility required being based in the EU or America.
+- PayFast is the current provider candidate for the next isolated provider-adapter qualification. This is not authorization for a real transaction, production credential configuration, or commercial launch.
+
+Architecture requirements:
+1. Keep canonical payment attempts, subscription state, entitlements, settlement decisions, idempotency, and audit records provider-neutral and owned by GHM.
+2. Isolate provider-specific checkout initialization, signature verification, event normalization, transaction references, and provider timestamps behind an adapter contract.
+3. Provider changes must not require replacing the canonical commercial lifecycle or migrating business subscription ownership to the provider.
+4. Do not interpret the historical Connect Milestone 52 Paystack implementation or its TEST evidence as a permanent provider lock. Reconcile its approval/documentation to the provider-neutral architecture; preserve the technical evidence as historical Paystack adapter evidence only.
+5. Keep Connect's commercial launch and online subscription activation freezes unchanged. PayFast sandbox account setup does not authorize production activation.
+6. Keep Connect PR #33 disabled/unmerged because its Supabase identity and legacy Render sandbox dependencies remain incompatible, regardless of provider choice.
+7. Keep GHM PR #233 parked until PayFast sandbox evidence establishes the actual `payment_date` timezone semantics; do not infer these from Paystack or assume providers share timestamp formats.
+
+Next engineering sequence:
+- Reconcile Connect's current mainline Milestone 52 and PR #68 language so provider neutrality is explicit and PayFast is the currently selected adapter, without erasing historical Paystack verification evidence.
+- Inspect GHM's current PayFast adapter and settlement/ITN contract against the provider-neutral GHM lifecycle, identify gaps, and qualify them using disposable CI/local PostgreSQL and controlled test doubles.
+- Only after the native GHM path, identity/business authorization, callback authenticity, idempotency, failure handling, and timestamp semantics are qualified should a separate owner-approved PayFast sandbox round-trip be considered.
+- Never use the legacy Render sandbox services/database or production `ghm_db` for sandbox testing. Do not configure credentials or initiate a payment until the isolated GHM-native test path and explicit test authorization are ready.
+
+No provider credentials, environment variables, source code, database state, hosting resources, payment settings, or commercial launch flags were changed by this clarification. This section records the owner's provider strategy and the revised engineering gate.
