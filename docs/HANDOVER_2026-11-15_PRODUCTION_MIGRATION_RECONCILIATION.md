@@ -1048,3 +1048,65 @@ Before broadening this endpoint or treating the fields as enforcement, reconcile
 No migration batch is approved for production by this section. Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset and do not run `npm run migrate`. The fresh verified production backup, Amanda/Render administrator-role separation, production Actor Gateway/Resource API deployment and secrets, dedicated non-production provider end-to-end test, and exact storage ACL cutover/rollback remain independent gates.
 
 No production database, role/grant, secret, Render/Cloudflare setting, service, deployment, bucket, object, or application data was changed during this correction. Preserve the untracked local `.bak` file.
+
+
+
+## 41. Next contiguous gateway/capability migration chain review (2026-11-16 00:12 UTC)
+
+### Exact-head CI and PR state
+
+- PR #285 remains OPEN, DRAFT and UNMERGED.
+- Exact current head before this handover update: `7ba77c22577e7814f5872cb3b6f454ff8ca27b01`.
+- CI workflow #5034, run ID `43777685857`, completed SUCCESS; `quality` and `web-quality` both passed.
+- This confirms the correction in section 40. It does not qualify the next documentation commit until its own workflow completes.
+
+### Migrations 5–14: governance and gateway foundation
+
+Reviewed the next ordered migration files after the first four, through `20261110270000_gateway_business_profile_update`, plus the later signed-assertion migrations `20261111020000` and `20261111050000`–`20261111060000`.
+
+**5 — `20261110160000_add_admin_capability_catalogue_governance`**
+- Creates three SECURITY DEFINER catalogue mutation functions with a pinned `pg_catalog, ghm` search path, owner `ghm_schema_owner`, and explicit runtime EXECUTE grants.
+- These legacy functions accept a caller-supplied account ID and independently check that it is an active admin/system admin. Because the shared runtime credential can invoke them directly, those grants are a known transitional actor-spoofing path; HTTP role checks do not protect direct SQL callers.
+- This is not an unrecorded defect: the authoritative capability governance handover explicitly tracks it, the exact three signatures are in the reviewed runtime allow-list/manual-cutover group, and the separate manual cutover SQL revokes them from PUBLIC, runtime, migrator and gateway login.
+- The signed capability gateway wrappers are added later and then upgraded to the v2 request-context-bound HMAC assertion. The disposable cutover qualification proves all three legacy runtime calls are denied while gateway list/create/update/transition still work. **Do not run the manual cutover in production until the gateway deployment and admin route end-to-end checks pass and the backup/Render role gates are cleared.**
+
+**6 — `20261110210000_add_actor_gateway_principal_guard`**
+- Fails closed unless the isolated `ghm_actor_gateway` LOGIN is NOINHERIT and has no superuser/createdb/createrole/replication/bypass-RLS attributes.
+- The exact intended membership is one bounded administrative membership: `ghm_db_user` is a member of `ghm_actor_gateway` with ADMIN OPTION true, INHERIT false, SET false; no other membership involving the gateway is accepted.
+- This resolves an important interpretation in the Render role discussion: the presence of the `ghm_db_user → ghm_actor_gateway` ADMIN OPTION membership is an intentional guard prerequisite, not by itself evidence of an unintended runtime inheritance path. Whether production currently matches the complete exact guard remains unverified; do not improvise a revoke. Follow Amanda/Render support and perform a read-only catalog check only after the backup/support gates are satisfied.
+- The initial `assert_actor_gateway(bigint)` proves only the database login and active account. It is not sufficient actor identity proof by itself; later signed assertion migrations upgrade feature wrappers.
+
+**7–8 — `20261110220000`, `20261110230000`, `20261110233000`**
+- Add gateway-only actor self-identity read and Business registration identity read/write wrappers.
+- Registration legacy RPC grants are intentionally retained during the staged API transition. The later signed assertion chain upgrades these wrappers to cryptographic actor proof.
+- Migration 102330 also fixes the legacy registration upsert's ambiguous conflict target by naming its primary-key constraint. This is a functional SQL correction, not a new authority grant.
+
+**9 — `20261110240000_enforce_capability_catalogue_cross_row_invariants`**
+- Adds a SECURITY DEFINER trigger enforcing serialized hierarchy/cycle/replacement invariants and immutable published slugs. The trigger function is owned by schema owner, pinned search path, and EXECUTE revoked from PUBLIC/runtime/gateway. Trigger execution does not require application-role direct EXECUTE.
+- The transaction-scoped advisory lock deliberately serializes hierarchy writes; review performance impact under expected catalogue write volume before future high-volume use, but it is an administrative low-frequency operation.
+
+**10–11 — `20261110250000_add_gateway_capability_governance`, `20261110260000_gateway_supplier_classification_cutover`**
+- Add gateway-only wrappers. At this intermediate stage the wrappers use the original login-only assertion and the legacy capability RPCs remain callable by runtime pending the manual cutover.
+- Supplier legacy runtime EXECUTE is revoked by the supplier cutover migration; the signed wrapper is subsequently upgraded to v2 context-bound assertion.
+- Do not deploy a Worker against the intermediate login-only interfaces. The final Worker/client and database wrappers must be released as a compatible v2 context-bound contract.
+
+**12–14 — `20261110265000_reconcile_business_profile_legacy_contract`, `20261110270000_gateway_business_profile_update`, then signed binding migrations**
+- Reconcile the profile function contract and add a gateway-only wrapper; the original runtime RPC remains until its separately governed cutover.
+- `20261111020000` introduces the capability HMAC verifier, short-lived one-use nonce and signed capability operations.
+- `20261111050000` upgrades actor identity and registration identity wrappers to signed assertions.
+- `20261111060000` upgrades the assertion to v2 and binds the HMAC to canonical request context / exact operation arguments, including capability list/create/update/transition, supplier classification, Business profile, actor identity and registration read/write. The current Actor Gateway readers construct this v2 assertion. This is the final contract; do not expose intermediate wrapper overloads.
+
+### Manual cutover evidence and limits
+
+- Capability manual cutover file: `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql`. It is deliberately outside `database/migrations`; it must remain a separately authorized manual operation after the API is deployed and verified.
+- Its disposable qualification uses three distinct runtime, gateway and migrator connections on localhost `ghm_disposable_test`, applies the cutover, proves direct runtime and gateway calls to all three legacy functions are denied, proves signed gateway list/create/update/transition remain functional, and verifies effective runtime EXECUTE is false for legacy and gateway wrappers.
+- The runtime privilege verifier explicitly models this as one of the independently qualified manual cutover groups (512 reviewed combinations across nine groups). Do not change the allow-list or treat the group as already cut over in production.
+- The signed assertion secret is protected from runtime/gateway table reads; the gateway signs with its separately provisioned secret and PostgreSQL verifies it. The Worker must not receive the ES256 private key or issuer database credentials.
+
+### Decision / next review boundary
+
+The next contiguous migration chain has explicit gateway foundations and later signed wrappers, plus a separately rehearsed capability legacy-grant cutover. No new production-ready batch is established: the gateway deployment topology is still not qualified under the no-additional-spend constraint, the production backup/recovery point is missing, and Render-supported role authority remains unresolved. Keep all production batch input unset, do not run `npm run migrate`, and do not apply any manual cutover.
+
+Next repository review should continue with the signed Business Capability mutation / Saved Business / Business Hours / Trust Score / Business Logo sequence and their separate runtime grant cutovers, without repeating already completed capability or storage work.
+
+No production database, migration ledger, role/grant, secret, Render/Cloudflare resource, service, deployment, provider bucket/object or application data was changed during this review. Preserve the untracked local `.bak` file.
