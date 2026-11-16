@@ -1519,3 +1519,42 @@ Direct source review of `src/db/production-migration-batch.ts` and `src/db/migra
 The Issuer and Actor Gateway source integration is already merged through PR #276 and present on current main. Remaining work is to verify the migration branch's compatibility with that merged source, complete the runner's semantic stop-boundary enforcement, and satisfy non-production E2E plus the existing production backup, Amanda/Render role-authority, network/TLS and no-additional-cost gates. Do not create another architecture branch or repeat the merged implementation.
 
 No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
+
+## 51. Cutover checkpoint matrix — correct route status and runner-guard design boundary (2026-11-16 01:24 UTC)
+
+### Exact CI and repository state
+
+- Exact-head workflow #5045, run ID `43785227607`, completed SUCCESS on commit `0435ead125340facd5d20babe8e3e0bd806f3e0f`; both `quality` and `web-quality` passed.
+- PR #285 remains OPEN, DRAFT and UNMERGED at that head.
+- PR #276 is merged and its isolated Issuer/Actor Gateway source is present on the PR #285 base. Do not create duplicate Issuer/Gateway implementation.
+
+### Correction — capability API routing is already in source
+
+The exact PR-head source was checked:
+- `src/http/capability-catalogue-router.ts` sends all four administrative capability catalogue operations (list, create, update, transition) through `CapabilityGovernanceGatewayClient`; missing gateway returns 503 and there is no legacy repository fallback for these admin operations.
+- `src/http/app.ts` constructs `HttpCapabilityGovernanceGatewayClient` from the configured Actor Gateway origin and injects it into the capability catalogue router.
+- `src/actor-gateway/server.ts` wires `PostgresCapabilityGovernanceReader`; `src/actor-gateway/app.ts` exposes the authenticated capability administration routes.
+- `PgCapabilityRepository` still contains the historical direct legacy mutation methods, but the administrative HTTP routes do not call those methods in this source snapshot. Do not describe the capability HTTP route integration as missing. Its production deployment and end-to-end operation are still unproven.
+
+### Why a single migration-5 stop is not a complete runner design
+
+- Capability migration `20261110160000` creates the three legacy caller-account-ID SECURITY DEFINER functions and grants runtime EXECUTE. The final signed v2 capability wrappers are installed by `20261111060000_bind_gateway_assertions_to_request_context`. The separate manual capability cutover then revokes the legacy runtime functions after the deployed gateway/admin routes are end-to-end verified.
+- Storage migration `20261110140000_allow_pending_storage_object_cleanup` is even earlier in the pending prefix. The signed storage wrapper/provider-attestation migrations are `20261112140000` and `20261112150000`. The authoritative storage design records that the five-function legacy grant cutover has only been rehearsed on disposable PostgreSQL; no production revocation has occurred. The production Resource API runtime is older than the gateway-required source and the provider end-to-end journey remains outstanding.
+- Therefore simply refusing to run migration 5 until the capability cutover is complete, or refusing to run anything after migration 4 until the storage cutover is complete, would prevent the ordered migration chain from reaching the later wrapper definitions needed for those cutovers. Do not add a simplistic static stop that creates this deadlock, and do not bypass exact-prefix or migration-ledger rules to work around it.
+- The capability and storage groups are not the only manual boundaries. `src/db/runtime-database-privileges.ts` defines nine independently qualified manual cutover groups: campaign/directory review, Authentication Issuer, registration identity, capability governance, Business Capability mutations, Saved Business, Business Hours, Trust Score and Business Logo. Its existing 512-stage allow-list models exact effective runtime SECURITY DEFINER EXECUTE combinations from the disposable baseline; production enforcement is explicitly gated until production catalog evidence is captured and reconciled.
+
+### Required runner-guard design before implementation
+
+The guard must be a migration-aware checkpoint matrix, not one global version stop:
+1. Map each of the nine manual cutover groups to (a) the exact migration that first creates/re-grants legacy authority, (b) the final signed replacement-wrapper migration, (c) the manual cutover SQL and rollback, and (d) the exact effective ACL state required after cutover.
+2. Preserve contiguous-prefix and maximum-five semantics. Allow only the documented bridge prefix needed to install a group's final signed wrappers; once that group's wrapper boundary is reached, block later migrations until live catalog inspection proves the corresponding legacy runtime/PUBLIC/migrator/gateway grants are gone and the required replacement gateway grants remain.
+3. Where bridge migrations leave a legacy grant temporarily active, explicitly document the required release order and traffic/maintenance conditions. A caller-controlled environment variable is not evidence of a deployed route or completed cutover.
+4. Reuse the exact function signatures and group definitions already present in `runtime-database-privileges.ts`, but do not assume its disposable baseline is production evidence. Capture and reconcile the production catalog through the approved read-only process before relying on its stage allow-list for production.
+5. Add pure unit tests for each blocked/permitted boundary and disposable PostgreSQL tests proving effective ACL inspection rejects a legacy grant and accepts only the exact post-cutover ACL state. Keep manual cutover SQL outside the automatic migration runner.
+6. Treat storage separately: its current five-function cutover is a disposable rehearsal, not an approved production script. Reconcile the authoritative storage design and rollback/traffic-drain procedure before claiming a machine-verifiable storage cutover stage.
+
+### Current disposition
+
+No runner code was changed in this continuation because the source confirms that a single migration-5 stop or migration-4 stop would deadlock the strict ordered chain. The correct next repository task is to finish the nine-group migration/cutover checkpoint matrix and then implement/test the guard against that matrix. This is repository-only work; production remains NO-GO under the existing no-additional-cost, backup/recovery, Amanda/Render role-authority, network and deployment constraints.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, deployment, storage object or application data was changed. Preserve the local untracked `.bak` file.
