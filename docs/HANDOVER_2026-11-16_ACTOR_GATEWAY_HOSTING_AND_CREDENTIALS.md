@@ -447,3 +447,37 @@ The next-stage review compared GHM commercial schema/repository/authentication w
 5. Only after this boundary is qualified should the Connect UI migrate from Supabase consent/payment RPCs to the GHM route. Keep Connect PR #68's commercial writes hidden while the gate is unresolved.
 
 **Decision:** Stage 2 identity route is not yet opened as a write-enabled PR because its required consent/audit contract is absent from GHM and the approved document versions are not established. This is a concrete migration dependency, not a hosting or provider limitation. No code, migration, credentials, database, deployment, payment attempt or consent record was changed during this review.
+
+
+## 16. PR #288 — commercial consent evidence foundation (2026-11-16)
+
+Opened PR #288:
+- PR: https://github.com/zaidhqdev-sys/GHM/pull/288
+- Branch: `feat/commercial-consent-evidence-foundation-20261116`
+- Current head: `0fefd0b489e4c1608b014dcc84a964c8e6ccab2e`
+- Migration: `database/migrations/20261116150000_create_commercial_consent_evidence.sql`
+- Contract test: `src/db/commercial-consent-evidence-migration-contract.test.ts`
+- Standard test command includes the new compiled contract test.
+
+### Schema contents
+- Immutable `ghm.commercial_document_version` catalogue, keyed by document type/key/version and exact SHA-256 content hash.
+- Append-only `ghm.commercial_document_status_event` for draft/approved/withdrawn/superseded lifecycle evidence. Insertion alone does not approve a document.
+- Append-only `ghm.commercial_consent_event` linking canonical Business, account, exact document version, explicit accepted action, timestamp, source/context, request ID and unique idempotency key.
+- Shared trigger function rejects UPDATE, DELETE and TRUNCATE on all three evidence tables.
+- Approval actor account uses RESTRICT deletion semantics so immutable actor evidence cannot be silently rewritten by FK cascades.
+- No legal document content, document hash, approved version, or consent row is seeded.
+- No `ghm_runtime`, `ghm_actor_gateway`, or PUBLIC read/write grants are given. Only `ghm_migrator` receives table/sequence privileges. The authenticated read/write boundary is intentionally deferred until it can be tied to verified actor authority and approved document state.
+
+### Qualification status
+- PR #288 marked ready for review to trigger exact-head CI.
+- `web-quality` passed on initial PR head `0033099251a9a3fa1be91c4308162f8040e78c49`.
+- `quality` was still running at last inspection; it had reached the TypeScript Build step with no reported failures.
+- A one-line follow-up changed document status-event actor FK deletion from SET NULL to RESTRICT, producing current head `0fefd0b489e4c1608b014dcc84a964c8e6ccab2e`. Exact-head CI for this follow-up must be confirmed before merge; the in-flight run above was created against the preceding head.
+- Do not merge until the exact current head has full CI, including all migrations applied to disposable PostgreSQL and test suite.
+
+### Remaining boundaries
+- This PR is schema foundation only. It does not add an authenticated consent write/read API or payment-preparation route.
+- It does not establish who is authorised to approve legal terms or which Trial/subscription documents are currently approved.
+- The Connect legacy identifiers `za-business-pro-trial-v1` and `za-business-pro-subscription-v1` are historical UI constants, not approved GHM document records.
+- Keep commercial trial/payment writes unavailable until the document approval governance and transactional actor-authenticated consent + payment-preparation path are qualified.
+- No production migration, database mutation, role/grant change, credential, deployment, checkout, provider transaction or commercial launch flag change occurred.
