@@ -37,10 +37,13 @@ const assertionContext = (operation,args) => {
   if(operation==='business.registration.update') return {businessId:args[0],registrationStatus:args[1],registrationNumber:args[2],legalName:args[3]};
   throw new Error(`Unsupported qualification operation: ${operation}`);
 };
-const gatewayCall = (accountId,operation,sql,args=[]) => {
-  const a=signAssertion(accountId,operation,assertionContext(operation,args));
+const gatewayCallWithAssertion = (accountId,a,sql,args=[]) => {
   const shiftedSql=sql.replace(/\$(\d+)/g,(_match,n)=>'$'+(Number(n)>=4?Number(n)+1:Number(n))).replace(/\(\$1,\$2,\$3,\$5/,()=> '($1,$2,$3,$4,$5');
   return gatewayPool.query(shiftedSql,[accountId,a.issuedAt,a.nonce,a.context,a.signature,...args]);
+};
+const gatewayCall = (accountId,operation,sql,args=[]) => {
+  const a=signAssertion(accountId,operation,assertionContext(operation,args));
+  return gatewayCallWithAssertion(accountId,a,sql,args);
 };
 
 const identity = async (pool, expectedUser) => {
@@ -291,6 +294,27 @@ try {
   const nonceCheck=await cleanupPool.connect();
   try { await nonceCheck.query('BEGIN'); await nonceCheck.query('SET LOCAL ROLE ghm_schema_owner'); const retained=await nonceCheck.query('SELECT expires_at > clock_timestamp() + interval \'58 seconds\' AS retained FROM ghm.actor_gateway_capability_assertion_nonce WHERE nonce=$1',[boundaryAssertion.nonce]); assert.equal(retained.rows[0]?.retained,true); await nonceCheck.query('COMMIT'); } catch(e) { await nonceCheck.query('ROLLBACK').catch(()=>{}); throw e; } finally { nonceCheck.release(); }
   console.log('NONCE RETENTION COVERS FULL ASSERTION ACCEPTANCE WINDOW PASS');
+  await expectSqlState(
+    () => gatewayCallWithAssertion(activeAccountId,boundaryAssertion,
+      'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)'),
+    '42501',
+    'REPLAYED SIGNED ACTOR ASSERTION IS DENIED',
+  );
+  const expiredAssertion=signAssertion(activeAccountId,'actor.identity.read',{},Math.floor(Date.now()/1000)-61);
+  await expectSqlState(
+    () => gatewayCallWithAssertion(activeAccountId,expiredAssertion,
+      'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)'),
+    '42501',
+    'EXPIRED SIGNED ACTOR ASSERTION IS DENIED',
+  );
+  const futureAssertion=signAssertion(activeAccountId,'actor.identity.read',{},Math.floor(Date.now()/1000)+65);
+  await expectSqlState(
+    () => gatewayCallWithAssertion(activeAccountId,futureAssertion,
+      'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)'),
+    '42501',
+    'FUTURE-DATED SIGNED ACTOR ASSERTION IS DENIED',
+  );
+
 
   const forgedSelf=signAssertion(activeAccountId,'actor.identity.read',{});
   await expectSqlState(
