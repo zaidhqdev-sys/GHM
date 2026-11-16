@@ -1953,3 +1953,27 @@ Implemented a dedicated integration qualification path for the actual compiled m
 Source commits on PR branch include runner qualification guard, integration script, package command and CI step. This is implementation committed but not yet proven: the new exact-head CI run must pass before calling the scenarios qualified. No production batch was added; `config/production-migration-batches.json` remains `{"batches":[]}`. No production migration, DDL, role, ACL, credential, secret, Render setting/deployment, payment or consent state changed.
 
 Potential follow-up during CI: if the isolated runner's strict principal checks expose a fixture mismatch, fix the test fixture rather than weakening production identity assertions.
+
+### Disposable PostgreSQL batch-runner qualification passed — 2026-11-16 22:08Z
+
+Exact implementation head `18b0c3280d3b9443777e66fd021cb0eeb702c2b5` completed GitHub Actions run `43966629021` successfully. Both `quality` and `web-quality` passed.
+
+The `quality` job explicitly passed the new step `Qualify production migration batch runner on isolated disposable PostgreSQL databases`, as well as:
+- Build.
+- Apply all migrations to disposable PostgreSQL.
+- Full test suite.
+- Existing database-principal, gateway, storage, capability, supplier, Business profile, payment-settlement identity and auth-issuer qualification steps.
+- Migration audit policy tests and runtime boundary verification.
+
+The new runner qualification script's entire scenario sequence completed with exit status 0:
+- Plan-only reports the selected batch and leaves no ledger writes or DDL.
+- Empty manifest / missing batch is refused.
+- Stale pending inventory is refused.
+- Non-prefix selection is refused.
+- Explicit contiguous prefix executes only its two selected migrations.
+- Injected SQL error rolls back both DDL and ledger rows.
+- A subsequent contiguous batch completes, and a repeat invocation with no pending inventory is a no-op.
+
+CI run: `43966629021` (success), exact tested implementation head `18b0c3280d3b9443777e66fd021cb0eeb702c2b5`.
+
+This closes the dedicated disposable-PostgreSQL runner qualification gap for the tested code. It does not authorize production execution or close operational gates: current recoverable production backup/restore proof, live-ledger re-export immediately before rollout, service/credential/hosting readiness, Actor Gateway always-on hosting and cost decision, and explicit review of the first small contiguous production batch remain outstanding. Production batch manifest remains empty; PR #297 remains draft and unmerged. No production database, migration, role, ACL, credential, secret, Render setting/deployment, payment or consent state changed.
