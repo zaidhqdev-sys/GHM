@@ -980,6 +980,18 @@ try {
       'DELETE FROM ghm.business_external_mapping WHERE business_id = ANY($1::bigint[])',
       [fixture.businessIds],
     );
+    if (fixture.commercialSubscriptionIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_subscription WHERE id = ANY($1::bigint[])', [fixture.commercialSubscriptionIds]);
+    }
+    if (fixture.commercialPriceIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_plan_price WHERE id = ANY($1::bigint[])', [fixture.commercialPriceIds]);
+    }
+    if (fixture.commercialPlanVersionIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_plan_version WHERE id = ANY($1::bigint[])', [fixture.commercialPlanVersionIds]);
+    }
+    if (fixture.commercialPlanIds.length) {
+      await cleanupPool.query('DELETE FROM ghm.commercial_plan WHERE id = ANY($1::bigint[])', [fixture.commercialPlanIds]);
+    }
     await cleanupPool.query(
       'DELETE FROM ghm.business WHERE id = ANY($1::bigint[])',
       [fixture.businessIds],
