@@ -481,3 +481,37 @@ Opened PR #288:
 - The Connect legacy identifiers `za-business-pro-trial-v1` and `za-business-pro-subscription-v1` are historical UI constants, not approved GHM document records.
 - Keep commercial trial/payment writes unavailable until the document approval governance and transactional actor-authenticated consent + payment-preparation path are qualified.
 - No production migration, database mutation, role/grant change, credential, deployment, checkout, provider transaction or commercial launch flag change occurred.
+
+
+## 17. PR #288 merged — commercial consent evidence foundation (2026-11-16)
+
+PR [#288](https://github.com/zaidhqdev-sys/GHM/pull/288) was reviewed after exact-head CI completed and was squash-merged to `main`.
+
+- Exact reviewed/tested head: `0fefd0b489e4c1608b014dcc84a964c8e6ccab2e`.
+- Exact-head CI run: `43894348453`; both `quality` and `web-quality` completed successfully.
+- The `quality` job passed TypeScript build, all repository migrations applied to disposable PostgreSQL, the complete test suite, and the subsequent PostgreSQL qualification steps.
+- The corrected head includes the document-status actor FK correction from SET NULL to RESTRICT.
+- Squash merge commit: `08a51b8e75f9686392ef32ddd301766267a5f271`.
+- Migration: `database/migrations/20261116150000_create_commercial_consent_evidence.sql`.
+- Contract test: `src/db/commercial-consent-evidence-migration-contract.test.ts`.
+
+### Review disposition
+
+The reviewed migration creates:
+- An immutable document-version catalogue with exact SHA-256 content hashes and a unique document type/key/version tuple.
+- Append-only lifecycle events for draft, approved, withdrawn and superseded states; creating a catalogue row does not itself approve a document.
+- Append-only consent events binding canonical Business, account, exact document version, accepted action, timestamp, source/context, request ID and unique idempotency key.
+- UPDATE/DELETE and TRUNCATE rejection triggers for all three evidence tables.
+- No application runtime, Actor Gateway or PUBLIC table/sequence privileges; only `ghm_migrator` receives the explicit grants.
+
+The migration seeds no legal text, content hashes, approved versions or consent records. The contract tests cover the immutable catalogue, lifecycle event shape, Business/account/document binding, idempotency, immutability triggers and absence of runtime grants.
+
+### Current boundary and next stage
+
+- PR #288 is merged as a schema foundation only. It does not provide an authenticated consent API, approval-governance workflow, or payment-preparation route.
+- No legal document version has been approved or seeded. Do not invent a legal version/hash or treat the historical Connect identifiers as approved GHM documents.
+- The next bounded implementation is the governed authenticated boundary: establish who may approve exact document versions, then implement atomic owner/administrator authorization + server-approved version validation + consent evidence insertion + payment-attempt preparation, using the authenticated GHM actor context and idempotency. Preserve the independent commercial launch freeze.
+- Connect commercial writes remain unavailable until that complete contract is qualified and separately integrated.
+- Keep `launchAuthorized=false` and `onlineSubscriptionActivation=false`.
+
+**Production impact:** none. Merge did not run the migration against production `ghm_db`, change roles/grants/credentials, deploy Render services, configure provider credentials, perform checkout/ITN, create consent records, or change commercial launch flags. Disposable PostgreSQL CI qualification is not production migration authorization.
