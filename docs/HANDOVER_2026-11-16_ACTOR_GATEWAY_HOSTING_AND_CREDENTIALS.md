@@ -1308,3 +1308,99 @@ Do not interpret all 48 as safe to apply. The set spans Actor Gateway installati
 Perform the deterministic full reconciliation against the exported 105 production rows and current-main migration SQL bytes: compare version/name/checksum using the repository's canonical LF and supported legacy CRLF checksum rules; classify the registered retained-history and provenance exceptions; produce the exact 48 pending rows; and confirm the seven-entry allowlist mismatch. Record each checksum mismatch or approved historical exception explicitly. Keep this read-only. Only after the full reconciliation should the migration batch design and production gate plan be updated.
 
 No migration, allowlist, production ACL, credential, secret, Render service, deployment, environment variable, payment/consent record or application data was changed during this audit.
+
+
+## 31. 2026-11-16 — Render support confirms SQL-managed application identities; production runtime ACL audit
+
+### Amanda's written confirmation (received 2026-11-16 20:01 SAST)
+
+Render support (Amanda) confirmed:
+
+- The Render Dashboard default credential maps `ghm_app_user` to `ghm_db_user`; this is intentional and tied to Render's credential-rotation process.
+- Render does not provide a separate managed database-administrator identity for this Postgres instance.
+- The default user is the intended administrative identity; it retains administrative rights over roles it creates.
+- Application identities with lower privileges should be created directly in PostgreSQL using SQL.
+- A service can then use that SQL-created login by changing its `DATABASE_URL` to the new credentials. The default administrative user remains separate.
+- This is standard PostgreSQL 16+ role behavior, not a Render defect.
+
+**Architecture decision:** retain `ghm_db_user` for controlled database administration/migration operations. Do not use the Render default credential as the normal application connection. Use a dedicated SQL-managed login for each isolated service. The existing `ghm_runtime` login is the intended Resource API application principal in current GHM source; `ghm_actor_gateway` and `ghm_auth_issuer` remain separate service principals. Do not create a duplicate generic application role without first proving the existing role cannot serve its intended purpose.
+
+### Current-main source contract reviewed
+
+At current main `bfa7247f05084495ae062144a1b508528d049e37`:
+
+- `src/db/runtime-principal.ts` requires the Resource API to connect with `session_user=current_user=ghm_runtime`; LOGIN=true, NOINHERIT, no elevated attributes, database CONNECT but not CREATE, schema USAGE but not CREATE, and no untrusted role memberships.
+- `src/server.ts` runs this principal/privilege check before opening its HTTP listener.
+- `src/db/runtime-database-privileges.ts` defines a 43-function SECURITY DEFINER baseline and accepts only reviewed combinations of nine explicit manual cutover groups (512 possible combinations).
+- In production, function allow-list enforcement is currently skipped unless `GHM_RUNTIME_FUNCTION_ALLOWLIST_ENFORCED=true`, with the explicit warning `production_acl_baseline_not_yet_independently_qualified`. This is deliberate; do not enable the flag until production catalog state matches a reviewed stage.
+- `src/actor-gateway/database-principal.ts` separately requires `ghm_actor_gateway`; its own database privilege contract is stricter and permits only its exact gateway function allow-list with no direct relation privileges.
+- `src/db/pool.ts` uses `config.databaseUrl`; the source does not itself prove which credential is currently configured in Render. Never retrieve or expose the secret value to establish this.
+
+### Read-only production catalogue evidence captured after Amanda's reply
+
+Queries were run through Render's read-only Postgres query tool against `ghm_db`. That connector session is still `session_user=ghm_app_user`, `current_user=ghm_db_user`; it is not a connection as `ghm_runtime`. Therefore, the checks below inspect the named role's catalog/effective privileges but do not prove the live Resource API service's current `DATABASE_URL`.
+
+Observed role attributes:
+
+| Role | LOGIN | INHERIT | SUPERUSER | CREATEDB | CREATEROLE | BYPASSRLS |
+|---|---:|---:|---:|---:|---:|---:|
+| `ghm_db_user` | true | true | false | true | true | false |
+| `ghm_runtime` | true | false | false | false | false | false |
+| `ghm_actor_gateway` | true | false | false | false | false | false |
+| `ghm_migrator` | true | false | false | false | false | false |
+| `ghm_schema_owner` | false | false | false | false | false | false |
+| `ghm_auditor` | false | true | false | false | false | false |
+
+The `ghm_runtime` role has database CONNECT=true / CREATE=false and schema `ghm` USAGE=true / CREATE=false. It has privileges on 39 distinct relation objects (tables/views/sequences); these are the currently catalogued application data privileges, not proof of an unbounded administrator role. The full ACL inventory should be preserved and reconciled to route/repository use before any grant change.
+
+The `ghm_runtime` role is granted to `ghm_db_user` in two catalog membership entries: one ADMIN=false / INHERIT=true / SET=true and one ADMIN=true / INHERIT=false / SET=false. This is the observed administrator-to-runtime membership direction. It does not mean the runtime login inherits `ghm_db_user` privileges. Preserve the exact current membership state pending a dedicated role-membership review; do not change it as part of this audit.
+
+### Critical finding — live runtime function ACL does not match a reviewed source stage
+
+A read-only catalog comparison normalized PostgreSQL `regprocedure` signatures and compared all SECURITY DEFINER functions executable by `ghm_runtime` against the exact 43-signature baseline in current main:
+
+- Expected source baseline: **43**.
+- Live production executable SECURITY DEFINER functions: **46**.
+- Expected signatures absent from the live set: **9**.
+- Live signatures not present in the source baseline: **12**.
+
+Missing baseline signatures:
+- `ghm.auth_redeem_recovery_with_count(bytea)`
+- `ghm.auth_rehash_password_if_unchanged(bigint,text,text,integer,integer,integer)`
+- `ghm.auth_reset_password_with_recovery(bytea,text,text,integer,integer,integer)`
+- `ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)`
+- `ghm.get_public_business_hours(bigint)`
+- `ghm.get_public_trust_score(bigint)`
+- `ghm.list_public_trust_scores(text)`
+- `ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)`
+- `ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)`
+
+Additional live signatures outside the source baseline:
+- `ghm.auth_bootstrap_external_identity(text,text,text,text)`
+- `ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)`
+- `ghm.auth_disable_account(bigint)`
+- `ghm.auth_link_business_external_mapping(text,text,bigint)`
+- `ghm.auth_link_external_identity(text,text,bigint)`
+- `ghm.auth_provision_migration_account(text,text,text,text)`
+- `ghm.auth_read_account_email(bigint)`
+- `ghm.auth_read_connect_identity_authority(bigint)`
+- `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)`
+- `ghm.auth_revoke_all_sessions_for_account(bigint,text)`
+- `ghm.auth_revoke_session(bigint,text)`
+- `ghm.update_business_profile(bigint,bigint,jsonb)`
+
+This means the live production SECURITY DEFINER EXECUTE set is **not equal to the current source baseline or any of its 512 subset-only manual-cutover stages**, because it contains additional functions as well as missing baseline functions. The production runtime currently skips enforcement of this function allow-list unless the environment flag is explicitly enabled. Do not enable enforcement yet, and do not attempt to fix the mismatch with broad grants/revokes or by running the full pending migration queue.
+
+### Decision and next work
+
+1. Treat `ghm_runtime` as the intended SQL-managed Resource API login, subject to proving the deployed service actually uses it. Do not create a second generic application login.
+2. Keep `ghm_db_user` as the Render default administrator/migration operator; keep `ghm_runtime`, `ghm_actor_gateway`, and `ghm_auth_issuer` isolated.
+3. Do not change `DATABASE_URL`, role attributes, role memberships, table grants, function grants, migration ledger, secrets, or Render service configuration during this audit.
+4. Next, trace every one of the 9 missing and 12 additional SECURITY DEFINER functions to its owning migration/cutover and determine which catalog state is historically valid, which source stage is intended, and whether any grants are unsafe or simply newer/older than main's reviewed baseline.
+5. Separately inventory all 39 runtime relation objects and map each privilege to current Resource API repository/query usage. Keep direct relation privileges only where the application demonstrably requires them; prefer narrowly scoped functions for sensitive operations where the existing architecture provides them.
+6. Verify the deployed Resource API's database identity without reading secret values. The strongest proof is a safe startup/diagnostic observation of `session_user` and `current_user` from the running service, or an administrator-assisted connection identity report.
+7. Only after the production function/relation ACL state matches a reviewed contract should the production enforcement flag be considered. Then qualify the service against the restricted identity before any credential switch/cutover.
+
+### Change record
+
+All Render database operations in this section were read-only SELECT/catalogue queries. GitHub operations were read-only source inspection before this handover update. No SQL mutation, grant/revoke, role/membership change, migration, credential rotation, secret read/write, environment change, service creation, deployment, or payment/consent action was performed. No recurring cost was incurred.
