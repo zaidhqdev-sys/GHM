@@ -398,7 +398,6 @@ A cross-check against the existing authoritative storage handover and the exact 
 - Removed the server-side `ssl` GUC check because it reports server capability/configuration, not the encryption state of an individual client connection. The report now states `tls_enforced_by_client: true` based on the explicit verified client configuration.
 - Latest code commit for this correction: `dfc0b1400f6b1cc94b43a8c94e67363d9f473120`. Exact-head CI has not yet been observed for this SHA. Do not claim the new first-four qualification passes until the quality job reaches and completes that step.
 
-
 ## 21. Exact-head CI completed successfully (2026-11-15 21:20 UTC)
 
 - Exact branch head `e8bddb05c23a3719d00a33e7db62c0fb16c28d28` completed GitHub Actions run `43762783722` (CI run number 4987) with overall conclusion `success`.
@@ -797,8 +796,7 @@ This is the required ledger/name/checksum/allowlist reconciliation result. It is
 - PR #285 remains **open, draft, unmerged**.
 - The PR branch advanced beyond the owner's checked-out audit head `09c4d485d642ceb3c1c1805467fb4128c08065f5` to `4c6260c0c4d80a13c61af3bfd7b20c7e0789c6fb`.
 - Exact-head workflow **#5027**, run ID `43772180560`, completed successfully on `4c6260c0c4d80a13c61af3bfd7b20c7e0789c6fb`.
-- Both `quality` and `web-quality` passed. The quality job also completed disposable PostgreSQL qualification for the first four pending migrations, supplier-classification ACL/rollback, storage lifecycle and gateway qualification; this is disposable-environment evidence only, not production execution.
-- The owner's local untracked `.bak` remains a preservation requirement; do not add, delete, overwrite or stage it.
+- Both `quality` and `web-quality` passed. The quality job also completed disposable PostgreSQL qualification for the first four pending migrations, supplier-classification ACL/rollback, storage lifecycle and gateway qualification; this is disposable-environment evidence only, not production execution.- The owner's local untracked `.bak` remains a preservation requirement; do not add, delete, overwrite or stage it.
 
 ### Next action
 
@@ -1198,7 +1196,6 @@ No production database, migration ledger, role/grant, secret, Render/Cloudflare 
 - Adds an internal SECURITY DEFINER recovery redemption routine keyed by a 32-byte token hash, atomically consumes one unexpired unused token and revokes that account's sessions; returns the account and revoked-session count.
 - The externally granted compatibility wrappers are token-bound (no caller-supplied account ID), but this is a transitional Resource API runtime grant. The final Authentication Issuer allow-list does not include either `auth_redeem_recovery` wrapper; no application persistence callsite for these wrappers was found in the reviewed source. Do not add them to the issuer allow-list merely because the migration creates them. The supported password reset route uses migration 1202's combined token-bound reset operation.
 - Migration also revokes the caller-supplied-account-ID all-session revocation wrapper from runtime.
-
 **24–26 — `20261111240000`, `20261111250000`, `20261111260000`**
 - Revoke runtime/PUBLIC EXECUTE on QuoteFlow migration account provisioning, external identity linking and external identity bootstrap, respectively.
 - Provisioning remains an operator/migrator capability. Identity link/bootstrap are not ordinary Resource API runtime operations; Business provisioning is through the signed Actor Gateway transaction.
@@ -1369,3 +1366,29 @@ The isolated Authentication Issuer has a separate compute problem: the Worker Fr
 The only safe next work while the no-go gates remain is repository/source and evidence reconciliation: check the current main/PR/branch/handover state, compare the remaining pending migrations with existing feature cutovers, and prepare exact read-only production evidence requests for the backup and Render role-authority issues. Do not create another implementation branch or duplicate Actor Gateway/issuer PRs. Do not run `npm run migrate`, apply manual cutovers, create Cloudflare resources, alter Render configuration, set production secrets, change client origins, or trigger a production deploy.
 
 PayFast remains paused until sandbox access returns. Legal-document work remains paused. No production database, migration ledger, role/grant, secret, Render/Cloudflare resource, service, deployment, network allow-list, route, product client or application data was changed during this matrix review. Preserve the untracked local `.bak` file.
+
+## 46. Current PR head, exact-head CI and branch reconciliation (2026-11-16 00:55 UTC)
+
+### Exact GitHub state rechecked before continuation
+
+- PR #285 is OPEN, DRAFT, mergeable and UNMERGED.
+- Current PR head is `d8b986412106b09ffd1e9d123722856a845b3967` on `feat/production-migration-batch-execution-20261115`; base `main` is `61cd1121a1fb30e3b28c250b7b6812707f1c9109`.
+- The branch compares as 103 commits ahead, 0 behind, with the current main commit as merge base. The PR's actual diff remains 15 intended files; the 103-commit ancestry is not 103 changed files.
+- Exact-head GitHub Actions workflow #5039, run ID `43781450072`, completed SUCCESS on `d8b9864`. Both `quality` and `web-quality` passed. This supersedes the section 45 checkpoint (head `9abcd5b`, workflow #5038) for current PR-head CI status.
+- PR #285 remains unmerged and draft. The successful Cloudflare Pages preview comment is a PR preview only, not a production Actor Gateway deployment or database connectivity proof.
+
+### Migration inventory and review boundary
+
+- The PR's `config/pending-migrations.production.json` still contains the exact 42-entry production pending inventory ending at `20261112170000_revoke_redundant_migrator_business_mapping_lookup`.
+- The reviewed migration source for 1205, 1207, 1208 and 1209 matches the findings recorded in section 44. The storage chain 1214–1215 and manual campaign/directory-review cutover 1216 are already documented there; do not duplicate their implementation or treat the manual cutover as an automatic migration.
+- Migration 1208's signed Connect provisioning route and Worker reader exist in source, but no production Connect Resource API route integration/cutover was established in the reviewed source snapshot. Keep Connect routing unchanged.
+- The 42-entry list is an inventory reconciliation, not permission to execute. Keep `GHM_PRODUCTION_MIGRATION_BATCH` unset and do not run `npm run migrate`.
+
+### Next repository-only work
+
+1. Continue the exact file-by-file review of the pending migration chain against the existing Resource API, Actor Gateway, Authentication Issuer and QuoteFlow callsites; prioritize migrations whose revocations would change live application behavior.
+2. Reconcile the remaining manual cutovers and rollback scripts with their exact traffic-drain and route prerequisites; do not repeat already qualified gateway/issuer/storage implementation.
+3. Keep the production rollout NO-GO under the existing no-additional-cost host/compute constraints. No new branch, paid service, Cloudflare resource, Render setting, secret or production deployment is authorized by this review.
+4. Only request new production evidence when it is read-only and can be obtained through the already supported credential/backup process. Do not attempt role changes or ledger repair.
+
+No production database query/mutation, migration, ledger repair, role/grant change, secret, Render/Cloudflare configuration, service, deployment, bucket/object, product routing or application data was changed during this continuation. Preserve the local untracked `.bak` file.
