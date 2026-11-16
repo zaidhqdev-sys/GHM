@@ -586,7 +586,7 @@ try {
     assert.equal(approved.rows[0].status, 'approved');
     console.log('DISPOSABLE SUBSCRIPTION TERMS VERSION APPROVED UNDER FOUNDER AUTHORITY: PASS');
 
-    const idempotencyKey = `consent-payment-${randomUUID()}`;
+    const idempotencyKey = `${fixture.marker}-consent-payment-${randomUUID()}`;
     const prepared = await preparePayment(founderAccountId, paymentFixtures.documentVersionId, idempotencyKey);
     assert.equal(prepared.rowCount, 1);
     assert.equal(prepared.rows[0].attempt_status, 'pending_checkout');
@@ -645,11 +645,39 @@ try {
       '42501',
       'FORGED COMMERCIAL PAYMENT PREPARATION ASSERTION IS DENIED',
     );
+
+    const replayKey = `${fixture.marker}-replay-${randomUUID()}`;
+    const replayContext = {
+      businessId: paymentBusinessId,
+      documentVersionId: paymentFixtures.documentVersionId,
+      countryId: null,
+      idempotencyKey: replayKey,
+      providerCode: 'payfast',
+      accepted: true,
+      expiresAt: null,
+      requestId: null,
+    };
+    const replayAssertion = signAssertion(founderAccountId, 'commercial.payment.prepare_with_consent', replayContext);
+    await preparePayment(founderAccountId, paymentFixtures.documentVersionId, replayKey, true, replayAssertion);
+    await expectPaymentSqlState(
+      () => preparePayment(founderAccountId, paymentFixtures.documentVersionId, replayKey, true, replayAssertion),
+      '42501',
+      'REPLAYED COMMERCIAL PAYMENT PREPARATION ASSERTION IS DENIED',
+    );
     console.log('GHM-NATIVE COMMERCIAL CONSENT/PAYMENT PREPARATION BEHAVIORAL QUALIFICATION: PASS');
   } finally {
     await paymentGateway.query('ROLLBACK').catch(() => {});
     paymentGateway.release();
   }
+  const paymentRollbackEvidence = await cleanupPool.query(
+    `SELECT
+       (SELECT count(*)::int FROM ghm.commercial_payment_attempt WHERE idempotency_key LIKE $1) AS attempts,
+       (SELECT count(*)::int FROM ghm.commercial_consent_event WHERE idempotency_key LIKE $1) AS consents,
+       (SELECT count(*)::int FROM ghm.commercial_event WHERE idempotency_key LIKE $1) AS events`,
+    [`${fixture.marker}%`],
+  );
+  assert.deepEqual(paymentRollbackEvidence.rows[0], { attempts: 0, consents: 0, events: 0 });
+  console.log('DISPOSABLE COMMERCIAL CONSENT/PAYMENT QUALIFICATION WRITES ROLLED BACK: PASS');
 
   const disabledAccountId = await createFixtureAccount(`${fixture.marker}-disabled`, 'disabled');
   const otherOwnerAccountId = await createFixtureAccount(`${fixture.marker}-other-owner`);
