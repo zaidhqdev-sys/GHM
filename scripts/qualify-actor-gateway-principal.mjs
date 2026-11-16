@@ -24,7 +24,7 @@ const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
-const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [] };
+const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [], founderBootstrapCreated: false };
 const signAssertion = (accountId,operation,context={},issuedAtOverride) => {
   const issuedAt=issuedAtOverride ?? Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex');
   const payload=`ghm-actor-gateway:v2|${accountId}|${operation}|${issuedAt}|${nonce}|${contextHex}`;
@@ -75,6 +75,45 @@ const createFixtureAccount = async (fullName, status = 'active') => {
     const id = Number(rows[0].id);
     fixture.accountIds.push(id);
     return id;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const createFounderFixtureAccount = async () => {
+  const client = await cleanupPool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
+    const existing = await client.query(
+      "SELECT count(*)::int AS count FROM ghm.founder_system_admin_bootstrap_state WHERE id = true",
+    );
+    if (existing.rows[0].count !== 0) throw new Error('Founder bootstrap fixture requires an empty singleton');
+    const credentials = await client.query(
+      "SELECT count(*)::int AS count FROM ghm.account_password_credential WHERE login_email_normalized = 'zaidhqdev@gmail.com'",
+    );
+    if (credentials.rows[0].count !== 0) throw new Error('Founder bootstrap fixture email is already in use');
+    const account = await client.query(
+      "INSERT INTO ghm.account_identity (full_name, role, account_status, is_system_admin) VALUES ('Disposable Founder Fixture', 'admin', 'active', true) RETURNING id",
+    );
+    const accountId = Number(account.rows[0].id);
+    await client.query(
+      `INSERT INTO ghm.account_password_credential
+         (account_id, login_email, login_email_normalized, password_hash, credential_status)
+       VALUES ($1, 'zaidhqdev@gmail.com', 'zaidhqdev@gmail.com', 'disposable-argon2id-fixture', 'active')`,
+      [accountId],
+    );
+    await client.query(
+      "INSERT INTO ghm.founder_system_admin_bootstrap_state (id, account_id, founder_login_email) VALUES (true, $1, 'zaidhqdev@gmail.com')",
+      [accountId],
+    );
+    await client.query('COMMIT');
+    fixture.accountIds.push(accountId);
+    fixture.founderBootstrapCreated = true;
+    return accountId;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;
@@ -152,6 +191,118 @@ try {
   console.log('DATABASE PRINCIPAL IDENTITY: PASS');
 
   const activeAccountId = await createFixtureAccount(`${fixture.marker}-active`);
+  const founderAccountId = await createFounderFixtureAccount();
+  const authorityClient = await gatewayPool.connect();
+  try {
+    await authorityClient.query('BEGIN');
+    const authorityCall = async (accountId, action, documentType, documentKey, jurisdictionCountryId, reason, assertionOverride) => {
+      const context = { action, documentType, documentKey, jurisdictionCountryId, reason };
+      const assertion = assertionOverride ?? signAssertion(accountId, 'commercial.document.authority.manage', context);
+      return authorityClient.query(
+        'SELECT * FROM ghm.gateway_manage_commercial_document_approval_authority($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+        [accountId, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature, action, documentType, documentKey, jurisdictionCountryId, reason],
+      );
+    };
+    const expectAuthoritySqlState = async (work, code, label) => {
+      await authorityClient.query('SAVEPOINT authority_expected_failure');
+      try {
+        await work();
+      } catch (error) {
+        if (error?.code !== code) {
+          throw new Error(`${label}: expected SQLSTATE ${code}; received ${error?.code ?? error?.message}`);
+        }
+        await authorityClient.query('ROLLBACK TO SAVEPOINT authority_expected_failure');
+        await authorityClient.query('RELEASE SAVEPOINT authority_expected_failure');
+        console.log(`${label}: PASS`);
+        return;
+      }
+      await authorityClient.query('ROLLBACK TO SAVEPOINT authority_expected_failure');
+      await authorityClient.query('RELEASE SAVEPOINT authority_expected_failure');
+      throw new Error(`${label}: operation unexpectedly succeeded`);
+    };
+
+    const grant = await authorityCall(founderAccountId, 'grant', 'trial_terms', 'zaid-business-pro-trial', null, 'Owner-approved trial terms authority');
+    assert.equal(grant.rowCount, 1);
+    assert.equal(grant.rows[0].event_type, 'granted');
+    console.log('CANONICAL FOUNDER CAN GRANT OWN COMMERCIAL DOCUMENT APPROVAL AUTHORITY: PASS');
+
+    await expectAuthoritySqlState(
+      () => authorityCall(founderAccountId, 'grant', 'trial_terms', 'zaid-business-pro-trial', null, 'Duplicate grant'),
+      'P0001',
+      'DUPLICATE COMMERCIAL AUTHORITY GRANT IS DENIED',
+    );
+
+    const revoke = await authorityCall(founderAccountId, 'revoke', 'trial_terms', 'zaid-business-pro-trial', null, 'Owner revokes trial terms authority');
+    assert.equal(revoke.rowCount, 1);
+    assert.equal(revoke.rows[0].event_type, 'revoked');
+    console.log('CANONICAL FOUNDER CAN REVOKE OWN COMMERCIAL DOCUMENT APPROVAL AUTHORITY: PASS');
+
+    await expectAuthoritySqlState(
+      () => authorityCall(founderAccountId, 'revoke', 'trial_terms', 'zaid-business-pro-trial', null, 'Duplicate revoke'),
+      'P0001',
+      'REVOCATION WITHOUT CURRENT GRANT IS DENIED',
+    );
+
+    const regrant = await authorityCall(founderAccountId, 'grant', 'trial_terms', 'zaid-business-pro-trial', null, 'Owner re-grants trial terms authority');
+    assert.equal(regrant.rows[0].event_type, 'granted');
+    console.log('RE-GRANT AFTER REVOCATION APPENDS A NEW GRANT EVENT: PASS');
+
+    await expectAuthoritySqlState(
+      () => authorityCall(activeAccountId, 'grant', 'trial_terms', 'unauthorized-scope', null, 'Non-founder attempt'),
+      '42501',
+      'NON-FOUNDER ADMINISTRATOR CANNOT GRANT COMMERCIAL APPROVAL AUTHORITY',
+    );
+
+    const forged = signAssertion(founderAccountId, 'commercial.document.authority.manage', {
+      action: 'grant', documentType: 'trial_terms', documentKey: 'forged-scope', jurisdictionCountryId: null, reason: 'Forged signature',
+    });
+    forged.signature = '0'.repeat(64);
+    await expectAuthoritySqlState(
+      () => authorityCall(founderAccountId, 'grant', 'trial_terms', 'forged-scope', null, 'Forged signature', forged),
+      '42501',
+      'FORGED COMMERCIAL AUTHORITY ASSERTION IS DENIED',
+    );
+
+    const transplanted = signAssertion(founderAccountId, 'commercial.document.authority.manage', {
+      action: 'grant', documentType: 'trial_terms', documentKey: 'signed-scope', jurisdictionCountryId: null, reason: 'Signed reason',
+    });
+    await expectAuthoritySqlState(
+      () => authorityCall(founderAccountId, 'grant', 'trial_terms', 'tampered-scope', null, 'Signed reason', transplanted),
+      '42501',
+      'SIGNED COMMERCIAL AUTHORITY ASSERTION CANNOT BE TRANSPLANTED TO ANOTHER SCOPE',
+    );
+
+    const replay = signAssertion(founderAccountId, 'commercial.document.authority.manage', {
+      action: 'grant', documentType: 'subscription_terms', documentKey: 'zaid-business-pro-subscription', jurisdictionCountryId: null, reason: 'Replay check',
+    });
+    const firstReplayUse = await authorityCall(founderAccountId, 'grant', 'subscription_terms', 'zaid-business-pro-subscription', null, 'Replay check', replay);
+    assert.equal(firstReplayUse.rowCount, 1);
+    await expectAuthoritySqlState(
+      () => authorityCall(founderAccountId, 'grant', 'subscription_terms', 'zaid-business-pro-subscription', null, 'Replay check', replay),
+      '42501',
+      'REPLAYED COMMERCIAL AUTHORITY ASSERTION IS DENIED',
+    );
+
+    const expiry = signAssertion(founderAccountId, 'commercial.document.authority.manage', {
+      action: 'grant', documentType: 'subscription_terms', documentKey: 'expired-scope', jurisdictionCountryId: null, reason: 'Expired check',
+    }, Math.floor(Date.now() / 1000) - 61);
+    await expectAuthoritySqlState(
+      () => authorityCall(founderAccountId, 'grant', 'subscription_terms', 'expired-scope', null, 'Expired check', expiry),
+      '42501',
+      'EXPIRED COMMERCIAL AUTHORITY ASSERTION IS DENIED',
+    );
+
+    assert.deepEqual(
+      [grant.rows[0].event_type, revoke.rows[0].event_type, regrant.rows[0].event_type, firstReplayUse.rows[0].event_type],
+      ['granted', 'revoked', 'granted', 'granted'],
+    );
+    console.log('COMMERCIAL APPROVAL AUTHORITY GRANT/REVOKE HISTORY QUALIFICATION: PASS');
+  } finally {
+    await authorityClient.query('ROLLBACK').catch(() => {});
+    authorityClient.release();
+  }
+
+
   const disabledAccountId = await createFixtureAccount(`${fixture.marker}-disabled`, 'disabled');
   const otherOwnerAccountId = await createFixtureAccount(`${fixture.marker}-other-owner`);
   const businessId = await createFixtureBusiness(activeAccountId, 'primary');
@@ -485,6 +636,9 @@ try {
       'DELETE FROM ghm.business WHERE id = ANY($1::bigint[])',
       [fixture.businessIds],
     );
+    if (fixture.founderBootstrapCreated) {
+      await cleanupPool.query('DELETE FROM ghm.founder_system_admin_bootstrap_state WHERE id = true');
+    }
     await cleanupPool.query(
       'DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])',
       [fixture.accountIds],

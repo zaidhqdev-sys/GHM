@@ -638,3 +638,98 @@ The Render session restriction means the production singleton row/account ID has
 Architecture contract update: commit `e5040d897e842f37df1390da155071ab551649e0`.
 
 No production account lookup, role/grant change, authority assignment, migration, service deployment, credential change, or commercial activation was performed.
+
+
+## 21. Founder-only commercial approval authority gateway — PR in progress (2026-11-16)
+
+A bounded implementation branch now adds the database-side owner-only grant/revoke boundary:
+- Branch: `feat/founder-only-commercial-approval-authority-20261116`
+- Migration: `database/migrations/20261116170000_add_founder_only_commercial_document_authority_gateway.sql`
+- Contract test: `src/db/founder-only-commercial-document-authority-migration-contract.test.ts`
+- Standard `npm test` includes the new contract test.
+
+### Owner identity and authorization
+
+- The operation accepts no target approver account ID. It derives the only permitted authority account from the singleton `ghm.founder_system_admin_bootstrap_state`.
+- It verifies the caller equals that recorded founder account, the singleton contains the expected canonical founder login, the account remains active and system-admin, and exactly one matching canonical password credential exists.
+- The caller must be `session_user='ghm_actor_gateway'` and supply a valid, short-lived, one-use HMAC assertion bound to the exact operation context and document scope.
+- Grant/revoke events are serialized per exact account/document/jurisdiction scope. Duplicate grant and revoke-without-active-grant are rejected.
+- A unique NULLS NOT DISTINCT scope index prevents duplicate authority identities for the same owner and document scope.
+- Only `ghm_actor_gateway` receives EXECUTE on the two SECURITY DEFINER functions. No direct table privileges or runtime/PUBLIC access are added.
+
+### Current boundary
+
+This PR adds the database operation and contract test only; it does not yet wire a new HTTP route/reader into Actor Gateway. The database operation is not reachable through a new application endpoint until that next integration slice is implemented. No founder row is seeded, no authority is granted, and no document is approved.
+
+### Qualification gate
+
+- Exact-head CI and disposable PostgreSQL migration application are pending.
+- Review must verify function ownership/search path, HMAC context binding, replay handling, founder bootstrap checks, advisory-lock serialization, and exact EXECUTE grants.
+- Do not merge until all exact-head checks pass and SQL review is complete.
+- No production migration, role/grant/credential change, Actor Gateway hosting, deployment, legal approval, consent/payment write or launch activation is authorized.
+
+
+### 21.1 First CI failure — exact Actor Gateway ACL allow-list (2026-11-16)
+
+The initial PR #290 quality run `43901549176` failed at `Qualify isolated actor gateway database principal`, not at SQL migration application or TypeScript build.
+
+The diagnostic identified both new SECURITY DEFINER functions as unsafe and showed them as unexpected executable functions. Root causes:
+1. Their search paths were `pg_catalog, ghm`, while the Actor Gateway verifier requires the pinned temporary-safe `pg_catalog, ghm, pg_temp`.
+2. The exact Actor Gateway executable-function allow-list did not yet include the two reviewed signatures.
+
+Corrections:
+- Both functions now pin `pg_catalog, ghm, pg_temp`.
+- `src/actor-gateway/database-privileges.ts` now includes both exact signatures in its expected function allow-list.
+- `src/actor-gateway/database-startup-acl-contract.test.ts` asserts those signatures remain present in the allow-list.
+
+A fresh exact-head run is required. Do not weaken the ACL verifier or remove its exact-function check to make CI pass.
+
+
+### 21.2 Disposable migration syntax defect and correction (2026-11-16)
+
+The first corrected ACL run advanced past the Actor Gateway ACL check but the migration application failed with PostgreSQL syntax error at the function body opener. Inspection of the committed SQL showed the two function openers had a single-dollar delimiter while the closers used double-dollar delimiters.
+
+Both functions now use explicit paired tags (`$assertion$` and `$manage$`). This is a migration-source syntax correction; no SQL execution against production occurred.
+
+The disposable Actor Gateway principal qualification script was also extended to exercise the new operation with a temporary founder fixture inside a rolled-back transaction:
+- canonical founder grant succeeds;
+- duplicate grant is rejected;
+- revocation succeeds;
+- duplicate revocation is rejected;
+- re-grant after revocation appends a new event;
+- a non-founder administrator is denied;
+- forged, scope-transplanted, replayed and expired assertions are denied;
+- test founder singleton/account fixtures are cleaned up only when the script created them.
+
+The authority event writes are enclosed in a gateway transaction and rolled back after qualification, so the disposable fixture leaves no persistent authority evidence. A fresh exact-head CI run is required after these changes.
+
+
+### 21.3 Qualification avoids direct evidence-table access (2026-11-16)
+
+The disposable qualification was tightened to respect the intended no-direct-table-access boundary for `ghm_actor_gateway`. It now validates the returned grant/revoke event types from the SECURITY DEFINER operation instead of querying `commercial_document_approval_authority_event` directly. The authority test transaction still rolls back all fixture events.
+
+This correction is included in commit `546f5be6a97802bd1cec2bb7add9eb893b914c5f`; exact-head CI must run on the final branch head.
+
+
+### 21.4 Founder-only authority database operation — exact-head qualification passed (2026-11-16)
+
+Corrected branch code commit `174d10aece78ceacdecdfe8d701f1bcaff1256b2` passed exact-head workflow `43902840161`:
+- `quality`: success.
+- `web-quality`: success.
+- All repository migrations applied to disposable PostgreSQL.
+- The complete test suite passed.
+- Isolated Actor Gateway database-principal qualification passed, including the new founder-only authority operation tests.
+- The exact Actor Gateway executable-function allow-list, SECURITY DEFINER owner/search-path checks, and no-direct-table-access boundary passed.
+
+The disposable qualification proves:
+1. Canonical founder bootstrap fixture can grant its own scoped approval authority.
+2. Duplicate grant is rejected.
+3. Founder can revoke the active grant.
+4. Revocation without a current grant is rejected.
+5. Re-grant after revocation appends a new grant event.
+6. Non-founder administrator, forged signature, context/scope transplant, replay and expired assertion are rejected.
+7. All test authority events are rolled back; founder singleton/account/credential fixtures are cleaned up.
+
+PR #290 remains the SQL/database boundary only; it does not yet expose an HTTP route or TypeScript reader. The next bounded slice is Actor Gateway route/reader integration. After that, implement the separate document approval transition that verifies current grant, actor and exact immutable document version. No production authority row or approved document exists.
+
+No production migration, DB role/ACL change, secret change, Render service, deployment, legal approval, consent/payment write or commercial activation occurred. Launch flags remain `launchAuthorized=false` and `onlineSubscriptionActivation=false`.

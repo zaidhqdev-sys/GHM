@@ -55,6 +55,7 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
   WITH expected_signatures(signature) AS (
     SELECT unnest(ARRAY[
       'ghm.assert_actor_gateway_capability(bigint, text, bigint, uuid, text, text)',
+      'ghm.assert_actor_gateway_commercial_document_authority(bigint, bigint, uuid, text, text)',
       'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
       'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
@@ -69,6 +70,7 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       'ghm.gateway_list_capabilities(bigint, bigint, uuid, text, text)',
       'ghm.gateway_list_saved_businesses(bigint, bigint, uuid, text, text)',
       'ghm.gateway_list_trust_scores(bigint, bigint, uuid, text, text, text)',
+      'ghm.gateway_manage_commercial_document_approval_authority(bigint, bigint, uuid, text, text, text, text, text, bigint, text)',
       'ghm.gateway_read_business_registration_identity(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_replace_business_capability_assertions(bigint, bigint, uuid, text, text, bigint, jsonb)',
       'ghm.gateway_replace_business_hours(bigint, bigint, uuid, text, text, bigint, jsonb)',
