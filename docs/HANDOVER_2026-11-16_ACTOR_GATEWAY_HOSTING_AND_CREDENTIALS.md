@@ -1100,3 +1100,16 @@ The existing Actor Gateway principal qualification now creates synthetic Busines
 - Payment launch remains frozen: `launchAuthorized=false`, `onlineSubscriptionActivation=false`. PayFast activation remains frozen and no provider round-trip is authorized.
 
 Exact-head CI and disposable PostgreSQL qualification are pending. Do not merge until SQL application, Actor Gateway ACL, full suite and behavioral tests pass.
+
+
+### 26.1 Disposable PostgreSQL and exact-head qualification passed (2026-11-16)
+
+PR #294 exact implementation head `e1cd4e56ec90123eb3614c2f4297a08af6f26cba` passed workflow `43916035085`:
+- `quality`: success (73/73 steps).
+- `web-quality`: success (11/11 steps).
+- All migrations applied to disposable PostgreSQL.
+- Full test suite passed, including the new migration contract tests.
+- Actor Gateway database-principal qualification passed, including the new consent/payment behavior.
+- Existing Actor Gateway, Auth Issuer, Connect provisioning, Capability and Opportunity qualifications passed.
+
+The payment qualification demonstrated synthetic exact-document approval, atomic payment-attempt + consent-event return, original evidence on idempotent retry, denial of changed-document idempotency reuse, false acceptance, non-member, unapproved document, forged assertion and replay. It explicitly confirmed that `ghm_actor_gateway` cannot directly read `commercial_consent_event`. All payment/consent/commercial-event writes were rolled back and a schema-owner check confirmed zero residual rows. No real legal content or production write was used.
