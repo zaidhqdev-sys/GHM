@@ -2198,3 +2198,32 @@ No production state was changed by this inspection.
 The final PR #286 documentation head `a1981c15e56ebbc8f5ddc61de38749f33ccd6d6a` passed exact-head checks: `quality`, `web-quality`, and Cloudflare Pages integration all succeeded. PR #286 remains draft/open/unmerged. This closes only the source/startup ACL model qualification item; it does not resolve the separate Actor Gateway hosting/network blocker, isolated DB principal, production wrapper migrations, provider E2E, Amanda/Render role-administration escalation, or fresh verified backup/recovery point. No production ACL, migration, role, secret, Render setting or deployment changed. `GHM_PRODUCTION_MIGRATION_BATCH` remains unset.
 
 **Next disposition:** keep production execution closed. Continue only with the next independently actionable, read-only or disposable qualification item recorded in the handovers; do not re-run Cloudflare feasibility, weaken fail-closed startup, apply migrations, revoke grants, or deploy while the gateway host/network prerequisite remains NO-GO.
+
+
+## 72. Actor Gateway hosting: new public-origin Hyperdrive path identified (2026-11-16 10:54 UTC)
+
+The blanket Cloudflare hosting NO-GO in section 71 is superseded in scope, not erased. It remains correct for the **private-origin** option that needs a continuously running Cloudflare Tunnel/Workers VPC path. A distinct public-origin topology is now supported by current platform documentation and the live Render configuration: the existing Actor Gateway Worker can use Cloudflare Hyperdrive connected directly to Render Postgres's public external hostname.
+
+**Why this changes the hosting analysis**
+- Cloudflare Hyperdrive supports any publicly reachable PostgreSQL origin; its documented create command accepts a standard PostgreSQL connection string. It does not require a Tunnel or Workers VPC for a public origin. References: https://developers.cloudflare.com/hyperdrive/ and https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/ .
+- Hyperdrive is included in Workers Free, with 100,000 database statements/day. Free Hyperdrive has a soft origin connection limit of about 20. References: https://developers.cloudflare.com/hyperdrive/platform/pricing/ and https://developers.cloudflare.com/hyperdrive/platform/limits/ .
+- Read-only Render inventory confirms `ghm-db` is PostgreSQL 18, Frankfurt, with external IP allow-list `0.0.0.0/0`. Thus its public external endpoint is not blocked by the current IP allow-list. Render requires TLS for external PostgreSQL connections. References: https://render.com/docs/postgresql-creating-connecting and https://render.com/tutorials/postgres-on-render/connection-strings .
+- The repository already contains `workers/actor-gateway/index.ts`, a Worker-compatible Node HTTP adapter, `pg` client, database identity/ACL startup checks and a `HYPERDRIVE` binding. The binding ID in `workers/actor-gateway/wrangler.jsonc` is still an all-zero placeholder. No new Render service, always-on tunnel process, laptop, or mobile phone is needed for this topology.
+- The prior Argon2id Free CPU failure concerns Authentication Issuer password hashing. The Actor Gateway Worker uses public-key-only ES256 verification and does not load the Issuer private key, pepper or database URL. It is therefore not the same CPU workload. However Workers Free has a 10 ms CPU/request limit and 100,000 requests/day; Hyperdrive Free has 100,000 statements/day. The actual JWT verification/request path and database concurrency must be measured. Reference: https://developers.cloudflare.com/workers/platform/limits/ .
+
+**Proposed topology (candidate, not yet approved for production)**
+
+`Resource API (Render) -> HTTPS -> Cloudflare Actor Gateway Worker -> Hyperdrive (public origin) -> Render ghm-db external PostgreSQL endpoint`
+
+Hyperdrive must authenticate only as the dedicated `ghm_actor_gateway` login. Never use `ghm_db_user`, `ghm_runtime`, or the Authentication Issuer credential. Require TLS. Hyperdrive's default PostgreSQL `require` mode encrypts and validates the server certificate using WebPKI; `verify-full` adds hostname verification and requires a suitable CA certificate. Reference: https://developers.cloudflare.com/hyperdrive/configuration/tls-ssl-certificates-for-hyperdrive/ .
+
+**Remaining hard gates**
+1. Resolve the existing Render support escalation so the dedicated `ghm_actor_gateway` credential can be provisioned without weakening the documented role-membership boundary.
+2. Create the Hyperdrive configuration using the Render external hostname, dedicated gateway login, database `ghm_db`, and TLS; bind its real ID to the existing Worker config. Do not paste credentials into GitHub or handovers.
+3. Verify Hyperdrive connectivity and `session_user = current_user = ghm_actor_gateway`; run the existing startup principal and ACL checks.
+4. Deploy only to a non-production/qualification route first; prove ES256 verification, all typed routes, HMAC assertion/replay boundaries, TLS, error handling and no-fallback behavior.
+5. Measure Worker CPU (10 ms free limit), request quota (100,000/day), Hyperdrive statement quota (100,000/day), origin connections (~20 soft limit), and Render database load. Define fail-closed behavior if a free quota is exhausted.
+6. Retain Issuer, Resource API and Actor Gateway process/credential isolation. The Worker must not receive issuer private key, password pepper, or issuer DB URL.
+7. Only after the above, reconsider production release sequencing and the backup/migration/grant gates. No production migrations or ACL revocations are authorized by this finding.
+
+This is genuinely different from the rejected private-origin tunnel route. It changes the hosting blocker from “no viable network path” to “prove public-origin Hyperdrive connectivity and provision the dedicated gateway credential.” The route is a viable hypothesis, not yet a deployment PASS. No Cloudflare resource, Hyperdrive config, secret, Render setting, role, grant, migration, deployment, or production traffic was changed. `GHM_PRODUCTION_MIGRATION_BATCH` remains unset.
