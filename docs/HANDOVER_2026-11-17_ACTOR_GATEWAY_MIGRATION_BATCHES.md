@@ -325,3 +325,6 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 
 
 - CI #5354 progressed past the synthetic Business fixture but exposed that the disposable database had not provisioned the HMAC verifier row. The commercial workflow qualification now seeds `ghm.actor_gateway_capability_assertion_secret` from the existing CI-only 32-byte test secret while connected as the migrator after `SET ROLE ghm_schema_owner`. This is isolated to the disposable test database; no hosted/production secret is changed. The next existing CI run will validate the table's exact insert contract and the full workflow.
+
+
+- CI #5355 exposed test-order contamination: the commercial end-to-end qualification bootstraps the canonical founder singleton, but the Actor Gateway principal qualification correctly requires that singleton to be empty when it creates its own fixture. The CI steps are now ordered so Actor Gateway principal qualification runs first and cleans up its founder fixture; the commercial end-to-end qualification runs afterward. The Actor Gateway principal qualification also provisions the HMAC verifier row itself from the disposable CI-only secret, so it no longer relies on a later test's side effects. This corrects test isolation and ordering; no production data or credentials are involved.

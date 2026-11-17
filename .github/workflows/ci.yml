@@ -255,9 +255,6 @@ jobs:
       - name: Qualify commercial document authority, approval and payment-consent schema
         run: npm run qualify:commercial-document-consent
 
-      - name: Qualify founder authority, document approval and payment consent end-to-end
-        run: npm run qualify:commercial-workflow
-
       - name: Check whole-database SECURITY DEFINER inventory script syntax
         run: node --check scripts/audit-security-definer-authority.mjs
 
@@ -267,6 +264,8 @@ jobs:
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
 
+      - name: Qualify founder authority, document approval and payment consent end-to-end
+        run: npm run qualify:commercial-workflow
       - name: Smoke-test Actor Gateway in local Cloudflare Workers runtime
         env:
           GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET: ${{ env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET }}
