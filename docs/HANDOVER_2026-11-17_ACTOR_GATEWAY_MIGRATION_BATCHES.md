@@ -292,3 +292,14 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 - The 16 November commercial approval/payment migrations need their own isolated PostgreSQL qualification and owner-account/document-catalogue review. They are not a reason to unfreeze PayFast or activate billing.
 - The 17 November final revocations are explicitly gated by Gateway deployment and E2E checks. Keep them out of any earlier batch.
 - Keep PR #298 draft/unmerged. No Render deployment, production migration, role/grant modification, secret provisioning, or added hosting spend has occurred.
+
+
+## Commercial document and payment-consent qualification added — 17 November 2026
+
+- Added `qualify:commercial-document-consent` to the disposable PostgreSQL CI sequence after migrations and plan-only qualification.
+- The qualification checks all six commercial authority/approval/payment gateway functions for SECURITY DEFINER, schema-owner ownership, fixed search_path, Actor Gateway session binding, Actor Gateway-only EXECUTE, and no PUBLIC/runtime/migrator EXECUTE.
+- It checks that all five commercial evidence tables deny direct runtime and Actor Gateway table access, retain migrator maintenance access, and have enabled UPDATE/DELETE/TRUNCATE immutability triggers.
+- It performs rollback-only INSERT fixtures and verifies UPDATE, DELETE, and TRUNCATE are rejected by the append-only trigger.
+- It statically verifies payment preparation requires explicit acceptance and an approved exact document version, writes payment-attempt/consent evidence, and contains no provider network call or subscription activation transition.
+- Scope is intentionally schema/ACL/immutability qualification. It does not seed a real founder identity, grant actual legal approval, create live commercial document content, or initiate checkout/payment. Those remain separately gated by founder bootstrap state, owner-supplied legal documents, and a deployed Actor Gateway.
+- This qualification runs only against CI disposable PostgreSQL. It does not connect to Render or production.

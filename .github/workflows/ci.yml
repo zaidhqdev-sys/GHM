@@ -252,6 +252,9 @@ jobs:
           GHM_QUALIFICATION_DATABASE_NAME: ghm_disposable_test
         run: npm run build && npm run qualify:migration-plan-only
 
+      - name: Qualify commercial document authority, approval and payment-consent schema
+        run: npm run qualify:commercial-document-consent
+
       - name: Check whole-database SECURITY DEFINER inventory script syntax
         run: node --check scripts/audit-security-definer-authority.mjs
 
