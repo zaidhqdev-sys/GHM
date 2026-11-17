@@ -861,3 +861,61 @@ The gateway assertion secret must already exist in the matching database table b
 - No `render.yaml` exists at the repository root on the reviewed branch. Do not add a broad Blueprint that could recreate or alter the existing database; the dedicated service can be created as a narrowly scoped dashboard service when the recurring cost is explicitly authorized.
 - PR #297 remains draft/open/unmerged. Head at review start: `91023eb0ba7fb4e69528862a79ee1e5b4b603f0f`; CI run #5278 was in progress at that point. Do not call it passed until GitHub reports completion on the exact head.
 - Next work should be the DB migration-function dependency inventory for the gateway's full 39-function allowlist and a deployment-readiness checklist that links each function to its defining migration and revocation/cutover. Only after that can the smallest safe contiguous production migration batch be selected. The production batch manifest remains empty.
+
+
+## Gateway SQL allowlist → migration dependency map — 2026-11-17 03:00Z
+
+Reviewed the exact 39 expected function signatures in `src/actor-gateway/database-privileges.ts`, the gateway reader call sites, and the relevant pending migration SQL under `database/migrations`. This is a source-derived dependency map, not evidence that any migration is applied in production.
+
+### Allowlist grouped by feature and defining migration
+
+| Feature / SQL entry points | Defining migration(s) in the pending inventory |
+|---|---|
+| Capability signed assertion + list/create/update/transition lifecycle | `20261110250000_add_gateway_capability_governance`, then signed-assertion/context replacements `20261111020000` and `20261111060000` |
+| Supplier classification assertion + update | `20261110260000_gateway_supplier_classification_cutover`, then signed assertion/context replacements `20261111030000`, `20261111060000` |
+| Business profile update | `20261110270000_gateway_business_profile_update`, then `20261111040000`, `20261111060000` |
+| Actor self-identity read | `20261110220000_add_actor_gateway_self_identity_read`, then `20261111050000`, `20261111060000` |
+| Business registration identity read/update | `20261110230000_add_gateway_business_registration_identity_read`, `20261110233000_add_gateway_business_registration_identity_write`, then `20261111050000`, `20261111060000` |
+| Business capability evidence/assertion/verification mutations | `20261111070000_add_signed_business_capability_mutations` |
+| Saved-business list/get/create/delete | `20261111100000_add_signed_saved_business_gateway` |
+| Business-hours replace and read | `20261111130000_add_signed_business_hours_gateway`; read projection dependency `20261111140000_add_business_hours_read_projections` |
+| Trust-score calculate/get/list | `20261111150000_add_signed_trust_score_gateway`; read projection dependency `20261111170000_add_trust_score_read_projections` |
+| Business logo object association | `20261111160000_add_signed_business_logo_gateway` |
+| Connect business provision-or-resolve | `20261112080000_signed_connect_business_provisioning_gateway` |
+| Storage create/get/deletion-pending | `20261112140000_add_signed_storage_metadata_actor_gateway` |
+| Storage mark-available/mark-deleted and provider attestation verifier | `20261112150000_add_storage_provider_workflow_attestation` |
+| Commercial document authority grant/revoke | `20261116170000_add_founder_only_commercial_document_authority_gateway` |
+| Commercial document approval transition | `20261116180000_add_founder_only_commercial_document_approval_transition` |
+| Commercial consent/payment preparation | `20261116190000_add_commercial_consent_payment_prepare_gateway` |
+| Campaign create/update and directory-review presentation | These three signatures are already part of the gateway's accepted pre-campaign baseline and are not defined by the 48 pending inventory entries. Their defining migration is in previously applied history and must be verified against the live production ledger/function catalog in the pre-batch audit. |
+
+The 39-entry allowlist consists of the above feature calls plus their assertion-verifier functions. The startup checker explicitly accepts either all 39 signatures or the documented pre-campaign subset (excluding exactly the three campaign/directory-review functions); it rejects any other partial function set.
+
+### Security and ordering findings that affect batch selection
+
+1. `20261110010000_add_business_supplier_classification` creates `ghm.update_business_supplier_classification(bigint,bigint,boolean)` as SECURITY DEFINER and grants it to `ghm_runtime`. The later `20261110260000` migration creates the gateway wrapper and revokes the legacy direct runtime function. The subsequent signed-assertion/context migrations harden the wrapper.
+2. `20261110160000_add_admin_capability_catalogue_governance` creates three SECURITY DEFINER functions and grants them to `ghm_runtime`. `20261110250000` creates gateway wrappers but deliberately retains the legacy runtime grants pending the separate cutover. The signed assertion/context migrations bind the gateway wrappers; **there is no corresponding capability-governance direct-runtime revocation migration in the current 48-entry pending inventory**. The manual revocation remains a distinct post-deployment action and must not be included in the initial migration batch.
+3. `20261110233000_add_gateway_business_registration_identity_write` grants the legacy `ghm.update_business_registration_identity(...)` function to `ghm_runtime`. The gateway replacement is bound to signed assertions by `20261111050000`; the reviewed pending inventory contains no explicit revocation of that legacy direct-runtime function. This is an unresolved ACL/cutover item; do not assume the gateway wrapper alone removes the legacy path.
+4. Supplier and profile gateway wrapper migrations revoke their respective legacy direct runtime functions. Capability governance is explicitly deferred. Registration write needs an explicit decision/evidence-backed revocation plan. These differences must be checked in the production function ACL audit, not inferred from the source alone.
+5. `20261112050000_revoke_public_default_function_execution` is a critical default-privilege boundary. `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads` removes the old account-ID-only `ghm.assert_actor_gateway(bigint)` entry point from PUBLIC, runtime, migrator and gateway. `20261112090000_pin_security_definer_search_path` normalizes every GHM SECURITY DEFINER function to schema-owner ownership and `pg_catalog, ghm, pg_temp`.
+6. The storage provider attestation functions are a separate identity boundary from the capability assertion secret. The Resource API requires its own `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` and corresponding database secret record before storage completion callbacks can succeed.
+7. The commercial payment-preparation SQL function is only a preparation/consent ledger operation; it does not call PayFast, create a checkout redirect, activate a subscription, or settle a payment. Both commercial feature flags must remain false while PayFast is paused.
+
+### Migration selection conclusion
+
+The 48-entry inventory is ordered, but the complete gateway allowlist spans many separated migration groups and includes supporting read projections, assertion verifiers, and security hardening. Therefore **there is no safe basis yet to select the first production batch solely by counting gateway functions**.
+
+The immediate blockers to a deployable 39-function allowlist are:
+- Verify the three pre-campaign functions exist with exact signatures in the current production ledger/catalog.
+- Resolve the legacy registration identity write grant.
+- Keep capability-governance direct-runtime revocation as the explicitly deferred post-gateway manual cutover.
+- Confirm all 39 gateway functions have exact ACLs, no PUBLIC/ghm_runtime EXECUTE, safe SECURITY DEFINER ownership/search_path, and correct assertion verifiers.
+- Confirm storage attestation secret/database record and provider workflow readiness separately; storage callbacks remain unavailable until then.
+- Confirm founder-only commercial authority/approval functions are owner-controlled and cannot be mistaken for legal approval by the assistant or a service account.
+
+### What is and is not qualified
+
+- Source mapping: completed for the 39-function allowlist and all matching pending feature migrations listed above.
+- Live production function catalog/ACL state: not yet re-read as part of this source review.
+- No migration batch is selected or authorized. `config/production-migration-batches.json` remains empty.
+- No production DDL, grants, credentials, secrets, data, Render settings, deployment, payment, or consent state changed.
