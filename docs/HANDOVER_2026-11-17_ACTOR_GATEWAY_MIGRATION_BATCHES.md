@@ -85,3 +85,14 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Corrected only that stale invariant in `src/db/runtime-database-privileges.ts` from 14 to 13. No grants, migrations, or production state were changed.
 - The separate `web-quality` job failed independently at `npm audit`; build and all 26 web tests passed. It reports five dependency paths to the same picomatch GHSA, not five distinct CVEs. The advisory still lists versions through 4.0.7 as affected with no fixed version; upstream PR #194 remains open. Do not run `npm audit fix --force`, downgrade Vitest, or suppress the audit.
 - Both failures need a fresh CI run after this correction; the web audit remains an unresolved upstream security blocker.
+
+
+## CI run 119546523564 / web-quality job 134312375823 — 19:37 UTC
+
+- Exact job log confirms the web build passed and all 26 web tests passed. Only `npm audit --audit-level=moderate` failed.
+- The audit reports five high-severity dependency paths, all rooted in the same `picomatch` ReDoS advisory GHSA-fc5q-39xc-vjpf. Paths include `fdir → picomatch`, `vite → fdir/picomatch/tinyglobby`, and `vitest → picomatch/tinyglobby`. This is one underlying advisory, not five separate CVEs.
+- The vulnerable packages are all in the web workspace's development toolchain: Vite, Vitest, fdir, tinyglobby and picomatch are dev/build/test dependencies; the declared production dependencies are React and React DOM. This limits the direct production-runtime exposure, but does not make the audit finding disappear or justify suppressing CI.
+- Checked current upstream release metadata: Vite 8.3.8 and Vitest 5.1.1 are available, but their own package manifests still directly require `picomatch ^4.0.7`; upgrading only those parents would not remove the vulnerable package. The current GHM lockfile resolves Vite 6.4.5, Vitest 4.1.12 and picomatch 4.0.7.
+- Important correction to earlier notes: upstream picomatch PR #194 is titled “fix: treat a leading ? in an extglob body as a wildcard”; its description explicitly says it is not a security fix and discusses separate ReDoS edge cases. It must **not** be described as the patch for GHSA-fc5q-39xc-vjpf. No verified fixed picomatch release or directly matching upstream security patch has been established in this investigation.
+- npm's forced remediation proposes installing Vitest 3.1.4, a breaking downgrade; do not apply it. Do not introduce a speculative `picomatch` override, because the current upstream manifests still request the affected 4.x line and no verified patched artifact has been established.
+- No source, lockfile, workflow, production DB, or deployment changes were made for this audit finding. The next safe action is to track the exact advisory/upstream remediation and re-run the audit when a verified fixed picomatch release is available. Consider upgrading Vite/Vitest only as a separate compatibility-maintenance task, not as a security fix for this advisory.
