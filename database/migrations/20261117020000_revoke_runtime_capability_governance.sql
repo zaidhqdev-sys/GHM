@@ -44,7 +44,12 @@ BEGIN
         AND n.nspname='ghm'
         AND p.prosecdef=true
         AND p.proowner=v_schema_owner
-        AND p.proconfig @> ARRAY['search_path=pg_catalog, ghm']
+        AND EXISTS (
+          SELECT 1
+          FROM pg_options_to_table(p.proconfig) AS function_setting
+          WHERE function_setting.option_name = 'search_path'
+            AND regexp_replace(function_setting.option_value, '[[:space:]]+', '', 'g') = 'pg_catalog,ghm'
+        )
     ) THEN
       RAISE EXCEPTION 'A signed capability gateway function has unexpected owner, SECURITY DEFINER setting, or search_path: %',
         v_function::regprocedure;
