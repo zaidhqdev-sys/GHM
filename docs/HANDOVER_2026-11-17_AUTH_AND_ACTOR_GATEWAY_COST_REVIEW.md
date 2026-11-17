@@ -377,3 +377,22 @@ No production query, DDL, migration, role/ACL change, Render setting, service, d
 A source review caught and corrected an over-escaped digit expression in the new inventory validator before qualification. The validator now uses the intended 14-digit version pattern. The committed 48-entry inventory was also checked for count and unique ordered records, and a regression test was added.
 
 The exact current head is `8c360addd23cc81d176fdd7212e7979ede2d27cb`. The GitHub Actions lookup currently returns no PR-triggered workflow run for this commit. Therefore the source changes are **not yet CI-qualified**. Do not treat the audit command as ready for production use until exact-head CI runs and passes. No local execution against production has occurred.
+
+
+## CI #5238 failure diagnosis and correction — 2026-11-17
+
+The owner supplied job IDs `133709806458` and `133709185509` and reported the Business registration constraint exception as the fatal CI failure. The actual GitHub Actions step summary for run `43984558088` / CI #5238 establishes:
+
+- `web-quality`: success.
+- `quality`: failed only at step 48, `Test suite`.
+- Step 43, `Qualify Business registration forward migration against existing table`, completed with **success**.
+- The registration-number constraint exception at the end of the qualification log is the deliberate negative test: the script replaces the named constraint with `CHECK (true)`, reruns the migration, and requires the migration to reject it. This proves the guard is working; it is not the failed step.
+- The permission-denied, membership, forced mapping failure, recovery-invalid and duplicate-login messages are emitted by negative authorization / failure-path tests and are not individually reported as the failed workflow step.
+
+The actual failed assertion in step 48 was test 22 in `scripts/migration-audit-checksum.test.mjs`: the committed 48-entry inventory format test used an over-escaped regex `/^\\\\d{14}$/`, so valid 14-digit migration versions did not match. The production inventory comparison tests 18–21 passed. The forward-migration database qualification step 43 also passed.
+
+Corrected the test assertion to use `/^[0-9]{14}$/` in commit `e7ed0d50878cb28d7548e0f9e8e0917e53df1924`. No migration SQL, table constraint, fixture, database privilege, or runtime behavior was changed in response to this CI failure.
+
+A new exact-head CI #5239 was triggered on `e7ed0d50878cb28d7548e0f9e8e0917e53df1924`. At handover update time, `web-quality` passed and `quality` remained in progress. Await exact-head result before declaring qualification complete.
+
+No production database operation, migration, DDL, deployment, Render setting, service creation, or cost was incurred.
