@@ -613,3 +613,18 @@ The user ran `npm test` on exact checkout `45c5d1c908e304c5fcf135f4e040fcaa8f238
 - No database password, `.env` file, production role/grant, migration, production data, Render setting or deployment was changed.
 
 Next: fetch latest PR #297 head, confirm the standalone qualification prints SKIP with the default opt-out, then rerun `npm test` on that same checkout. Do not set `GHM_RUN_LIVE_DATABASE_TESTS=true` for ordinary tests or against production.
+
+## Ordinary test suite clean on opt-in qualification fix — 2026-11-17 00:55Z
+
+User ran the complete `npm test` on PR #297 checkout `221953fe6fbd8d1c73e67836c8c11e92e731ccad`.
+
+Observed output:
+- Build and all six compiled batches completed. Counts: 184, 321, 175, 120, 120, 48; all passed (968 compiled tests total).
+- QuoteFlow migration account provisioning live DB qualification printed the expected default `SKIP (set GHM_RUN_LIVE_DATABASE_TESTS=true to opt in)`.
+- Migration security-definer inventory: 4/4 passed.
+- Actor Gateway worker TypeScript check passed; worker contract tests 8/8 passed.
+- Migration audit/checksum tests: 22/22 passed.
+- No failures are shown in the complete output supplied by the user.
+- This is a successful ordinary local test run. Live database qualifications were skipped, so this does not prove live PostgreSQL behavior or production migration readiness.
+- PR #297 remains open/unmerged. CI run #5273 (workflow run ID `43991244289`) was observed in progress on exact head `221953fe6fbd8d1c73e67836c8c11e92e731ccad`; do not report CI as passed until its conclusion is confirmed.
+- Production inventory audit, production↔repository migration reconciliation, and disposable PostgreSQL qualification remain separate required gates. Production migration manifest remains empty; no production migrations/deploys authorized.
