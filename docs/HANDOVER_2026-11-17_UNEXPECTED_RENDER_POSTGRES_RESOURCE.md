@@ -154,3 +154,17 @@ The authorization does not extend to production `ghm-db` / `ghm_db`, the histori
 Execution status: **NOT YET DELETED**. The connected Render integration currently exposes list/get/query/metrics/create operations for Postgres but no delete operation. The owner must use the Render Dashboard's database Info page: select the exact Postgres resource `ghm-identity-qualification-20261018`, scroll to the bottom, and click **Delete Database**, then complete Render's confirmation. Render's official documentation states deleted database instances have no retained backups or snapshots. Do not claim deletion or cessation of billing until the resource is absent from the live Postgres inventory and billing reflects the change.
 
 Official procedure: https://render.com/docs/postgresql-creating-connecting (section “Deleting your database”). The owner has expressly accepted loss of the database's data/backups by authorizing deletion.
+
+
+## Live inventory recheck and direct dashboard locator (2026-11-17 03:57Z)
+
+After the owner reported that the database was not visible in the dashboard, the Render Postgres inventory was queried again. It still returns the exact unexpected resource as available and not suspended:
+- Name: `ghm-identity-qualification-20261018`
+- ID: `dpg-dba0tu3rjlhs738fs2sg-a`
+- Direct Render dashboard URL returned by the live API: https://dashboard.render.com/d/dpg-dba0tu3rjlhs738fs2sg-a
+
+The same live inventory confirms the two protected resources separately:
+- Production `ghm-db`: https://dashboard.render.com/d/dpg-dag0sdtbedkc7389vi2g-a
+- Suspended PayFast sandbox `ghm-payfast-sandbox-db`: https://dashboard.render.com/d/dpg-db4416vlk1mc73eocug0-a
+
+The owner has already explicitly authorized deletion of the unexpected resource. The direct URL is supplied to bypass dashboard list/navigation ambiguity. The resource remains **not deleted** as of this recheck; the Render integration still exposes no delete action. Do not click or delete either protected resource.
