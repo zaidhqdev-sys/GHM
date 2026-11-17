@@ -49,13 +49,26 @@ try {
   const pendingInventory = JSON.parse(await fs.promises.readFile(
     path.join(root, 'config', 'pending-migrations.production.json'), 'utf8'
   ));
-  assert.equal(migrations.length - pendingInventory.length, 105,
-    'qualification fixture is anchored to the documented 105-row production ledger snapshot and the committed 50-entry pending inventory');
-  const seeded = migrations.slice(0, 105);
+  assert.equal(migrations.length - pendingInventory.length, 95,
+    'qualification fixture expects 95 repository migrations applied before the exact 50-entry pending suffix');
+  const seeded = migrations.slice(0, 95);
   for (const migration of seeded) {
     await target.query(
       'INSERT INTO ghm.ghm_schema_migrations (version, name, checksum) VALUES ($1, $2, $3)',
       [migration.version, migration.name, migration.checksum],
+    );
+  }
+
+  const retainedInventory = JSON.parse(await fs.promises.readFile(
+    path.join(root, 'config', 'retained-historical-migrations.production.json'), 'utf8'
+  ));
+  const retainedEntries = Object.entries(retainedInventory);
+  assert.equal(retainedEntries.length, 10,
+    'qualification fixture must include all 10 approved retained historical production ledger rows');
+  for (const [version, entry] of retainedEntries) {
+    await target.query(
+      'INSERT INTO ghm.ghm_schema_migrations (version, name, checksum) VALUES ($1, $2, $3)',
+      [version, entry.name, entry.checksum],
     );
   }
 
@@ -65,7 +78,7 @@ try {
       (SELECT count(*)::int FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'ghm' AND c.relkind IN ('r','p','v','m','f','S')) AS ghm_objects
   `);
-  assert.equal(before.rows[0].ledger_rows, 42);
+  assert.equal(before.rows[0].ledger_rows, 105);
 
   const result = spawnSync(process.execPath, [path.join(root, 'dist', 'db', 'migrate.js')], {
     cwd: root,
