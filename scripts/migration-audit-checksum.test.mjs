@@ -223,10 +223,10 @@ test('production inventory mode is separate from legacy seven-entry allowlist mo
 });
 
 
-test('committed production pending inventory is 48 unique ordered version/name records', () => {
+test('committed production pending inventory is 50 unique ordered version/name records', () => {
   const inventory = JSON.parse(readFileSync(new URL('../config/production-pending-migration-inventory.json', import.meta.url), 'utf8'));
-  assert.equal(inventory.length, 48);
-  assert.equal(new Set(inventory.map((item) => item.version)).size, 48);
+  assert.equal(inventory.length, 50);
+  assert.equal(new Set(inventory.map((item) => item.version)).size, 50);
   assert.deepEqual(inventory, [...inventory].sort((a, b) => a.version.localeCompare(b.version)));
   assert.ok(inventory.every((item) => /^[0-9]{14}$/.test(item.version) && /^[a-z0-9][a-z0-9_-]*$/.test(item.name)));
 });
