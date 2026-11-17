@@ -20,6 +20,7 @@ const migrationsDir = path.resolve(process.cwd(), 'database', 'migrations');
 const auditTarget = resolveMigrationAuditTarget(expectedDatabase, process.env.GHM_MIGRATION_AUDIT_TARGET?.trim() || undefined);
 const exceptionsPath = path.resolve(process.cwd(), auditTarget.exceptionsPath);
 const retainedPath = path.resolve(process.cwd(), auditTarget.retainedPath);
+const fail = (message) => { throw new Error(message); };
 const allowPending = process.argv.includes('--allow-pending');
 const productionInventoryMode = process.argv.includes('--production-inventory');
 if (allowPending && productionInventoryMode) fail('Choose either the legacy pending allowlist or the production pending inventory mode, not both');
@@ -27,7 +28,6 @@ if (productionInventoryMode && auditTarget.target !== 'production') fail('Produc
 const migrationPattern = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
-const fail = (message) => { throw new Error(message); };
 if (process.env.DATABASE_SSL !== 'true') {
   fail('Production migration audit requires DATABASE_SSL=true with certificate verification enabled');
 }
