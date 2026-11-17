@@ -583,3 +583,18 @@ Commits:
 - `590f8693b4564398ee6bd174d27a5a88e0c58678` corrected npm test invocation to remove the original preload prefix before runner
 
 No test execution is yet confirmed with the new runner. Next: fetch exact latest branch head and run `npm test`. Treat any failure as a real build/test/qualification result and diagnose by failing batch. Production remains untouched.
+
+
+## Full-suite batch 1 findings and safe test isolation — 2026-11-17
+
+Windows-safe runner successfully built TypeScript and began batch 1/6 (32 files). It reported 187 tests: 184 passed, 3 failed.
+
+Findings:
+1. Two config tests (`partial storage provider configuration fails closed`, `partial storage TTL configuration fails closed`) inherited real storage settings from the developer's `.env` through `dotenv/config`, so the supposedly partial configurations were not partial.
+2. Connect replay persistence test automatically attempted live PostgreSQL whenever distinct runtime/migrator URLs existed in `.env`; it failed authentication for `ghm_runtime`. This was not evidence of a production DB change. No writes succeeded; the test did not reach its intended cleanup/qualification assertions. However, the test design was unsafe because ordinary `npm test` could silently attempt a live database connection.
+
+Fixes committed:
+- `3c440fb39aa5f01d6007ac655fe1392006297b2f`: config test helper explicitly clears inherited storage provider/credential/TTL variables unless each test overrides them.
+- `57c8034e415668ef00445bad89578b3c0742d107`: live Connect replay PostgreSQL test now skips unless `GHM_RUN_LIVE_DATABASE_TESTS=true` is explicitly set. Comment and skip reason restrict this to an explicitly approved disposable/local database qualification. Ordinary `npm test` will not connect to a database for this test.
+
+Do not set `GHM_RUN_LIVE_DATABASE_TESTS=true` against production or the Render production DB. The user has not authorized live production qualification. Next: fetch latest PR head and rerun `npm test`; review every batch and post-suite qualification separately. No production migrations or production database writes were authorized.
