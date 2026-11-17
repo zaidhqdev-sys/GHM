@@ -20,8 +20,12 @@ const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
   label: 'GHM migration target',
 });
 
+const planOnlyQualification = process.env.GHM_MIGRATION_PLAN_QUALIFICATION === 'true' &&
+  process.env.NODE_ENV === 'test' &&
+  approvedTarget.databaseName === 'ghm_db' &&
+  ['localhost', '127.0.0.1'].includes(approvedTarget.host);
 const databaseSsl = process.env.DATABASE_SSL === 'true';
-if (approvedTarget.databaseName === 'ghm_db' && !databaseSsl) {
+if (approvedTarget.databaseName === 'ghm_db' && !databaseSsl && !planOnlyQualification) {
   throw new Error('Production migrations require DATABASE_SSL=true with certificate verification enabled');
 }
 

@@ -246,6 +246,12 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Qualify production migration plan-only mode on isolated ghm_db fixture
+        env:
+          PGPASSWORD: postgres
+          GHM_QUALIFICATION_DATABASE_NAME: ghm_disposable_test
+        run: npm run build && npm run qualify:migration-plan-only
+
       - name: Check whole-database SECURITY DEFINER inventory script syntax
         run: node --check scripts/audit-security-definer-authority.mjs
 
