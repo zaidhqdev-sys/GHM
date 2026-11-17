@@ -407,3 +407,18 @@ Commit `3682a26639c287e013ec267b877822f52fa7cb9d` completed workflow run `439857
 The corrected committed 48-entry inventory format assertion now passes. This exact head also qualifies the new `npm run audit:migrations:production-inventory` command and its unit/contract tests within the full quality job. The Business registration forward migration qualification also passes in the quality workflow; the earlier incompatible-constraint exception was the deliberate negative test, not a failing migration.
 
 The new audit is now **CI-qualified**, but has not yet been run against the live production database. The next required operation is the local read-only command from the synchronized PR checkout, using the existing `GHM_MIGRATOR_DATABASE_URL` in `C:\\GHM\\.env`. Share only JSON output. No production migration or DDL is authorized by this result.
+
+
+## Local checkout mismatch — production inventory audit command not found — 2026-11-17
+
+The owner ran `npm run audit:migrations:production-inventory` from `C:\\GHM` and npm reported a missing script. This is a local checkout synchronization issue, not a missing PR implementation.
+
+Verified directly at the current PR #297 head before responding:
+- PR branch: `feature/explicit-production-migration-batches`.
+- PR head at inspection: `4277c232f43f264ee4d15283561ec89374d449da`.
+- `package.json` contains `"audit:migrations:production-inventory": "node scripts/forensic-migration-reconciliation.mjs --production-inventory"`.
+- The referenced script supports `--production-inventory` and the exact 48-entry comparator is present.
+
+Do not substitute `audit:migrations:predeploy`; it remains the historical seven-entry policy. Do not run migrations.
+
+Before changing the local checkout, inspect `git status --short --branch`, current branch and `git rev-parse HEAD`. Preserve any uncommitted work. Once the working tree is confirmed clean (or work is safely preserved), fetch origin and switch/update to the PR branch, then verify the local package script with `npm run` / `node -p "require('./package.json').scripts['audit:migrations:production-inventory']"`. Only then run the read-only audit. No production database operation or cost was incurred.
