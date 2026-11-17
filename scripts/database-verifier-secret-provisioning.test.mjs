@@ -73,7 +73,7 @@ test('rejects production without strict TLS or when targeting another database',
     GHM_SECRET_PROVISIONING_EXPECTED_HOST: 'another.example',
     GHM_MIGRATOR_DATABASE_URL: 'postgresql://ghm_migrator:secret@db.example/ghm_db',
     DATABASE_SSL: 'true',
-  })), /expected host/);
+  })), /expected database host/);
 });
 
 test('rejects generic users, URL parameters, wrong hosts, and unapproved disposable mutations', () => {
