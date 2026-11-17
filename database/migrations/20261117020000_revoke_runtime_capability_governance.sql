@@ -56,9 +56,9 @@ BEGIN
 
     IF v_actual_owner IS DISTINCT FROM 'ghm_schema_owner'
        OR v_is_security_definer IS DISTINCT FROM true
-       OR regexp_replace(COALESCE(v_actual_search_path, ''), '[[:space:]]+', '', 'g') <> 'pg_catalog,ghm' THEN
+       OR regexp_replace(COALESCE(v_actual_search_path, ''), '[[:space:]]+', '', 'g') <> 'pg_catalog,ghm,pg_temp' THEN
       RAISE EXCEPTION
-        'Signed capability function security mismatch: function=%, actual_owner=%, expected_owner=ghm_schema_owner, prosecdef=%, expected_prosecdef=true, proconfig=%, parsed_search_path=%, expected_search_path=pg_catalog,ghm',
+        'Signed capability function security mismatch: function=%, actual_owner=%, expected_owner=ghm_schema_owner, prosecdef=%, expected_prosecdef=true, proconfig=%, parsed_search_path=%, expected_search_path=pg_catalog,ghm,pg_temp',
         v_function::regprocedure, v_actual_owner, v_is_security_definer, v_function_config, v_actual_search_path;
     END IF;
     IF NOT has_function_privilege(v_gateway_role,v_function,'EXECUTE') THEN
