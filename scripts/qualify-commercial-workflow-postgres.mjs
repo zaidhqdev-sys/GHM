@@ -19,6 +19,13 @@ const paymentSql = 'SELECT * FROM ghm.gateway_prepare_commercial_payment_with_co
 await migrator.connect(); await gateway.connect();
 try {
   await migrator.query('SET ROLE ghm_schema_owner');
+  // The disposable CI database must provision the same verifier material on
+  // which the isolated Actor Gateway login depends. This test-only secret is
+  // never written to a hosted or production database.
+  await migrator.query(
+    'INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton, secret) VALUES (true, $1) ON CONFLICT (singleton) DO UPDATE SET secret = EXCLUDED.secret',
+    [secret]
+  );
   const createdFounder = await migrator.query(
     'SELECT account_id FROM ghm.auth_create_account($1,$2,$3,$4,$5,$6,$7,$8)',
     ['CI Synthetic Founder','customer','zaidhqdev@gmail.com','zaidhqdev@gmail.com',

@@ -322,3 +322,6 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 
 
 - CI #5353 caught the reconciled Business verification invariant: an approved synthetic Business must also set `is_verified=true`. The disposable workflow fixture now explicitly sets both values consistently, as required by migration `20260911210000`; this is test-fixture alignment, not a schema or production change.
+
+
+- CI #5354 progressed past the synthetic Business fixture but exposed that the disposable database had not provisioned the HMAC verifier row. The commercial workflow qualification now seeds `ghm.actor_gateway_capability_assertion_secret` from the existing CI-only 32-byte test secret while connected as the migrator after `SET ROLE ghm_schema_owner`. This is isolated to the disposable test database; no hosted/production secret is changed. The next existing CI run will validate the table's exact insert contract and the full workflow.
