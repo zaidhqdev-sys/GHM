@@ -509,3 +509,48 @@ Before production gateway readiness, add and qualify a controlled production sec
 
 No production migration, DDL, data write, role/grant change, secret generation/provisioning, Render service/environment/deployment change, payment activation, legal approval, or recurring cost occurred during this review. PR #297 remains open/unmerged and the production batch manifest remains empty.
 
+
+
+## Database verifier secret provisioning implementation — 2026-11-17
+
+Implemented a single fail-closed provisioning utility for the two independent verifier secrets:
+
+- `scripts/provision-database-verifier-secret.mjs`
+- `scripts/lib/database-verifier-secret-provisioning.mjs`
+- `scripts/database-verifier-secret-provisioning.test.mjs`
+- npm command: `npm run qualify:database-verifier-secret-provisioning`
+
+### Safeguards implemented
+
+- Requires the dedicated `GHM_MIGRATOR_DATABASE_URL`; no `DATABASE_URL` fallback.
+- Requires URL user `ghm_migrator`, explicit database name and exact session/current identity checks.
+- Requires transaction-local `SET LOCAL ROLE ghm_schema_owner` and verifies session user remains migrator while current user becomes schema owner.
+- Production target is restricted to `ghm_db`, requires `DATABASE_SSL=true` with certificate verification (`rejectUnauthorized: true`), an exact expected-host match via `GHM_SECRET_PROVISIONING_EXPECTED_HOST`, and explicit confirmation `PROVISION ghm_db actor` or `PROVISION ghm_db storage`.
+- Disposable target is restricted to an explicitly named local qualification DB and an explicit test-only mutation opt-in.
+- Selects one of two fixed table names; no caller-supplied SQL identifiers.
+- Requires caller-supplied canonical base64 for exactly 32 bytes; the utility does not generate or print secrets.
+- Uses INSERT ... ON CONFLICT DO NOTHING and fails if a row already exists. It never updates, rotates or overwrites an existing verifier key.
+- Transaction rollback on identity/insert errors. Output reports only metadata and explicitly states secret values are not logged.
+- Actor assertion and storage-provider attestation secrets remain separate; storage attestation key belongs to Resource API, never Actor Gateway.
+
+### Qualification and execution status
+
+The Node test suite covers local-only disposable targeting, exact production DB/host/confirmation/TLS requirements, separate secret/table selection, malformed or absent keys, role identity checks, insert-only behavior and rollback. It has been added as `npm run qualify:database-verifier-secret-provisioning`.
+
+Source implementation commits:
+- `eec26358772c66fda7cc474416d7fb3d7a9bbc24` provisioning module
+- `c09a0f7cec42cd3a695277f389b47e06e664e24d` CLI
+- `7567205d9094c4a9ace57f249afd2df4ae243ab3` initial tests
+- `3e8b0ac8fbbf927da8ae009418f3a3703cdbe250` npm qualification command
+- `dfef11da0da52cbcbe59c47b4af47bd7000394b0` exact production host guard
+- `93c94cc4803a5b84370a1c27968eeabd6a414298` host guard qualification
+
+No CI run was reported for the latest implementation commit at handover time; local test execution has not yet been performed in the user's checkout. Therefore this is **implemented, not yet qualified**.
+
+### Strict next steps
+
+1. Fetch latest PR #297 branch head and run `npm run qualify:database-verifier-secret-provisioning`; then run `npm test` / CI as appropriate.
+2. Fix any test/type/CI failures before using the utility.
+3. Do not set production target, production confirmation, or production secrets in the local `.env` for qualification. Use only a disposable test DB first.
+4. Production host value must be taken from the verified Render `ghm-db` connection hostname, not guessed.
+5. Production secret generation, provisioning, key rotation, or any production DB mutation remains unperformed and requires a separate explicit owner decision. The tool intentionally has no rotation mode.
