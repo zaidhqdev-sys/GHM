@@ -49,9 +49,9 @@ try {
   const pendingInventory = JSON.parse(await fs.promises.readFile(
     path.join(root, 'config', 'pending-migrations.production.json'), 'utf8'
   ));
-  assert.equal(migrations.length - pendingInventory.length, 42,
-    'qualification fixture expects exactly 42 applied migrations and the committed pending inventory to match the remaining queue');
-  const seeded = migrations.slice(0, 42);
+  assert.equal(migrations.length - pendingInventory.length, 105,
+    'qualification fixture is anchored to the documented 105-row production ledger snapshot and the committed 50-entry pending inventory');
+  const seeded = migrations.slice(0, 105);
   for (const migration of seeded) {
     await target.query(
       'INSERT INTO ghm.ghm_schema_migrations (version, name, checksum) VALUES ($1, $2, $3)',
