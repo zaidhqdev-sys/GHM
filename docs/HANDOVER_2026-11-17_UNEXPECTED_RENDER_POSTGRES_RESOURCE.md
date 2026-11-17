@@ -101,3 +101,26 @@ The owner supplied the Render Workspace > Billing page contents:
 - Credit balance: $0.00.
 
 These are workspace-level aggregate amounts. They establish that datastore usage has accrued and that October had a paid invoice, but do not yet allocate either amount to the unexpected database versus production `ghm-db` or any other datastore. Do not claim that the full $9.04 MTD or $9.82 October invoice was caused by the unexpected database until per-resource billing detail is visible. The owner should expand the Datastores usage section or download the billing CSV and provide the per-resource rows; no service-level suspension should be mistaken for stopping a PostgreSQL datastore charge.
+
+
+## Per-datastore billing attribution and owner data statement (2026-11-17 03:47Z)
+
+The owner supplied the expanded Render Billing > Unbilled Charges > Datastores breakdown. This resolves November month-to-date attribution:
+- Production `ghm-db`: **$3.39 USD**.
+- Unexpected `ghm-identity-qualification-20261018`: **$5.65 USD**.
+- Historical suspended `ghm-payfast-sandbox-db`: **$0.00 USD**.
+- Datastore total: **$9.04 USD**.
+- November projected workspace total: **$16.80 USD**.
+- Services and Pipeline Minutes: **$0.00 USD**.
+- October 2026 invoice: **$9.82 USD paid**; per-resource October allocation has not been supplied/verified.
+- Credit balance: **$0.00 USD**.
+
+The unexpected qualification database is therefore directly attributed **$5.65 USD of November MTD datastore charges** (approximately 62.5% of the $9.04 datastore total). The production database accounts for $3.39 and the suspended PayFast sandbox for $0.00. Do not attribute the October $9.82 invoice to the unexpected database without itemized October evidence.
+
+The owner has now stated: **“there should be nothing in there i never used the fucker.”** Record this as the owner's direct statement that they did not use the unexpected database and expect it to contain no needed data. This is not an independent inspection of its contents; schemas/data remain uninspected because the read-only SQL attempt was blocked before execution. No export, deletion, or suspension has occurred.
+
+## Immediate retirement decision boundary
+
+The owner has stated the resource was never used, but has not yet given an unambiguous explicit instruction to permanently delete it. Because deletion is destructive and the database contents/backups have not been inspected, do not infer deletion authorization from the statement alone. Ask one direct confirmation: whether the owner authorizes permanent deletion of the exact resource `ghm-identity-qualification-20261018`, accepting loss of any data/backups it contains.
+
+No connected Render action currently exposes Postgres deletion or suspension. Do not claim that charges have stopped. Do not suspend similarly named web services as a substitute; the charge is attached to the PostgreSQL datastore. Once owner authorization is explicit, provide the exact Render dashboard action path and verify the resource is gone and subsequent billing no longer accrues. Separately request a credit/refund review from Render for the $5.65 November MTD charge and investigate the itemized October invoice; do not promise a credit.
