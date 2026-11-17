@@ -663,3 +663,38 @@ This is a read-only inventory reconciliation at the time of the user's run. It i
 5. Only after runtime continuity, all gateway function dependencies, production ACL/secret readiness, hosting, and a fresh backup are evidenced should an exact contiguous batch be selected and plan-only output reviewed.
 
 No production migration execution is authorized by this audit.
+
+
+## Runtime continuity map — source review 2026-11-17 02:42Z
+
+Reviewed the PR #297 branch source for the first pending business supplier classification and capability governance migrations, plus the GHM HTTP route wiring and Actor Gateway startup contract.
+
+### Confirmed route behavior
+
+| GHM route / operation | Current implementation path | If Actor Gateway is unavailable |
+|---|---|---|
+| `PATCH /api/v1/businesses/:businessId` with only `isSupplier` | `HttpSupplierClassificationGatewayClient` → `PUT /v1/businesses/:businessId/supplier-classification` → signed assertion SQL function | Returns 503 if no client URL; gateway/network/SQL failures are mapped to service unavailable |
+| `PATCH /api/v1/businesses/:businessId` with ordinary profile fields | `HttpBusinessProfileGatewayClient` → `PATCH /v1/businesses/:businessId/profile` | Returns 503 if no client URL; there is no direct repository fallback in this route |
+| `GET /api/v1/admin/capabilities` | `HttpCapabilityGovernanceGatewayClient.list` → `GET /v1/admin/capabilities` | Returns 503 if gateway client is absent or request fails |
+| `POST /api/v1/admin/capabilities/drafts` | Gateway create-draft endpoint | Returns 503 if gateway client is absent or request fails |
+| `PATCH /api/v1/admin/capabilities/:capabilityId/draft` | Gateway update-draft endpoint | Returns 503 if gateway client is absent or request fails |
+| `POST /api/v1/admin/capabilities/:capabilityId/transition` | Gateway transition endpoint | Returns 503 if gateway client is absent or request fails |
+| `GET /api/v1/capabilities` | Existing `CapabilityService` / `PgCapabilityRepository` read path | Does not use the capability governance gateway client; remains a separate legacy read path |
+
+Source facts:
+- `src/config.ts` treats `GHM_ACTOR_GATEWAY_URL` as optional. It validates the URL if present; it does not require it at GHM runtime startup.
+- `src/http/app.ts` constructs supplier/profile and capability governance gateway clients only when `config.actorGatewayUrl` is present.
+- `src/http/app.ts` routes the business profile update endpoint through the profile gateway for ordinary profile updates, and through supplier gateway for supplier-only updates. Neither path falls back to direct mutation.
+- `src/http/capability-catalogue-router.ts` explicitly returns 503 when its gateway client is absent for all admin governance operations; the ordinary selectable catalogue read remains separate.
+- `src/actor-gateway/server.ts` requires `GHM_ACTOR_GATEWAY_DATABASE_URL`, ES256 verification key configuration and `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`; it checks the dedicated DB identity and exact database privilege allowlist before listening.
+- The gateway's supplier and capability readers issue signed request assertions and call the corresponding `ghm.gateway_*` SQL functions; they do not use caller-supplied actor IDs as authorization.
+
+### Operational conclusion
+
+The code deliberately fails closed. If `GHM_ACTOR_GATEWAY_URL` is unset, supplier updates, ordinary business-profile updates, and admin capability governance mutations/reads are unavailable (503), while the ordinary selectable capability read remains on its separate legacy path. If a URL is set but the gateway service or its database/function prerequisites are not ready, these gateway-dependent routes still fail closed.
+
+This is a concrete product-continuity dependency, not a reason to restore direct runtime SQL access. Before the relevant revocation migrations are applied, legacy direct SQL permissions may still exist in the database, but the application routes already prefer the gateway and do not automatically fall back. The manual capability-governance runtime revocation must remain after successful gateway deployment and end-to-end verification.
+
+### Next implementation gate
+
+The next safe action is to establish the deployment readiness checklist and verify required environment-variable *presence only* (never values) across the existing GHM runtime and the proposed gateway service. Required gateway configuration includes the dedicated DB URL, ES256 public verification key set, capability assertion secret, HTTPS base URL in GHM runtime, and the matching database functions/ACLs. Do not create a paid Render service or provision secrets as part of this documentation review. No production migrations or deployments were run.
