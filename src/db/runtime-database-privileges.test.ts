@@ -29,9 +29,9 @@ const postgresSignature = (signature: string): string => signature.replace(/,\s+
 test('runtime startup accepts all 512 reviewed combinations of the nine manual cutovers', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
   assert.equal(CUTOVER_GROUPS.length, 9);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 2, 3, 3, 2, 1, 1, 1]);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 3, 3, 2, 1, 1, 1]);
   assert.equal(ALL_STAGES.length, 512);
-  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
+  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 14);
 
   for (const functions of ALL_STAGES) {
     assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
@@ -44,7 +44,7 @@ test('runtime startup accepts all 512 reviewed combinations of the nine manual c
   }
 });
 
-test('the fully cut-over runtime state retains only the thirteen explicitly reviewed read/lookup/storage legacy functions', () => {
+test('the fully cut-over runtime state retains only the fourteen explicitly reviewed read/lookup/storage legacy functions', () => {
   assert.deepEqual(
     [...RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS].map(postgresSignature).sort(),
     [
@@ -55,6 +55,7 @@ test('the fully cut-over runtime state retains only the thirteen explicitly revi
       'ghm.get_public_trust_score(bigint)',
       'ghm.is_business_capability_publicly_evidence_eligible(bigint)',
       'ghm.list_public_trust_scores(text)',
+      'ghm.read_business_registration_identity(bigint,bigint)',
       'ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)',
       'ghm.storage_get_object(bigint,bigint)',
       'ghm.storage_get_public_business_logo(bigint)',
