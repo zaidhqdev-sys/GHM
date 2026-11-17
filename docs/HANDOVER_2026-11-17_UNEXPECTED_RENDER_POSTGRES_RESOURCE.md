@@ -87,3 +87,17 @@ The Render service event stream does not include PostgreSQL resource-creation ev
 The unexpected database remains reported as `basic_256mb`, 15 GB, available/not suspended. No invoice-level charge, billing period, or total amount has yet been retrieved. Do not state a dollar amount until supported by the Render invoice/usage ledger. No delete/suspend action has been taken; the available Render connector exposes no Postgres delete/suspend action. This is an acknowledged cost exposure requiring prompt resolution, not a reason to revive the historical sandbox or provision replacement infrastructure.
 
 The owner has stated that they are being billed for infrastructure they did not know about. The next step is to obtain exact billing attribution and a safe preservation/retirement path; do not ask the owner to repeat the history already recovered. Any destructive action still requires the owner's explicit direction.
+
+
+## Owner-provided Render billing evidence (2026-11-17 03:45Z)
+
+The owner supplied the Render Workspace > Billing page contents:
+- Workspace plan: Hobby.
+- November month-to-date Datastores accrued: **$9.04 USD**.
+- November projected total: **$16.80 USD**.
+- Services: $0.00; Pipeline Minutes: $0.00.
+- October 2026 invoice: paid, **$9.82 USD**.
+- September and August 2026 invoices: paid, $0.00.
+- Credit balance: $0.00.
+
+These are workspace-level aggregate amounts. They establish that datastore usage has accrued and that October had a paid invoice, but do not yet allocate either amount to the unexpected database versus production `ghm-db` or any other datastore. Do not claim that the full $9.04 MTD or $9.82 October invoice was caused by the unexpected database until per-resource billing detail is visible. The owner should expand the Datastores usage section or download the billing CSV and provide the per-resource rows; no service-level suspension should be mistaken for stopping a PostgreSQL datastore charge.
