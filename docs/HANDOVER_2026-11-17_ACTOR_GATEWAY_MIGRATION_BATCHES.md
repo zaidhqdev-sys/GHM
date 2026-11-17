@@ -226,12 +226,10 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 
 ## Web dependency audit remediation — 17 November 2026
 
-- The web build and 26 web tests passed, but `npm audit` continued to report GHSA-fc5q-39xc-vjpf / CVE-2026-112366 through the locked picomatch 4.0.7 dependency used by Vite/Vitest.
-- Upstream picomatch PR #238 proposes a narrowly scoped parser guard for the exact single-branch repeated-extglob ReDoS. It remains unmerged; no patched official npm release is claimed.
-- The web workspace now applies the corresponding guard at install time only when the installed package is exactly `picomatch@4.0.7`. The patcher fails closed if the expected parser anchors differ.
-- A separate verification script checks the installed parser and regression patterns (`+(*a)`, `*(*a)`, `+(a|*a)`) plus preservation cases (`+(*)`, `+(a*)`).
-- The audit wrapper still runs the real `npm audit`. It accepts only the exact GHSA-fc5q-39xc-vjpf finding through the reviewed picomatch/fdir/tinyglobby/Vite/Vitest chain, and only after verifying the installed patch and exact lockfile inventory. Any other package, advisory, or unexpected dependency path remains a hard failure.
-- This is a temporary, explicitly scoped mitigation aligned with upstream PR #238, not an official upstream release or a claim that the upstream PR has merged. Remove the local patch and scoped exception when an official fixed release is available and independently verified.
-- No production migration, database role change, deployment, or additional hosting service is involved.
-
-- Review correction: the initial PR #238-style leading-quantifier guard left the bare `+(*)` case unchanged, despite the advisory explicitly naming it. Replaced that implementation with the broader single-branch self-repeating-star collapse from upstream picomatch PR #237, including collapse of the outer `+`/ `*` quantifier. The regression verifier now covers `+(*)`, `+(*a)`, `*(*a)`, anchored-star cases, and matching semantics. Both upstream PRs remain unmerged; this remains a local mitigation, not an official package release.
+- The web TypeScript build and 26 web tests passed; the CI audit failed on GHSA-fc5q-39xc-vjpf / CVE-2026-112366 in locked `picomatch@4.0.7`, reached through Vite/Vitest dependencies. The advisory identifies single-branch repeated extglobs including `+(*)` and `+(*a)`.
+- Upstream picomatch PR #237 proposes collapsing single-branch self-repeating-star extglobs so the inner star absorbs the outer repetition. PR #238 is a narrower leading-quantifier literalization proposal. Both remain unmerged; no official fixed npm release is claimed.
+- The web workspace now applies the PR #237-style collapse at install time, only when the installed package is exactly `picomatch@4.0.7`. The patcher checks exact source anchors and fails closed if the package layout differs.
+- The regression verifier checks generated regexes and matching/performance cases for `+(*)`, `+(*a)`, `*(*a)`, `+(a*)`, `+(a*b)`, and `*(*.js)`. It also verifies matching semantics and includes a 100 ms bound for crafted non-matching inputs.
+- CI runs the real `npm audit --audit-level=moderate --json`. A separate wrapper permits only the exact GHSA finding through the reviewed picomatch/fdir/tinyglobby/Vite/Vitest dependency path, and only after the installed parser mitigation and exact lockfile version are verified. Any other package, advisory, version, or dependency path remains blocking.
+- This is a temporary local mitigation aligned with an unmerged upstream proposal, not an official patched release. Remove the local patch and scoped audit exception once an official fixed release is available and independently verified.
+- No production migration, database role change, Render deployment, or additional hosting service is involved. PR #298 remains draft and unmerged.
