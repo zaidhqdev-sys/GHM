@@ -10,6 +10,8 @@ import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from '.
 import { findOutOfOrderPendingMigration } from './migration-order';
 import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
+import productionMigrationBatches from '../../config/production-migration-batches.json';
+import { selectProductionMigrationBatch, type MigrationBatch } from './migration-batches';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -210,7 +212,17 @@ const migrate = async (): Promise<void> => {
       );
     }
 
-    for (const migration of migrations) {
+    const pendingMigrations = migrations.filter((migration) => !appliedByVersion.has(migration.version));
+    const executionMigrations = approvedTarget.databaseName === 'ghm_db'
+      ? selectProductionMigrationBatch(
+        migrations,
+        new Set(appliedByVersion.keys()),
+        productionMigrationBatches as MigrationBatch[],
+        process.env.GHM_MIGRATION_BATCH_ID,
+      )
+      : pendingMigrations;
+
+    for (const migration of executionMigrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
         if (existingChecksum !== migration.checksum) {
