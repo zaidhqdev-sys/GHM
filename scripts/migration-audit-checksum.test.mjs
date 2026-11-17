@@ -228,5 +228,5 @@ test('committed production pending inventory is 48 unique ordered version/name r
   assert.equal(inventory.length, 48);
   assert.equal(new Set(inventory.map((item) => item.version)).size, 48);
   assert.deepEqual(inventory, [...inventory].sort((a, b) => a.version.localeCompare(b.version)));
-  assert.ok(inventory.every((item) => /^\\d{14}$/.test(item.version) && /^[a-z0-9][a-z0-9_-]*$/.test(item.name)));
+  assert.ok(inventory.every((item) => /^[0-9]{14}$/.test(item.version) && /^[a-z0-9][a-z0-9_-]*$/.test(item.name)));
 });
