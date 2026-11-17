@@ -331,3 +331,31 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 
 
 - CI #5356 reached the Actor Gateway principal qualification and rejected the verifier row on its `secret` CHECK constraint. The test environment variable is base64-encoded, while the database column is `bytea`; passing the encoded text stored the wrong bytes. Both isolated qualification fixtures now decode the existing CI-only secret with `Buffer.from(value, 'base64')` before binding it to PostgreSQL. This aligns the stored 32-byte verifier with the signing code. No production secret or database was involved.
+
+
+## Follow-up — CI timing and initial production batch boundary review — 18 November 2026
+
+### CI timing evidence
+
+- Inspected the exact-head CI run **44199544544** for commit `095f167003ff9e8b14b112a1525839571fb4652b`. Both `quality` and `web-quality` completed successfully; the complete workflow ran from 23:27:36 to 23:30:51 UTC (3 minutes 15 seconds).
+- The disposable PostgreSQL `npm run migrate` step took approximately 7.5 seconds. The plan-only qualification took approximately 7.4 seconds, and the Actor Gateway principal qualification approximately 0.5 seconds. This run does not support the hypothesis that the migration replay itself consumed 20 minutes.
+- The CI churn observed during the preceding work came from a sequence of pushed commits, each creating another pull-request CI run; the successive failures were fixture corrections, not a single migration step running for 20 minutes. The final exact-head run is green.
+- No workflow change is made solely to optimise this already short successful run. Continue batching related code and fixture changes before pushing. Documentation-only handover updates are ignored by the workflow's configured `paths-ignore` rules.
+
+### Initial static review of the pending migration prefix
+
+- Reviewed the first 14 entries of the committed 50-migration pending inventory against their SQL at this PR head.
+- The first explicit runtime-to-Actor-Gateway write cutover in that prefix is `20261110260000_gateway_supplier_classification_cutover`: it installs the gateway wrapper, grants it to `ghm_actor_gateway`, and revokes the legacy supplier-classification write RPC from `ghm_runtime`.
+- The immediately following `20261110265000_reconcile_business_profile_legacy_contract` changes the Business profile schema/function contract; `20261110270000_gateway_business_profile_update` installs the gateway wrapper and revokes direct runtime execution on the legacy profile update RPC.
+- Earlier entries are not a blanket “safe additive” batch: they include capability-governance functions and Actor Gateway principal/identity/registration/capability objects. The later gateway wrappers depend on the Actor Gateway assertion mechanism, and the signed request-context binding is not introduced until `20261111060000_bind_gateway_assertions_to_request_context`.
+- Therefore this static prefix review does **not** approve a first production batch or establish a safe stop point. It identifies the first explicit runtime cutover boundary for the route-readiness review; it does not prove that applying the preceding entries is operationally safe.
+- The production Actor Gateway has not been deployed and smoke-tested, the live production migration ledger has not been refreshed through an authorized read-only path, and the role-administration / fresh-recovery-point gates remain unresolved. The execution manifest stays empty. Do not run production migrations or set `GHM_MIGRATION_BATCH_ID`.
+
+### Next evidence required
+
+1. Complete the SQL/ACL dependency review for all 50 pending entries, distinguishing additive schema work, runtime grant changes, gateway-only cutovers, auth/session changes, and storage/provider workflow changes.
+2. Map each cutover to the currently deployed GHM runtime and Connect/QuoteFlow call paths; do not infer route readiness from the presence of gateway SQL.
+3. Refresh the production ledger and checksums only through an authorized read-only identity that can read `ghm.ghm_schema_migrations`; the dated 105-row snapshot and 50-entry repository queue are not a live reconciliation.
+4. Keep the production batch manifest empty until those checks and the independent production recovery/role/service gates are satisfied.
+
+No production SQL, database role/grant, secret, Render resource, deployment, or application data was changed during this review.
