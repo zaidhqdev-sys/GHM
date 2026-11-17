@@ -569,7 +569,7 @@ jobs:
 
       - name: Audit web dependency tree
         working-directory: web
-        run: node scripts/audit-web-dependencies.mjs
+        run: npm audit --audit-level=moderate
 
       - name: Verify resolved security-sensitive toolchain
         working-directory: web
