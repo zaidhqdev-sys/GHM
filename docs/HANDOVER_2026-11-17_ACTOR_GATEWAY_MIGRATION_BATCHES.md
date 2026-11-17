@@ -303,3 +303,16 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 - It statically verifies payment preparation requires explicit acceptance and an approved exact document version, writes payment-attempt/consent evidence, and contains no provider network call or subscription activation transition.
 - Scope is intentionally schema/ACL/immutability qualification. It does not seed a real founder identity, grant actual legal approval, create live commercial document content, or initiate checkout/payment. Those remain separately gated by founder bootstrap state, owner-supplied legal documents, and a deployed Actor Gateway.
 - This qualification runs only against CI disposable PostgreSQL. It does not connect to Render or production.
+
+
+## End-to-end commercial workflow qualification added — 18 November 2026
+
+- Added `qualify:commercial-workflow`, running only against disposable PostgreSQL CI.
+- The fixture bootstraps a synthetic canonical founder through the existing one-time founder bootstrap function. It uses a CI-only placeholder credential string; no real owner password, account ID, legal document, or production data is used.
+- It creates a synthetic Business and active owner membership, CI-only plan/version/price, trialing subscription, and two immutable synthetic subscription-terms versions.
+- A second PostgreSQL connection logs in as `ghm_actor_gateway`; the test asserts both `session_user` and `current_user` remain that principal and never SET ROLE.
+- It exercises signed scoped authority grant, exact-version approval, explicit-consent payment preparation, idempotent retry, authority revocation, and post-revocation approval denial.
+- Negative cases cover one-use nonce replay, forged HMAC, caller-selected non-founder identity, expired assertion, false consent, and an unapproved document version.
+- Final state requires exactly one payment attempt and consent event for the idempotency key, one approval event for the exact version, `pending_checkout` attempt status, and unchanged `trialing` subscription lifecycle.
+- No payment provider call, checkout, settlement, activation, production connection, production credential, or real legal approval is involved. PayFast remains excluded.
+- This runs after all migrations and the commercial schema/ACL qualification using existing disposable CI roles and the test-only assertion secret. No extra database, Render service, or recurring schedule is added.

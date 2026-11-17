@@ -86,7 +86,8 @@
     "typecheck:worker:actor-gateway": "tsc -p workers/actor-gateway/tsconfig.json",
     "test:worker:actor-gateway": "node --test workers/actor-gateway/worker-contract.test.mjs",
     "qualify:migration-plan-only": "node scripts/qualify-production-migration-plan-only.mjs",
-    "qualify:commercial-document-consent": "node scripts/qualify-commercial-document-consent-postgres.mjs"
+    "qualify:commercial-document-consent": "node scripts/qualify-commercial-document-consent-postgres.mjs",
+    "qualify:commercial-workflow": "node scripts/qualify-commercial-workflow-postgres.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",

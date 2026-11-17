@@ -255,6 +255,9 @@ jobs:
       - name: Qualify commercial document authority, approval and payment-consent schema
         run: npm run qualify:commercial-document-consent
 
+      - name: Qualify founder authority, document approval and payment consent end-to-end
+        run: npm run qualify:commercial-workflow
+
       - name: Check whole-database SECURITY DEFINER inventory script syntax
         run: node --check scripts/audit-security-definer-authority.mjs
 
