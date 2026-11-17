@@ -698,3 +698,44 @@ This is a concrete product-continuity dependency, not a reason to restore direct
 ### Next implementation gate
 
 The next safe action is to establish the deployment readiness checklist and verify required environment-variable *presence only* (never values) across the existing GHM runtime and the proposed gateway service. Required gateway configuration includes the dedicated DB URL, ES256 public verification key set, capability assertion secret, HTTPS base URL in GHM runtime, and the matching database functions/ACLs. Do not create a paid Render service or provision secrets as part of this documentation review. No production migrations or deployments were run.
+
+
+## Render workspace inventory and configuration-presence audit — 2026-11-17 02:49Z
+
+The user explicitly confirmed the Render workspace **ZAID Technologies** for read-only inspection. Workspace ID used: `tea-d9svua6417fc73bhcutg`.
+
+### Live resource inventory returned by Render
+
+Web services in the workspace:
+- `GHM-Internal-Runtime` — service `srv-damupsek1f9s73eq8kkg`, Frankfurt, Free plan, branch `main`, auto-deploy off, health path `/healthz`, currently not suspended.
+- `ghm-payfast-sandbox-runtime` — legacy sandbox resource; not a production target.
+- `ghm-payfast-callback-sandbox` — legacy sandbox resource; not a production target.
+- `ghm-identity-qualification` — legacy qualification resource; not a production target.
+- `zaid-ai-workforce` — separate application; not approved or configured as the GHM Actor Gateway host.
+
+No service named `ghm-actor-gateway` or other dedicated Actor Gateway host appears in the returned workspace service inventory.
+
+Postgres resources:
+- `ghm-db` — `ghm_db`, PostgreSQL 18, Frankfurt, plan `0.1c-256mb`, status available; database metadata reports default user `ghm_app_user`.
+- `ghm-payfast-sandbox-db` — suspended legacy sandbox resource.
+- `ghm-identity-qualification-20261018` — separate qualification database, not the production target.
+
+The inventory confirms the existing GHM runtime is Free plan (not an additional paid web service) and the production database is the existing paid resource. No additional service was created and no plan or configuration was changed.
+
+### Environment-variable inspection limitation
+
+Render's connected `list_services` and `get_service` responses expose service metadata, branch, plan, region, build/start commands and health-check configuration, but do not return environment-variable names or presence. No secret values were requested or exposed. Therefore the presence/absence of `GHM_ACTOR_GATEWAY_URL`, `GHM_ACTOR_GATEWAY_DATABASE_URL`, ES256 public-key configuration, assertion secret, or storage attestation configuration is **not yet verified**. Do not infer absence from these metadata responses.
+
+The GHM source confirms:
+- `GHM_ACTOR_GATEWAY_URL` is optional at runtime startup; when unset the gateway-dependent HTTP operations are deliberately unavailable (503).
+- The Actor Gateway process requires `GHM_ACTOR_GATEWAY_DATABASE_URL`, valid ES256 public verification-key configuration and `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`.
+- The gateway startup checks the connected PostgreSQL session identity and the exact database privilege allowlist before listening.
+- Actor Gateway package start command is `npm run start:actor-gateway`; build command is `npm ci --include=dev && npm run build`. It is a Node service and the health route is `/healthz` per the gateway app contract.
+
+### CI state on the documentation commit
+
+Commit `8c380e2191b815c559b2c323c9170c960766072c` is PR #297's current head. The PR remains draft/open. GitHub reports no combined commit statuses and the PR-triggered workflow-run lookup returned no runs for this documentation-only commit. Do not label this commit CI-passed. Prior exact-head CI #5274 passed on the previous code head `4f952814ecb12140404e8fe05ab68eb31c8e69f7`.
+
+### Next action
+
+Use Render's dashboard Environment page (or a safe name-only export if available) to verify required key presence without copying values into chat. If name-only inspection cannot be performed safely, have the owner verify the names in the dashboard and report only present/missing. Do not rotate, generate, or set secrets; do not change runtime environment, create the paid gateway service, trigger deploys, or execute migrations during this audit. The dedicated always-on Frankfurt Actor Gateway remains the intended architecture and the user's USD 7/month ceiling remains the cost boundary, not authorization to create it.
