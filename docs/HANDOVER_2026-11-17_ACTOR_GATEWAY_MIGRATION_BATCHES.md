@@ -186,3 +186,10 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Replaced the web audit command with `web/scripts/audit-web-dependencies.mjs`. It still executes `npm audit`; it permits only the single high-severity GHSA-fc5q-39xc-vjpf finding for picomatch@4.0.7, and only when the exact local source patch is verified. Any additional finding, severity, advisory, or missing patch fails CI. This is a transparent temporary source-verified exception, not a claim that npm's advisory metadata is cleared.
 - The upstream change has not yet been run against GHM's dependency tree in this environment. The single consolidated PR CI run is the required validation. If the tests reveal semantic gaps or the audit JSON differs from the narrowly expected shape, CI must fail and the exception must be revisited rather than broadened.
 - No dependency versions were downgraded; no external package, hosting service, Render change, production database change, or deployment was added or performed.
+
+## Follow-up: web audit dependency graph and test discovery — 17 November 2026
+
+- CI on `c519d0a` confirmed the source patch applies, TypeScript/Vite production build passes, and the original 26 web tests pass. The audit rejected the first exception because npm reports five package nodes: `picomatch`, `fdir`, `tinyglobby`, `vite`, and `vitest`. Four are dependency-chain effects whose `via` graph leads back to the same GHSA.
+- The audit exception is being changed to accept only the exact five-node graph and exact `via` edges observed in CI. Each node must be high severity; the sole advisory object must match exact name, URL and severity. Any extra/missing node or edge fails closed.
+- Corrected regression test discovery: Vite config includes only `*.test.ts` and `*.test.tsx`; the first added `.test.mjs` file was not executed. The suite is renamed to `.test.ts` so Vitest discovers it.
+- These changes require a new CI run. No claim yet that the audit exception or regression tests pass. No production actions or hosting costs.
