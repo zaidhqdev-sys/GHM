@@ -96,3 +96,15 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Important correction to earlier notes: upstream picomatch PR #194 is titled “fix: treat a leading ? in an extglob body as a wildcard”; its description explicitly says it is not a security fix and discusses separate ReDoS edge cases. It must **not** be described as the patch for GHSA-fc5q-39xc-vjpf. No verified fixed picomatch release or directly matching upstream security patch has been established in this investigation.
 - npm's forced remediation proposes installing Vitest 3.1.4, a breaking downgrade; do not apply it. Do not introduce a speculative `picomatch` override, because the current upstream manifests still request the affected 4.x line and no verified patched artifact has been established.
 - No source, lockfile, workflow, production DB, or deployment changes were made for this audit finding. The next safe action is to track the exact advisory/upstream remediation and re-run the audit when a verified fixed picomatch release is available. Consider upgrading Vite/Vitest only as a separate compatibility-maintenance task, not as a security fix for this advisory.
+
+
+## CI follow-up — run 44160812383 / jobs 134313801064 and 134313801566
+
+- Both jobs completed with failure; the reported quality job was no longer running when checked.
+- `web-quality`: web build and 26 tests passed; `npm audit` failed on five paths to the same picomatch GHSA. No dependency remediation was applied.
+- `quality`: isolated Actor Gateway principal qualification failed its runtime EXECUTE allow-list check. This is not the earlier stale 14-vs-13 count; that correction was already present.
+- Exact disposable-PostgreSQL state was the 43-signature baseline minus four functions: three capability-governance legacy functions and the registration-identity legacy write function. The registration read function remained present.
+- Root cause: CI applies all repository migrations before principal qualification. Migrations `20261117010000_revoke_runtime_business_registration_identity_write.sql` and `20261117020000_revoke_runtime_capability_governance.sql` already revoke those four signatures. The allow-list incorrectly treated capability governance as a manual cutover and registration read+write as one manual group, despite write being migration-revoked first.
+- Corrected the model to a 39-signature post-migration/pre-manual-cutover baseline. Removed the three capability-governance signatures and registration-write signature from that baseline; the remaining registration read is its own manual cutover group. Eight remaining manual groups yield 256 reviewed combinations and preserve the 13-signature fully cut-over state.
+- Tests assert that migration-revoked signatures never reappear in any manual-cutover stage and that registration read is the remaining manual revocation. No ACL was widened and no production state was touched.
+- Fresh CI is required to validate this correction. The npm audit blocker remains separate and unresolved; do not use forced downgrade, speculative override, or audit suppression.
