@@ -422,3 +422,29 @@ Verified directly at the current PR #297 head before responding:
 Do not substitute `audit:migrations:predeploy`; it remains the historical seven-entry policy. Do not run migrations.
 
 Before changing the local checkout, inspect `git status --short --branch`, current branch and `git rev-parse HEAD`. Preserve any uncommitted work. Once the working tree is confirmed clean (or work is safely preserved), fetch origin and switch/update to the PR branch, then verify the local package script with `npm run` / `node -p "require('./package.json').scripts['audit:migrations:production-inventory']"`. Only then run the read-only audit. No production database operation or cost was incurred.
+
+
+## Live production migration inventory audit — 2026-11-17
+
+The owner ran `npm run audit:migrations:production-inventory` locally from `C:\\GHM` after switching to PR #297 branch `feature/explicit-production-migration-batches` at commit `31415dc14b88e7f9598d2bc70933f001b9406f57`. The required values were confirmed present in local `.env` without exposing credentials: `GHM_MIGRATOR_DATABASE_URL` present, `DATABASE_SSL=true`, target defaults to `ghm_db`.
+
+The live audit returned **`PASS_WITH_PENDING`**. The output supplied in the handover conversation confirms:
+- The 48-entry committed production pending inventory matched the actual live pending version/name set (`pending_allowlist_mismatch_count: 0`).
+- `unexplained_mismatches` is empty.
+- `name_mismatches` is empty.
+- `unrecognized_extra` is empty.
+- Ten extra live ledger entries are classified as `VERIFIED_RETAINED_HISTORY` with matching registered names/checksums and documented provenance.
+- The historical exception audit includes entries classified `HISTORICAL_PROVENANCE_RETAINED` and several `REDUNDANT` entries. Redundant exceptions are cleanup candidates, not unexplained ledger mismatches; do not remove them during production rollout preparation without a separate provenance review.
+
+Interpretation: this is the first successful **live production** reconciliation of the exact pending inventory against `ghm_db` using the dedicated migrator identity and the script's read-only transaction. `PASS_WITH_PENDING` means the production state matches the committed inventory and all checked forensic categories pass while the listed migrations remain unapplied. It is not a migration execution approval or a completed-migration verdict.
+
+No migration, DDL, grant, role change, production data write, Render change, deployment, service creation or recurring cost was incurred by this audit. The production migration batch manifest remains empty. Do not run `npm run migrate` or populate the manifest as a side effect of this result.
+
+### Next required review
+
+1. Preserve the full local JSON output as audit evidence, including the leading authority and migration count summary, without storing credentials.
+2. Review the exact ordered 48-migration dependency chain and the production Actor Gateway API/ACL prerequisites against the now-confirmed live baseline.
+3. Keep the known post-deployment manual capability-governance cutover sequencing intact; do not revoke legacy runtime EXECUTE before the gateway is deployed and end-to-end routes are verified.
+4. Refresh and verify the Render logical backup immediately before any approved production DDL/ACL changes; the November 14 archive remains the existing validated recovery artifact, not a fresh November 17 backup.
+5. Only after the migration chain, backup and gateway readiness gates are satisfied, prepare a separately reviewed exact production batch. The live audit itself authorizes no production change.
+
