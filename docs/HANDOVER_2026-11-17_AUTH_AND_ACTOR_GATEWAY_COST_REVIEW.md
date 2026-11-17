@@ -1038,3 +1038,14 @@ The full local test run on the 50-entry inventory completed all six compiled tes
 The assertion and test title have now been updated to require 50 unique, ordered version/name records. This is a test-only correction; it does not alter the migration inventory, SQL migrations, production database, batch manifest, or execution authorization.
 
 Required next verification: rerun `npm test` on the resulting exact PR head and capture `git rev-parse HEAD`. Do not treat the prior run as fully green until the corrected test passes. PR #297 remains draft/open/unmerged, the production batch manifest remains empty, and no production migration or deployment is authorized by this correction.
+
+
+## Exact-head local test verification — 2026-11-17 03:25Z
+
+The owner ran the corrected local test suite from `C:\\GHM` and confirmed the tested checkout SHA:
+
+`58df981dae908f522d1eafbdcd3f1036cfa0f5a4`
+
+This exactly matches PR #297's current head. The pasted output shows the corrected migration checksum/inventory suite at 22/22, actor-gateway worker contract tests at 8/8, and the displayed compiled test batches at 321/321, 175/175, 120/120, 48/48 and 4/4, with no failures in those displayed batches. The QuoteFlow live-database qualification remained skipped by design unless `GHM_RUN_LIVE_DATABASE_TESTS=true` is explicitly set; it was not enabled against production.
+
+This records local exact-head evidence only. A live GitHub check immediately after the test confirmation showed PR #297 still draft/open/unmerged, with no workflow runs and no combined commit statuses for this SHA. Therefore no GitHub CI pass is claimed. PR #297's production batch manifest remains empty; no production migration, deployment, ACL, secret, Render service or payment state changed.
