@@ -75,3 +75,13 @@ The CI `npm audit --audit-level=moderate` failure is isolated to the **GHM web w
 As of this investigation, the GitHub Advisory Database lists picomatch versions through 4.0.7 as affected but does not state a patched version. The upstream fix PR (micromatch/picomatch #194) is still open and unmerged. npm's suggested `npm audit fix --force` would downgrade Vitest to 3.1.4 and is a breaking dependency change; it was **not** run. No arbitrary override or unverified version was introduced. Recheck the upstream patch and advisory before selecting a remediation. Until a supported fixed release is published, keep this as an explicitly tracked CI security blocker rather than masking the audit.
 
 The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run `44157876064` had been created but remained pending at the time of this handover update; no new qualification result is claimed here.
+
+
+## CI follow-up — run 44158237547 / job 134305974720
+
+- The user-reported long-running `quality` job has now completed and failed; it was not still running when checked. The migration application, build, worker bundle, and the earlier principal setup steps passed.
+- Its failing step was `Qualify isolated actor gateway database principal`. The failure is a local allow-list invariant, not a PostgreSQL ACL denial: `Runtime database function cutover stage inventory is incomplete`.
+- Exact cause: the nine reviewed cutover groups have sizes `[3, 14, 2, 3, 3, 2, 1, 1, 1]`, removing 30 functions from the 43-function baseline. The fully cut-over allow-list therefore contains **13**, which is also what the unit test and the explicit expected-signature list assert. The production runtime invariant still incorrectly required **14**.
+- Corrected only that stale invariant in `src/db/runtime-database-privileges.ts` from 14 to 13. No grants, migrations, or production state were changed.
+- The separate `web-quality` job failed independently at `npm audit`; build and all 26 web tests passed. It reports five dependency paths to the same picomatch GHSA, not five distinct CVEs. The advisory still lists versions through 4.0.7 as affected with no fixed version; upstream PR #194 remains open. Do not run `npm audit fix --force`, downgrade Vitest, or suppress the audit.
+- Both failures need a fresh CI run after this correction; the web audit remains an unresolved upstream security blocker.
