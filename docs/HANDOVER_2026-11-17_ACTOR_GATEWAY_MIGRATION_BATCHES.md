@@ -1,16 +1,20 @@
 # Actor Gateway production migration-batch implementation
-**Date:** 2026-11-17 18:54 UTC  
+**Date:** 2026-11-17  
 **Scope:** Actor Gateway deployment prerequisite only.  
-**Status:** Batch-selection primitive added on a draft branch; not yet integrated into the production migration runner and not deployable.
+**Status:** The production runner is wired to explicit migration batches on draft PR #298. The committed batch manifest is empty, so production execution remains fail-closed; no first batch is approved.
 ## Implemented in this tranche
-- Added `src/db/migration-batches.ts` to distinguish inventory from execution authority.
-- A production batch requires an explicit committed batch ID, a non-empty purpose, exact repository version/name pairs, no duplicate IDs or versions, and an exact contiguous prefix of currently pending migrations.
-- The selector rejects unknown batches, already-applied entries, name mismatches, skipped earlier pending migrations, and duplicate entries.
-- Added unit tests for these rules.
-## Important limitation
-This is an isolated selection primitive only. It is not wired into `src/db/migrate.ts`, does not execute SQL, does not establish a safe first Actor Gateway batch, and does not change production. The existing seven-entry production inventory remains incomplete and must not be mistaken for the full pending set. Do not run `npm run migrate`.
-The 17 November post-deployment revocation migrations remain excluded from any pre-deployment batch. The gateway's exact database-function allowlist and feature-path cutover dependencies still require migration-by-migration reconciliation before a batch manifest can be committed.
-No Render service was submitted or deployed; no production SQL, credentials, secrets, role memberships, or environment variables were changed.
+- Added `src/db/migration-batches.ts` and wired it into `src/db/migrate.ts` for production targets.
+- Production execution requires `GHM_MIGRATION_BATCH_ID` and a committed manifest entry with a purpose and exact version/name pairs.
+- The selected batch must be an exact contiguous prefix of the currently pending repository migrations; unknown, duplicate, already-applied, renamed, skipped, or out-of-order entries are rejected.
+- All already-applied repository migrations continue to receive checksum/provenance verification before the transaction can commit.
+- The current production pending inventory is 50 entries in `config/pending-migrations.production.json`; it is an inventory guard, not execution authority.
+- `config/production-migration-batches.json` is intentionally empty. Therefore no production batch can currently be selected.
+- The 17 November post-deployment revocation migrations remain pending and are not authorized for a pre-deployment batch.
+## Remaining limitations
+- The production inventory must be refreshed from an administrator-authorized live ledger immediately before any eventual production batch. The 105-row export is a dated snapshot, not a live execution authorization.
+- The runner still needs a non-executing production plan mode before a manifest is populated and any execution is considered.
+- The first safe contiguous prefix has not been derived. Migration dependencies, active API route readiness, Actor Gateway hosting/credentials, database role/ownership, and a fresh verified recovery point remain separate release gates.
+- Do not run `npm run migrate` against production. No production SQL, credentials, secrets, role memberships, Render settings, or environment variables have been changed by this branch.
 
 ## CI failure investigation — 17 November 2026 19:01 UTC
 
@@ -183,3 +187,16 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Restored the original `web/package.json` scripts and `.github/workflows/ci.yml` audit step (`npm audit --audit-level=moderate`). Removed the local patch script, custom audit wrapper, and regression test that only exercised the temporary forked behaviour.
 - CI run `44171106954` succeeded only because the custom audit wrapper allowed the known advisory chain after the local patch; it must not be cited as evidence that npm's audit is clear or that the upstream vulnerability is resolved. The latest known genuine web audit remains blocked by GHSA-fc5q-39xc-vjpf; keep it visible until an official, verified fixed release is available and the lockfile audit passes.
 - This correction does not change the Actor Gateway migration-batch implementation. PR #298 remains draft and unmerged; no production migrations, database grants, Render changes, deployments, secrets, or additional hosting services were touched.
+
+## Exact pending-inventory guard — 17 November 2026
+
+- Tightened `assertProductionPendingMigrationAllowlist` so the committed 50-entry inventory must exactly equal the repository's current unapplied version/name queue, in the same order.
+- The guard now refuses omitted pending entries, entries that are already applied (stale inventory), and reordered/renamed entries. This closes the prior gap where the allowlist only rejected unexpected pending migrations but tolerated stale inventory rows.
+- Added unit tests for exact inventory acceptance and each stale/incomplete/order/name failure mode. The tests are included in the existing `dist/db/migration-batches.test.js` test command.
+- This is source/test work only. The live production ledger has not been queried in this step, and the 50-entry inventory remains based on the previously supplied 105-row snapshot. Refresh the live ledger and reconcile checksums before authorizing any batch.
+
+## Draft-branch reconciliation note — 17 November 2026
+
+- PR #298 is the current focused candidate based on current `main` (base `b73839b27ac90446650f921d3e8ce1b5de041f04` at the time of inspection). It contains the current 50-entry inventory and the November 17 migration source variants.
+- PR #297 (`feature/explicit-production-migration-batches`) is a separate, older divergent draft: 118 commits ahead and 2 behind current `main` at inspection, with 27 changed files including unrelated auth/secret-provisioning work. Its migration runner includes a plan-only implementation and disposable PostgreSQL runner qualification, but its branch migration SQL differs from current-main migration files. Do not merge PR #297 independently or copy its migration SQL by filename alone.
+- PR #298 remains draft and unmerged. Its current successful CI run after the temporary web audit workaround is not valid evidence of npm audit clearance. The audit gate has been restored and will correctly report the outstanding picomatch advisory.
