@@ -1643,3 +1643,439 @@ PR #296 remains a separate draft hardening candidate on `hardening/business-iden
 ### Change record
 
 This was source and handover review only. No production ledger query, migration execution, DDL, role/grant/ACL, RLS, credential, secret, Render configuration, deployment, payment, consent, or legal-document state was changed.
+
+
+## 37. 2026-11-16 — explicit production migration batch runner PR #297
+
+A draft implementation has been opened:
+https://github.com/zaidhqdev-sys/GHM/pull/297
+
+Branch: `feature/explicit-production-migration-batches`
+Current code head: `84a5fe49874b12babc2d8aabdbe402c3c833d078`
+Base: main `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`
+
+### Implementation
+
+New files:
+- `config/production-pending-migration-inventory.json` — exact 48 version/name pairs currently later than the evidenced production ledger head `20261109210000`.
+- `config/production-migration-batches.json` — currently contains an empty `batches` array intentionally. No batch is approved yet.
+- `src/db/production-migration-batch.ts` — pure fail-closed validator and selector.
+- `src/db/production-migration-batch.test.ts` — unit tests for batch selection.
+- `src/db/production-migration-batch-runner-contract.test.ts` — runner wiring and plan-mode contract tests.
+
+Updated:
+- `src/db/migrate.ts` — production no longer treats the old seven-entry pending allowlist as execution authorization. It compares the complete live pending queue against the separate committed inventory, then requires `GHM_MIGRATION_BATCH_ID` to select a named batch. A selected batch must be an exact contiguous prefix of the pending queue. Only selected migrations are executed.
+- `package.json` — both new tests are included in `npm test`.
+
+### Fail-closed behavior
+
+For production:
+1. The complete repository migration list is sorted and duplicate versions rejected.
+2. The runner computes all repository migrations absent from the live ledger.
+3. That exact ordered version/name list must match the committed pending inventory. Missing, extra, reordered or renamed entries fail closed.
+4. A separately committed batch manifest must contain unique valid IDs, reasons and ordered migration identities.
+5. `GHM_MIGRATION_BATCH_ID` is mandatory when pending work exists.
+6. The selected batch must exactly match the beginning of the pending queue; skipped, reordered, wrong-name or non-prefix batches are rejected.
+7. The execution loop iterates only the selected prefix, not every repository migration.
+8. `GHM_MIGRATION_PLAN_ONLY=true` prints the selected ordered migration filenames and explicitly rolls back the transaction without executing migration SQL.
+9. Non-production execution retains its prior behavior.
+
+### Deliberately no production batch yet
+
+The batch manifest is empty. This is intentional: the 48 migration version/name inventory is not the same as checksum/provenance reconciliation or operational approval. A production run with pending migrations now refuses unless a named batch exists, and currently no batch ID can be selected. Do not populate a batch merely to make the runner executable.
+
+The existing `config/pending-migrations.production.json` remains unchanged for historical/audit reference but is no longer imported by the production runner as an execution authorization list. It must not be expanded to 48.
+
+### Test coverage authored
+
+- explicit batch ID required;
+- exact contiguous prefix selected;
+- stale/incomplete inventory refused;
+- skipped earlier migration refused;
+- wrong migration name refused;
+- duplicate batch IDs and duplicate migration versions refused;
+- applied migrations correctly removed from the pending prefix;
+- runner source confirms production uses selected execution list, plan mode rolls back, and inventory and batch manifest are distinct.
+
+### CI
+
+PR #297 was opened draft at code head `84a5fe49874b12babc2d8aabdbe402c3c833d078`. Exact-head checks have started:
+- `quality`: queued
+- `web-quality`: queued
+- Cloudflare Pages: in progress
+
+No CI result is yet green. Do not merge until exact-head checks pass and review confirms the runner contract.
+
+### Outstanding before any real batch is added
+
+- Complete all 105 production ledger row version/name/checksum comparisons against current repository SQL, legacy CRLF hashes, retained historical records and documented provenance exceptions.
+- Confirm the exact production pending inventory from a fresh read-only live ledger export at rollout time.
+- Finish migration-by-migration dependency and service/secret readiness mapping for the proposed first prefix.
+- Verify a current recoverable backup and rollback procedure.
+- Qualify the runner against disposable PostgreSQL 18 using the production-like 105-row ledger fixture, including a safe prefix success, intentional gaps, checksum mismatch, transaction rollback, repeat execution and advisory-lock behavior.
+- Only then add a separately reviewed small batch manifest and use plan-only output before any controlled execution.
+
+No production ledger query, migration execution, DDL, grants, role changes, credentials, secrets, Render settings, deployments, payment or consent operations were performed for PR #297.
+
+
+### Important runner review correction before merge
+
+A follow-up review caught a subtle integrity regression in the first draft: iterating only the selected batch would have skipped checksum verification for already-applied repository migrations outside that batch. This is unacceptable because a staged runner must retain the existing full-history checksum/provenance check.
+
+Corrected on the branch:
+- The runner now iterates the full ordered repository migration list for checksum validation of every already-applied migration.
+- It only executes SQL for versions present in the selected batch's explicit `executionVersions` set.
+- The runner contract test now asserts checksum verification occurs before the execution-version gate.
+
+Correction commits:
+- `ef664766f3dbcdad39b9b8b4993f366a1a217d12` — preserve full applied migration checksum verification.
+- `5f17b61796389e1d10361c7de45ee6601e4dada5` — assert this contract in tests.
+
+This correction is included before merge. The earlier CI run on `84a5fe4` does not validate these later changes; a fresh exact-head CI run is required. Do not merge on the earlier green results.
+
+
+### Follow-up validation fixes and current exact-head CI
+
+A further source review caught an incorrectly escaped version-validation regular expression in the new pure batch validator. It was corrected so version identifiers are checked as exactly 14 decimal digits.
+
+- Fix commit: `1ba40df6d54b2545afc01264edc83ef28f69c66f`.
+- Cloudflare Pages preview: passed.
+- Exact-head workflow run 43953137530:
+  - `quality`: in progress.
+  - `web-quality`: in progress.
+
+The preceding run on code commit `5f17b61` was cancelled while commits were arriving; it is not counted as a result. The current run is on the corrected code head. PR #297 remains draft and unmerged.
+
+
+### Plan-only integrity correction — 2026-11-16
+
+A deeper review of the runner found that the first plan-only implementation returned before walking the applied migration history. That meant it could print a plan without first validating all already-applied checksums and documented historical provenance exceptions.
+
+Corrected:
+- Plan-only now selects the explicit batch, then enters the same full ordered migration-history loop as execution.
+- Every already-applied migration is checksum/provenance validated before the plan is emitted.
+- For selected pending migrations, plan-only records the filename but skips SQL execution and ledger insertion.
+- After all history checks succeed, it prints the ordered plan, explicitly rolls back the transaction and returns.
+- Added a runner contract test asserting plan output occurs after the applied-checksum validation point and that plan mode rolls back.
+
+Commits:
+- `717abc90aedd3865051b972bb1ac1694b0b76eff` — move plan-only handling after full history validation.
+- `5703e6801c8c25bb34e105cecc2dd35fd97c3753` — test plan-only checksum validation ordering.
+
+A fresh PR workflow was queued for exact head `5703e6801c8c25bb34e105cecc2dd35fd97c3753`, run `43953816972`. Do not rely on the earlier successful run for the newer plan-only correction. PR #297 remains draft/unmerged.
+
+
+### Exact-head CI qualification completed — 2026-11-16 20:53Z
+
+PR #297 current tested code head at this qualification: `72375f2951a5188a54276277e6d118300a312fa9`.
+Workflow run: `43953881811` (run 5190).
+
+All exact-head checks passed:
+- `quality`: success.
+- `web-quality`: success.
+- Cloudflare Pages: success.
+
+The quality job also completed successfully:
+- TypeScript build.
+- Full test suite, including production batch validator and runner contract tests.
+- All repository SQL migrations applied in disposable PostgreSQL.
+- Actor Gateway smoke test in local Cloudflare Workers runtime.
+- Business Capability, Saved Business, Business Hours, Trust Score and Business Logo signed gateway qualification on disposable PostgreSQL.
+- Supplier classification/membership authorization and Business profile gateway compatibility qualification.
+- Commercial payment settlement identity qualification.
+- Migration audit policy tests and runtime boundary verification.
+- Auth issuer manual cutover qualification in disposable PostgreSQL, including pre/post SECURITY DEFINER authority inventories and comparison.
+- Evidence preservation and container cleanup.
+
+No failing steps were reported. This establishes code/CI qualification only; it is not production migration approval and does not replace the pending 105-row live checksum/provenance reconciliation or current backup verification.
+
+PR #297 remains draft and unmerged. Its production batch manifest remains intentionally empty. Do not populate or execute a production batch based solely on this CI result.
+
+
+### Final exact-head CI completion and read-only ledger access attempt — 2026-11-16 21:05Z
+
+The fresh workflow run `43954829470` completed successfully on exact head `20383100f9b276f15d76cb117c05032042214e7f`:
+- `quality`: success.
+- `web-quality`: success.
+
+PR #297 remains open, draft and unmerged. This is CI qualification of the staged runner and its repository integration only; it does not authorize production migrations.
+
+#### Current-main inventory anchor
+
+A fresh recursive GitHub tree read of `main` returned tree SHA `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`, complete and not truncated, with 143 SQL migration files under `database/migrations`.
+
+Current production reconciliation configuration was reread:
+- retained historical migration registry: 10 entries;
+- historical migration provenance exceptions: 16 entries;
+- old pending production allowlist: 7 entries (retained for historical/audit reference, not used as runner execution authorization).
+
+The existing checksum audit implementation defines canonical LF SHA-256, supported legacy CRLF SHA-256, retained-history verification and historical-provenance classification. The complete 105-row live ledger comparison remains outstanding; no claim is made that all live checksums have passed.
+
+#### Render read-only query attempt
+
+Tried the connected Render read-only SQL query against Postgres resource `dpg-dag0sdtbedkc7389vi2g-a`:
+`SELECT version, name, checksum, applied_at FROM ghm.ghm_schema_migrations ORDER BY version`
+
+Render returned `permission denied for table ghm_schema_migrations (SQLSTATE 42501)`. This is consistent with the established restricted ledger access: the read-only connector uses the default mapped role and cannot SET the temporary `ghm_auditor` membership. No privileges or roles were changed by this attempt.
+
+The exact 105-row export was previously produced successfully in the user's psql session on 2026-11-16, but the raw row values are not present in the accessible handover/search result now. Do not reconstruct or invent them. To finish deterministic checksum reconciliation, re-export the exact ledger through the already-qualified temporary `ghm_auditor` transaction and save CSV for processing. No production DDL, migration execution, grant, credential, service, deployment, environment, payment or consent change occurred.
+
+
+### PR #297 latest exact-head CI and ledger export procedure — 2026-11-16 21:16Z
+
+Latest branch head: `56777b74169b254fee090f2236d14b5b8b01a0f3`.
+Latest workflow run: `43957404667`.
+- `quality`: success.
+- `web-quality`: success.
+PR #297 remains draft/open/unmerged. Main remains at tree SHA `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`, with 143 migration SQL files.
+
+The Render SQL connector cannot read the ledger using its default restricted role. The previously established safe export route is the user's psql connection, using a transaction-scoped SET grant to the persistent NOLOGIN `ghm_auditor` role, then explicit revoke before commit. Export should be made client-side with psql `\copy` so no additional server-side file privileges are required.
+
+Exact interactive psql sequence (run while connected to production `ghm_db` as the existing mapped Render default identity):
+
+```sql
+BEGIN;
+GRANT ghm_auditor TO ghm_db_user
+WITH SET TRUE, INHERIT FALSE
+GRANTED BY CURRENT_USER;
+SET LOCAL ROLE ghm_auditor;
+SELECT current_user, session_user, current_database();
+\copy (SELECT version, name, checksum, applied_at FROM ghm.ghm_schema_migrations ORDER BY version) TO 'C:/GHM/production-ledger-20261116.csv' WITH (FORMAT csv, HEADER true)
+RESET ROLE;
+REVOKE ghm_auditor FROM ghm_db_user GRANTED BY CURRENT_USER;
+COMMIT;
+```
+
+Expected identity while selected: `current_user=ghm_auditor`, `session_user=ghm_app_user`, `current_database=ghm_db`. Expected exported row count based on the prior successful read: 105. Verify the count and final version locally before sharing the CSV. If any command fails before COMMIT, issue `ROLLBACK;` (the temporary membership and read transaction are both rolled back). Confirm the file is client-side local and contains only migration metadata, no credentials or application data.
+
+After receiving the CSV, compare all 105 live rows against all 143 repository migration SQL files using canonical LF SHA-256, supported legacy CRLF SHA-256, exact version/name, the 10 retained-history records and 16 provenance exceptions. Report exact matches, checksum/name mismatches, ledger-only rows, retained historical rows and pending repository migrations. Do not infer or reconstruct missing ledger rows.
+
+No production DDL, migration, persistent grant, credential, secret, service, deployment, environment, payment or consent state changed in this step.
+
+
+### Production ledger export completed — 2026-11-16 21:35Z
+
+The user successfully exported the live production migration ledger from Render PostgreSQL 18 using local psql and a transaction-scoped auditor membership.
+
+Observed sequence and results:
+- Initial read-only membership check: `pg_has_role('ghm_db_user','ghm_auditor','SET') = false` and `pg_has_role('ghm_db_user','ghm_auditor','USAGE') = false`.
+- A transaction was opened successfully.
+- Temporary membership was granted only inside that transaction with `SET TRUE, INHERIT FALSE`.
+- `SET LOCAL ROLE ghm_auditor` succeeded.
+- Identity while reading: `current_user=ghm_auditor`, `session_user=ghm_app_user`, `current_database=ghm_db`.
+- Client-side psql `\\copy` exported `version,name,checksum,applied_at` from `ghm.ghm_schema_migrations`, ordered by version. psql reported `COPY 105`.
+- The local file is `C:\\GHM\\production-ledger-20261116.csv`, 15,368 bytes; PowerShell `Import-Csv` returned 105 rows.
+- `RESET ROLE` returned identity to `current_user=ghm_db_user`, `session_user=ghm_app_user`.
+- `REVOKE ghm_auditor FROM ghm_db_user GRANTED BY CURRENT_USER` succeeded.
+- `COMMIT` succeeded.
+
+A connection drop occurred during an earlier read-only membership check attempt; psql reconnected. No role change was attempted during that failed connection. The subsequent stable session completed the controlled transaction above.
+
+**Security conclusion:** the temporary SET membership was transaction-scoped and explicitly revoked before commit. No persistent auditor membership was left intentionally. The earlier verification showed both SET and USAGE membership false before the successful transaction. No migration SQL, production DDL, application data change, credential/secret change, Render service/deployment/environment change, payment or consent operation occurred.
+
+**Audit status:** the 105-row production CSV is now exported and row-count verified locally. Exact version/name/checksum reconciliation against the 143 repository migrations, 10 retained-history records and 16 documented provenance exceptions has NOT yet been performed. Do not report checksum reconciliation as passed until the CSV is made available to the audit workspace and every row is classified. PR #297 remains draft/unmerged and the production batch manifest remains empty.
+
+
+### Production ledger checksum reconciliation completed — 2026-11-16 21:54Z
+
+The user completed a read-only local reconciliation in a detached worktree at exact main commit `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`. The worktree was clean and contained all 143 repository SQL migrations. The original `C:\GHM-main` checkout remained untouched on its existing test branch, including its untracked backup file.
+
+Inputs:
+- Production ledger CSV: `C:\GHM\production-ledger-20261116.csv`, 105 rows.
+- Current-main migration SQL inventory: 143 files.
+- Retained historical registry: 10 entries.
+- Historical provenance exception registry: 16 entries.
+- Legacy pending production allowlist: 7 entries.
+
+Checksum algorithm was verified against the repository implementation:
+- Canonical SHA-256 over UTF-8 SQL normalized to LF.
+- Supported legacy CRLF SHA-256.
+- Explicit live-ledger checksum match against registered historical provenance exceptions.
+- Exact version/name reconciliation.
+- Retained historical ledger rows checked against registered names and checksums.
+
+Results:
+- 24 canonical checksum matches.
+- 62 supported legacy CRLF checksum matches.
+- 9 approved historical-provenance checksum matches.
+- 0 unexplained checksum mismatches.
+- 0 migration-name mismatches.
+- 10 ledger-only rows; all 10 match the retained historical registry.
+- 0 unrecognized extra ledger rows.
+- 0 invalid retained-history records.
+- 0 orphaned historical exceptions.
+- 7 historical provenance exception records are redundant because their registered hashes match current canonical repository bytes (versions: `20260915194500`, `20260915200000`, `20260915203000`, `20260915210000`, `20260915220000`, `20260916003000`, `20260916004500`). No exception record was changed; decide separately whether to retain them as provenance documentation or remove them in a reviewed source change.
+
+The counts reconcile the entire live ledger: 24 + 62 + 9 = 95 repository-backed applied rows, plus 10 verified retained historical rows = 105.
+
+Pending inventory:
+- 48 repository migrations are absent from the production ledger, beginning at `20261110010000` and ending at `20261116190000`.
+- The old seven-entry pending allowlist is a strict subset of those 48: all 7 entries are valid pending migrations, but 41 pending migrations are not in that legacy allowlist.
+- This is not a checksum/provenance failure. The staged runner PR #297 uses a separate complete 48-entry pending inventory and explicit batch manifest; the old seven-entry file remains historical/audit reference only and must not be expanded or treated as execution authorization.
+- The six latest commercial/provider/consent/document-approval migrations are part of the 48 pending entries. They are not authorized for execution by this audit.
+
+Important limitation:
+- The 16 historical exception records contain 7 redundant entries; this audit reports them but does not mutate policy files. Their historical purpose and whether to retain or remove them require a deliberate source-level decision.
+- This is a read-only reconciliation of the exported 2026-11-16 ledger snapshot. Re-export and revalidate the live ledger immediately before any eventual production batch.
+
+No production migration, DDL, grant, role membership, credential, secret, Render setting, service, deployment, payment or consent state was changed. The detached audit worktree remained clean.
+
+**Migration audit conclusion:** the 105-row production ledger snapshot reconciles fully against current main under the repository's supported checksum and provenance rules. This does not authorize execution of any of the 48 pending migrations, prove backup recoverability, qualify service/secret readiness, or satisfy the separate Actor Gateway hosting/cost gate. PR #297 remains draft/unmerged; its production batch manifest must remain empty until the separate operational and staged-runner qualification gates are complete.
+
+### PR #297 staged-runner qualification follow-up — 2026-11-16 21:57Z
+
+PR #297's description was refreshed to reflect the completed production ledger reconciliation and the remaining rollout gates. The seven redundant historical provenance exception entries remain unchanged pending a separate disposition decision.
+
+Latest PR head: `a3a092df581e6e6d3f5420546fa8a4a25a4cd1b7`; base main: `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`. PR remains open, draft and unmerged. Latest workflow run `43965007482` is still in progress at the time of this note: `web-quality` passed; `quality` was still running.
+
+Source review confirmed:
+- Production inventory is separate from the batch manifest, which remains an empty `batches` array.
+- The runner checks complete pending-inventory equality, requires a named batch, and accepts only an exact contiguous prefix.
+- All already-applied migrations are checksum/provenance checked before the execution-version gate.
+- Plan-only mode reports the selected migrations and rolls back without executing SQL.
+- Existing CI applies all 143 repository migrations to a disposable PostgreSQL 18 service and runs unit/contract tests, but does not yet exercise the production batch selector through the full migration runner in an explicit batch integration scenario.
+
+The next qualification increment is therefore a dedicated disposable-PostgreSQL integration exercise for production batch selection and execution: explicit batch success, empty-manifest/no-batch refusal, stale inventory refusal, skipped-prefix refusal, plan-only rollback/no ledger writes, injected migration failure/atomic rollback, and repeat-run/idempotency. It must use only the CI disposable PostgreSQL service or another already available local disposable database. Do not create a paid Render database/service or use production for qualification.
+
+The CI run on the current PR head must finish before reporting exact-head CI as passed. No production batch is defined or authorized. No production migration, DDL, ACL, role, credential, secret, Render setting, deployment, payment or consent state changed.
+
+### Dedicated disposable PostgreSQL batch-runner qualification added — 2026-11-16 22:01Z
+
+Implemented a dedicated integration qualification path for the actual compiled migration runner, isolated from production:
+
+- Added an explicit qualification-only switch requiring both `NODE_ENV=test` and `GHM_MIGRATION_BATCH_QUALIFICATION=true`.
+- The qualification switch accepts only `localhost` or `127.0.0.1` and explicitly refuses database name `ghm_db`. Production still independently requires verified TLS.
+- Added `scripts/qualify-production-migration-batch-runner-postgres.mjs`. It creates uniquely named disposable PostgreSQL databases using the CI PostgreSQL administrator, creates the least-privilege `ghm_migrator` / `ghm_schema_owner` execution fixture, and runs the compiled production migration runner against copied fixture migration/config trees.
+- The scenarios cover plan-only rollback/no ledger writes, empty-manifest/missing-batch refusal, stale-inventory refusal, skipped-prefix refusal, successful exact contiguous-prefix execution, injected SQL failure with atomic DDL+ledger rollback, sequential follow-up batches, and final repeat-run no-op.
+- Added npm command `qualify:production-migration-batch-runner` and CI step immediately after build, before the existing full-migration disposable PostgreSQL qualification.
+- Each temporary database is terminated and dropped in a `finally` cleanup path. The fixture uses CI's existing PostgreSQL 18 service; no paid Render resource or production database is used.
+
+Source commits on PR branch include runner qualification guard, integration script, package command and CI step. This is implementation committed but not yet proven: the new exact-head CI run must pass before calling the scenarios qualified. No production batch was added; `config/production-migration-batches.json` remains `{"batches":[]}`. No production migration, DDL, role, ACL, credential, secret, Render setting/deployment, payment or consent state changed.
+
+Potential follow-up during CI: if the isolated runner's strict principal checks expose a fixture mismatch, fix the test fixture rather than weakening production identity assertions.
+
+### Disposable PostgreSQL batch-runner qualification passed — 2026-11-16 22:08Z
+
+Exact implementation head `18b0c3280d3b9443777e66fd021cb0eeb702c2b5` completed GitHub Actions run `43966629021` successfully. Both `quality` and `web-quality` passed.
+
+The `quality` job explicitly passed the new step `Qualify production migration batch runner on isolated disposable PostgreSQL databases`, as well as:
+- Build.
+- Apply all migrations to disposable PostgreSQL.
+- Full test suite.
+- Existing database-principal, gateway, storage, capability, supplier, Business profile, payment-settlement identity and auth-issuer qualification steps.
+- Migration audit policy tests and runtime boundary verification.
+
+The new runner qualification script's entire scenario sequence completed with exit status 0:
+- Plan-only reports the selected batch and leaves no ledger writes or DDL.
+- Empty manifest / missing batch is refused.
+- Stale pending inventory is refused.
+- Non-prefix selection is refused.
+- Explicit contiguous prefix executes only its two selected migrations.
+- Injected SQL error rolls back both DDL and ledger rows.
+- A subsequent contiguous batch completes, and a repeat invocation with no pending inventory is a no-op.
+
+CI run: `43966629021` (success), exact tested implementation head `18b0c3280d3b9443777e66fd021cb0eeb702c2b5`.
+
+This closes the dedicated disposable-PostgreSQL runner qualification gap for the tested code. It does not authorize production execution or close operational gates: current recoverable production backup/restore proof, live-ledger re-export immediately before rollout, service/credential/hosting readiness, Actor Gateway always-on hosting and cost decision, and explicit review of the first small contiguous production batch remain outstanding. Production batch manifest remains empty; PR #297 remains draft and unmerged. No production database, migration, role, ACL, credential, secret, Render setting/deployment, payment or consent state changed.
+
+### Documentation-only CI and Render inventory recheck — 2026-11-16 22:14Z
+
+The handover-only commit `b6750efae7d1764bded417a2c93a75a7f9c3cfb7` completed workflow run `43967257557` successfully. Both `quality` and `web-quality` passed. The quality job also re-ran the disposable PostgreSQL batch-runner qualification, all 143 migrations on disposable PostgreSQL, the full test suite and the existing database/gateway/storage/auth qualification steps. This is exact-head CI for the documentation commit; the implementation scenarios were already proven on `18b0c3280d3b9443777e66fd021cb0eeb702c2b5`.
+
+Read-only Render inventory rechecked in workspace `tea-d9svua6417fc73bhcutg`:
+- Production database `ghm-db`, id `dpg-dag0sdtbedkc7389vi2g-a`, PostgreSQL 18, Frankfurt, database `ghm_db`, status available/not suspended, plan `0.1c-256mb`, disk 1 GB, high availability disabled, no read replicas.
+- Production API `GHM-Internal-Runtime`, id `srv-damupsek1f9s73eq8kkg`, Frankfurt Free Web Service, branch main, auto-deploy off, health path `/healthz`.
+- No `ghm-actor-gateway` service is present in the account inventory.
+- The visible legacy PayFast callback/runtime and identity qualification services remain excluded; `zaid-ai-workforce` remains a separate Free Web Service and is not an approved gateway host.
+
+The account inventory does not expose a verified backup artifact, restore point timestamp, retention state, or successful restore test. The previously located November 4 archive remains the latest known local archive in the handover; it predates later role changes. Therefore the production backup/recovery gate is still OPEN. Do not infer backup coverage from database availability, plan name, disk size or Render dashboard existence.
+
+The current selected Actor Gateway architecture remains the dedicated always-on Frankfurt Render Web Service running `npm run start:actor-gateway`, with a separate `ghm_actor_gateway` database credential and startup principal/privilege assertions. The account inventory confirms that service does not exist. Do not co-host it in `GHM-Internal-Runtime`, repurpose `zaid-ai-workforce`, or revive sandbox services; the dedicated service's recurring cost is not approved. No Render service was created, no plan changed, no environment variable or secret changed, and no deploy was triggered.
+
+PR #297 remains open, draft and unmerged at head `b6750efae7d1764bded417a2c93a75a7f9c3cfb7`, base `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`. Production batch manifest remains empty. No production migration, DDL, grant, role, credential, secret, payment or consent state changed.
+
+### Backup evidence correction and local restore qualification — 2026-11-16 22:19Z
+
+Correction to the preceding backup-status note: the latest known production export is the **November 14** archive, not the November 4 archive. Exact artifact: `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz`, 81,507 bytes, SHA-256 `2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`. Its outer gzip/tar listing was validated. It was extracted to `C:\Users\zaidh\AppData\Local\Temp\GHM-production-export-inspection-20261114\2026-11-14T14_26Z\ghm_db`; the inner PostgreSQL directory-format backup TOC validation passed (770 lines / 760 TOC entries), PostgreSQL 18.6 / `pg_dump` 18.6 / `pg_restore` 18.6, database `ghm_db`, 105 migration-ledger rows through `20261109210000`.
+
+This archive is already verified as a readable PostgreSQL directory-format dump; it must not be described as missing. However, it has **not** yet been restored into a disposable PostgreSQL 18 database, so recoverability is not yet proven. No new production dump is needed as the immediate next step. Next step is read-only inventory of the existing local PostgreSQL 18 Windows service/port and available disk space, followed by restore into a uniquely named local disposable database only. Do not overwrite or delete either existing archive, do not touch the local production export evidence, and do not connect the restore operation to Render.
+
+### Render logical export retention clarified — 2026-11-16 22:22Z
+
+The November 14 artifact `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz` matches Render's documented on-demand logical export format and filename convention. Treat it as a **Render-generated logical export downloaded to the laptop**, not a self-managed `pg_dump` and not a Render PITR snapshot.
+
+Render's current official Postgres backup documentation states:
+- Dashboard-created logical exports are retained by Render for **seven days after creation**, regardless of workspace plan.
+- Once downloaded, the local `.dir.tar.gz` file is a separate copy and is not subject to Render's seven-day deletion window; its local durability depends on the laptop/storage and user-managed copies.
+- PITR is a separate feature: recovery window is 3 days for Hobby workspace and 7 days for Pro or higher; PITR is unavailable for Free compute instances.
+
+Thus the 2026-11-14 Render export is still within the documented seven-day Render-side retention window as of this note, and its downloaded local copy has already passed archive SHA-256 and PostgreSQL directory TOC inspection. It has **not** passed a restore test. The recovery gate remains open until a disposable local PostgreSQL 18 restore is completed and validated. Do not create a duplicate export just because the Render-side copy expires; preserve the downloaded local file and verify its hash before restore.
+
+### Restore work should reuse established local PostgreSQL context — 2026-11-16 22:24Z
+
+Owner reminder: do not restart the backup/restore investigation with another broad machine, service, port, disk or file inventory. Earlier GHM qualification work already used the user's local PostgreSQL 18.6 instance on port `5433` (including local qualification database `ghm_payfast_qualification`). Reuse that established local PostgreSQL context for the November 14 archive restore, subject only to the minimum connection/target confirmation required to avoid accidentally connecting to Render. The archive path, SHA-256, extracted directory, TOC validation, PostgreSQL tool versions and 105-row ledger evidence are already recorded immediately above. Do not ask the user to repeat those details or recreate the Render export.
+
+Next action is a narrowly scoped restore plan against a uniquely named disposable local database on the already-used local PostgreSQL 18.6 instance. Before executing, use an explicit localhost-only connection string and a new target database name; never reuse `ghm_payfast_qualification`, never point `pg_restore` at Render, never overwrite the extracted backup, and preserve the original `.dir.tar.gz`. If the existing local server is not currently reachable, stop and report that specific fact rather than launching another broad inspection sequence.
+
+The previous assistant request for a full service/listener/disk inventory was unnecessary given this established handover context. No further general inventory is required.
+
+
+### Local logical restore completed and verified — 2026-11-16 22:32Z
+
+The November 14 Render-generated logical export was successfully restored into an isolated disposable local PostgreSQL database.
+
+Restore target and execution:
+- Local PostgreSQL: 127.0.0.1:5433, PostgreSQL 18.6 on Windows.
+- Target database: ghm_restore_20261116.
+- Source directory: C:\Users\zaidh\AppData\Local\Temp\GHM-production-export-inspection-20261114\2026-11-14T14_26Z\ghm_db.
+- Preflight confirmed the local server accepted connections, the archive TOC could be read with pg_restore --list (exit code 0; 770 output lines / 760 entries), and the target database did not already exist.
+- Created the target with CREATE DATABASE ... TEMPLATE template0.
+- Restored with pg_restore --format=directory --no-owner --no-privileges --exit-on-error --jobs=2 against the explicit localhost connection.
+- Restore exit code: **0**.
+
+Post-restore read-only verification:
+- current_database() = ghm_restore_20261116.
+- Server version: PostgreSQL 18.6, x86_64 Windows.
+- Non-system schemas: ghm and public (plus PostgreSQL's pg_toast system schema).
+- Migration ledger ghm.ghm_schema_migrations contains **105 rows**, first version 00000000000000, latest version 20261109210000. These match the previously exported production ledger snapshot exactly on row count and version boundaries.
+- Restored table inventory: 59 tables in schema ghm and 5 in schema public (64 total).
+
+**Recovery conclusion:** the November 14 logical export has passed a successful restore into a disposable local PostgreSQL 18.6 database, and its migration-ledger count and version boundaries match the independently exported 105-row production ledger snapshot. Record this as **local logical restore validated**. This materially closes the prior backup/restore evidence gap for this artifact.
+
+**Limitations:** this is not a Render-side PITR test, does not prove recovery of changes made after the November 14 export, and does not prove production restore time/object-level application consistency beyond the checks recorded above. No restore was directed at Render. The original archive and extracted source were not modified. The disposable local restore database is preserved for further read-only inspection; do not drop it without an explicit decision.
+
+No production database, migration, DDL, role, ACL, credential, secret, Render setting, service, deployment, payment or consent state was changed. No recurring cost was incurred.
+
+
+### First contiguous production migration prefix — security dependency review — 2026-11-16 22:36Z
+
+A source-level review was performed against the first six entries in the committed 48-migration production pending inventory. This is a review of repository SQL only; no production SQL was run.
+
+Findings:
+- `20261110010000_add_business_supplier_classification.sql` adds `ghm.business.is_supplier` and creates `ghm.update_business_supplier_classification(bigint,bigint,boolean)`. The function is SECURITY DEFINER, accepts `p_account_id` from its caller, checks active owner/administrator membership, and grants EXECUTE to `ghm_runtime`.
+- `20261110100000_create_account_onboarding_progress.sql` creates the onboarding progress table and grants the runtime SELECT/INSERT/UPDATE plus sequence usage.
+- `20261110120000_create_business_relationship_outcome_read_models.sql` creates relationship/outcome read-model tables, seeds reference types, and grants runtime SELECT only.
+- `20261110140000_allow_pending_storage_object_cleanup.sql` changes the storage lifecycle constraint and replaces a SECURITY DEFINER deletion-pending function, granting EXECUTE to runtime.
+- `20261110160000_add_admin_capability_catalogue_governance.sql` creates/replaces three SECURITY DEFINER capability-governance functions. They accept `p_actor_account_id` from their caller, check the supplied ID for active administrator status, and grant EXECUTE to `ghm_runtime`.
+- `20261110210000_add_actor_gateway_principal_guard.sql` validates the pre-provisioned `ghm_actor_gateway` login and its bounded membership, then installs `ghm.assert_actor_gateway(bigint)`. This is only the principal/identity foundation; it does not itself install the complete signed-assertion feature gateway or prove that the dedicated service is hosted.
+
+**Rollout implication:** do not select the oldest migration as a standalone production batch merely because it is first in order. The supplier-classification and capability-governance SECURITY DEFINER functions trust a caller-supplied account identifier for their authorization check and are executable by `ghm_runtime`. Their production safety must be assessed together with the actual runtime call path and the later signed-assertion cutover migrations that bind actor identity to the authenticated gateway request context. The actor-principal guard alone does not close that dependency.
+
+Before defining the first production batch:
+1. Trace the current runtime call sites and prove how account/actor IDs are derived and protected at the API boundary.
+2. Map the exact contiguous migration prefix through the relevant signed-assertion replacements/revocations; do not skip intervening migrations.
+3. Confirm the dedicated Actor Gateway service, credential, secrets, ACL chain and health checks are ready. The dedicated always-on Render service remains uncreated because its recurring cost is not approved.
+4. Only then propose a small contiguous batch and inspect plan-only output. Until then, `config/production-migration-batches.json` must remain empty.
+
+This review does not conclude that a production exploit occurred; it identifies an authorization dependency that must be closed and qualified before these pending functions are exposed in production. No migration, DDL, ACL, role, credential, secret, Render setting, service, deployment or application data was changed.
+
+
+### Hosting decision — 2026-11-16 22:52Z
+
+The owner has confirmed a maximum additional recurring hosting budget of **US$7/month**, allocated to the dedicated Actor Gateway only.
+
+This is the complete approved hosting scope for this work. Do not introduce, provision, subscribe to, or incur costs for any additional service, process, provider, or infrastructure component without first presenting the need, alternatives, and full cost to the owner and receiving explicit approval.
+
+Continue the Actor Gateway work within this boundary. No additional hosting requirement is authorized by this handover.
+
+No Render service, deployment, environment variable, secret, database role, grant, migration or production data was changed by this decision.

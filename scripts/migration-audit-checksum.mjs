@@ -79,3 +79,44 @@ export const resolveMigrationAuditTarget = (database, requestedTarget) => {
   if (!config.databases.includes(database)) throw new Error('Migration audit target ' + target + ' is not valid for database ' + database);
   return { target, ...config };
 };
+
+
+/**
+ * Compare the exact ordered production pending migration identity set.
+ * Duplicate versions, malformed entries, stale omissions, extras, and
+ * version/name substitutions all fail closed.
+ */
+export const comparePendingMigrationInventory = (actual, expected) => {
+  const validate = (entries, label) => {
+    if (!Array.isArray(entries)) throw new Error(label + ' must be an array');
+    const seen = new Set();
+    for (const item of entries) {
+      if (!item || typeof item.version !== 'string' || !/^\d{14}$/.test(item.version) ||
+          typeof item.name !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(item.name)) {
+        throw new Error(label + ' contains an invalid version/name entry');
+      }
+      if (seen.has(item.version)) throw new Error(label + ' contains duplicate version ' + item.version);
+      seen.add(item.version);
+    }
+    return [...entries].map(({ version, name }) => ({ version, name }))
+      .sort((a, b) => a.version.localeCompare(b.version));
+  };
+  const actualSorted = validate(actual, 'Actual pending migration set');
+  const expectedSorted = validate(expected, 'Production pending migration inventory');
+  const actualByVersion = new Map(actualSorted.map((item) => [item.version, item]));
+  const expectedByVersion = new Map(expectedSorted.map((item) => [item.version, item]));
+  const missingFromInventory = actualSorted.filter((item) => !expectedByVersion.has(item.version));
+  const staleInventory = expectedSorted.filter((item) => !actualByVersion.has(item.version));
+  const nameMismatches = actualSorted.filter((item) => expectedByVersion.has(item.version) &&
+    expectedByVersion.get(item.version).name !== item.name).map((item) => ({
+      version: item.version, actual_name: item.name, expected_name: expectedByVersion.get(item.version).name,
+    }));
+  return {
+    matches: missingFromInventory.length === 0 && staleInventory.length === 0 && nameMismatches.length === 0,
+    actual_count: actualSorted.length,
+    expected_count: expectedSorted.length,
+    missing_from_inventory: missingFromInventory,
+    stale_inventory_entries: staleInventory,
+    name_mismatches: nameMismatches,
+  };
+};

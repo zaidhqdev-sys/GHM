@@ -7,6 +7,13 @@ const loadConfig = (overrides: Record<string, string | undefined>) => {
   env.DATABASE_SSL = overrides.DATABASE_SSL ?? '';
   env.GHM_RUNTIME_DATABASE_URL = overrides.GHM_RUNTIME_DATABASE_URL ?? '';
   env.GHM_COMMERCIAL_PAYMENT_PROVIDER = overrides.GHM_COMMERCIAL_PAYMENT_PROVIDER ?? '';
+  // Configuration tests must not inherit optional storage settings from the
+  // developer's real .env file; each test supplies its own isolated inputs.
+  for (const name of [
+    'STORAGE_PROVIDER', 'STORAGE_ENDPOINT', 'STORAGE_REGION', 'STORAGE_BUCKET',
+    'STORAGE_ACCESS_KEY_ID', 'STORAGE_SECRET_ACCESS_KEY', 'STORAGE_FORCE_PATH_STYLE',
+    'STORAGE_UPLOAD_GRANT_TTL_SECONDS', 'STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS',
+  ]) env[name] = overrides[name] ?? '';
   return spawnSync(
     process.execPath,
     ['-e', "const { config } = require('./dist/config.js'); console.log(JSON.stringify(config));"],
