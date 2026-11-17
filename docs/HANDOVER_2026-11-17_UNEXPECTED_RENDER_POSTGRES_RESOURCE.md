@@ -124,3 +124,19 @@ The owner has now stated: **“there should be nothing in there i never used the
 The owner has stated the resource was never used, but has not yet given an unambiguous explicit instruction to permanently delete it. Because deletion is destructive and the database contents/backups have not been inspected, do not infer deletion authorization from the statement alone. Ask one direct confirmation: whether the owner authorizes permanent deletion of the exact resource `ghm-identity-qualification-20261018`, accepting loss of any data/backups it contains.
 
 No connected Render action currently exposes Postgres deletion or suspension. Do not claim that charges have stopped. Do not suspend similarly named web services as a substitute; the charge is attached to the PostgreSQL datastore. Once owner authorization is explicit, provide the exact Render dashboard action path and verify the resource is gone and subsequent billing no longer accrues. Separately request a credit/refund review from Render for the $5.65 November MTD charge and investigate the itemized October invoice; do not promise a credit.
+
+
+## Full owner-provided charge breakdown for unexpected database (2026-11-17 03:50Z)
+
+The owner supplied the expanded line-item detail for `ghm-identity-qualification-20261018`. The $5.65 November MTD charge is fully explained by:
+- Basic-256mb compute (plan `0.1c-256mb`): rate **$0.0083/hour**, usage **387.75 hours**, cost **$3.23 USD**.
+- Basic-256mb disk (15 GB): rate **$0.0062/hour**, usage **387.75 hours**, cost **$2.42 USD**.
+- Outgoing bandwidth: **0 GB**, no charge.
+- Private Link: no usage/charge.
+- Total: **$5.65 USD**.
+
+This confirms the charge is the sum of compute and 15 GB disk time, not bandwidth or Private Link. The same 387.75-hour usage window is shown for compute and disk. The owner has stated they never used this database. Do not describe these costs as user-approved or as costs of production `ghm-db`.
+
+The earlier November per-datastore breakdown remains: production `ghm-db` $3.39; unexpected qualification database $5.65; suspended PayFast sandbox $0.00; datastore total $9.04. October invoice $9.82 remains paid but not yet itemized by resource.
+
+No deletion has been performed. The exact resource to retire, subject to explicit owner authorization, is Render Postgres `ghm-identity-qualification-20261018` (ID `dpg-dba0tu3rjlhs738fs2sg-a`). The connected Render tools do not expose a Postgres delete action.
