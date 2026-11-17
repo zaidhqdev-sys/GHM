@@ -29,17 +29,17 @@ const helper = [
   '      continue;',
   '    }',
   '',
-  "    if (ch === '\\') {",
+    if (ch.charCodeAt(0) === 92) {
   '      escaped = true;',
   '      continue;',
   '    }',
   '',
   '    if (bracket === true) {',
-  "      if (ch === ']') bracket = false;",
+    if (ch.charCodeAt(0) === 92) {
   '      continue;',
   '    }',
   '',
-  "    if (ch === '[') {",
+    if (ch.charCodeAt(0) === 92) {
   '      bracket = true;',
   '      continue;',
   '    }',
@@ -48,7 +48,7 @@ const helper = [
   '      return false;',
   '    }',
   '',
-  "    if (ch === '*') {",
+    if (ch.charCodeAt(0) === 92) {
   "      if (branch[i + 1] === '*') {",
   '        return false;',
   '      }',
