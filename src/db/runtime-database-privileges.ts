@@ -78,8 +78,9 @@ const AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS = [
 ] as const;
 
 const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
-  // The 17 November post-deployment cutover revokes the write operation only.
-  // The read operation remains a separately reviewed runtime permission.
+  // The manual registration-identity gateway cutover revokes both legacy
+  // caller-supplied actor-ID operations after signed read/write routes pass.
+  'ghm.read_business_registration_identity(bigint, bigint)',
   'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
 ] as const;
 
