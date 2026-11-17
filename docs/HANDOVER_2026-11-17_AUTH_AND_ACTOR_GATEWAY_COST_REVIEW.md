@@ -1029,3 +1029,12 @@ Repository commits:
 - Handover update follows these commits.
 
 No production SQL, DDL, ACL, data, credentials, secrets, migration ledger, Render settings, deployments or payments were changed. Re-run the full inventory/checksum audit against the current branch head; prior 48-entry and 49-entry PASS results do not qualify this 50-entry inventory.
+
+
+## Full-suite result and inventory assertion correction — 2026-11-17
+
+The full local test run on the 50-entry inventory completed all six compiled test batches successfully (321 + 175 + 120 + 48 tests in the displayed later batches; the complete run also includes the other earlier batches). The migration checksum suite reported 21/22 passing. Its sole failure was a stale test expectation: `scripts/migration-audit-checksum.test.mjs` still asserted that the committed production pending inventory contained 48 records, while the reviewed inventory correctly contains 50 after adding the two guarded registration and capability cutovers.
+
+The assertion and test title have now been updated to require 50 unique, ordered version/name records. This is a test-only correction; it does not alter the migration inventory, SQL migrations, production database, batch manifest, or execution authorization.
+
+Required next verification: rerun `npm test` on the resulting exact PR head and capture `git rev-parse HEAD`. Do not treat the prior run as fully green until the corrected test passes. PR #297 remains draft/open/unmerged, the production batch manifest remains empty, and no production migration or deployment is authorized by this correction.
