@@ -140,3 +140,17 @@ This confirms the charge is the sum of compute and 15 GB disk time, not bandwidt
 The earlier November per-datastore breakdown remains: production `ghm-db` $3.39; unexpected qualification database $5.65; suspended PayFast sandbox $0.00; datastore total $9.04. October invoice $9.82 remains paid but not yet itemized by resource.
 
 No deletion has been performed. The exact resource to retire, subject to explicit owner authorization, is Render Postgres `ghm-identity-qualification-20261018` (ID `dpg-dba0tu3rjlhs738fs2sg-a`). The connected Render tools do not expose a Postgres delete action.
+
+
+## Explicit owner deletion authorization (2026-11-17 03:53Z)
+
+The owner explicitly authorized permanent deletion of `ghm-identity-qualification-20261018`, including any data and backups it contains. The authorization was unambiguous and is limited to this exact unexpected database:
+- Render Postgres ID: `dpg-dba0tu3rjlhs738fs2sg-a`
+- Display name: `ghm-identity-qualification-20261018`
+- Database: `ghm_identity_qualification_20261018`
+
+The authorization does not extend to production `ghm-db` / `ghm_db`, the historical PayFast sandbox DB, or any other service/resource.
+
+Execution status: **NOT YET DELETED**. The connected Render integration currently exposes list/get/query/metrics/create operations for Postgres but no delete operation. The owner must use the Render Dashboard's database Info page: select the exact Postgres resource `ghm-identity-qualification-20261018`, scroll to the bottom, and click **Delete Database**, then complete Render's confirmation. Render's official documentation states deleted database instances have no retained backups or snapshots. Do not claim deletion or cessation of billing until the resource is absent from the live Postgres inventory and billing reflects the change.
+
+Official procedure: https://render.com/docs/postgresql-creating-connecting (section “Deleting your database”). The owner has expressly accepted loss of the database's data/backups by authorizing deletion.
