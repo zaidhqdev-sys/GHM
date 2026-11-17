@@ -53,8 +53,13 @@ try {
     assert.equal(fn.public_execute, false, fn.proname + ' must not be executable by PUBLIC');
     assert.ok((fn.proconfig ?? []).some(v => v === 'search_path=pg_catalog, ghm, pg_temp'),
       fn.proname + ' must pin search_path');
-    assert.match(fn.definition, /session_user\s*<>\s*'ghm_actor_gateway'/i,
-      fn.proname + ' must bind the database session to Actor Gateway');
+    if (fn.proname.startsWith('assert_actor_gateway_')) {
+      assert.match(fn.definition, /session_user\s*<>\s*'ghm_actor_gateway'/i,
+        fn.proname + ' must bind the database session to Actor Gateway');
+    } else {
+      assert.match(fn.definition, /PERFORM ghm\.assert_actor_gateway_/i,
+        fn.proname + ' must delegate to its signed Actor Gateway assertion');
+    }
   }
 
   const tables = await client.query(`
