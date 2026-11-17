@@ -336,3 +336,37 @@ The previous chat instruction to run `npm run audit:migrations` against the new 
 Next implementation task: add a distinct, explicitly named read-only production reconciliation mode that reads `config/production-pending-migration-inventory.json`, verifies exact live missing version/name pairs against all 48 entries, retains all existing checksum/name/retained-history/provenance checks, verifies `ghm_migrator` then `SET LOCAL ROLE ghm_schema_owner` inside `BEGIN READ ONLY`, and always rolls back. Keep existing `audit:migrations` and `audit:migrations:predeploy` semantics unchanged for the legacy audit policy. Add unit/contract coverage for exact inventory match, stale/missing/extra inventory entries, checksum mismatch, role identity failure and rollback. Do not print the connection string or any secret. After CI passes, run the new command locally against the existing `GHM_MIGRATOR_DATABASE_URL` in `C:\\GHM\\.env` and capture only its JSON output.
 
 This correction changes no source code, production state, manifest, migration, credential, service or cost. The production batch manifest remains empty.
+
+
+## Production migration inventory audit implementation — 2026-11-17
+
+Implemented a separate read-only production inventory audit mode on PR #297.
+
+### New command
+
+`npm run audit:migrations:production-inventory`
+
+This invokes `scripts/forensic-migration-reconciliation.mjs --production-inventory` and reads the committed `config/production-pending-migration-inventory.json` (48 version/name entries). It does not use or modify the historical seven-entry `config/pending-migrations.production.json` allowlist.
+
+### Safety and comparison behavior
+
+- Requires `GHM_MIGRATOR_DATABASE_URL` and `DATABASE_SSL=true`; strips connection-string SSL overrides and enforces `rejectUnauthorized: true`.
+- Begins `BEGIN READ ONLY`; verifies the connection is `session_user=current_user=ghm_migrator` in `ghm_db`; uses `SET LOCAL ROLE ghm_schema_owner`; verifies the effective and session identities and database again.
+- Reads the complete live ledger and retains existing repository checksum, supported legacy CRLF, approved historical provenance, name mismatch, retained-history, orphaned exception and unrecognized extra checks.
+- Compares the exact actual pending version/name set against the 48-entry inventory. The comparison fails closed on omitted migrations, stale inventory entries, version/name substitutions, malformed entries and duplicate versions.
+- Reports structured comparison details and `PASS_WITH_PENDING` only when the complete exact inventory matches and all existing forensic checks pass.
+- Always rolls back the read-only transaction. No SQL mutation or migration execution is introduced.
+- The old `audit:migrations` and `audit:migrations:predeploy` commands and seven-entry allowlist semantics remain unchanged.
+- The production migration batch manifest remains empty.
+
+### Qualification added
+
+- Unit coverage for exact set match, omission, stale entry, name substitution, duplicate/malformed entries, read-only transaction, role switch and rollback contract.
+- Assert the committed production inventory remains exactly 48 unique, ordered version/name records.
+- The migration audit policy test file is now run by the main `npm test` command.
+
+### Current limitation / next action
+
+This is source implementation only until exact-head CI passes. The local `C:\\GHM\\.env` and `GHM_MIGRATOR_DATABASE_URL` are not accessible through GitHub/Render connectors. Do not claim a live production audit has run. Once CI passes, run the new command from the synchronized local PR checkout and share only its JSON output, with no connection details or secrets. It is read-only and does not run `npm run migrate`.
+
+No production query, DDL, migration, role/ACL change, Render setting, service, deployment, secret, or cost was incurred by this implementation.
