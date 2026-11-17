@@ -448,3 +448,64 @@ No migration, DDL, grant, role change, production data write, Render change, dep
 4. Refresh and verify the Render logical backup immediately before any approved production DDL/ACL changes; the November 14 archive remains the existing validated recovery artifact, not a fresh November 17 backup.
 5. Only after the migration chain, backup and gateway readiness gates are satisfied, prepare a separately reviewed exact production batch. The live audit itself authorizes no production change.
 
+
+
+## Full 48-migration dependency and Actor Gateway startup review — 2026-11-17
+
+Reviewed all 48 SQL files in `config/production-pending-migration-inventory.json` at PR #297 source head `de94af13b0bce09bd262b0232a96625f5c0e488a`. This was source inspection only; no production SQL was executed.
+
+### Exact startup contract
+
+- The production pending inventory contains **48** ordered migrations, from `20261110010000_add_business_supplier_classification` through `20261116190000_add_commercial_consent_payment_prepare_gateway`.
+- `src/actor-gateway/database-privileges.ts` defines an exact **39-signature** Actor Gateway executable-function allow-list. The only tolerated alternative is omission of the three Campaign Directory Review functions before that feature's cutover; the rest of the allow-list remains exact.
+- Startup also requires database CONNECT, no database CREATE, schema `ghm` USAGE but no CREATE, zero direct table/sequence privileges, zero PUBLIC or `ghm_runtime` gateway-function execution, safe global/schema default function ACLs, all SECURITY DEFINER routines owned by `ghm_schema_owner` with `pg_catalog, ghm, pg_temp` pinned search path, and no extra non-owner/non-gateway function grantees.
+- `src/actor-gateway/server.ts` constructs the readers for actor identity, registration identity, capability governance/mutations, supplier classification, Business profile, saved Businesses, Business hours, trust scores, Business logos, storage metadata, Connect provisioning, Campaign Directory Review, commercial approval authority, commercial document approval and commercial consent/payment preparation. It runs the exact identity/ACL checks before opening the HTTP listener.
+
+**Deployment consequence:** a partially installed gateway migration prefix is not sufficient to start the current Actor Gateway service. The exact allow-list includes the later commercial functions as well as the core signed gateway operations. The gateway must remain undeployed/unstarted until the complete required schema/function chain and secrets are present. Do not weaken the startup allow-list to make an incomplete production schema appear ready.
+
+### Migration phases and security boundaries
+
+The 48 ordered entries fall into these dependency groups (the committed inventory remains the exact authority for order):
+
+1. **Foundation and legacy runtime paths** — supplier classification; onboarding progress; relationship/outcome read models; storage deletion-pending lifecycle; capability governance. The supplier and capability SECURITY DEFINER functions initially accept supplied actor IDs and grant the legacy runtime role; they must be assessed with their later signed gateway replacements/revocations, not exposed as an isolated first batch.
+2. **Gateway principal and initial feature wrappers** — restricted gateway principal guard; self/registration identity wrappers; capability invariants and gateway operations; supplier and Business-profile cutovers. Supplier and Business-profile direct runtime EXECUTE are revoked in their respective cutover migrations. Capability's legacy direct RPC remains a separate documented post-deployment manual cutover; do not revoke it before gateway deployment and end-to-end route verification.
+3. **Unified signed-actor chain** — HMAC assertion secret/nonce tables; signed capability, supplier, Business-profile, registration and self-identity wrappers; request-context binding; signed Business Capability mutation operations. The database checks operation, actor, issue time, context, signature and one-use nonce; the gateway signs the verified JWT subject.
+4. **Business feature gateways and projections** — saved Business operations; Business hours write/read; trust-score operations/projections; Business Logo binding. These operations are granted to the gateway login, not the ordinary runtime login.
+5. **Authentication and legacy privilege tightening** — revoke direct runtime external-identity table access and unused auth entry points; token-bound recovery revocation/reset; conditional password rehash; QuoteFlow migration entry-point revocations; revoke PUBLIC default function EXECUTE; revoke the obsolete unsigned actor-gateway overload.
+6. **Connect, search-path and storage proof chain** — signed Connect Business provisioning; normalize SECURITY DEFINER ownership/search paths; signed storage metadata operations; separate provider-workflow attestation; revoke redundant migrator mapping lookup. Provider-confirmed storage lifecycle transitions require both user-actor proof and separate Resource API provider attestation.
+7. **Commercial consent and founder authority** — provider-code generalization; immutable document/consent evidence; scoped founder approval authority; founder-only authority grant/revoke and document approval transitions; consent-bound payment preparation.
+
+The chain is not a collection of independently deployable SQL snippets. Earlier runtime grants and wrappers are deliberately replaced/revoked by later ordered steps or by documented post-deployment manual cutovers. Do not reorder, skip or cherry-pick migrations.
+
+### Secret provisioning — production gap identified
+
+Two separate protected verifier secrets are required and neither is seeded by its migration:
+
+- **Actor assertions:** `20261111020000` creates `ghm.actor_gateway_capability_assertion_secret` and the nonce table, but does not insert the production key. The gateway process requires `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`; the database verifier must hold the matching 32-byte key. `scripts/qualify-actor-gateway-principal.mjs` inserts a test key only into `ghm_disposable_test`. No dedicated production provisioning script/runbook was found in the reviewed repository.
+- **Storage provider attestations:** `20261112150000` creates `ghm.storage_provider_workflow_attestation_secret` and its nonce table, but does not seed the key. The existing `scripts/provision-storage-provider-attestation-secret.mjs` is explicitly restricted to localhost disposable qualification databases and requires the test-only mutation opt-in; it must not be used against production. The Resource API requires `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` when production storage is enabled. This key is separate from the Actor Gateway actor-assertion key and must not be placed in the Actor Gateway service.
+
+Before production gateway readiness, add and qualify a controlled production secret-provisioning procedure that verifies `ghm_migrator` → `SET LOCAL ROLE ghm_schema_owner`, exact database identity, strict TLS, no secret logging, insert-only first provisioning and explicit rotation semantics. Generate distinct random 32-byte keys; never reuse CI/test keys. Do not create, log, or provision production keys as part of this source review.
+
+### Commercial and legal-approval boundary
+
+- The commercial approval-authority migration explicitly seeds **no authority** and grants no runtime/gateway/PUBLIC access to the authority tables. The founder-only gateway operations derive the actor from the canonical `founder_system_admin_bootstrap_state`, require an active system-admin account and a matching active canonical founder credential, and do not accept a caller-supplied approver. A grant event is required before a document approval event; revocation is serialized against approval. This is a real founder-only control, not a fabricated approver or employee.
+- The SQL currently pins the canonical founder login email in the founder assertion functions. Before enabling this path in production, perform a read-only check that the production founder bootstrap singleton and active credential actually resolve to the owner's intended account. The disposable fixture's email is not production evidence. No authority grant or legal-document approval is created by these migrations.
+- Payment preparation is gated by `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED` and `GHM_COMMERCIAL_LAUNCH_AUTHORIZED`, both false unless explicitly set to `true`. The current installed provider adapter set in the gateway reader contains PayFast only. The SQL function records consent and a pending payment attempt; its contract explicitly does not initiate checkout or activate a subscription. Given the current PayFast pause, keep both flags disabled and do not use this migration to activate payments.
+
+### Batch runner and current execution posture
+
+- The disposable PostgreSQL qualification covers plan-only/no SQL writes, empty-manifest refusal, stale-inventory refusal, skipped-prefix refusal, exact contiguous-prefix execution, atomic rollback on a failing migration, sequential batches and repeat-run no-op.
+- The production runner requires the exact pending inventory to match the live ledger and an explicit `GHM_MIGRATION_BATCH_ID`; inventory alone never authorizes execution. A selected batch must be an exact contiguous prefix. Plan-only mode rolls back and reports the selected prefix without applying SQL.
+- The production manifest remains `{ "batches": [] }`. No first batch has been selected. Do not populate it until batch boundaries, legacy runtime continuity, all manual cutover dependencies, secret provisioning, gateway hosting and recovery evidence are reconciled.
+- The live production audit remains `PASS_WITH_PENDING` with zero pending-inventory mismatch, unexplained checksum mismatch, name mismatch or unrecognized extra. It confirms the baseline only; it does not authorize a batch.
+
+### Next bounded work
+
+1. Trace the remaining runtime routes and manual cutover dependencies against the now-reviewed migration order; explicitly identify which endpoints would return 503 or lose a legacy path before the gateway is live.
+2. Add a controlled, test-qualified production secret-provisioning procedure for both verifier secrets, with no production execution or secret generation in this phase.
+3. Verify the production founder bootstrap singleton/credential read-only before any commercial approval feature is enabled.
+4. Complete the dedicated Actor Gateway service readiness plan within the previously approved US$7/month ceiling; no service is currently created and no spend is authorized by this source review.
+5. Only then prepare a small, exact contiguous batch plan and plan-only output. Refresh/verify the Render logical backup immediately before any approved production DDL/ACL operation.
+
+No production migration, DDL, data write, role/grant change, secret generation/provisioning, Render service/environment/deployment change, payment activation, legal approval, or recurring cost occurred during this review. PR #297 remains open/unmerged and the production batch manifest remains empty.
+
