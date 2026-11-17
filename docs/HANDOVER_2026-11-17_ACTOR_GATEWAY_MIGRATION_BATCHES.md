@@ -45,3 +45,15 @@ No Render service was submitted or deployed; no production SQL, credentials, sec
 - Permission-denied messages in the PostgreSQL server log are expected negative qualification probes (direct runtime access to protected auth/storage/mapping/replay objects, legacy RPCs and gateway-only functions); they are not by themselves evidence that the test database is misconfigured. The successful qualification steps and final two assertion failures show the database migration/bootstrap path completed. Do not add broad `GRANT ALL` or reset unrelated data to fix this test failure.
 - The duplicate login-email and incompatible pre-existing registration constraint messages occur in diagnostic/test paths; the forward-migration qualification step itself passed. The general suite's two actual TAP failures are the stale allow-list assertions above.
 - The separate web audit remains failing on the same five paths to one `picomatch` GHSA. No forced dependency changes or audit suppression.
+
+
+## Correction — CI job 134298256543 registration cutover allow-list
+
+The previous note for job 134295859085 incorrectly described the *manual* registration cutover as write-only. Inspection of the exact file `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql` shows it revokes **both** `read_business_registration_identity` and `update_business_registration_identity` from PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway`. The newer repository migration `20261117010000_revoke_runtime_business_registration_identity_write.sql` is a separate, narrower migration that revokes only the write RPC; it does not change the contents or meaning of the manual cutover.
+
+- Job `134298256543` reached Actor Gateway principal qualification with 35 runtime SECURITY DEFINER EXECUTE functions. The exact stage comparison found one missing signature: `ghm.read_business_registration_identity(bigint,bigint)`.
+- This is expected after the manual registration cutover. The signed Actor Gateway read route is qualified before the manual SQL is applied; after cutover, both legacy caller-supplied actor-ID RPCs must be unavailable.
+- Correct the nine-cutover allow-list model so the registration identity group contains both read and write signatures. The fully cut-over state therefore retains 13 functions, not 14. Update the unit test to assert both functions are retained before the manual cutover and both are absent after it.
+- Do **not** restore the read grant. That would contradict the manual cutover's security boundary and the post-cutover negative qualification.
+- The Connect provisioning membership/mapping diagnostic is a separate fixture/order issue and remains to be isolated. The incompatible registration constraint was reported by the deliberate negative forward-migration test; that test passed. Permission-denied log entries must be classified by their corresponding negative probes rather than treated as a blanket grant failure.
+- No production database, migration ledger, Render service, or environment variable was changed by this investigation.
