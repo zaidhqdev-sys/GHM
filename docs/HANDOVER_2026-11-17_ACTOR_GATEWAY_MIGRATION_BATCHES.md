@@ -308,7 +308,7 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 ## End-to-end commercial workflow qualification added — 18 November 2026
 
 - Added `qualify:commercial-workflow`, running only against disposable PostgreSQL CI.
-- The fixture bootstraps a synthetic canonical founder through the existing one-time founder bootstrap function. It uses a CI-only placeholder credential string; no real owner password, account ID, legal document, or production data is used.
+- The fixture creates a synthetic canonical founder account with the existing account-creation primitive, then promotes that already-created account through the current one-argument, one-time founder bootstrap function. This reflects the actual migration history: the original seven-argument create-and-promote overload was replaced by a promotion-only overload. It uses a CI-only placeholder credential string; no real owner password, account ID, legal document, or production data is used.
 - It creates a synthetic Business and active owner membership, CI-only plan/version/price, trialing subscription, and two immutable synthetic subscription-terms versions.
 - A second PostgreSQL connection logs in as `ghm_actor_gateway`; the test asserts both `session_user` and `current_user` remain that principal and never SET ROLE.
 - It exercises signed scoped authority grant, exact-version approval, explicit-consent payment preparation, idempotent retry, authority revocation, and post-revocation approval denial.
@@ -316,3 +316,6 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 - Final state requires exactly one payment attempt and consent event for the idempotency key, one approval event for the exact version, `pending_checkout` attempt status, and unchanged `trialing` subscription lifecycle.
 - No payment provider call, checkout, settlement, activation, production connection, production credential, or real legal approval is involved. PayFast remains excluded.
 - This runs after all migrations and the commercial schema/ACL qualification using existing disposable CI roles and the test-only assertion secret. No extra database, Render service, or recurring schedule is added.
+
+
+- CI #5352 exposed that the founder bootstrap function is now the one-argument promotion-only overload; the qualification fixture was corrected to create a disposable canonical founder account first, then promote it. The obsolete seven-argument call is not retained.

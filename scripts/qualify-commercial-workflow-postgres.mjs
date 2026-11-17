@@ -19,10 +19,16 @@ const paymentSql = 'SELECT * FROM ghm.gateway_prepare_commercial_payment_with_co
 await migrator.connect(); await gateway.connect();
 try {
   await migrator.query('SET ROLE ghm_schema_owner');
-  const f = await migrator.query(
-    'SELECT account_id FROM ghm.auth_bootstrap_founder_system_admin($1,$2,$3,$4,$5,$6,$7)',
-    ['CI Synthetic Founder','zaidhqdev@gmail.com','zaidhqdev@gmail.com','$argon2id$ci-fixture-only-not-a-real-credential',19456,2,1]);
-  const actor = Number(f.rows[0].account_id);
+  const createdFounder = await migrator.query(
+    'SELECT account_id FROM ghm.auth_create_account($1,$2,$3,$4,$5,$6,$7,$8)',
+    ['CI Synthetic Founder','customer','zaidhqdev@gmail.com','zaidhqdev@gmail.com',
+      '$argon2id$ci-fixture-only-not-a-real-credential',19456,2,1]);
+  assert.equal(createdFounder.rowCount,1,'synthetic founder account must be created in disposable CI');
+  const promotedFounder = await migrator.query(
+    'SELECT account_id FROM ghm.auth_bootstrap_founder_system_admin($1)',
+    ['zaidhqdev@gmail.com']);
+  const actor = Number(promotedFounder.rows[0].account_id);
+  assert.equal(actor,Number(createdFounder.rows[0].account_id));
   const b = await migrator.query("INSERT INTO ghm.business(name,slug,verification_status,is_active) VALUES('CI Commercial Workflow Business','ci-commercial-workflow-business','approved',true) RETURNING id");
   const business = Number(b.rows[0].id);
   await migrator.query("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2)",[business,actor]);
