@@ -396,3 +396,14 @@ Corrected the test assertion to use `/^[0-9]{14}$/` in commit `e7ed0d50878cb28d7
 A new exact-head CI #5239 was triggered on `e7ed0d50878cb28d7548e0f9e8e0917e53df1924`. At handover update time, `web-quality` passed and `quality` remained in progress. Await exact-head result before declaring qualification complete.
 
 No production database operation, migration, DDL, deployment, Render setting, service creation, or cost was incurred.
+
+
+## Exact-head CI #5240 passed — 2026-11-17
+
+Commit `3682a26639c287e013ec267b877822f52fa7cb9d` completed workflow run `43985742306` (CI #5240):
+- `quality`: success.
+- `web-quality`: success.
+
+The corrected committed 48-entry inventory format assertion now passes. This exact head also qualifies the new `npm run audit:migrations:production-inventory` command and its unit/contract tests within the full quality job. The Business registration forward migration qualification also passes in the quality workflow; the earlier incompatible-constraint exception was the deliberate negative test, not a failing migration.
+
+The new audit is now **CI-qualified**, but has not yet been run against the live production database. The next required operation is the local read-only command from the synchronized PR checkout, using the existing `GHM_MIGRATOR_DATABASE_URL` in `C:\\GHM\\.env`. Share only JSON output. No production migration or DDL is authorized by this result.
