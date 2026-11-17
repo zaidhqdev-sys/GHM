@@ -190,5 +190,9 @@
   {
     "version": "20261116190000",
     "name": "add_commercial_consent_payment_prepare_gateway"
+  },
+  {
+    "version": "20261117010000",
+    "name": "revoke_runtime_business_registration_identity_write"
   }
 ]
