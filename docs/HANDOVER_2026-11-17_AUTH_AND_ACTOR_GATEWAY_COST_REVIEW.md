@@ -739,3 +739,44 @@ Commit `8c380e2191b815c559b2c323c9170c960766072c` is PR #297's current head. The
 ### Next action
 
 Use Render's dashboard Environment page (or a safe name-only export if available) to verify required key presence without copying values into chat. If name-only inspection cannot be performed safely, have the owner verify the names in the dashboard and report only present/missing. Do not rotate, generate, or set secrets; do not change runtime environment, create the paid gateway service, trigger deploys, or execute migrations during this audit. The dedicated always-on Frankfurt Actor Gateway remains the intended architecture and the user's USD 7/month ceiling remains the cost boundary, not authorization to create it.
+
+
+## Correction — reuse the existing GHM-Internal-Runtime environment inventory (2026-11-17)
+
+The 2026-11-14 consolidated environment reconciliation already records the GHM-Internal-Runtime Render variable inventory and explicitly records `GHM_ACTOR_GATEWAY_URL` as missing. Asking the user to check this variable again was unnecessary. Do not repeat that request.
+
+### Existing Render inventory baseline
+
+Previously operator-supplied Render variable names:
+`CORS_ORIGINS`, `DATABASE_SSL`, `GHM_AUTH_TOKEN_PEPPER`, `GHM_JWT_ES256_KID`, `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `INVITE_CODE`, `JWT_SECRET`, `NODE_ENV`, `TRUST_PROXY`.
+
+A later Render observation additionally recorded `DATABASE_URL`, targeting the retired `ghm_payfast_sandbox_db` with login `ghm_runtime`. That is not an approved production target.
+
+### Existing consolidated comparison (Render history vs local C:\GHM\.env)
+
+- `DATABASE_URL`: historically present in Render; latest recorded Render observation points to retired sandbox DB. Local .env points to production ghm_db as ghm_app_user.
+- `GHM_RUNTIME_DATABASE_URL`: absent from historical Render inventory; present locally for production ghm_db as ghm_runtime. It was identified as the intended Resource API runtime connection after credential validation.
+- `GHM_MIGRATOR_DATABASE_URL`: absent from historical Render inventory; present locally as ghm_migrator. Keep migration credentials out of the Resource API runtime unless a separately approved migration process requires them.
+- `CORS_ORIGINS`: present historically in Render, missing locally.
+- `DATABASE_SSL`: present in both; local value true.
+- `GHM_AUTH_TOKEN_PEPPER`: present in both; secret value must not be surfaced.
+- `GHM_JWT_ES256_KID`: present in both, but local value was `ghm-local-qualification`; production KID pairing remains to be validated.
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM` and `GHM_JWT_ES256_PUBLIC_KEY_PEM`: present in both local and historical Render inventory; keypair pairing/production identity must be validated through safe fingerprints, not by exposing values.
+- `INVITE_CODE`: present in both; do not disclose.
+- `JWT_SECRET`: present historically in Render, absent from supplied local inventory; removal candidate only after checking all runtime/deploy consumers.
+- `NODE_ENV`: present historically in Render, absent locally; production target should be production.
+- `TRUST_PROXY`: present historically in Render, absent locally; retain only the already accepted topology setting.
+- `GHM_ACTOR_GATEWAY_URL`: absent from historical Render inventory and absent from supplied local inventory. It is optional in the Resource API parser. It must be set to the eventual deployed gateway URL before gateway-dependent routes can operate; the previously proposed Cloudflare Worker URL was superseded and must not be reused.
+- `STORAGE_PROVIDER`: absent from historical Render inventory and local inventory; loader defaults to S3 when storage is enabled.
+- `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`: present locally, absent from historical Render inventory. Local values represented Cloudflare R2 configuration and require production acceptance before transfer.
+- `S3_ENDPOINT`: local localhost/MinIO value; remove from production runtime manifest because current loader does not consume it.
+- `GHM_NONPRODUCTION_DATABASE_HOST`: local retired sandbox host; remove from production runtime manifest.
+- `PORT`, `TRUST_PROXY_HOPS`, previous ES256 public key/KID pair: not present in historical Render inventory; no addition is authorized without a concrete runtime need.
+
+### Evidence qualification
+
+This is the historical operator-supplied Render inventory plus the later recorded `DATABASE_URL` observation and the local .env comparison committed in `84613c70109e2a67ede287deffe2fbdeb89414f4`. It is not a fresh re-read of secret values or proof that no Render changes occurred after that observation. The current Render metadata audit did not expose environment variables, and no secret values were read or changed.
+
+### Process correction
+
+Before asking for any environment-variable information, inspect the latest GHM handover and the consolidated manifest. Use recorded values/statuses as the baseline, clearly label their observation date, and ask only about genuinely new unresolved information. In this case, no user input is required: `GHM_ACTOR_GATEWAY_URL` is already recorded as missing. Do not ask the user to re-check it.
