@@ -9,7 +9,7 @@ test('production plan mode inventories the complete pending queue without requir
   assert.match(runner, /const executionMigrations = planOnly\s*\? pendingMigrations/);
   assert.match(runner, /if \(planOnly\) \{\s*plannedMigrations\.push\(migration\);\s*continue;/);
   assert.match(runner, /Production migration plan \(no SQL executed\)/);
-  assert.match(runner, /SHA-256 \\${migration\.checksum\\}/);
+  assert.ok(runner.includes('SHA-256 ${migration.checksum}'));
 });
 
 test('plan mode reports an empty queue and rolls back before returning', () => {
