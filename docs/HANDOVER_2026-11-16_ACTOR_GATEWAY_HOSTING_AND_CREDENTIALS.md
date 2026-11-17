@@ -2079,3 +2079,22 @@ This is the complete approved hosting scope for this work. Do not introduce, pro
 Continue the Actor Gateway work within this boundary. No additional hosting requirement is authorized by this handover.
 
 No Render service, deployment, environment variable, secret, database role, grant, migration or production data was changed by this decision.
+
+
+## Owner corrections and current reconciliation — 2026-11-17
+
+This section supersedes earlier cost-gate and migration-inventory wording where it conflicts with the owner's later explicit decisions or the current repository state.
+
+### Actor Gateway hosting allowance
+
+The owner has explicitly approved **US$7/month for the dedicated always-on Frankfurt Render Actor Gateway Web Service only**. This allowance is already approved; do not describe it as awaiting approval. The Render New Web Service form was populated with the agreed configuration but **was not submitted**; no Actor Gateway service exists yet. The approval does not authorise any second paid service, database, provider, add-on, upgrade, or other recurring cost. The separate Authentication Issuer service was withdrawn and its routes are being embedded in GHM-Internal-Runtime while retaining the separate restricted ghm_auth_issuer database identity and pool. The owner accepted that temporary authentication process-isolation trade-off; it does not waive Actor Gateway isolation requirements.
+
+### Current migration inventory and branch reconciliation
+
+The staged-runner branch feature/explicit-production-migration-batches currently commits a **50-entry** production pending inventory, not 48. The two additional entries are 20261117010000_revoke_runtime_business_registration_identity_write and 20261117020000_revoke_runtime_capability_governance. Current main contains both versioned migration files as well, but their SQL bytes differ from the versions on this PR branch. The current-main versions include explicit post-deployment operational gates; the branch variants have different precondition/revocation logic. They must be reconciled by reviewing the exact SQL and intended cutover contract, not by assuming same filename/version means same migration. Refresh the inventory and checksum/provenance evidence against the reconciled branch before any PR merge. The 105-row production ledger export remains a dated snapshot, not a live ledger refresh or execution authorization. The production batch manifest remains empty.
+
+PR #297 is still draft/open/unmerged. Its earlier base was 632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c; current main has advanced with the two November 17 gated migrations. The PR is not merge-ready until the branch is reconciled with current main, all exact-head CI is rechecked, and the full PR diff is reviewed. Do not merge, execute migrations, or alter production state as part of this reconciliation.
+
+### No-new-paid-service boundary
+
+No additional paid service may be created, activated, subscribed to, or introduced. The sole exception is the already-approved US$7/month dedicated Actor Gateway service described above. Do not interpret a generic proceed as approval for any other spend.
