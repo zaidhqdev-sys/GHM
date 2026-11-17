@@ -29,9 +29,9 @@ const postgresSignature = (signature: string): string => signature.replace(/,\s+
 test('runtime startup accepts all 512 reviewed combinations of the nine manual cutovers', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
   assert.equal(CUTOVER_GROUPS.length, 9);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 3, 3, 2, 1, 1, 1]);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 2, 3, 3, 2, 1, 1, 1]);
   assert.equal(ALL_STAGES.length, 512);
-  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 14);
+  assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
 
   for (const functions of ALL_STAGES) {
     assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
@@ -44,7 +44,7 @@ test('runtime startup accepts all 512 reviewed combinations of the nine manual c
   }
 });
 
-test('the fully cut-over runtime state retains only the fourteen explicitly reviewed read/lookup/storage legacy functions', () => {
+test('the fully cut-over runtime state retains only the thirteen explicitly reviewed read/lookup/storage legacy functions', () => {
   assert.deepEqual(
     [...RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS].map(postgresSignature).sort(),
     [
@@ -55,7 +55,6 @@ test('the fully cut-over runtime state retains only the fourteen explicitly revi
       'ghm.get_public_trust_score(bigint)',
       'ghm.is_business_capability_publicly_evidence_eligible(bigint)',
       'ghm.list_public_trust_scores(text)',
-      'ghm.read_business_registration_identity(bigint,bigint)',
       'ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)',
       'ghm.storage_get_object(bigint,bigint)',
       'ghm.storage_get_public_business_logo(bigint)',
@@ -104,7 +103,7 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
   }
 });
 
-test('registration identity functions are accepted only before their explicit manual gateway cutover', () => {
+test('registration identity read and write functions are revoked together by their explicit manual gateway cutover', () => {
   const registrationRead = 'ghm.read_business_registration_identity(bigint, bigint)';
   const registrationWrite = 'ghm.update_business_registration_identity(bigint, bigint, text, text, text)';
   for (const functions of [
@@ -117,7 +116,7 @@ test('registration identity functions are accepted only before their explicit ma
     RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
     RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
   ]) {
-    assert.ok((functions as readonly string[]).includes(registrationRead), 'registration read remains granted');
+    assert.ok((functions as readonly string[]).includes(registrationRead), 'registration read remains granted before cutover');
   }
   for (const signature of [registrationRead, registrationWrite]) {
     assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
@@ -132,7 +131,7 @@ test('registration identity functions are accepted only before their explicit ma
     RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
   ]) {
     assert.ok(!(functions as readonly string[]).includes(registrationWrite), 'registration write revoked');
-    assert.ok((functions as readonly string[]).includes(registrationRead), 'registration read retained');
+    assert.ok(!(functions as readonly string[]).includes(registrationRead), 'registration read revoked');
   }
 });
 
