@@ -46,7 +46,7 @@ if (source.includes(marker)) {
     '      continue;',
     '    }',
     '',
-    "    if (ch === '\\\\') {",
+    if (ch === '\\') {
     '      escaped = true;',
     '      continue;',
     '    }',
