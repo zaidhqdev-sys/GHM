@@ -598,3 +598,18 @@ Fixes committed:
 - `57c8034e415668ef00445bad89578b3c0742d107`: live Connect replay PostgreSQL test now skips unless `GHM_RUN_LIVE_DATABASE_TESTS=true` is explicitly set. Comment and skip reason restrict this to an explicitly approved disposable/local database qualification. Ordinary `npm test` will not connect to a database for this test.
 
 Do not set `GHM_RUN_LIVE_DATABASE_TESTS=true` against production or the Render production DB. The user has not authorized live production qualification. Next: fetch latest PR head and rerun `npm test`; review every batch and post-suite qualification separately. No production migrations or production database writes were authorized.
+
+
+## Ordinary test safety correction — 2026-11-17 00:52Z
+
+The user ran `npm test` on exact checkout `45c5d1c908e304c5fcf135f4e040fcaa8f23813b`.
+
+- Build and the full six-batch test runner completed; the final batch reported 48 passed, 0 failed. Earlier output from the same run included two storage configuration failures and a live Connect replay PostgreSQL authentication failure for `ghm_runtime` (SQLSTATE 28P01).
+- The post-suite standalone `qualify-quoteflow-migration-account-provisioning-db.mjs` also attempted a database connection and failed authentication for `ghm_runtime`.
+- Inspection showed this standalone qualification was automatically enabled by database URLs loaded from local `.env`. The user's attempted process-level empty environment values did not suppress dotenv loading because dotenv populates empty/missing values from the file. No credentials were printed. PostgreSQL rejected authentication before a session was established; no database writes from this failed connection are evidenced.
+- Corrected the qualification to require explicit `GHM_RUN_LIVE_DATABASE_TESTS=true` before it reads database URLs or creates any clients. Otherwise it exits with a clear SKIP. This is committed as `afa63424b354f94e51611243471e9814b1a1fcce` on PR #297.
+- This change aligns the standalone qualification with the already-established opt-in behavior of the Connect replay persistence test. Ordinary `npm test` should not silently connect to a live database.
+- The previous `npm test` run is **not a pass**. The storage config test failures still require validation on the latest head; the DB qualification is now explicitly opt-in and must be separately run only against a disposable/local database when deliberately authorized.
+- No database password, `.env` file, production role/grant, migration, production data, Render setting or deployment was changed.
+
+Next: fetch latest PR #297 head, confirm the standalone qualification prints SKIP with the default opt-out, then rerun `npm test` on that same checkout. Do not set `GHM_RUN_LIVE_DATABASE_TESTS=true` for ordinary tests or against production.
