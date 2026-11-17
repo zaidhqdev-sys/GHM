@@ -2098,3 +2098,42 @@ PR #297 is still draft/open/unmerged. Its earlier base was 632a8fc67a0ca4c3f8e2d
 ### No-new-paid-service boundary
 
 No additional paid service may be created, activated, subscribed to, or introduced. The sole exception is the already-approved US$7/month dedicated Actor Gateway service described above. Do not interpret a generic proceed as approval for any other spend.
+
+
+## 2026-11-17 follow-up — Actor Gateway form staged; production catalogue rechecked
+
+### Render service state
+
+The owner has completed the Render **New Web Service** form for the already-approved dedicated `ghm-actor-gateway` service, but has **not submitted the form**. The form is staged only; no Render service object or deployment exists. This is not a request to recreate or reconfigure the form.
+
+The staged configuration follows the existing decision: repository `zaidhqdev-sys/GHM`, branch `main`, Frankfurt, Node, build `npm ci --include=dev && npm run build`, start `npm run start:actor-gateway`, `/healthz`, auto-deploy OFF, and the previously approved Starter allowance of approximately USD 7/month. The six environment fields have been populated by the owner. Secret values are not copied into this handover. No new paid resource beyond that previously approved service is authorized.
+
+### Fresh read-only production catalogue evidence
+
+A new read-only query was run against Render `ghm-db` / `ghm_db` on 2026-11-17. The connector identity remains `session_user=ghm_app_user`, `current_user=ghm_db_user`; it is not an administrator session.
+
+The query confirmed:
+
+- `ghm_actor_gateway` exists, LOGIN and NOINHERIT; SUPERUSER, CREATEDB, CREATEROLE, REPLICATION and BYPASSRLS are all false.
+- Its only incoming membership remains `ghm_db_user` with ADMIN OPTION=true, INHERIT=false, SET=false. The gateway role has no outgoing memberships. Preserve this bounded membership exactly.
+- Database CONNECT=true and CREATE=false for the gateway login.
+- Effective gateway schema `ghm` USAGE=false and CREATE=false.
+- No `ghm.gateway_*` or `ghm.assert_actor_gateway*` functions exist (catalogue count zero); the base `ghm.assert_actor_gateway(bigint)` and signed `ghm.gateway_get_actor_identity(...)` are absent.
+- `ghm.actor_gateway_capability_assertion_secret` and `ghm.actor_gateway_capability_assertion_nonce` do not exist.
+- `pgcrypto` is not installed. The ordered signed-assertion migration `20261111020000_bind_capability_gateway_actor_to_signed_assertion` creates the extension and assertion tables; do not install these manually.
+- The query did not read the migration ledger and did not establish a fresh authoritative pending-migration audit.
+
+The live catalogue therefore confirms the gateway database API is not installed. The earlier statement that the Render connector session itself has schema USAGE must not be confused with effective schema USAGE for `ghm_actor_gateway`, which remains false.
+
+### Deployment decision and next gate
+
+Do not submit/deploy the staged service yet. Its startup code connects as `ghm_actor_gateway`, checks its session identity and exact executable-function/privilege allowlist, and only then opens the listener. With zero gateway functions and no assertion tables, startup cannot pass. Submitting now would create the already-approved recurring charge without a functioning gateway.
+
+Continue with the ordered production readiness path:
+1. Obtain an administrator-authorized production migration-ledger and role/ownership report through the Render Dashboard administrator route or Amanda/Render support. The current connector identity cannot provide it.
+2. Verify a fresh recoverable production backup before any production DDL, grants, role/credential changes or secret-table provisioning. The 4 November archive is not a verified post-role-change recovery point.
+3. Reconcile the exact live ledger against the current migration repository and qualify the staged, ordered gateway installation batch; do not run individual gateway migrations or the unrestricted production migration command.
+4. Complete the gateway DB principal's exact function/schema ACL via the reviewed migration chain, then provision the existing credential and assertion secret only through their approved secure paths.
+5. Only after the database startup checks and authenticated positive/negative gateway tests pass, submit the already-filled Render form, deploy manually, verify health and protected operations, and then perform the separately controlled GHM runtime URL cutover.
+
+No production SQL, DDL, grants, role membership, password, secret, migration ledger, Render environment, service, deployment, payment or data was changed in this follow-up. The catalogue and service inventory checks were read-only.
