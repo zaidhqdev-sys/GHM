@@ -90,12 +90,12 @@ try {
   await denied(gateway.query(approvalSql,[postSig.actor,postSig.issued,postSig.nonce,postSig.contextText,postSig.signature,draftId,post.reason]),/authority is not currently granted/i,'revoked authority');
 
   const final=await migrator.query(
-    \`SELECT s.lifecycle_status,a.attempt_status,
+    `SELECT s.lifecycle_status,a.attempt_status,
       (SELECT count(*) FROM ghm.commercial_consent_event WHERE idempotency_key=$1) consent_count,
       (SELECT count(*) FROM ghm.commercial_payment_attempt WHERE idempotency_key=$1) attempt_count,
       (SELECT count(*) FROM ghm.commercial_document_status_event WHERE document_version_id=$2 AND status='approved') approval_count
      FROM ghm.commercial_subscription s JOIN ghm.commercial_payment_attempt a ON a.subscription_id=s.id
-     WHERE a.idempotency_key=$1\`,[pc.idempotencyKey,document]);
+     WHERE a.idempotency_key=$1`,[pc.idempotencyKey,document]);
   assert.equal(final.rowCount,1);
   assert.equal(final.rows[0].lifecycle_status,'trialing');
   assert.equal(final.rows[0].attempt_status,'pending_checkout');
