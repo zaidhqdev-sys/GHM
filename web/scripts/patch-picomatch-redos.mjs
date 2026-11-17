@@ -15,74 +15,70 @@ if (metadata.name !== 'picomatch' || metadata.version !== '4.0.7') {
 }
 
 let source = fs.readFileSync(sourcePath, 'utf8');
-const helper = String.raw\`const isSelfRepeatingStarBranch = branch => {
-  let escaped = false;
-  let bracket = false;
-  let star = false;
+const helper = [
+  'const isSelfRepeatingStarBranch = branch => {',
+  '  let escaped = false;',
+  '  let bracket = false;',
+  '  let star = false;',
+  '',
+  '  for (let i = 0; i < branch.length; i++) {',
+  '    const ch = branch[i];',
+  '',
+  '    if (escaped === true) {',
+  '      escaped = false;',
+  '      continue;',
+  '    }',
+  '',
+  "    if (ch === '\\\\') {",
+  '      escaped = true;',
+  '      continue;',
+  '    }',
+  '',
+  '    if (bracket === true) {',
+  "      if (ch === ']') bracket = false;",
+  '      continue;',
+  '    }',
+  '',
+  "    if (ch === '[') {",
+  '      bracket = true;',
+  '      continue;',
+  '    }',
+  '',
+  '    if (/[/(){}|!+@]/.test(ch)) {',
+  '      return false;',
+  '    }',
+  '',
+  "    if (ch === '*') {",
+  "      if (branch[i + 1] === '*') {",
+  '        return false;',
+  '      }',
+  '      star = true;',
+  '    }',
+  '  }',
+  '',
+  '  return star && !escaped && !bracket;',
+  '};',
+  '',
+].join('\n');
 
-  for (let i = 0; i < branch.length; i++) {
-    const ch = branch[i];
-
-    if (escaped === true) {
-      escaped = false;
-      continue;
-    }
-
-    if (ch === '\\\\') {
-      escaped = true;
-      continue;
-    }
-
-    if (bracket === true) {
-      if (ch === ']') bracket = false;
-      continue;
-    }
-
-    if (ch === '[') {
-      bracket = true;
-      continue;
-    }
-
-    if (/[/(){}|!+@]/.test(ch)) {
-      return false;
-    }
-
-    if (ch === '*') {
-      if (branch[i + 1] === '*') {
-        return false;
-      }
-      star = true;
-    }
-  }
-
-  return star && !escaped && !bracket;
-};
-
-\`;
 const helperMarker = 'const isSelfRepeatingStarBranch = branch => {';
 const helperAnchor = 'const repeatedExtglobRecursion = pattern => {';
 if (!source.includes(helperMarker)) {
-  if (source.split(helperAnchor).length !== 2) {
-    throw new Error('Unexpected picomatch parser helper location; refusing patch');
-  }
+  if (source.split(helperAnchor).length !== 2) throw new Error('Unexpected picomatch parser helper location; refusing patch');
   source = source.replace(helperAnchor, helper + helperAnchor);
 }
 
-const analysisAnchor = '  return { risky: false };\\n};\\n\\n/**\\n * Parse the given input string.';
-const analysisPatch = '  if (branches.length === 1 && isSelfRepeatingStarBranch(branches[0])) {\\n    return { risky: false, collapse: true };\\n  }\\n\\n';
+const analysisAnchor = '  return { risky: false };\n};\n\n/**\n * Parse the given input string.';
+const analysisPatch = '  if (branches.length === 1 && isSelfRepeatingStarBranch(branches[0])) {\n    return { risky: false, collapse: true };\n  }\n\n';
 if (!source.includes('return { risky: false, collapse: true };')) {
-  if (source.split(analysisAnchor).length !== 2) {
-    throw new Error('Unexpected picomatch analysis return; refusing patch');
-  }
+  if (source.split(analysisAnchor).length !== 2) throw new Error('Unexpected picomatch analysis return; refusing patch');
   source = source.replace(analysisAnchor, analysisPatch + analysisAnchor);
 }
 
-const closeAnchor = '    let output = token.close + (opts.capture ? \\')\\' : \\'\\');\\n    let rest;';
-const closePatch = '    if (analysis.collapse === true && (token.type === \\'plus\\' || token.type === \\'star\\')) {\\n      token.close = token.type === \\'plus\\' ? \\')\\' : \\')?\\';\\n    }\\n\\n';
+const closeAnchor = "    let output = token.close + (opts.capture ? ')' : '');\n    let rest;";
+const closePatch = "    if (analysis.collapse === true && (token.type === 'plus' || token.type === 'star')) {\n      token.close = token.type === 'plus' ? ')' : ')?';\n    }\n\n";
 if (!source.includes('analysis.collapse === true')) {
-  if (source.split(closeAnchor).length !== 2) {
-    throw new Error('Unexpected picomatch extglob close location; refusing patch');
-  }
+  if (source.split(closeAnchor).length !== 2) throw new Error('Unexpected picomatch extglob close location; refusing patch');
   source = source.replace(closeAnchor, closePatch + closeAnchor);
 }
 

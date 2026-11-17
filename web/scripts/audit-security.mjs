@@ -20,7 +20,7 @@ process.stdout.write(verification.stdout);
 
 const audit = run('npm', ['audit', '--audit-level=moderate', '--json']);
 if (audit.status === 0) {
-  process.stdout.write('npm audit: no vulnerabilities found.\\n');
+  process.stdout.write('npm audit: no vulnerabilities found.\n');
   process.exit(0);
 }
 
@@ -37,26 +37,22 @@ const vulnerabilities = report.vulnerabilities || {};
 const allowedPackages = new Set(['picomatch', 'fdir', 'tinyglobby', 'vite', 'vitest']);
 const names = Object.keys(vulnerabilities);
 if (!names.includes('picomatch') || names.some(name => !allowedPackages.has(name))) {
-  process.stderr.write(JSON.stringify(vulnerabilities, null, 2) + '\\n');
+  process.stderr.write(JSON.stringify(vulnerabilities, null, 2) + '\n');
   throw new Error('npm audit found vulnerabilities outside the narrowly reviewed picomatch dependency path');
 }
 
 const advisoryUrl = 'https://github.com/advisories/GHSA-fc5q-39xc-vjpf';
 let directAdvisoryFound = false;
 for (const [name, finding] of Object.entries(vulnerabilities)) {
-  if (!['high', 'critical'].includes(finding.severity)) {
-    throw new Error('Unexpected severity metadata for ' + name);
-  }
+  if (!['high', 'critical'].includes(finding.severity)) throw new Error('Unexpected severity metadata for ' + name);
   const via = Array.isArray(finding.via) ? finding.via : [];
   if (name === 'picomatch') {
     if (!via.some(item => typeof item === 'object' && item.url === advisoryUrl)) {
-      throw new Error('picomatch finding is not exclusively the reviewed GHSA');
+      throw new Error('picomatch finding is not the reviewed GHSA');
     }
     directAdvisoryFound = true;
   } else if (!via.length || via.some(item =>
-    typeof item === 'object'
-      ? item.url !== advisoryUrl
-      : !allowedPackages.has(item)
+    typeof item === 'object' ? item.url !== advisoryUrl : !allowedPackages.has(item)
   )) {
     throw new Error('Unexpected advisory path for ' + name);
   }
@@ -72,7 +68,7 @@ if (picomatchEntries.length !== 1 || picomatchEntries[0][1].version !== '4.0.7')
 }
 
 process.stdout.write(
-  'npm audit reports only GHSA-fc5q-39xc-vjpf through the reviewed picomatch/fdir/tinyglobby/Vite/Vitest path.\\n' +
-  'The installed picomatch parser passed the exact mitigation and regression checks above.\\n' +
-  'Scoped exception accepted; all other npm audit findings remain blocking.\\n'
+  'npm audit reports only GHSA-fc5q-39xc-vjpf through the reviewed picomatch/fdir/tinyglobby/Vite/Vitest path.\n' +
+  'The installed picomatch parser passed the exact mitigation and regression checks above.\n' +
+  'Scoped exception accepted; all other npm audit findings remain blocking.\n'
 );
