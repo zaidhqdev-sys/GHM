@@ -3,6 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import 'dotenv/config';
 
+if (process.env.GHM_RUN_LIVE_DATABASE_TESTS !== 'true') {
+  console.log('QuoteFlow migration account provisioning DB qualification: SKIP (set GHM_RUN_LIVE_DATABASE_TESTS=true to opt in)');
+  process.exit(0);
+}
+
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.GHM_QUALIFICATION_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 if (!runtimeUrl && !migratorUrl) {
