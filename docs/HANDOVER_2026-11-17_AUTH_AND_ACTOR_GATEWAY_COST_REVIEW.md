@@ -919,3 +919,50 @@ The immediate blockers to a deployable 39-function allowlist are:
 - Live production function catalog/ACL state: not yet re-read as part of this source review.
 - No migration batch is selected or authorized. `config/production-migration-batches.json` remains empty.
 - No production DDL, grants, credentials, secrets, data, Render settings, deployment, payment, or consent state changed.
+
+
+## Live production registration ACL finding and guarded revocation migration — 2026-11-17 03:05Z
+
+A read-only query was run against the confirmed Render production Postgres resource `ghm-db` / database `ghm_db` (PostgreSQL 18, Frankfurt). The Render SQL connector session was `session_user=ghm_app_user`, `current_user=ghm_db_user`; this is an application/inspection context, not the migration owner context.
+
+### Live function ACL result
+
+Production currently contains:
+- `ghm.update_business_registration_identity(bigint,bigint,text,text,text)`
+- Owner: `ghm_schema_owner`
+- `SECURITY DEFINER=true`
+- Function search path: `pg_catalog, ghm`
+- Explicit ACL: owner `ghm_schema_owner` and `ghm_runtime` have EXECUTE.
+- PUBLIC: no EXECUTE.
+- `ghm_actor_gateway`: no EXECUTE.
+
+Production also contains the legacy read function `ghm.read_business_registration_identity(bigint,bigint)`, owned by `ghm_schema_owner`, SECURITY DEFINER, executable by `ghm_runtime`. The gateway read wrapper is a separate function and the reader uses the signed assertion wrapper.
+
+The current production application is configured to require gateway mode for registration identity routes when `NODE_ENV=production`. Since the historical environment inventory records `GHM_ACTOR_GATEWAY_URL` missing, those routes fail closed with 503 rather than falling back to the legacy repository. The database grant nevertheless remains a direct runtime path for any caller with access to the legacy SQL function; the live ACL finding is therefore a real unresolved actor-identity boundary.
+
+### New guarded migration added to PR #297
+
+Created `database/migrations/20261117010000_revoke_runtime_business_registration_identity_write.sql` and appended its exact identity to `config/production-pending-migration-inventory.json` (now 49 pending inventory entries).
+
+The migration:
+- Runs transactionally.
+- Refuses to proceed unless the legacy function and the signed-assertion gateway replacement both exist.
+- Requires the `ghm_actor_gateway` role and its EXECUTE grant on the signed wrapper.
+- Requires that `ghm_runtime` cannot execute the signed wrapper.
+- Requires the gateway wrapper to be SECURITY DEFINER and owned by `ghm_schema_owner`.
+- Revokes all direct EXECUTE from PUBLIC, `ghm_runtime`, and `ghm_actor_gateway` on the legacy caller-supplied actor-ID function.
+- Verifies that runtime, gateway and any non-owner direct grantee cannot execute the legacy function after revocation; otherwise it aborts the transaction.
+
+The guard deliberately does not claim that the gateway is deployed or operational. The migration must remain at the end of the pending queue and must not be executed until the dedicated gateway has passed startup identity/ACL checks and authenticated registration read/write end-to-end tests. The GHM runtime must have its stable HTTPS gateway URL before cutover. This is not a manual console REVOKE; it is a versioned, auditable migration with preconditions.
+
+### Important route behavior
+
+`src/http/business-registration-identity-router.ts` already uses the gateway client when configured and returns 503 in production when the gateway client is absent. It does not fall back to the direct repository in production. `src/http/app.ts` wires the registration identity gateway client from `GHM_ACTOR_GATEWAY_URL`.
+
+### Qualification and state
+
+- The migration file and inventory update are committed on PR #297.
+- Latest commit at this handover entry: `7780922347f7fd79c4bf82a40860a2b2fbfb559c`.
+- CI run #5283 (`44008371957`) was in progress at the time of this entry; do not mark passed until exact-head completion is confirmed.
+- No production migration, grant, DDL, secret, data, environment variable, Render service, deployment, payment or consent state was changed by the read-only query or repository commits.
+- The capability-governance legacy runtime grant remains a separate, intentionally deferred post-gateway cutover. This new migration addresses only registration identity write.
