@@ -148,3 +148,11 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Exposure classification: `picomatch`, Vite, and Vitest are in the web workspace development/build/test dependency tree; the declared production dependencies in `web/package.json` are React and React DOM. This narrows direct deployed-runtime exposure, but does not remove the CI supply-chain finding or justify suppressing the audit gate.
 - Next safe action: retain the audit gate and track the exact advisory/vendor remediation. Re-run audit and CI only when a verifiable fixed package version or a reviewed dependency path exists. Do not churn Vite/Vitest versions merely to make the audit output change.
 - No source code, lockfile, workflow, production database, Render service, credentials, or environment variables were changed during this audit investigation.
+
+
+## Security upstream clarification — picomatch CVE-2026-112366 — 17 November 2026
+
+- Follow-up inspection found the specifically relevant upstream PR is **micromatch/picomatch #238**, titled “fix: literalize single-branch extglobs with a leading bare quantifier (CVE-2026-112366)”. It explicitly describes the vulnerable `+(*a)` / `*(*a)` pattern shape and adds a narrowly-scoped parser guard with regression tests.
+- PR #238 is still **open and unmerged** as checked at 20:10 UTC. Its head is in contributor fork `rborlone/picomatch`, commit `44f192261f312ddf236cb7bdc05d8f22663f98f9`; it reports 2,000 upstream tests passing (1,998 existing + 2 added). It also documents an uncovered structurally similar nested-extglob limitation. This is a candidate upstream fix, not yet a released/published patched npm package and not sufficient by itself to clear GHM's audit.
+- The GitHub Advisory Database currently still marks picomatch through 4.0.7 affected and lists patched version as unknown. See GHSA-fc5q-39xc-vjpf. Do not cherry-pick the contributor PR into GHM's dependency tree or publish a private fork as a shortcut; wait for maintainer review/merge and an official package release, then validate the exact release and lockfile audit.
+- Correction to the earlier dependency follow-up: the correct CVE-specific upstream work to track is PR #238. PR #194 is not the relevant security patch. This supersedes any earlier statement that no matching security PR had been identified.
