@@ -1078,3 +1078,35 @@ The dedicated paid Web Service remains the only currently identified option that
 Also, hosting is not yet sufficient for deployment: the existing `ghm_actor_gateway` database login is not provisioned with the complete schema/function ACL; the gateway migration chain, fresh backup/recovery verification, administrator/role remediation, secret provisioning, and authenticated end-to-end tests remain separate gates. Do not set `GHM_ACTOR_GATEWAY_URL` or deploy the API cutover before these pass.
 
 No Render service, plan, environment variable, secret, database role/grant, migration, deployment, payment or production data was changed by this inventory review.
+
+
+## Render sandbox / qualification retirement inventory — 2026-11-17 03:33Z
+
+Read-only account inventory was refreshed. The production database `ghm-db` is separate and must be retained. The following non-production resources were identified:
+
+### Sandbox services
+
+| Resource | Render ID | Current state | Notes |
+|---|---|---|---|
+| `ghm-payfast-sandbox-runtime` | `srv-db5vtgl9fdbs73eaclbg` | Free Web Service, not suspended, auto-deploy OFF | Legacy PayFast sandbox runtime; PayFast remains paused |
+| `ghm-payfast-callback-sandbox` | `srv-dbma100u01pc738qpavg` | Free Web Service, not suspended, auto-deploy OFF | Legacy PayFast sandbox callback; no current production role |
+| `ghm-identity-qualification` | `srv-dbahvenbtjjs73f83rlg` | Free Web Service, not suspended, auto-deploy ON | Qualification branch service; must not be allowed to auto-deploy indefinitely |
+
+### Non-production databases
+
+| Resource | Render ID | Current state | Notes |
+|---|---|---|---|
+| `ghm-payfast-sandbox-db` / `ghm_payfast_sandbox_db` | `dpg-db4416vlk1mc73eocug0-a` | Free, suspended by billing, expiry timestamp 2026-11-08 | Legacy sandbox DB; do not resume or pay to revive |
+| `ghm-identity-qualification-20261018` / `ghm_identity_qualification_20261018` | `dpg-dba0tu3rjlhs738fs2sg-a` | Available, `basic_256mb`, 15 GB, Frankfurt | Separate qualification DB, not the suspended PayFast sandbox DB; likely ongoing paid resource and should be reviewed for retirement |
+
+The production `ghm-db` (`ghm_db`, `dpg-dag0sdtbedkc7389vi2g-a`) is available and is explicitly excluded from cleanup.
+
+### Recommended cleanup order (no destructive action taken)
+
+1. Stop and retire the two PayFast sandbox services; keep PayFast activation frozen as already decided.
+2. Disable auto-deploy on `ghm-identity-qualification` immediately, then retire the service once any required qualification evidence has been preserved.
+3. Confirm whether the Render qualification database contains any unique evidence/data worth exporting. If not required, delete it to stop its non-production recurring cost.
+4. Delete the already-suspended PayFast sandbox database last, after confirming there is no required export/backup. Do not resume it.
+5. Recheck the Render inventory and billing after retirement. Retain only production `ghm-db`, production `GHM-Internal-Runtime`, and separately justified active services.
+
+The connected Render toolset in this session exposes inventory and read-only database inspection but no service/database deletion action. No resource was deleted, suspended, resumed, upgraded, or otherwise changed. No backup was created or deleted. This is a cleanup recommendation pending the owner's explicit destructive-action approval and preservation decision for the qualification database.
