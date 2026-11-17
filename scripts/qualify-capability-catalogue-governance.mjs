@@ -229,7 +229,7 @@ try {
 
   await expectReject(
     () => gatewayCall(adminId, 'capability.create',
-      'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
+      'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
       [`${marker} Unsupported`, `${marker}-unsupported`, null, null, 0, null, 2]),
     'GATEWAY CAPABILITY VERSION GUARD PASS',
     'Unsupported Capability taxonomy version',
