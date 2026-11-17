@@ -85,7 +85,8 @@
     "audit:security-definer-authority": "node scripts/audit-security-definer-authority.mjs",
     "typecheck:worker:actor-gateway": "tsc -p workers/actor-gateway/tsconfig.json",
     "test:worker:actor-gateway": "node --test workers/actor-gateway/worker-contract.test.mjs",
-    "audit:migrations:production-inventory": "node scripts/forensic-migration-reconciliation.mjs --production-inventory"
+    "audit:migrations:production-inventory": "node scripts/forensic-migration-reconciliation.mjs --production-inventory",
+    "qualify:database-verifier-secret-provisioning": "node --test scripts/database-verifier-secret-provisioning.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
