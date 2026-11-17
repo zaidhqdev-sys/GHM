@@ -37,11 +37,11 @@ try {
 
   const migrationDir = path.join(root, 'database', 'migrations');
   const entries = (await fs.promises.readdir(migrationDir))
-    .filter(name => /^\\d{14}_[a-z0-9][a-z0-9_-]*\\.sql$/.test(name))
+    .filter(name => /^\d{14}_[a-z0-9][a-z0-9_-]*\.sql$/.test(name))
     .sort();
   const migrations = [];
   for (const filename of entries) {
-    const match = /^(\\d{14})_([a-z0-9][a-z0-9_-]*)\\.sql$/.exec(filename);
+    const match = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/.exec(filename);
     const sql = await fs.promises.readFile(path.join(migrationDir, filename), 'utf8');
     migrations.push({ version: match[1], name: match[2], checksum: migrationSqlChecksum(sql) });
   }
@@ -88,8 +88,8 @@ try {
   }
 
   const output = result.stdout || '';
-  assert.match(output, /Production migration plan \\(no SQL executed\\):/);
-  const plannedLines = output.split(/\\r?\\n/).filter(line => /SHA-256 [a-f0-9]{64}$/.test(line.trim()));
+  assert.match(output, /Production migration plan \(no SQL executed\):/);
+  const plannedLines = output.split(/\r?\n/).filter(line => /SHA-256 [a-f0-9]{64}$/.test(line.trim()));
   assert.equal(plannedLines.length, pendingInventory.length,
     'plan-only output must enumerate every exact pending migration with its SHA-256 checksum');
   for (const migration of pendingInventory) {
