@@ -222,7 +222,8 @@ const migrate = async (): Promise<void> => {
       )
       : pendingMigrations;
 
-    for (const migration of executionMigrations) {
+    const executionVersions = new Set(executionMigrations.map((migration) => migration.version));
+    for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
         if (existingChecksum !== migration.checksum) {
@@ -236,6 +237,7 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
+      if (!executionVersions.has(migration.version)) continue;
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
       await client.query(normalizeMigrationSqlForExecution(migration.sql));
