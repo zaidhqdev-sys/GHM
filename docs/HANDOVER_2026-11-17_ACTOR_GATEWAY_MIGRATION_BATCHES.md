@@ -57,3 +57,12 @@ The previous note for job 134295859085 incorrectly described the *manual* regist
 - Do **not** restore the read grant. That would contradict the manual cutover's security boundary and the post-cutover negative qualification.
 - The Connect provisioning membership/mapping diagnostic is a separate fixture/order issue and remains to be isolated. The incompatible registration constraint was reported by the deliberate negative forward-migration test; that test passed. Permission-denied log entries must be classified by their corresponding negative probes rather than treated as a blanket grant failure.
 - No production database, migration ledger, Render service, or environment variable was changed by this investigation.
+
+
+## Connect provisioning qualification clarification — job 134298256543
+
+The job's PostgreSQL server log includes `Business membership required` and `qualification forced mapping failure`, but the actual TAP output confirms the complete subtest passed:
+
+`ok 1 - Connect Business provisioning: signed gateway atomicity, membership and isolation qualification`
+
+These are expected negative-path probes within that test: an actor without membership cannot resolve an existing mapped Business, and a deliberately failing mapping insert verifies transaction rollback. They are not a failing Connect provisioning qualification. Do not weaken the membership check or remove the forced-failure rollback test.
