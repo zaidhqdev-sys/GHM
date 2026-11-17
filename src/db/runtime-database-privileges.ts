@@ -200,7 +200,7 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
     stage.map(normalizeSignature).sort(),
   );
   if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
-      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 14
+      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
       || stages.length !== 512) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
