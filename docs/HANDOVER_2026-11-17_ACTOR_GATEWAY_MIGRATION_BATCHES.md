@@ -210,3 +210,5 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - The existing production database IP allowlist is `0.0.0.0/0`; this is recorded as observed configuration only, not changed.
 - CI run `44173291063` failed in two expected places: the restored npm audit gate reports the known picomatch advisory; the GHM test suite had 2 stale expectations in `migration-checksum.test.ts` that still assumed the prior allowlist semantics. Updated those tests to require an exact pending suffix and reject already-applied stale rows.
 - PR #298 remains draft/unmerged. Production migration inventory has not been reconciled to the live ledger; do not run `npm run migrate`.
+
+- Follow-up correction: the first test update encoded the slash escape twice in the regex literal. Corrected the test source to a valid single escaped slash before relying on the new CI run.

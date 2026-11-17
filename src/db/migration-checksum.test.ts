@@ -120,7 +120,7 @@ test('production migration inventory rejects omitted pending entries and stale a
       new Set(['20261110100000']),
       migrations,
     ),
-    /stale\\/already-applied: 20261110100000_approved_first/,
+    /stale\/already-applied: 20261110100000_approved_first/,
   );
 });
 
