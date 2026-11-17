@@ -100,7 +100,7 @@ test('allows a fully applied migration history', () => {
 });
 
 
-test('production migration allowlist permits only its configured pending suffix', () => {
+test('production migration inventory rejects omitted pending entries and stale applied entries', () => {
   const migrations = [
     { version: '20261110100000', name: 'approved_first' },
     { version: '20261110120000', name: 'approved_second' },
@@ -110,16 +110,21 @@ test('production migration allowlist permits only its configured pending suffix'
     () => assertProductionPendingMigrationAllowlist(
       migrations,
       new Set(['20261110100000']),
-      [
-        { version: '20261110100000', name: 'approved_first' },
-        { version: '20261110120000', name: 'approved_second' },
-      ],
+      migrations.slice(0, 2),
     ),
-    /Production migration allowlist mismatch: refusing to execute 1 unapproved pending migration\(s\)/,
+    /inventory mismatch.*missing pending: 20261110140000_unapproved_third/,
+  );
+  assert.throws(
+    () => assertProductionPendingMigrationAllowlist(
+      migrations,
+      new Set(['20261110100000']),
+      migrations,
+    ),
+    /stale\\/already-applied: 20261110100000_approved_first/,
   );
 });
 
-test('production migration allowlist accepts a pending subset after earlier entries were applied', () => {
+test('production migration inventory accepts only the exact pending suffix after earlier entries were applied', () => {
   const migrations = [
     { version: '20261110100000', name: 'approved_first' },
     { version: '20261110120000', name: 'approved_second' },
@@ -127,7 +132,7 @@ test('production migration allowlist accepts a pending subset after earlier entr
   assert.doesNotThrow(() => assertProductionPendingMigrationAllowlist(
     migrations,
     new Set(['20261110100000']),
-    migrations,
+    migrations.slice(1),
   ));
 });
 
