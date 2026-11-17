@@ -186,9 +186,9 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
     stage.map(normalizeSignature).sort(),
   );
-  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
+  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 39
       || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
-      || stages.length !== 512) {
+      || stages.length !== 256) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
