@@ -24,7 +24,7 @@ try {
   // never written to a hosted or production database.
   await migrator.query(
     'INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton, secret) VALUES (true, $1) ON CONFLICT (singleton) DO UPDATE SET secret = EXCLUDED.secret',
-    [secret]
+    [Buffer.from(secret, 'base64')]
   );
   const createdFounder = await migrator.query(
     'SELECT account_id FROM ghm.auth_create_account($1,$2,$3,$4,$5,$6,$7,$8)',

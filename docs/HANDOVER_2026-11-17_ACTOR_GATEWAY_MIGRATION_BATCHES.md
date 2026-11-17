@@ -328,3 +328,6 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 
 
 - CI #5355 exposed test-order contamination: the commercial end-to-end qualification bootstraps the canonical founder singleton, but the Actor Gateway principal qualification correctly requires that singleton to be empty when it creates its own fixture. The CI steps are now ordered so Actor Gateway principal qualification runs first and cleans up its founder fixture; the commercial end-to-end qualification runs afterward. The Actor Gateway principal qualification also provisions the HMAC verifier row itself from the disposable CI-only secret, so it no longer relies on a later test's side effects. This corrects test isolation and ordering; no production data or credentials are involved.
+
+
+- CI #5356 reached the Actor Gateway principal qualification and rejected the verifier row on its `secret` CHECK constraint. The test environment variable is base64-encoded, while the database column is `bytea`; passing the encoded text stored the wrong bytes. Both isolated qualification fixtures now decode the existing CI-only secret with `Buffer.from(value, 'base64')` before binding it to PostgreSQL. This aligns the stored 32-byte verifier with the signing code. No production secret or database was involved.

@@ -218,7 +218,7 @@ try {
   await cleanupPool.query('SET ROLE ghm_schema_owner');
   await cleanupPool.query(
     'INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton, secret) VALUES (true, $1) ON CONFLICT (singleton) DO UPDATE SET secret = EXCLUDED.secret',
-    [assertionSecret],
+    [Buffer.from(assertionSecret, 'base64')],
   );
   await cleanupPool.query('RESET ROLE');
   assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtimePool));
