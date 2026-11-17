@@ -567,3 +567,19 @@ User ran `npm run qualify:database-verifier-secret-provisioning` locally on exac
 - This is local automated qualification only. No production secret has been generated, supplied, provisioned, rotated, or changed. No production DB mutation occurred.
 
 Next: wait for exact-head CI #5257; then run the repository's full `npm test` locally on the same exact PR head and resolve any failures. Keep production provisioning blocked until all qualification and review steps are complete and the owner explicitly authorizes the separate production mutation.
+
+
+## Windows-safe full test suite runner — 2026-11-17
+
+User's local `npm test` initially stopped before build/tests because Windows rejected the oversized expanded Node `--test` command line (`The command line is too long`). This was an OS process-argument limit, not a test assertion or compile failure.
+
+Implemented on PR #297:
+- `config/full-test-suite.json`: exact 170 compiled test paths extracted from the existing `npm test` command; verified no concatenated/malformed paths around the quote/notification tests.
+- `scripts/run-full-test-suite.mjs`: runs the same file manifest in batches of 32 using Node `spawnSync`, preserving `scripts/test-env.cjs` preloading and stopping on first failed batch.
+- `package.json`: `npm test` now builds, invokes the batch runner, then preserves the original post-test qualification steps (QuoteFlow migration-account provisioning check, security-definer authority tests, Actor Gateway worker typecheck/tests, migration checksum tests).
+
+Commits:
+- `b0f1ec5253a665a20e21b3c38c3982a89bfccd24` initial manifest/runner/package change
+- `590f8693b4564398ee6bd174d27a5a88e0c58678` corrected npm test invocation to remove the original preload prefix before runner
+
+No test execution is yet confirmed with the new runner. Next: fetch exact latest branch head and run `npm test`. Treat any failure as a real build/test/qualification result and diagnose by failing batch. Production remains untouched.
