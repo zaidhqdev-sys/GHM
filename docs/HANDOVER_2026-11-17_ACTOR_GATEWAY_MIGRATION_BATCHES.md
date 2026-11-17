@@ -126,3 +126,12 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Corrected the probe SQL to use 11 placeholders after gatewayCall's assertion injection, matching the actual 12-argument function signature. This preserves the intended signed assertion and version-guard check.
 - Corrected in commit `0f14ee069481a9cf9590f5d45354d1d3ce86eb13`. No grants changed, no migrations or production DB changed. Fresh CI required.
 - The separate npm audit job remains blocked by the same five high-severity findings resolving to picomatch GHSA; no force fix, override, or suppression.
+
+
+## CI run 44164726925 / job 134327829356 — migration audit policy failure
+
+- The user's suggested broad grant fix is incorrect. The job completed all preceding database qualifications successfully, including isolated auth issuer and Actor Gateway principals, Actor Gateway smoke, storage, Connect Business provisioning, Capability catalogue governance, Business Capability, Saved Business, Business Hours, Trust Score, Business Logo, supplier classification, Business profile and commercial payment settlement. The logged role-denial, direct-table/function/sequence-denial, invalid/expired/replayed/context-mismatch assertions are deliberate least-privilege negative probes; their corresponding qualification output markers passed.
+- The sole actual `quality` job failure was step 61, `Migration audit policy tests`, with two failures in `scripts/migration-audit-checksum.test.mjs` (tests at lines 89 and 137). Both pinned expected production pending migration arrays to an old seven-entry list while `config/pending-migrations.production.json` now contains the reviewed 50-entry production pending allowance, including earlier reviewed migrations and the two 17 Nov revocation migrations.
+- Corrected both exact-array assertions to derive their expected literals from the current reviewed `config/pending-migrations.production.json` contents (50 entries). The manifest itself was not altered; this updates only stale tests to match the existing reviewed manifest. No role grants, ACLs, database objects, or production state were changed.
+- Correction committed `f98411878727ae5849195e1709a70416b561fc2d`. Fresh CI required.
+- `web-quality` was cancelled when the newer commit superseded the run; the independent npm audit issue remains known: five high-severity audit paths resolve to picomatch GHSA in the web lockfile. No `--force`, override, or audit suppression.
