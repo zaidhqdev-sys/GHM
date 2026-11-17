@@ -4,7 +4,7 @@ export interface RuntimeDatabaseFunctionPrivileges {
   executable_functions: string[];
 }
 
-// Exact pre-migration baseline from the disposable PostgreSQL 18.6 whole-database
+// Exact post-migration, pre-manual-cutover baseline from the disposable PostgreSQL 18.6 whole-database
 // SECURITY DEFINER inventory. Production enforcement stays gated until its own
 // catalog is captured and reconciled. Do not add a signature without reviewing its
 // actor binding, tenant scope, lifecycle checks and owning service.
@@ -28,7 +28,6 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.calculate_business_trust_score(bigint, bigint)',
   'ghm.connect_service_assertion_consume(text, text, timestamp with time zone)',
   'ghm.create_campaign(bigint, bigint, text)',
-  'ghm.create_capability_draft(bigint, text, text, text, uuid, integer, text, integer)',
   'ghm.create_saved_business(bigint, bigint)',
   'ghm.delete_saved_business(bigint, bigint)',
   'ghm.get_business_directory_review_presentation(bigint, bigint)',
@@ -48,10 +47,7 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.storage_mark_deletion_pending(bigint)',
   'ghm.transition_business_capability_evidence(bigint, text, bigint, text)',
   'ghm.transition_business_capability_verification(bigint, text, text, bigint, text)',
-  'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
-  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
   'ghm.update_campaign(bigint, bigint, text, text)',
-  'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)'
 ] as const;
 
 const CAMPAIGN_REVIEW_LEGACY_FUNCTIONS = [
@@ -78,16 +74,8 @@ const AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS = [
 ] as const;
 
 const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
-  // The manual registration-identity gateway cutover revokes both legacy
-  // caller-supplied actor-ID operations after signed read/write routes pass.
+  // The migration already revoked registration writes; manual cutover removes the remaining read.
   'ghm.read_business_registration_identity(bigint, bigint)',
-  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
-] as const;
-
-const CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS = [
-  'ghm.create_capability_draft(bigint, text, text, text, uuid, integer, text, integer)',
-  'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)',
-  'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
 ] as const;
 
 const BUSINESS_CAPABILITY_LEGACY_FUNCTIONS = [
@@ -120,7 +108,6 @@ export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
   authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
   registrationIdentity: REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-  capabilityGovernance: CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS,
   businessCapabilityMutations: BUSINESS_CAPABILITY_LEGACY_FUNCTIONS,
   savedBusiness: SAVED_BUSINESS_LEGACY_FUNCTIONS,
   businessHours: BUSINESS_HOURS_LEGACY_FUNCTIONS,
