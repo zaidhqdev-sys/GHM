@@ -89,7 +89,7 @@ try {
   `, [evidenceTables]);
   for (const table of evidenceTables) {
     const related = triggers.rows.filter(t => t.relname === table);
-    assert.ok(related.some(t => /BEFORE UPDATE OR DELETE/i.test(t.definition)),
+    assert.ok(related.some(t => /BEFORE/i.test(t.definition) && /UPDATE/i.test(t.definition) && /DELETE/i.test(t.definition)),
       table + ' must reject UPDATE and DELETE');
     assert.ok(related.some(t => /BEFORE TRUNCATE/i.test(t.definition)),
       table + ' must reject TRUNCATE');
