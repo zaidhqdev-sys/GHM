@@ -10,15 +10,26 @@ const metadata = JSON.parse(fs.readFileSync(path.resolve(root, '../node_modules/
 const parser = fs.readFileSync(path.resolve(root, '../node_modules/picomatch/lib/parse.js'), 'utf8');
 
 assert.equal(metadata.version, '4.0.7');
-assert.match(parser, /const hasUnsafeLeadingQuantifier = branch =>/);
-assert.match(parser, /if \(hasUnsafeLeadingQuantifier\(branch\)\)/);
+assert.match(parser, /const isSelfRepeatingStarBranch = branch =>/);
+assert.match(parser, /return \{ risky: false, collapse: true \};/);
+assert.match(parser, /analysis\.collapse === true/);
 
 const picomatch = require('picomatch');
-assert.equal(picomatch.makeRe('+(*a)').source, '^(?:\\\\+\\\\(\\\\*a\\\\))$');
-assert.equal(picomatch.makeRe('*(*a)').source, '^(?:\\\\*\\\\(\\\\*a\\\\))$');
-assert.equal(picomatch.makeRe('+(a|*a)').source, '^(?:\\\\+\\\\(a\\\\|\\\\*a\\\\))$');
-assert.equal(picomatch.isMatch('a'.repeat(30) + '!', '+(*a)'), false);
-assert.equal(picomatch.isMatch('abc', '+(*)'), true);
-assert.equal(picomatch.isMatch('abc', '+(a*)'), true);
+for (const pattern of ['+(*)', '+(*a)', '*(*a)', '+(a*)', '+(a*b)', '*(*.js)']) {
+  assert.doesNotMatch(picomatch.makeRe(pattern).source, /\)[+*]/, pattern + ' must not retain nested outer repetition');
+}
+for (const pattern of ['+(*a)', '*(*a)', '+(*a)c', 'x+(*a)']) {
+  const start = performance.now();
+  assert.equal(picomatch.isMatch('a'.repeat(50) + 'b', pattern), false);
+  assert.ok(performance.now() - start < 100, pattern + ' exceeded the 100ms regression bound');
+}
+assert.equal(picomatch.isMatch('abc', '+(*)c'), true);
+assert.equal(picomatch.isMatch('aaa', '+(*a)'), true);
+assert.equal(picomatch.isMatch('a.a', '+(*a)'), true);
+assert.equal(picomatch.isMatch('ab', '+(*a)'), false);
+assert.equal(picomatch.isMatch('axbayb', '+(a*b)'), true);
+assert.equal(picomatch.isMatch('axbay', '+(a*b)'), false);
+assert.equal(picomatch.isMatch('foo.js', '*(*.js)'), true);
+assert.equal(picomatch.isMatch('foo.ts', '*(*.js)'), false);
 
-console.log('PICOMATCH CVE-2026-112366 MITIGATION: exact parser guard and regression cases PASS');
+console.log('PICOMATCH CVE-2026-112366 MITIGATION: exact parser guard, collapse semantics and regression cases PASS');

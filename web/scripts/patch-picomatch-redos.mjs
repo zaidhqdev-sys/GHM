@@ -15,37 +15,81 @@ if (metadata.name !== 'picomatch' || metadata.version !== '4.0.7') {
 }
 
 let source = fs.readFileSync(sourcePath, 'utf8');
-const helper = String.raw\`// Mitigation aligned with upstream micromatch/picomatch PR #238 (CVE-2026-112366).
-// A leading bare wildcard followed by more content inside a repeated extglob
-// can create nested unbounded quantifiers and catastrophic backtracking.
-const hasUnsafeLeadingQuantifier = branch => {
-  let i = 0;
-  while (i < branch.length && (branch[i] === '*' || branch[i] === '?') && branch[i + 1] !== '(') {
-    i++;
+const helper = String.raw\`const isSelfRepeatingStarBranch = branch => {
+  let escaped = false;
+  let bracket = false;
+  let star = false;
+
+  for (let i = 0; i < branch.length; i++) {
+    const ch = branch[i];
+
+    if (escaped === true) {
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (bracket === true) {
+      if (ch === ']') bracket = false;
+      continue;
+    }
+
+    if (ch === '[') {
+      bracket = true;
+      continue;
+    }
+
+    if (/[/(){}|!+@]/.test(ch)) {
+      return false;
+    }
+
+    if (ch === '*') {
+      if (branch[i + 1] === '*') {
+        return false;
+      }
+      star = true;
+    }
   }
-  return i > 0 && i < branch.length;
+
+  return star && !escaped && !bracket;
 };
 
 \`;
-const helperMarker = 'const hasUnsafeLeadingQuantifier = branch => {';
-const call = '    if (hasUnsafeLeadingQuantifier(branch)) {\\n      return { risky: true };\\n    }\\n\\n';
+const helperMarker = 'const isSelfRepeatingStarBranch = branch => {';
 const helperAnchor = 'const repeatedExtglobRecursion = pattern => {';
-const callAnchor = '    if (repeatedExtglobRecursion(branch) > max) {';
-
 if (!source.includes(helperMarker)) {
   if (source.split(helperAnchor).length !== 2) {
-    throw new Error('Unexpected picomatch parser layout; refusing an unverified patch');
+    throw new Error('Unexpected picomatch parser helper location; refusing patch');
   }
   source = source.replace(helperAnchor, helper + helperAnchor);
 }
-if (!source.includes('if (hasUnsafeLeadingQuantifier(branch))')) {
-  if (source.split(callAnchor).length !== 2) {
-    throw new Error('Unexpected picomatch repeated-extglob analysis; refusing an unverified patch');
+
+const analysisAnchor = '  return { risky: false };\\n};\\n\\n/**\\n * Parse the given input string.';
+const analysisPatch = '  if (branches.length === 1 && isSelfRepeatingStarBranch(branches[0])) {\\n    return { risky: false, collapse: true };\\n  }\\n\\n';
+if (!source.includes('return { risky: false, collapse: true };')) {
+  if (source.split(analysisAnchor).length !== 2) {
+    throw new Error('Unexpected picomatch analysis return; refusing patch');
   }
-  source = source.replace(callAnchor, call + callAnchor);
+  source = source.replace(analysisAnchor, analysisPatch + analysisAnchor);
 }
-if (!source.includes(helperMarker) || !source.includes('if (hasUnsafeLeadingQuantifier(branch))')) {
-  throw new Error('picomatch mitigation verification failed after patching');
+
+const closeAnchor = '    let output = token.close + (opts.capture ? \\')\\' : \\'\\');\\n    let rest;';
+const closePatch = '    if (analysis.collapse === true && (token.type === \\'plus\\' || token.type === \\'star\\')) {\\n      token.close = token.type === \\'plus\\' ? \\')\\' : \\')?\\';\\n    }\\n\\n';
+if (!source.includes('analysis.collapse === true')) {
+  if (source.split(closeAnchor).length !== 2) {
+    throw new Error('Unexpected picomatch extglob close location; refusing patch');
+  }
+  source = source.replace(closeAnchor, closePatch + closeAnchor);
+}
+
+if (!source.includes(helperMarker) ||
+    !source.includes('return { risky: false, collapse: true };') ||
+    !source.includes('analysis.collapse === true')) {
+  throw new Error('picomatch ReDoS mitigation verification failed after patching');
 }
 fs.writeFileSync(sourcePath, source);
-console.log('Applied verified picomatch 4.0.7 ReDoS mitigation aligned with upstream PR #238.');
+console.log('Applied picomatch single-branch repeated-extglob collapse mitigation aligned with upstream PR #237.');
