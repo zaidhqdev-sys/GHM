@@ -29,7 +29,7 @@ const helper = [
   '      continue;',
   '    }',
   '',
-  "    if (ch === '\\\\') {",
+  "    if (ch === '\\') {",
   '      escaped = true;',
   '      continue;',
   '    }',
