@@ -4,7 +4,7 @@ import picomatch from 'picomatch';
 describe('picomatch CVE-2026-112366 repeated-extglob regression', () => {
   it('does not emit nested unbounded quantifiers for vulnerable patterns', () => {
     for (const pattern of ['+(*)', '+(*a)', '*(*a)', '+(a*)', '+(a*b)', '*(*.js)']) {
-      expect(picomatch.makeRe(pattern).source).not.toMatch(/\\)[+*]/);
+      expect(picomatch.makeRe(pattern).source).not.toMatch(/\)[+*]/);
     }
   });
 
