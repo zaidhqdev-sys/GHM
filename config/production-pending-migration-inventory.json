@@ -194,5 +194,9 @@
   {
     "version": "20261117010000",
     "name": "revoke_runtime_business_registration_identity_write"
+  },
+  {
+    "version": "20261117020000",
+    "name": "revoke_runtime_capability_governance"
   }
 ]
