@@ -9,6 +9,10 @@ const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
 
 test('Connect service assertion replay: live PostgreSQL qualification', async (t) => {
+  if (process.env.GHM_RUN_LIVE_DATABASE_TESTS !== 'true') {
+    t.skip('Set GHM_RUN_LIVE_DATABASE_TESTS=true only for an explicitly approved disposable/local database qualification');
+    return;
+  }
   if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) { t.skip('Distinct runtime/migrator database URLs are required'); return; }
   const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
   const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
