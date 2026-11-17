@@ -28,6 +28,10 @@ DECLARE
     'ghm.gateway_transition_capability_lifecycle(bigint,bigint,uuid,text,text,uuid,text,uuid,integer)'
   );
   v_function oid;
+  v_actual_owner text;
+  v_is_security_definer boolean;
+  v_function_config text[];
+  v_actual_search_path text;
 BEGIN
   IF v_gateway_role IS NULL OR v_runtime_role IS NULL OR v_schema_owner IS NULL THEN
     RAISE EXCEPTION 'Required Actor Gateway, runtime, or schema-owner role is missing';
@@ -37,22 +41,25 @@ BEGIN
   END IF;
 
   FOREACH v_function IN ARRAY ARRAY[v_verifier,v_list,v_create,v_update,v_transition] LOOP
-    IF NOT EXISTS (
-      SELECT 1 FROM pg_proc p
-      JOIN pg_namespace n ON n.oid=p.pronamespace
-      WHERE p.oid=v_function
-        AND n.nspname='ghm'
-        AND p.prosecdef=true
-        AND p.proowner=v_schema_owner
-        AND EXISTS (
-          SELECT 1
-          FROM pg_options_to_table(p.proconfig) AS function_setting
-          WHERE function_setting.option_name = 'search_path'
-            AND regexp_replace(function_setting.option_value, '[[:space:]]+', '', 'g') = 'pg_catalog,ghm'
-        )
-    ) THEN
-      RAISE EXCEPTION 'A signed capability gateway function has unexpected owner, SECURITY DEFINER setting, or search_path: %',
-        v_function::regprocedure;
+    SELECT
+      pg_get_userbyid(p.proowner),
+      p.prosecdef,
+      p.proconfig,
+      (
+        SELECT function_setting.option_value
+        FROM pg_options_to_table(COALESCE(p.proconfig, ARRAY[]::text[])) AS function_setting
+        WHERE function_setting.option_name = 'search_path'
+      )
+    INTO v_actual_owner, v_is_security_definer, v_function_config, v_actual_search_path
+    FROM pg_proc p
+    WHERE p.oid = v_function;
+
+    IF v_actual_owner IS DISTINCT FROM 'ghm_schema_owner'
+       OR v_is_security_definer IS DISTINCT FROM true
+       OR regexp_replace(COALESCE(v_actual_search_path, ''), '[[:space:]]+', '', 'g') <> 'pg_catalog,ghm' THEN
+      RAISE EXCEPTION
+        'Signed capability function security mismatch: function=%, actual_owner=%, expected_owner=ghm_schema_owner, prosecdef=%, expected_prosecdef=true, proconfig=%, parsed_search_path=%, expected_search_path=pg_catalog,ghm',
+        v_function::regprocedure, v_actual_owner, v_is_security_definer, v_function_config, v_actual_search_path;
     END IF;
     IF NOT has_function_privilege(v_gateway_role,v_function,'EXECUTE') THEN
       RAISE EXCEPTION 'Actor Gateway lacks EXECUTE on signed capability function: %',v_function::regprocedure;
