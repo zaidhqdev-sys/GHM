@@ -966,3 +966,41 @@ The guard deliberately does not claim that the gateway is deployed or operationa
 - CI run #5283 (`44008371957`) was in progress at the time of this entry; do not mark passed until exact-head completion is confirmed.
 - No production migration, grant, DDL, secret, data, environment variable, Render service, deployment, payment or consent state was changed by the read-only query or repository commits.
 - The capability-governance legacy runtime grant remains a separate, intentionally deferred post-gateway cutover. This new migration addresses only registration identity write.
+
+
+## Live capability-governance ACL review and guarded cutover — 2026-11-17 03:13Z
+
+A read-only query was run against Render production resource `ghm-db`, database `ghm_db`. The SQL connector session was `session_user=ghm_app_user`, `current_user=ghm_db_user`.
+
+### Production result — do not confuse absent with secured
+
+The query searched for:
+- Legacy `create_capability_draft`, `update_capability_draft`, `transition_capability_lifecycle`.
+- Gateway `gateway_list_capabilities`, `gateway_create_capability_draft`, `gateway_update_capability_draft`, `gateway_transition_capability_lifecycle`.
+- Signed verifier `assert_actor_gateway_capability`.
+
+**None of those capability-governance functions were returned by the live production catalog query.** The live production catalog returned only the registration identity read/write functions in this query family. Therefore the capability-governance migration chain is still pending in production; there is no live capability function ACL to revoke today. Do not report the legacy capability grant as a live production exposure. The earlier source-level finding describes the ACLs that the pending migrations would create if applied.
+
+The confirmed live registration identity write finding remains unchanged: legacy function is SECURITY DEFINER, owned by `ghm_schema_owner`, and executable by `ghm_runtime`; PUBLIC and `ghm_actor_gateway` lack EXECUTE.
+
+### New guarded capability cutover migration
+
+Created `database/migrations/20261117020000_revoke_runtime_capability_governance.sql` and appended it to `config/production-pending-migration-inventory.json`. Pending inventory now has 50 entries (48 original pending entries plus the registration and capability guarded cutovers).
+
+The migration is deliberately a post-deployment cutover:
+- Requires the capability signed-assertion verifier and all four gateway operations to exist.
+- Requires all five to be SECURITY DEFINER, owned by `ghm_schema_owner`, and pinned to `search_path=pg_catalog, ghm`.
+- Requires `ghm_actor_gateway` EXECUTE and denies `ghm_runtime` EXECUTE on those gateway functions.
+- Revokes PUBLIC, runtime and gateway direct EXECUTE on the three legacy caller-supplied actor-ID capability governance functions.
+- Verifies that no non-owner direct EXECUTE grantee remains.
+- Aborts transactionally if the signed gateway replacement is not ready.
+
+This migration cannot run now: the prerequisite functions are not yet present in production. It belongs after the feature migrations, gateway deployment, and authenticated capability end-to-end checks. It is not a production operation performed in this review.
+
+### Current interpretation and next work
+
+- Registration write: live direct-runtime ACL exposure confirmed; guarded migration `20261117010000` added.
+- Capability governance: source chain has a future legacy runtime grant and signed gateway replacement; live catalog does not yet contain these functions; guarded migration `20261117020000` added for after deployment.
+- The migration inventory is now 50 entries. Re-run exact repository checksum/inventory audit and CI against the new head; do not reuse the prior 48-entry or 49-entry audit result.
+- Do not execute either guarded cutover migration until gateway startup, authenticated end-to-end tests and production preconditions are satisfied.
+- No production DDL, ACL, role, migration ledger, credentials, secrets, Render settings, deployment, payment or consent state changed.
