@@ -10,6 +10,7 @@ import {
   classifyHistoricalException,
   classifyRetainedHistoricalMigration,
   resolveMigrationAuditTarget,
+  comparePendingMigrationInventory,
   stripPostgresSslConnectionStringOptions,
 } from './migration-audit-checksum.mjs';
 
@@ -166,4 +167,57 @@ test('migration audit strips connection-string SSL options so strict TLS config 
   assert.equal(output.pathname, '/ghm_db');
   assert.equal(output.searchParams.get('application_name'), 'ghm-audit');
   assert.deepEqual([...output.searchParams.keys()], ['application_name']);
+});
+
+
+test('production pending inventory matches the exact live pending version/name set', () => {
+  const actual = [
+    { version: '20261110010000', name: 'supplier' },
+    { version: '20261110100000', name: 'onboarding' },
+  ];
+  const expected = [actual[1], actual[0]];
+  const result = comparePendingMigrationInventory(actual, expected);
+  assert.equal(result.matches, true);
+  assert.equal(result.actual_count, 2);
+  assert.equal(result.expected_count, 2);
+});
+
+test('production pending inventory detects omissions, stale entries, and name substitutions', () => {
+  const actual = [
+    { version: '20261110010000', name: 'supplier' },
+    { version: '20261110100000', name: 'onboarding' },
+    { version: '20261110120000', name: 'relationships' },
+  ];
+  const expected = [
+    { version: '20261110010000', name: 'supplier' },
+    { version: '20261110100000', name: 'wrong_onboarding_name' },
+    { version: '20261110130000', name: 'stale_entry' },
+  ];
+  const result = comparePendingMigrationInventory(actual, expected);
+  assert.equal(result.matches, false);
+  assert.deepEqual(result.missing_from_inventory, [{ version: '20261110120000', name: 'relationships' }]);
+  assert.deepEqual(result.stale_inventory_entries, [{ version: '20261110130000', name: 'stale_entry' }]);
+  assert.deepEqual(result.name_mismatches, [{
+    version: '20261110100000', actual_name: 'onboarding', expected_name: 'wrong_onboarding_name',
+  }]);
+});
+
+test('production pending inventory rejects duplicate versions and malformed entries', () => {
+  assert.throws(() => comparePendingMigrationInventory(
+    [{ version: '20261110010000', name: 'first' }, { version: '20261110010000', name: 'second' }],
+    [],
+  ), /duplicate version/);
+  assert.throws(() => comparePendingMigrationInventory(
+    [{ version: 'bad-version', name: 'first' }], [],
+  ), /invalid version\/name/);
+});
+
+test('production inventory mode is separate from legacy seven-entry allowlist mode', () => {
+  const source = readFileSync(new URL('./forensic-migration-reconciliation.mjs', import.meta.url), 'utf8');
+  assert.match(source, /--production-inventory/);
+  assert.match(source, /config\/production-pending-migration-inventory\.json/);
+  assert.match(source, /SET LOCAL ROLE ghm_schema_owner/);
+  assert.match(source, /BEGIN READ ONLY/);
+  assert.match(source, /ROLLBACK/);
+  assert.match(source, /Choose either the legacy pending allowlist or the production pending inventory mode/);
 });
