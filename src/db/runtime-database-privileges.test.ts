@@ -104,23 +104,34 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
 });
 
 test('registration identity functions are accepted only before their explicit manual gateway cutover', () => {
-  const registration = [
-    'ghm.read_business_registration_identity(bigint, bigint)',
-    'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
-  ];
-  for (const signature of registration) {
+  const registrationRead = 'ghm.read_business_registration_identity(bigint, bigint)';
+  const registrationWrite = 'ghm.update_business_registration_identity(bigint, bigint, text, text, text)';
+  for (const functions of [
+    RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+    RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+    RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  ]) {
+    assert.ok((functions as readonly string[]).includes(registrationRead), 'registration read remains granted');
+  }
+  for (const signature of [registrationRead, registrationWrite]) {
     assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok((RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
-    for (const functions of [
-      RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
-      RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-      RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-      RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-    ]) {
-      assert.ok(!(functions as readonly string[]).includes(signature), signature);
-    }
+  }
+  for (const functions of [
+    RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  ]) {
+    assert.ok(!(functions as readonly string[]).includes(registrationWrite), 'registration write revoked');
+    assert.ok((functions as readonly string[]).includes(registrationRead), 'registration read retained');
   }
 });
 
