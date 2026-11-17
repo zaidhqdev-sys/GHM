@@ -554,3 +554,16 @@ No CI run was reported for the latest implementation commit at handover time; lo
 3. Do not set production target, production confirmation, or production secrets in the local `.env` for qualification. Use only a disposable test DB first.
 4. Production host value must be taken from the verified Render `ghm-db` connection hostname, not guessed.
 5. Production secret generation, provisioning, key rotation, or any production DB mutation remains unperformed and requires a separate explicit owner decision. The tool intentionally has no rotation mode.
+
+
+## Verifier provisioning qualification result — 2026-11-17 00:40Z
+
+User ran `npm run qualify:database-verifier-secret-provisioning` locally on exact commit `25ef71db996149c02d75b28ce90f3369c5174489`.
+
+- Result: **9 tests passed, 0 failed**.
+- The prior failure was only an assertion regex that expected `expected host`, while the implementation emitted `expected database host`. Corrected the assertion in commit `25ef71db996149c02d75b28ce90f3369c5174489`.
+- Covered local-only disposable target, actor/storage secret separation, production DB + exact host + confirmation + TLS checks, invalid user/URL/secret rejection, verified migrator/schema-owner identity, insert-only/no-overwrite, and rollback on role identity mismatch.
+- Exact-head GitHub CI run `43989397992` (run #5257) was **in progress** at the time of this handover update.
+- This is local automated qualification only. No production secret has been generated, supplied, provisioned, rotated, or changed. No production DB mutation occurred.
+
+Next: wait for exact-head CI #5257; then run the repository's full `npm test` locally on the same exact PR head and resolve any failures. Keep production provisioning blocked until all qualification and review steps are complete and the owner explicitly authorizes the separate production mutation.
