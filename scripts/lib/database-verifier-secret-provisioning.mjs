@@ -47,8 +47,11 @@ export const validateVerifierSecretProvisioningConfig = (env) => {
       : false;
   } else if (target === 'production') {
     const expectedConfirmation = `PROVISION ghm_db ${kind}`;
-    if (database !== 'ghm_db' || env.GHM_SECRET_PROVISIONING_CONFIRMATION !== expectedConfirmation) {
-      throw new Error('Production provisioning requires ghm_db and the exact explicit confirmation value');
+    if (database !== 'ghm_db' || env.GHM_SECRET_PROVISIONING_CONFIRMATION !== expectedConfirmation
+      || !env.GHM_SECRET_PROVISIONING_EXPECTED_HOST
+      || url.hostname !== env.GHM_SECRET_PROVISIONING_EXPECTED_HOST
+      || ['localhost', '127.0.0.1', '::1'].includes(url.hostname)) {
+      throw new Error('Production provisioning requires ghm_db, the exact explicit confirmation, and an exact non-local expected database host');
     }
     if (env.DATABASE_SSL !== 'true') {
       throw new Error('Production provisioning requires DATABASE_SSL=true with certificate verification enabled');
