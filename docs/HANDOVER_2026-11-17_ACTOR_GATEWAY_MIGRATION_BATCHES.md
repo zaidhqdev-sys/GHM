@@ -167,3 +167,12 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Rechecked GitHub Advisory Database GHSA-fc5q-39xc-vjpf: it still marks picomatch through 4.0.7 affected and provides no patched version. The advisory has an inconsistent reference to upstream PR #194, but the actual code-change proposal specifically describing and fixing the single-branch repeated-extglob issue is picomatch PR #238, still open/unmerged at this check. Do not treat #194 as the verified fix, and do not treat #238 as a released remediation.
 - The previous run's `quality` job was cancelled after the web audit failure; therefore this run does not re-qualify the database work. The preceding completed quality success from run 5317 remains the latest successful database qualification evidence.
 - No dependency files, workflow policy, source code, database, Render resource, or deployment were changed in response to this audit rerun.
+
+
+## CI rerun confirmation — job 134335360778 — 17 November 2026, 20:13 UTC
+
+- Inspected the full `web-quality` job log. It checked out synthetic PR merge commit `90bcb648d6a62451d622a2c7ba9087a6a19e2ce3`, merging source head `b8ae45031e37751f2668499625ec660b2b1e0627` into base `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- `npm ci` installed 95 packages. TypeScript/Vite production build passed and all 26 web tests passed. The only failing step was `npm audit --audit-level=moderate`.
+- The audit repeats the same five high-severity dependency paths, all converging on vulnerable `picomatch`. The suggested forced resolution is `vitest@3.1.4` and is explicitly a breaking change. No force downgrade or dependency/workflow change was made.
+- Current public GitHub Advisory Database entry still lists affected picomatch through 4.0.7 and no patched version. It references upstream PR #194, but repository issue #247's discussion identifies #238 (and #246) as candidate fixes; contributor says #238 remains awaiting maintainer response. Therefore treat #238 as a candidate, not an approved or released fix. Track upstream PR #238 and issue #247; do not claim an official fix exists.
+- This run confirms no new regression in build or tests; audit remains the sole observed web-quality blocker. No production DB, Render, source, lockfile, or workflow changes were made.
