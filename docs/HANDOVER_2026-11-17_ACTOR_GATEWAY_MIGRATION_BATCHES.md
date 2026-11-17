@@ -212,3 +212,11 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - PR #298 remains draft/unmerged. Production migration inventory has not been reconciled to the live ledger; do not run `npm run migrate`.
 
 - Follow-up correction: the first test update encoded the slash escape twice in the regex literal. Corrected the test source to a valid single escaped slash before relying on the new CI run.
+
+## Non-executing production migration plan mode — 17 November 2026, 21:00 UTC
+
+- Added `GHM_MIGRATION_PLAN_ONLY=true` for the exact `ghm_db` production target only. It validates the complete pending inventory and all applied migration checksums, prints the entire pending queue with source filenames and SHA-256 checksums, then rolls back the transaction. It does not require or populate an execution batch manifest and does not execute migration SQL.
+- The flag is ignored for non-production targets; ordinary non-production migration behavior is unchanged. Production execution without plan-only still requires an explicit committed batch ID and exact contiguous-prefix manifest.
+- Added a dedicated runner contract test to the normal test command. This is a source-level contract test, not yet a disposable-PostgreSQL integration qualification. The older PR #297 integration fixture uses a different inventory format and has not been copied.
+- Production inspection additionally confirmed `ghm_app_user` can SET ROLE `ghm_db_user`; `ghm_db_user` currently has `CREATEDB` and `CREATEROLE`. It also has ADMIN OPTION on several privileged GHM roles. This is a high-priority production privilege-boundary finding; no role changes were made. It needs controlled remediation after confirming all service/maintenance dependencies with Render support.
+- The Render read-only connector still cannot SELECT the migration ledger, and no live production migration rows/checksums have been obtained. Plan mode is not to be run until a controlled migrator credential path is available and its target is independently verified.

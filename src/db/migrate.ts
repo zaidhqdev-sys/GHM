@@ -213,16 +213,21 @@ const migrate = async (): Promise<void> => {
     }
 
     const pendingMigrations = migrations.filter((migration) => !appliedByVersion.has(migration.version));
-    const executionMigrations = approvedTarget.databaseName === 'ghm_db'
-      ? selectProductionMigrationBatch(
-        migrations,
-        new Set(appliedByVersion.keys()),
-        productionMigrationBatches as MigrationBatch[],
-        process.env.GHM_MIGRATION_BATCH_ID,
-      )
-      : pendingMigrations;
+    const planOnly = approvedTarget.databaseName === 'ghm_db' &&
+      process.env.GHM_MIGRATION_PLAN_ONLY === 'true';
+    const executionMigrations = planOnly
+      ? pendingMigrations
+      : approvedTarget.databaseName === 'ghm_db'
+        ? selectProductionMigrationBatch(
+          migrations,
+          new Set(appliedByVersion.keys()),
+          productionMigrationBatches as MigrationBatch[],
+          process.env.GHM_MIGRATION_BATCH_ID,
+        )
+        : pendingMigrations;
 
     const executionVersions = new Set(executionMigrations.map((migration) => migration.version));
+    const plannedMigrations: Migration[] = [];
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
@@ -238,6 +243,10 @@ const migrate = async (): Promise<void> => {
         continue;
       }
       if (!executionVersions.has(migration.version)) continue;
+      if (planOnly) {
+        plannedMigrations.push(migration);
+        continue;
+      }
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
       await client.query(normalizeMigrationSqlForExecution(migration.sql));
@@ -245,6 +254,15 @@ const migrate = async (): Promise<void> => {
       if (!ledgerTable) throw new Error(`Migration ${migration.filename} completed but the migration ledger cannot be resolved`);
       await client.query(`INSERT INTO ${ledgerTable} (version, name, checksum) VALUES ($1, $2, $3)`, [migration.version, migration.name, migration.checksum]);
       appliedByVersion.set(migration.version, migration.checksum);
+    }
+    if (planOnly) {
+      console.log('Production migration plan (no SQL executed):');
+      if (plannedMigrations.length === 0) console.log('  No pending migrations.');
+      for (const migration of plannedMigrations) {
+        console.log(`  ${migration.version}_${migration.name} — ${migration.filename} — SHA-256 ${migration.checksum}`);
+      }
+      await client.query('ROLLBACK');
+      return;
     }
     await client.query('COMMIT');
   } catch (error) {
