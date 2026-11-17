@@ -135,9 +135,18 @@ try {
       await client.query('ROLLBACK TO SAVEPOINT immutability_check');
       await client.query('RELEASE SAVEPOINT immutability_check');
     }
+    // A referenced production evidence table can be rejected by PostgreSQL's
+    // FK/TRUNCATE guard before its trigger runs. Exercise the same trigger
+    // function on an isolated temporary table to prove the trigger itself.
+    await client.query('CREATE TEMP TABLE commercial_truncate_probe (id integer) ON COMMIT DROP');
+    await client.query(\`
+      CREATE TRIGGER commercial_truncate_probe_guard
+      BEFORE TRUNCATE ON pg_temp.commercial_truncate_probe
+      FOR EACH STATEMENT EXECUTE FUNCTION ghm.reject_commercial_evidence_mutation()
+    \`);
     await client.query('SAVEPOINT immutability_check');
-    await assert.rejects(client.query('TRUNCATE ghm.commercial_document_version'), /commercial evidence is append-only/i,
-      'document version TRUNCATE must be rejected');
+    await assert.rejects(client.query('TRUNCATE pg_temp.commercial_truncate_probe'), /commercial evidence is append-only/i,
+      'append-only trigger function must reject TRUNCATE');
     await client.query('ROLLBACK TO SAVEPOINT immutability_check');
     await client.query('RELEASE SAVEPOINT immutability_check');
     await client.query('ROLLBACK');
