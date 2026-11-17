@@ -17,9 +17,15 @@ const targetUrl = 'postgres://postgres:postgres@localhost:5432/ghm_db';
 const migratorUrl = 'postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm_db';
 const admin = new Pool({ connectionString: adminUrl, ssl: false, max: 1 });
 let target;
+let cleanupStarted = false;
 try {
   await admin.query('CREATE DATABASE ghm_db');
   target = new Pool({ connectionString: targetUrl, ssl: false, max: 1 });
+  target.on('error', error => {
+    if (cleanupStarted && error.code === '57P01') return;
+    process.stderr.write(`Unexpected disposable migration-plan pool error: ${error.message}\\n`);
+    process.exitCode = 1;
+  });
 
   await admin.query('GRANT CONNECT ON DATABASE ghm_db TO ghm_migrator');
   await admin.query('GRANT CREATE ON DATABASE ghm_db TO ghm_schema_owner');
@@ -128,6 +134,7 @@ try {
     sqlExecuted: false,
   }));
 } finally {
+  cleanupStarted = true;
   await target?.end();
   await admin.query('DROP DATABASE IF EXISTS ghm_db WITH (FORCE)').catch(() => undefined);
   await admin.end();
