@@ -780,3 +780,84 @@ This is the historical operator-supplied Render inventory plus the later recorde
 ### Process correction
 
 Before asking for any environment-variable information, inspect the latest GHM handover and the consolidated manifest. Use recorded values/statuses as the baseline, clearly label their observation date, and ask only about genuinely new unresolved information. In this case, no user input is required: `GHM_ACTOR_GATEWAY_URL` is already recorded as missing. Do not ask the user to re-check it.
+
+
+## Actor Gateway deployment configuration audit — 2026-11-17 02:56Z
+
+Completed a source-level environment contract review against the existing November 14 consolidated Render inventory. This section is the implementation-ready configuration specification; it does not create a Render resource or provision secrets.
+
+### Dedicated Render service specification
+
+The current repository already contains the executable HTTP service. No new gateway code or Cloudflare connector is required for the hosting layer.
+
+| Setting | Required value |
+|---|---|
+| Service name | `ghm-actor-gateway` |
+| Service type | Web Service |
+| Runtime | Node |
+| Repository / branch | `zaidhqdev-sys/GHM` / `main` |
+| Region | Frankfurt |
+| Instance | Always-on Starter; budget ceiling USD 7/month |
+| Build command | `npm ci --include=dev && npm run build` |
+| Start command | `npm run start:actor-gateway` |
+| Health check | `/healthz` |
+| Auto-deploy | OFF; controlled manual deploy |
+| Root directory | Repository root |
+| Disk | None required by this process |
+
+The proposed Starter service is the required isolated always-on host. The existing GHM runtime, AI Workforce, Free web service, and sandbox/qualification services are not substitutes. The $7/month ceiling is a cost boundary, not authorization to create the service. No service or recurring spend has been created.
+
+### Exact Actor Gateway environment contract
+
+Required in the dedicated gateway service:
+- `NODE_ENV=production`.
+- `DATABASE_SSL_MODE=internal` when using the Render internal PostgreSQL URL in the same Frankfurt private network. The source accepts only `internal` or `external` in production. The `external` mode encrypts traffic but sets `rejectUnauthorized: false`; prefer the same-region internal route rather than using that weaker external certificate mode.
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`: the internal `ghm_db` connection URL for the SQL-created `ghm_actor_gateway` login. Never use `DATABASE_URL`, `GHM_RUNTIME_DATABASE_URL`, `ghm_app_user`, `ghm_db_user`, or `ghm_migrator` for this process.
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM` and `GHM_JWT_ES256_KID`: same active public verification key and KID accepted by the GHM token issuer. The gateway must not receive `GHM_JWT_ES256_PRIVATE_KEY_PEM`.
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`: canonical base64 encoding of exactly 32 random bytes. It must exactly match the insert-only value provisioned in `ghm.actor_gateway_capability_assertion_secret`. The app does not generate it. Never log or commit it.
+- Optional previous-key overlap must be supplied as the pair `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM` and `GHM_JWT_ES256_PREVIOUS_KID`; either both are set or both omitted.
+- Render supplies `PORT`; code defaults to 10000 only when absent.
+
+Explicit safe commercial defaults:
+- `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED=false`.
+- `GHM_COMMERCIAL_LAUNCH_AUTHORIZED=false`.
+- Do not enable either while PayFast remains paused. Provider code defaults to `payfast`; this does not activate payment preparation while both gates remain false.
+
+The Actor Gateway does **not** require the storage provider attestation secret as an environment variable. Its storage metadata reader uses the gateway capability assertion secret for its own database calls and accepts a separate signed storage-provider attestation from the Resource API.
+
+### Existing GHM Internal Runtime environment contract
+
+From the previously recorded Render inventory and source:
+- `NODE_ENV=production`.
+- `GHM_RUNTIME_DATABASE_URL` is mandatory in production; the historical Render `DATABASE_URL` points to the retired sandbox database and is not a valid substitute.
+- `DATABASE_SSL=true`.
+- `CORS_ORIGINS` must contain the approved origin-only Connect/QuoteFlow HTTPS origins (no wildcard).
+- `INVITE_CODE`.
+- `GHM_JWT_ES256_KID`, `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM` (issuer keypair; private key remains in issuer process only).
+- `GHM_AUTH_TOKEN_PEPPER`.
+- Existing accepted `TRUST_PROXY` setting; do not invent a hop count or change it without confirming topology.
+- `GHM_ACTOR_GATEWAY_URL` is presently recorded missing and is optional at startup. Add only after the dedicated gateway has a stable HTTPS origin, passes startup identity/ACL checks and authenticated end-to-end smoke tests.
+
+Cross-service key rule: the gateway receives only the ES256 public verification key, while the existing GHM runtime is the issuer and retains the private key. Both services must use the matching active KID/public key.
+
+### Storage attestation dependency — separate from gateway assertion key
+
+The Resource API's storage-provider workflow must sign storage completion attestations using `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`, which is provisioned in `ghm.storage_provider_workflow_attestation_secret`. This is distinct from `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`. The current handover records this storage secret as absent from the historical Render inventory and supplied local .env inventory. Do not conflate the two keys or copy either key into the wrong service. Storage operations remain a separate gated cutover until the Resource API secret, DB table and provider-side workflow are all qualified.
+
+### Database and migration dependencies
+
+The dedicated service cannot start successfully merely because its environment variables are populated. Startup performs live checks and exits unless:
+- `session_user=current_user=ghm_actor_gateway`.
+- The login is NOINHERIT and has no elevated flags.
+- Its only allowed inbound membership is the documented bounded `ghm_db_user` ADMIN OPTION / NOINHERIT / NO SET relationship; it has no outgoing memberships.
+- It has CONNECT, no database CREATE, schema `ghm` USAGE but no CREATE, no direct relation privileges, and exactly the allowlisted gateway function EXECUTE privileges.
+- No PUBLIC or `ghm_runtime` gateway-function execution remains; no unsafe function defaults, SECURITY DEFINER ownership/search_path or grantees exist.
+
+The gateway assertion secret must already exist in the matching database table before authenticated operations can work. The current secret-provisioning utility is insert-only, requires a 32-byte caller-supplied canonical base64 secret, refuses to overwrite/rotate an existing row, and requires explicit production confirmation plus `ghm_migrator` and strict TLS. Do not run it until the relevant migration/table, fresh backup, credential route and owner-approved provisioning step are ready.
+
+### Execution status and remaining gates
+
+- This review is source/configuration-only. No Render environment variable, service, secret, database role, grant, migration, or deployment changed.
+- No `render.yaml` exists at the repository root on the reviewed branch. Do not add a broad Blueprint that could recreate or alter the existing database; the dedicated service can be created as a narrowly scoped dashboard service when the recurring cost is explicitly authorized.
+- PR #297 remains draft/open/unmerged. Head at review start: `91023eb0ba7fb4e69528862a79ee1e5b4b603f0f`; CI run #5278 was in progress at that point. Do not call it passed until GitHub reports completion on the exact head.
+- Next work should be the DB migration-function dependency inventory for the gateway's full 39-function allowlist and a deployment-readiness checklist that links each function to its defining migration and revocation/cutover. Only after that can the smallest safe contiguous production migration batch be selected. The production batch manifest remains empty.
