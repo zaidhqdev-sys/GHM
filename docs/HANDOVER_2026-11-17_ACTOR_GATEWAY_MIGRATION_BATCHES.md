@@ -359,3 +359,43 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 4. Keep the production batch manifest empty until those checks and the independent production recovery/role/service gates are satisfied.
 
 No production SQL, database role/grant, secret, Render resource, deployment, or application data was changed during this review.
+
+
+## Full pending-queue static review — 18 November 2026
+
+### Coverage and method
+
+- Reviewed the SQL source for all **50** entries in `config/pending-migrations.production.json` at the PR head, in repository order. This is a static source review, not an execution against production and not a live production-ledger refresh.
+- Classified the queue by schema/data changes, privilege changes, Actor Gateway wrapper installation, signed-assertion evolution, auth/storage cutovers, commercial authority/payment preparation, and post-deployment revocations.
+- No migration was applied, reordered, edited, or removed as part of this review.
+
+### Queue dependency map
+
+| Ordered segment | Main purpose | Operational character |
+|---|---|---|
+| 1–4 | Supplier classification; onboarding progress; relationship/outcome read models; pending storage deletion lifecycle | Schema/data and legacy runtime RPC additions. Supplier classification initially accepts a caller-supplied account ID and is not safe as a gateway cutover until the later signed wrapper and runtime revoke are in place. |
+| 5–14 | Actor Gateway principal guard; identity/registration/capability wrappers; capability catalogue invariants; supplier and Business-profile cutovers; signed assertion binding | Security foundation plus first gateway cutovers. The principal guard has a strict external role-membership precondition. Assertion support evolves across several migrations; the v2 request-context-bound verifier is not present until migration 20261111060000. |
+| 15–23 | Signed Business Capability, Saved Business, Business Hours, Trust Score and Business Logo operations/read projections | Feature gateway additions. Several deliberately retain legacy runtime grants pending a separately qualified cutover; adding wrappers alone does not move live API traffic. |
+| 24–30 | External identity table/function restrictions; token-bound recovery result; removal of runtime auth administration, QuoteFlow provisioning, external identity link/bootstrap | Authentication and provisioning privilege reductions. These are service-behaviour cutovers, not merely additive DDL; active auth and recovery paths must be verified against the deployed Resource API and Authentication Issuer. |
+| 31–35 | Token-bound password reset, conditional password rehash, reset-enrollment restriction, global PUBLIC function default revoke, removal of unsigned Actor Gateway helper | Authentication/security hardening. The global default-privilege change affects future functions created by `ghm_schema_owner`; later migrations must explicitly grant intended execution. |
+| 36–38 | Signed Connect Business provisioning; SECURITY DEFINER search_path pin; signed storage metadata operations | Cross-service cutovers and broad security hardening. Storage provider-confirmed state transitions are deliberately separated from user-authorized metadata operations. |
+| 39–44 | Provider-code generalization; immutable commercial document/consent evidence; scoped founder approval authority and approval transition; consent-bound payment preparation | New commercial governance model. No legal text, document version, approval authority or active provider is seeded. Payment preparation records consent and an attempt only; it does not call a provider or activate a subscription. |
+| 45–46 | Revoke runtime Business registration write and legacy capability governance functions | Explicit post-deployment revocations. Their SQL preconditions check gateway functions, ACLs and ownership, but they do not replace the required live HTTP end-to-end smoke tests. |
+
+### Release blockers and specific findings
+
+1. **No first production batch is approved.** The queue is a chronological prefix, not a set of independently deployable feature groups. A safe prefix must be derived against the actual production catalog, role memberships, current API callers, and the deployed Actor Gateway. The final two revocations are explicitly post-deployment and remain excluded from pre-deployment execution authority.
+2. **Actor Gateway database role prerequisite remains unresolved.** Migration `20261110210000_add_actor_gateway_principal_guard` requires `ghm_actor_gateway` to be LOGIN/NOINHERIT with no elevated attributes and requires a narrowly specified `ghm_db_user` membership with ADMIN OPTION but without INHERIT or SET. This intersects the previously escalated Render grantor/membership issue. Do not attempt to satisfy it by changing production grants during migration execution.
+3. **Signed assertion sequencing matters.** The early wrappers using `assert_actor_gateway(bigint)` are transitional only. The one-use HMAC assertion evolves through the queue; request-context binding arrives at `20261111060000`. Feature wrappers created before their corresponding signed/context-bound replacement must not be treated as production-ready just because their function exists.
+4. **API route readiness is not established by SQL.** The queue adds signed operations for supplier classification, Business profile, registration identity, capability governance/evidence, Saved Business, Business Hours, Trust Score, Business Logo, Connect provisioning, and storage. Each relevant deployed HTTP path must use the exact current function signature, mint the operation-specific assertion over the exact request context, and pass authenticated positive/negative end-to-end tests before its legacy grant is revoked.
+5. **Legacy Supabase identifier needs an explicit disposition.** Migration `20261112080000_signed_connect_business_provisioning_gateway` looks up and creates a `business_external_mapping` row with provider key `supabase`. This is an explicit historical identifier in a GHM migration, not evidence that the production system should depend on Supabase. Before any production execution, confirm whether this is strictly a one-time legacy mapping/import compatibility path; otherwise it conflicts with the recorded provider-independent, no-Supabase target and needs a forward-only correction.
+6. **Storage provider attestation is a separate release dependency.** Migration `20261112150000` requires a separately provisioned provider-workflow secret and a second one-use attestation for provider-confirmed availability/deletion. Do not conflate this with the Actor Gateway user assertion or assume the secret is provisioned. No new paid storage/provider service is authorized by this migration review.
+7. **Commercial/legal workflow is inert until deliberately configured.** The commercial migrations create immutable document/consent evidence and founder-scoped authority controls, but seed neither legal text nor an authority nor an approved version. This does not approve legal documents or activate PayFast/another payment provider. Legal approval remains a human owner action; the assistant is not an approver.
+8. **Production evidence is still incomplete.** The pending inventory is derived from the supplied 105-row snapshot through 2026-11-09. The production ledger/checksums need a fresh read-only reconciliation, and the recovery-point and database-role/service gates remain open.
+
+### Current decision
+
+- Keep `config/production-migration-batches.json` empty.
+- Keep PR #298 draft and unmerged.
+- Do not set `GHM_MIGRATION_BATCH_ID`, run a production migration, alter production grants/roles, deploy the Actor Gateway, or enable payment activation.
+- Next technical review should trace the actual GHM runtime and Connect/QuoteFlow route implementations against the signed operation names, canonical JSON assertion contexts, and SQL function signatures. The Supabase mapping identifier above should be resolved as part of that source review, before proposing any batch.
