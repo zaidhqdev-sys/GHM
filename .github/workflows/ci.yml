@@ -567,9 +567,9 @@ jobs:
         working-directory: web
         run: npm test
 
-      - name: Audit web dependency tree
+      - name: Audit web dependency tree with verified picomatch mitigation
         working-directory: web
-        run: npm audit --audit-level=moderate
+        run: npm run audit:security
 
       - name: Verify resolved security-sensitive toolchain
         working-directory: web

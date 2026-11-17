@@ -222,3 +222,14 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - The Render read-only connector still cannot SELECT the migration ledger, and no live production migration rows/checksums have been obtained. Plan mode is not to be run until a controlled migrator credential path is available and its target is independently verified.
 
 - Before CI submission, simplified the plan-mode checksum-output contract assertion to a literal source inclusion check, avoiding brittle regex escaping around JavaScript template interpolation.
+
+
+## Web dependency audit remediation — 17 November 2026
+
+- The web build and 26 web tests passed, but `npm audit` continued to report GHSA-fc5q-39xc-vjpf / CVE-2026-112366 through the locked picomatch 4.0.7 dependency used by Vite/Vitest.
+- Upstream picomatch PR #238 proposes a narrowly scoped parser guard for the exact single-branch repeated-extglob ReDoS. It remains unmerged; no patched official npm release is claimed.
+- The web workspace now applies the corresponding guard at install time only when the installed package is exactly `picomatch@4.0.7`. The patcher fails closed if the expected parser anchors differ.
+- A separate verification script checks the installed parser and regression patterns (`+(*a)`, `*(*a)`, `+(a|*a)`) plus preservation cases (`+(*)`, `+(a*)`).
+- The audit wrapper still runs the real `npm audit`. It accepts only the exact GHSA-fc5q-39xc-vjpf finding through the reviewed picomatch/fdir/tinyglobby/Vite/Vitest chain, and only after verifying the installed patch and exact lockfile inventory. Any other package, advisory, or unexpected dependency path remains a hard failure.
+- This is a temporary, explicitly scoped mitigation aligned with upstream PR #238, not an official upstream release or a claim that the upstream PR has merged. Remove the local patch and scoped exception when an official fixed release is available and independently verified.
+- No production migration, database role change, deployment, or additional hosting service is involved.
