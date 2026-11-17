@@ -66,3 +66,12 @@ The job's PostgreSQL server log includes `Business membership required` and `qua
 `ok 1 - Connect Business provisioning: signed gateway atomicity, membership and isolation qualification`
 
 These are expected negative-path probes within that test: an actor without membership cannot resolve an existing mapped Business, and a deliberately failing mapping insert verifies transaction rollback. They are not a failing Connect provisioning qualification. Do not weaken the membership check or remove the forced-failure rollback test.
+
+
+## Dependency audit follow-up — 17 November 2026
+
+The CI `npm audit --audit-level=moderate` failure is isolated to the **GHM web workspace** (`web/package-lock.json`), not the root GHM runtime dependency tree. The affected chain is Vite 6.4.5 → fdir 6.5.0 → picomatch 4.0.7, also reached through Vitest 4.1.12. The advisory is GHSA-fc5q-39xc-vjpf / CVE-2026-112366 (high-severity ReDoS).
+
+As of this investigation, the GitHub Advisory Database lists picomatch versions through 4.0.7 as affected but does not state a patched version. The upstream fix PR (micromatch/picomatch #194) is still open and unmerged. npm's suggested `npm audit fix --force` would downgrade Vitest to 3.1.4 and is a breaking dependency change; it was **not** run. No arbitrary override or unverified version was introduced. Recheck the upstream patch and advisory before selecting a remediation. Until a supported fixed release is published, keep this as an explicitly tracked CI security blocker rather than masking the audit.
+
+The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run `44157876064` had been created but remained pending at the time of this handover update; no new qualification result is claimed here.
