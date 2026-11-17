@@ -1049,3 +1049,32 @@ The owner ran the corrected local test suite from `C:\\GHM` and confirmed the te
 This exactly matches PR #297's current head. The pasted output shows the corrected migration checksum/inventory suite at 22/22, actor-gateway worker contract tests at 8/8, and the displayed compiled test batches at 321/321, 175/175, 120/120, 48/48 and 4/4, with no failures in those displayed batches. The QuoteFlow live-database qualification remained skipped by design unless `GHM_RUN_LIVE_DATABASE_TESTS=true` is explicitly set; it was not enabled against production.
 
 This records local exact-head evidence only. A live GitHub check immediately after the test confirmation showed PR #297 still draft/open/unmerged, with no workflow runs and no combined commit statuses for this SHA. Therefore no GitHub CI pass is claimed. PR #297's production batch manifest remains empty; no production migration, deployment, ACL, secret, Render service or payment state changed.
+
+
+## Actor Gateway hosting comparison and live Render inventory — 2026-11-17 03:28Z
+
+A fresh read-only Render service inventory was obtained for the ZAID Technologies workspace `tea-d9svua6417fc73bhcutg`. It returned five Web Services and no `ghm-actor-gateway` service:
+
+- `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`): Frankfurt, Free Web Service, Node, auto-deploy OFF, health path `/healthz`.
+- `zaid-ai-workforce` (`srv-d9t1la7avr4c73fc46c0`): Frankfurt, Free Web Service, separate repository/application; not an approved DB gateway host.
+- `ghm-payfast-sandbox-runtime`, `ghm-payfast-callback-sandbox`, and `ghm-identity-qualification`: legacy sandbox/qualification services. They are excluded from the production gateway design and must not be repurposed. Their appearance in the account service inventory does not change the decision that the sandbox database is not a production target.
+
+### Bounded hosting comparison
+
+| Option | Incremental recurring cost | Isolation / availability | Decision |
+|---|---:|---|---|
+| Dedicated Frankfurt Render Web Service, `ghm-actor-gateway`, paid always-on | About USD 7/month at the previously reviewed smallest paid tier | Separate process, service secrets and restricted `ghm_actor_gateway` DB login; always-on HTTP endpoint | **Preferred production design** |
+| Co-host gateway inside `GHM-Internal-Runtime` | USD 0 | Same OS process can access both ordinary runtime and privileged gateway DB credentials/secrets; loses process isolation | Not approved as equivalent; do not implement absent an explicit risk decision |
+| Existing `zaid-ai-workforce` | USD 0 today | Different app/repository and purpose; no evidence it is an approved or suitable GHM DB bridge | Excluded |
+| Existing Free sandbox/qualification services | USD 0 today | Wrong environment/purpose; no production lifecycle guarantee | Excluded |
+| New Free Web Service | USD 0 | Sleeps after inactivity; incompatible with existing five-second gateway client/database timeouts and always-on boundary | Not viable |
+
+The code contract is already present on the PR branch: `package.json` defines `start:actor-gateway` as `node dist/actor-gateway/server.js`; the service builds with `npm ci --include=dev && npm run build`; the server binds to Render's `PORT`, checks the live DB identity and exact function/privilege allowlist before listening, and exposes `/healthz`. The dedicated service should use the existing reviewed Frankfurt/Render internal DB connection design, not a Cloudflare tunnel or a second gateway implementation.
+
+### Decision and boundary
+
+The dedicated paid Web Service remains the only currently identified option that preserves the intended process boundary and always-on HTTP behavior. The USD 7/month amount is a ceiling previously discussed, not an instruction to incur the charge. **No service has been created and no plan has been upgraded.** Explicit owner authorization is still required before provisioning the paid service.
+
+Also, hosting is not yet sufficient for deployment: the existing `ghm_actor_gateway` database login is not provisioned with the complete schema/function ACL; the gateway migration chain, fresh backup/recovery verification, administrator/role remediation, secret provisioning, and authenticated end-to-end tests remain separate gates. Do not set `GHM_ACTOR_GATEWAY_URL` or deploy the API cutover before these pass.
+
+No Render service, plan, environment variable, secret, database role/grant, migration, deployment, payment or production data was changed by this inventory review.
