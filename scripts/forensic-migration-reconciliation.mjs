@@ -80,12 +80,19 @@ const main = async () => {
     }
 
     let pendingAllowlist = [];
+    let productionPendingInventory = [];
     if (allowPending) {
       pendingAllowlist = JSON.parse(await fs.readFile(path.resolve(process.cwd(), auditTarget.pendingPath), 'utf8'));
       if (!Array.isArray(pendingAllowlist) || pendingAllowlist.some((item) =>
         !item || typeof item.version !== 'string' || !/^\d{14}$/.test(item.version) ||
         typeof item.name !== 'string' || !item.name
       )) fail('Production pending migration allowlist must be an array of version/name records');
+    }
+    if (productionInventoryMode) {
+      productionPendingInventory = JSON.parse(await fs.readFile(
+        path.resolve(process.cwd(), 'config/production-pending-migration-inventory.json'), 'utf8',
+      ));
+      if (!Array.isArray(productionPendingInventory)) fail('Production pending migration inventory must be an array');
     }
 
     const retained = JSON.parse(await fs.readFile(retainedPath, 'utf8'));
