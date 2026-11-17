@@ -27,3 +27,11 @@ No Render service was submitted or deployed; no production SQL, credentials, sec
 - Corrected the cutover check to require the exact pinned path `pg_catalog,ghm,pg_temp`, while retaining strict schema-owner and SECURITY DEFINER checks. The migration now captures actual owner, `prosecdef`, raw `proconfig`, and parsed search_path in its error message if a future mismatch occurs. This is committed but awaits a new disposable PostgreSQL CI run.
 - Do not change the verifier's owner or weaken SECURITY DEFINER. The migration's requirement now matches the repository's earlier global security-definer hardening migration.
 - Web dependency audit remains unresolved. It is one underlying picomatch advisory surfaced through five dependency paths; no forced downgrade, audit suppression, or production change has been made.
+
+## Follow-up CI job 134293966522 — runtime principal allow-list
+
+- The disposable PostgreSQL migration sequence completed far enough to reach `npm run qualify:actor-gateway-principal`; the failure is in the runtime principal's exact SECURITY DEFINER EXECUTE allow-list, not the Actor Gateway principal identity or worker bundle.
+- Actual runtime EXECUTE state had 39 functions. The diagnostics showed three legacy capability governance functions revoked and the legacy business-registration write function revoked, while `ghm.read_business_registration_identity(bigint,bigint)` remained granted.
+- Root cause: `REGISTRATION_IDENTITY_LEGACY_FUNCTIONS` grouped read and write together, but the 17 November cutover migration `20261117010000_revoke_runtime_business_registration_identity_write.sql` revokes only the write signature. The read endpoint is not revoked by that migration and remains an intended runtime grant.
+- Corrected `src/db/runtime-database-privileges.ts` so the registration cutover group contains only the write signature. The read signature remains in every registration-cutover stage. Updated the stage count invariant and unit test to assert read-retained/write-revoked behaviour.
+- No grants were restored, no database privilege was widened, and no production change was made. A fresh CI run is required to validate the corrected 512-stage model.
