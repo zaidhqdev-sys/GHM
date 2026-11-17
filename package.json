@@ -16,7 +16,7 @@
     "qualify:opportunity-marketplace": "npm run build && node scripts/qualify-opportunity-marketplace-postgres.mjs",
     "qualify:operational-boundary": "npm run build && node scripts/qualify-operational-boundary.mjs",
     "start": "node dist/server.js",
-    "test": "npm run build && node --require ./scripts/test-env.cjs node scripts/run-full-test-suite.mjs && node --check scripts/qualify-quoteflow-migration-account-provisioning-db.mjs && node scripts/qualify-quoteflow-migration-account-provisioning-db.mjs && node --test scripts/audit-security-definer-authority.test.mjs && npm run typecheck:worker:actor-gateway && npm run test:worker:actor-gateway && node --test scripts/migration-audit-checksum.test.mjs",
+    "test": "npm run build && node scripts/run-full-test-suite.mjs && node --check scripts/qualify-quoteflow-migration-account-provisioning-db.mjs && node scripts/qualify-quoteflow-migration-account-provisioning-db.mjs && node --test scripts/audit-security-definer-authority.test.mjs && npm run typecheck:worker:actor-gateway && npm run test:worker:actor-gateway && node --test scripts/migration-audit-checksum.test.mjs",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs",
     "qualify:project-runtime": "npm run build && node scripts/qualify-project-runtime.mjs",
     "qualify:opportunity-runtime": "npm run build && node scripts/qualify-opportunity-runtime.mjs",
