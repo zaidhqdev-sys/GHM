@@ -168,3 +168,10 @@ The same live inventory confirms the two protected resources separately:
 - Suspended PayFast sandbox `ghm-payfast-sandbox-db`: https://dashboard.render.com/d/dpg-db4416vlk1mc73eocug0-a
 
 The owner has already explicitly authorized deletion of the unexpected resource. The direct URL is supplied to bypass dashboard list/navigation ambiguity. The resource remains **not deleted** as of this recheck; the Render integration still exposes no delete action. Do not click or delete either protected resource.
+
+
+## Owner instruction — retain pending Render support response (2026-11-17)
+
+The owner has since instructed that the unexpected database be **retained temporarily while the Render billing dispute is awaiting support acknowledgement/reply**. This later timing instruction supersedes the earlier immediate deletion timing recorded above. Do not delete, suspend, resize, modify, or otherwise alter the unexpected database while this hold is active. Preserve the earlier explicit deletion authorization as historical evidence, but do not execute it unless the owner renews the instruction after the Render support response is received and considered.
+
+The support email draft was prepared in ChatGPT; the owner has not confirmed that it was sent or supplied a Render response. Do not claim that a support case has been opened or acknowledged. Continue to preserve the exact resource and billing evidence, and keep production ghm-db and the historical PayFast sandbox database untouched.
