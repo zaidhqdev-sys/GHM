@@ -78,7 +78,8 @@ const AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS = [
 ] as const;
 
 const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
-  'ghm.read_business_registration_identity(bigint, bigint)',
+  // The 17 November post-deployment cutover revokes the write operation only.
+  // The read operation remains a separately reviewed runtime permission.
   'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
 ] as const;
 
@@ -198,7 +199,7 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
     stage.map(normalizeSignature).sort(),
   );
   if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
-      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
+      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 14
       || stages.length !== 512) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
