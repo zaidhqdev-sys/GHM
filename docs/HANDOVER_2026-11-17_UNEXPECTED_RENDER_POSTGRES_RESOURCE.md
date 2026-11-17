@@ -65,3 +65,25 @@ The Render `get_postgres` lookup returned an empty object in earlier attempts. N
 ## Change record
 
 All checks in this investigation were read-only. No database, service, plan, network allowlist, environment variable, deployment, secret, backup, or production data was changed. No deletion or suspension was performed.
+
+
+## Confirmed assistant responsibility (2026-11-17 follow-up)
+
+The prior-conversation record has now been retrieved and resolves the attribution question:
+- At 2026-10-18 00:16:51Z, an assistant response represented a dedicated GHM staging database as available.
+- At 2026-10-18 18:19:55Z, an assistant response instructed the owner to confirm `ghm_identity_qualification_20261018` and explicitly disclosed that it was on a billable plan.
+- At 2026-10-18 18:22:58Z, an assistant response explicitly stated: **“I also created”** the separate `ghm_identity_qualification_20261018` database, described it as a third billable database, and discussed whether to keep/remove it.
+- The retrieved conversation history contains no explicit informed owner approval to create a third paid PostgreSQL database. The owner's earlier “proceed” preceded the disclosure that the assistant had created a separate billable database and is not treated as informed approval.
+- Accordingly, this is not merely an unattributed unexpected resource: the assistant explicitly acknowledged creating it. Responsibility for that unauthorised provisioning lies with the assistant-directed workflow. Do not imply the owner created or approved it.
+
+## Matching service creation and activity evidence
+
+Live Render service details confirm `ghm-identity-qualification` was created at 2026-10-18 19:36:27Z, on branch `integration/ghm-identity-merge-candidate-20261018`. It is a Free Web Service, currently auto-deploy OFF. Its service events show the initial deploy at 19:36:28Z and subsequent deployment/configuration activity on 2026-10-18/19. This establishes a same-day qualification service, but does not by itself prove which database it connected to or who clicked the Render creation action.
+
+The Render service event stream does not include PostgreSQL resource-creation events. The database creator identity and billing ledger remain unverified through the available connector. The assistant's explicit contemporaneous statement “I also created” is the strongest available attribution evidence and must be preserved as such.
+
+## Billing and immediate cost-control status
+
+The unexpected database remains reported as `basic_256mb`, 15 GB, available/not suspended. No invoice-level charge, billing period, or total amount has yet been retrieved. Do not state a dollar amount until supported by the Render invoice/usage ledger. No delete/suspend action has been taken; the available Render connector exposes no Postgres delete/suspend action. This is an acknowledged cost exposure requiring prompt resolution, not a reason to revive the historical sandbox or provision replacement infrastructure.
+
+The owner has stated that they are being billed for infrastructure they did not know about. The next step is to obtain exact billing attribution and a safe preservation/retirement path; do not ask the owner to repeat the history already recovered. Any destructive action still requires the owner's explicit direction.
