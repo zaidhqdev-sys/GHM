@@ -628,3 +628,38 @@ Observed output:
 - This is a successful ordinary local test run. Live database qualifications were skipped, so this does not prove live PostgreSQL behavior or production migration readiness.
 - PR #297 remains open/unmerged. CI run #5273 (workflow run ID `43991244289`) was observed in progress on exact head `221953fe6fbd8d1c73e67836c8c11e92e731ccad`; do not report CI as passed until its conclusion is confirmed.
 - Production inventory audit, production↔repository migration reconciliation, and disposable PostgreSQL qualification remain separate required gates. Production migration manifest remains empty; no production migrations/deploys authorized.
+
+
+## Live production migration inventory audit — 2026-11-17 01:03Z
+
+The user ran `npm run audit:migrations:production-inventory` against the production target `ghm_db` and supplied the audit output.
+
+Result: **`PASS_WITH_PENDING`**.
+
+Confirmed from the supplied output:
+- Pending migration inventory matches the committed 48-entry ordered inventory: `pending_allowlist_mismatch_count: 0`.
+- `unexplained_mismatches: []`.
+- `name_mismatches: []`.
+- `unrecognized_extra: []`.
+- All 10 ledger-only rows are listed under `approved_retained_historical`; the corresponding retained-history audit entries are `VERIFIED_RETAINED_HISTORY`.
+- Historical exception audit entries are classified as retained provenance or redundant; no orphaned/invalid retained-history finding is reported in the supplied audit.
+- The 48 pending migration records include the complete chain through `20261116190000_add_commercial_consent_payment_prepare_gateway`.
+
+This is a read-only inventory reconciliation at the time of the user's run. It is not migration authorization, a current backup validation, an Actor Gateway deployment, or proof of production ACL readiness. The production batch manifest remains empty. No production migration, DDL, ACL, secret, data, Render setting, deployment, payment, or consent state was changed by the audit.
+
+### Exact-head qualification and current PR state
+
+- PR #297 head remains `4f952814ecb12140404e8fe05ab68eb31c8e69f7`.
+- GitHub Actions run #5274 (`43991517637`) completed successfully on that exact head.
+- PR #297 remains draft, open and unmerged.
+- The user's ordinary local `npm test` result recorded above passed 968 compiled tests plus the listed worker, security-definer and migration checksum qualifications; live DB qualifications were skipped by default.
+
+### Next bounded work
+
+1. Complete the route-by-route dependency map for the first production prefix, distinguishing operations that remain available on legacy `ghm_runtime` paths from operations that return 503 until Actor Gateway is deployed.
+2. Keep the capability-governance direct-runtime revocation as the documented manual post-deployment cutover; do not fold it into the migration prefix or execute it before gateway end-to-end verification.
+3. Finish controlled secret provisioning review and founder-bootstrap read-only evidence planning. Do not generate or provision production secrets, and do not read or expose secret values.
+4. Keep the Actor Gateway hosting decision explicit: dedicated always-on Render service is the isolated option at the previously approved USD 7/month ceiling; no service or spend has been authorized or created by this audit.
+5. Only after runtime continuity, all gateway function dependencies, production ACL/secret readiness, hosting, and a fresh backup are evidenced should an exact contiguous batch be selected and plan-only output reviewed.
+
+No production migration execution is authorized by this audit.
