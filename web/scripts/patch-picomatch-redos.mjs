@@ -15,6 +15,7 @@ if (metadata.name !== 'picomatch' || metadata.version !== '4.0.7') {
 }
 
 let source = fs.readFileSync(sourcePath, 'utf8');
+const newline = String.fromCharCode(10);
 const helper = [
   'const isSelfRepeatingStarBranch = branch => {',
   '  let escaped = false;',
@@ -29,17 +30,17 @@ const helper = [
   '      continue;',
   '    }',
   '',
-    if (ch.charCodeAt(0) === 92) {
+  '    if (ch.charCodeAt(0) === 92) {',
   '      escaped = true;',
   '      continue;',
   '    }',
   '',
   '    if (bracket === true) {',
-    if (ch.charCodeAt(0) === 92) {
+  "      if (ch === ']') bracket = false;",
   '      continue;',
   '    }',
   '',
-    if (ch.charCodeAt(0) === 92) {
+  "    if (ch === '[') {",
   '      bracket = true;',
   '      continue;',
   '    }',
@@ -48,7 +49,7 @@ const helper = [
   '      return false;',
   '    }',
   '',
-    if (ch.charCodeAt(0) === 92) {
+  "    if (ch === '*') {",
   "      if (branch[i + 1] === '*') {",
   '        return false;',
   '      }',
@@ -59,7 +60,7 @@ const helper = [
   '  return star && !escaped && !bracket;',
   '};',
   '',
-].join('\n');
+].join(newline);
 
 const helperMarker = 'const isSelfRepeatingStarBranch = branch => {';
 const helperAnchor = 'const repeatedExtglobRecursion = pattern => {';
@@ -68,15 +69,35 @@ if (!source.includes(helperMarker)) {
   source = source.replace(helperAnchor, helper + helperAnchor);
 }
 
-const analysisAnchor = '  return { risky: false };\n};\n\n/**\n * Parse the given input string.';
-const analysisPatch = '  if (branches.length === 1 && isSelfRepeatingStarBranch(branches[0])) {\n    return { risky: false, collapse: true };\n  }\n\n';
+const analysisAnchor = [
+  '  return { risky: false };',
+  '};',
+  '',
+  '/**',
+  ' * Parse the given input string.',
+].join(newline);
+const analysisPatch = [
+  '  if (branches.length === 1 && isSelfRepeatingStarBranch(branches[0])) {',
+  '    return { risky: false, collapse: true };',
+  '  }',
+  '',
+  '',
+].join(newline);
 if (!source.includes('return { risky: false, collapse: true };')) {
   if (source.split(analysisAnchor).length !== 2) throw new Error('Unexpected picomatch analysis return; refusing patch');
   source = source.replace(analysisAnchor, analysisPatch + analysisAnchor);
 }
 
-const closeAnchor = "    let output = token.close + (opts.capture ? ')' : '');\n    let rest;";
-const closePatch = "    if (analysis.collapse === true && (token.type === 'plus' || token.type === 'star')) {\n      token.close = token.type === 'plus' ? ')' : ')?';\n    }\n\n";
+const closeAnchor = [
+  "    let output = token.close + (opts.capture ? ')' : '');",
+  '    let rest;',
+].join(newline);
+const closePatch = [
+  "    if (analysis.collapse === true && (token.type === 'plus' || token.type === 'star')) {",
+  "      token.close = token.type === 'plus' ? ')' : ')?';",
+  '    }',
+  '',
+].join(newline);
 if (!source.includes('analysis.collapse === true')) {
   if (source.split(closeAnchor).length !== 2) throw new Error('Unexpected picomatch extglob close location; refusing patch');
   source = source.replace(closeAnchor, closePatch + closeAnchor);
