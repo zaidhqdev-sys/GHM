@@ -319,3 +319,6 @@ The 50 manifest entries were individually opened and reviewed for DDL, DML, SECU
 
 
 - CI #5352 exposed that the founder bootstrap function is now the one-argument promotion-only overload; the qualification fixture was corrected to create a disposable canonical founder account first, then promote it. The obsolete seven-argument call is not retained.
+
+
+- CI #5353 caught the reconciled Business verification invariant: an approved synthetic Business must also set `is_verified=true`. The disposable workflow fixture now explicitly sets both values consistently, as required by migration `20260911210000`; this is test-fixture alignment, not a schema or production change.

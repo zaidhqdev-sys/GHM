@@ -29,7 +29,7 @@ try {
     ['zaidhqdev@gmail.com']);
   const actor = Number(promotedFounder.rows[0].account_id);
   assert.equal(actor,Number(createdFounder.rows[0].account_id));
-  const b = await migrator.query("INSERT INTO ghm.business(name,slug,verification_status,is_active) VALUES('CI Commercial Workflow Business','ci-commercial-workflow-business','approved',true) RETURNING id");
+  const b = await migrator.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES('CI Commercial Workflow Business','ci-commercial-workflow-business','approved',true,true) RETURNING id");
   const business = Number(b.rows[0].id);
   await migrator.query("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2)",[business,actor]);
   const ref = await migrator.query("SELECT c.id country_id,cur.id currency_id FROM ghm.country c JOIN ghm.currency cur ON cur.code='ZAR' WHERE c.code='ZA'");
