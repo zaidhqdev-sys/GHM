@@ -91,7 +91,7 @@ export const comparePendingMigrationInventory = (actual, expected) => {
     if (!Array.isArray(entries)) throw new Error(label + ' must be an array');
     const seen = new Set();
     for (const item of entries) {
-      if (!item || typeof item.version !== 'string' || !/^\\d{14}$/.test(item.version) ||
+      if (!item || typeof item.version !== 'string' || !/^\d{14}$/.test(item.version) ||
           typeof item.name !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(item.name)) {
         throw new Error(label + ' contains an invalid version/name entry');
       }
