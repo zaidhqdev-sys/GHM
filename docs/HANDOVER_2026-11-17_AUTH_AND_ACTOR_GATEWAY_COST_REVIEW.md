@@ -370,3 +370,10 @@ This invokes `scripts/forensic-migration-reconciliation.mjs --production-invento
 This is source implementation only until exact-head CI passes. The local `C:\\GHM\\.env` and `GHM_MIGRATOR_DATABASE_URL` are not accessible through GitHub/Render connectors. Do not claim a live production audit has run. Once CI passes, run the new command from the synchronized local PR checkout and share only its JSON output, with no connection details or secrets. It is read-only and does not run `npm run migrate`.
 
 No production query, DDL, migration, role/ACL change, Render setting, service, deployment, secret, or cost was incurred by this implementation.
+
+
+### Implementation review follow-up
+
+A source review caught and corrected an over-escaped digit expression in the new inventory validator before qualification. The validator now uses the intended 14-digit version pattern. The committed 48-entry inventory was also checked for count and unique ordered records, and a regression test was added.
+
+The exact current head is `8c360addd23cc81d176fdd7212e7979ede2d27cb`. The GitHub Actions lookup currently returns no PR-triggered workflow run for this commit. Therefore the source changes are **not yet CI-qualified**. Do not treat the audit command as ready for production use until exact-head CI runs and passes. No local execution against production has occurred.
