@@ -1004,3 +1004,28 @@ This migration cannot run now: the prerequisite functions are not yet present in
 - The migration inventory is now 50 entries. Re-run exact repository checksum/inventory audit and CI against the new head; do not reuse the prior 48-entry or 49-entry audit result.
 - Do not execute either guarded cutover migration until gateway startup, authenticated end-to-end tests and production preconditions are satisfied.
 - No production DDL, ACL, role, migration ledger, credentials, secrets, Render settings, deployment, payment or consent state changed.
+
+
+## Registration read-path closure and repository artifact reconciliation — 2026-11-17 03:16Z
+
+The live production ACL query already showed that `ghm.read_business_registration_identity(bigint,bigint)` is also SECURITY DEFINER and executable by `ghm_runtime`, in addition to the write function. The earlier guarded migration draft covered only the write function, which would have left the direct runtime read path intact.
+
+The migration artifact was also rechecked against the actual PR branch: the inventory row existed but the SQL file was absent. This repository inconsistency has now been corrected by creating the file on the PR branch.
+
+The committed `database/migrations/20261117010000_revoke_runtime_business_registration_identity_write.sql` now guards and revokes **both** legacy registration functions:
+- `ghm.read_business_registration_identity(bigint,bigint)`
+- `ghm.update_business_registration_identity(bigint,bigint,text,text,text)`
+
+Before revocation it requires the signed assertion verifier and both signed gateway read/write wrappers, verifies SECURITY DEFINER ownership by `ghm_schema_owner` and pinned `search_path=pg_catalog, ghm`, requires EXECUTE for `ghm_actor_gateway`, and requires no EXECUTE for `ghm_runtime`. After revocation it checks that runtime/gateway cannot execute either legacy function and no non-owner direct grantee remains. The whole migration is transactional.
+
+This migration name retains the existing inventory identity ending in `_write` for stable ordering, but its documented scope is now explicitly read **and** write. It remains a post-deployment migration and must not run until the dedicated gateway's authenticated registration read/write tests pass.
+
+The capability cutover migration `20261117020000_revoke_runtime_capability_governance.sql` is also committed and included in the pending inventory. It remains gated on the later capability signed-assertion functions and end-to-end tests.
+
+Repository commits:
+- Registration read/write guarded migration: `45b7705dc974a02f4dc6b95eb85a2b7fc14cf128`.
+- Capability guarded migration: `d55f7b23281c6eba927d4d0d332a871366c3fd1e`.
+- Inventory includes both cutovers: `4c350c431c614bd061d0e361168bffce3fb19da6`.
+- Handover update follows these commits.
+
+No production SQL, DDL, ACL, data, credentials, secrets, migration ledger, Render settings, deployments or payments were changed. Re-run the full inventory/checksum audit against the current branch head; prior 48-entry and 49-entry PASS results do not qualify this 50-entry inventory.
