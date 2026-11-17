@@ -37,6 +37,7 @@ test('rejects production without the exact explicit confirmation', () => {
     GHM_SECRET_PROVISIONING_TARGET: 'production',
     GHM_MIGRATOR_DATABASE_URL: 'postgresql://ghm_migrator:secret@db.example/ghm_db',
     DATABASE_SSL: 'true',
+    GHM_SECRET_PROVISIONING_EXPECTED_HOST: 'db.example',
   })), /exact explicit confirmation/);
 });
 
@@ -44,6 +45,7 @@ test('production requires exact ghm_db, explicit confirmation and strict TLS', (
   const config = validateVerifierSecretProvisioningConfig(envFor({
     GHM_SECRET_PROVISIONING_TARGET: 'production',
     GHM_SECRET_PROVISIONING_CONFIRMATION: 'PROVISION ghm_db actor',
+    GHM_SECRET_PROVISIONING_EXPECTED_HOST: 'db.example',
     GHM_MIGRATOR_DATABASE_URL: 'postgresql://ghm_migrator:secret@db.example/ghm_db',
     DATABASE_SSL: 'true',
   }));
@@ -55,14 +57,23 @@ test('rejects production without strict TLS or when targeting another database',
   assert.throws(() => validateVerifierSecretProvisioningConfig(envFor({
     GHM_SECRET_PROVISIONING_TARGET: 'production',
     GHM_SECRET_PROVISIONING_CONFIRMATION: 'PROVISION ghm_db actor',
+    GHM_SECRET_PROVISIONING_EXPECTED_HOST: 'db.example',
     GHM_MIGRATOR_DATABASE_URL: 'postgresql://ghm_migrator:secret@db.example/ghm_db',
   })), /DATABASE_SSL=true/);
   assert.throws(() => validateVerifierSecretProvisioningConfig(envFor({
     GHM_SECRET_PROVISIONING_TARGET: 'production',
     GHM_SECRET_PROVISIONING_CONFIRMATION: 'PROVISION ghm_db actor',
+    GHM_SECRET_PROVISIONING_EXPECTED_HOST: 'db.example',
     GHM_MIGRATOR_DATABASE_URL: 'postgresql://ghm_migrator:secret@db.example/other',
     DATABASE_SSL: 'true',
   })), /ghm_db/);
+  assert.throws(() => validateVerifierSecretProvisioningConfig(envFor({
+    GHM_SECRET_PROVISIONING_TARGET: 'production',
+    GHM_SECRET_PROVISIONING_CONFIRMATION: 'PROVISION ghm_db actor',
+    GHM_SECRET_PROVISIONING_EXPECTED_HOST: 'another.example',
+    GHM_MIGRATOR_DATABASE_URL: 'postgresql://ghm_migrator:secret@db.example/ghm_db',
+    DATABASE_SSL: 'true',
+  })), /expected host/);
 });
 
 test('rejects generic users, URL parameters, wrong hosts, and unapproved disposable mutations', () => {
