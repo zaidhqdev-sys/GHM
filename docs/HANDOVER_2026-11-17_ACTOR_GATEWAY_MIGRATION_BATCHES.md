@@ -135,3 +135,16 @@ The corrected PR head is `49e0525cca8625563d68a6dcc89ddfece524d65e`. Its CI run 
 - Corrected both exact-array assertions to derive their expected literals from the current reviewed `config/pending-migrations.production.json` contents (50 entries). The manifest itself was not altered; this updates only stale tests to match the existing reviewed manifest. No role grants, ACLs, database objects, or production state were changed.
 - Correction committed `f98411878727ae5849195e1709a70416b561fc2d`. Fresh CI required.
 - `web-quality` was cancelled when the newer commit superseded the run; the independent npm audit issue remains known: five high-severity audit paths resolve to picomatch GHSA in the web lockfile. No `--force`, override, or audit suppression.
+
+
+## CI run 44165608328 / run 5317 — 20:06 UTC
+
+- Rechecked draft PR #298 at head `2092efa06cecae318077dd08b0ac98e82cc80987`. It remains open, draft, mergeable, and unmerged. Its scope remains a fail-closed production migration-batch selector; the reviewed execution-batch manifest is empty. No production migration or Render deployment has been run.
+- The complete `quality` job passed, including disposable PostgreSQL migration application, Actor Gateway principal and Worker qualification, all database cutover qualifications, migration audit policy tests, runtime boundary verification, and the general test suite.
+- `web-quality` passed dependency installation, TypeScript/production build, and all 26 web tests; it failed only at `npm audit --audit-level=moderate`.
+- The audit output identifies one high-severity ReDoS advisory, GHSA-fc5q-39xc-vjpf, in `picomatch`, repeated across five dependency paths. The current lock resolves `picomatch@4.0.7`; npm's forced suggestion would downgrade Vite to 6.2.7. Do not apply that forced change.
+- Rechecked the actual upstream package manifests rather than assuming a parent upgrade fixes the issue: Vite 8.3.8 itself declares `picomatch: ^4.0.7`, and Vitest 4.1.12 directly declares `picomatch: ^4.0.3`. Therefore a Vite 8 / current Vitest upgrade is not a demonstrated remediation. No speculative override, audit exception, or dependency downgrade is justified.
+- Correction to earlier handover wording: picomatch upstream PR #194 is an extglob parser behavior fix, not a verified patch for this ReDoS advisory. Do not cite it as the security fix. The available evidence still does not establish a fixed picomatch release or matching upstream security patch.
+- Exposure classification: `picomatch`, Vite, and Vitest are in the web workspace development/build/test dependency tree; the declared production dependencies in `web/package.json` are React and React DOM. This narrows direct deployed-runtime exposure, but does not remove the CI supply-chain finding or justify suppressing the audit gate.
+- Next safe action: retain the audit gate and track the exact advisory/vendor remediation. Re-run audit and CI only when a verifiable fixed package version or a reviewed dependency path exists. Do not churn Vite/Vitest versions merely to make the audit output change.
+- No source code, lockfile, workflow, production database, Render service, credentials, or environment variables were changed during this audit investigation.
