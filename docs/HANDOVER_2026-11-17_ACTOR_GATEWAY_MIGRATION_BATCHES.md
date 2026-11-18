@@ -2438,3 +2438,81 @@ Disposition: private reads and calculation are Gateway-backed; public projection
 | Trust Score public projections | Resource API public functions | Preserve narrow public projection EXECUTE |
 
 This review does not establish which of these migrations/cutovers are installed in production or the effective privileges of the live role memberships. Production ledger/effective-ACL reconciliation and the coordinated Resource API/Gateway release remain prerequisites. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
+
+
+## 19 November 2026 — storage metadata, business-logo and Resource API residual dependency reconciliation
+
+### Required pre-workflow checks
+
+Before this review, re-read this migration handover and the hosting/credentials handover, fetched PR #298 metadata and changed-file inventory, checked the branch ref, and compared the branch with main. The PR branch is `feat/actor-gateway-production-migration-batches`, current PR head at the start of this review was `a1e63742ab16913c19e4c73656a59f596d25a168`; PR #298 remains open, draft and non-mergeable, 183 commits ahead / 4 behind main. The reviewed branch already contains the previous route/read reconciliation. Do not use older conversational checkpoint SHAs as current branch state.
+
+### Source files inspected on current main
+
+- `src/http/app.ts` (storage and logo dependency construction / production-required flags)
+- `src/http/storage-router.ts` (Resource API route wiring)
+- `src/storage/service.ts` (provider/metadata/authorization orchestration)
+- `src/storage/repository.ts` (legacy PostgreSQL metadata store)
+- `src/storage/authorization-adapter.ts` (remaining Resource API authorization reads)
+- `src/http/storage-metadata-gateway-client.ts`
+- `src/http/business-logo-gateway-client.ts`
+- `src/actor-gateway/app.ts` (Gateway HTTP routes)
+- `src/actor-gateway/storage-metadata-reader.ts`
+- `src/actor-gateway/business-logo-reader.ts`
+
+### Storage metadata: active production route is Gateway-backed
+
+In `src/http/app.ts`, production sets `storageMetadataGatewayRequired = config.isProduction`. When storage is enabled, production startup also requires `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`. The storage metadata factory creates `HttpStorageMetadataGatewayClient`; `src/http/storage-router.ts` uses that factory for metadata operations and returns 503 rather than falling back to `createPostgresStorageMetadataStore` when Gateway is required but unavailable.
+
+The Resource API routes use the Gateway metadata store for:
+- upload metadata creation;
+- metadata lookup before logo binding, upload completion, object access and deletion;
+- mark deletion pending;
+- mark available after provider upload;
+- mark deleted after provider deletion.
+
+The Actor Gateway exposes matching `POST /v1/storage/metadata`, `GET /v1/storage/metadata/:objectId`, and state-transition endpoints for deletion-pending, available and deleted. Its reader calls signed SQL wrappers using request assertions. This is a complete source-level metadata route path for the operations inspected; do not describe storage metadata as an unimplemented Gateway read path.
+
+### Residual Resource API database dependencies are intentional and must be mapped separately
+
+The Resource API still performs authorization reads through `src/storage/authorization-adapter.ts`:
+- business-manager membership/role checks via `withTenantTransaction`;
+- public-business active-state check via a narrowly scoped `SELECT 1 FROM ghm.business WHERE id = $1 AND is_active = true`;
+- tenant membership check for non-public object reads.
+
+These checks are not direct storage-metadata writes and are not evidence of a metadata bypass. Preserve the narrow business/membership read privileges required by the Resource API until authorization itself is deliberately moved. Do not revoke generic business SELECT, membership, or tenant-transaction dependencies as part of the storage metadata cutover without a separate route/ACL proof.
+
+The Resource API also remains responsible for the external storage provider workflow: issuing upload/download grants, validating/authorizing object access, deleting provider objects, and orchestrating cleanup. This provider work is intentionally outside the database Gateway. Provider workflow attestations bind the provider completion/deletion evidence to the signed Gateway state transitions. Do not move provider credentials or provider side effects into the Gateway as an assumed requirement of database isolation.
+
+### Business logo: split between protected binding and public projection
+
+- Authenticated `PUT /api/v1/businesses/:businessId/logo` and `DELETE /api/v1/businesses/:businessId/logo` use the Gateway client in production; `businessLogoGatewayRequired = config.isProduction` prevents the legacy SQL fallback.
+- Gateway `PUT /v1/businesses/:businessId/logo` calls `BusinessLogoGatewayReader.bind`, which invokes signed `ghm.gateway_set_business_logo_object`.
+- The Resource API continues to validate the selected object metadata through the storage Gateway before binding, and orchestrates cleanup of the previous object through the storage provider + Gateway metadata workflow.
+- Public `GET /api/v1/public/businesses/:businessId/logo` intentionally remains a Resource API projection call to `ghm.storage_get_public_business_logo`, then issues a short-lived provider download grant. Preserve this public projection EXECUTE grant for `ghm_runtime`; it is not the legacy authenticated binding function.
+
+### Legacy function grants: candidate versus active caller
+
+The old Resource API metadata repository in `src/storage/repository.ts` still contains fallback calls to:
+- `ghm.storage_create_pending`
+- `ghm.storage_mark_available`
+- `ghm.storage_mark_deletion_pending`
+- `ghm.storage_mark_deleted`
+- `ghm.storage_get_object`
+
+Likewise, `src/http/storage-router.ts` retains a non-Gateway fallback to `ghm.set_business_logo_object`. Those fallbacks remain in source for non-production/test compatibility, but the production-required flags route production away from them. The previously identified legacy `ghm_runtime` EXECUTE grants therefore remain a post-deployment least-privilege revocation candidate, not proof that the active production request path still invokes those functions. Before revocation, verify deployed Resource API version, Gateway endpoint readiness, live effective grants, rollback compatibility, and any other callers outside the inspected HTTP routes. Keep `ghm.storage_get_public_business_logo` available for the public projection.
+
+### Route and privilege disposition
+
+| Operation | Production path from current source | Disposition |
+|---|---|---|
+| Storage metadata create/read/transitions | Resource API -> signed Actor Gateway -> Gateway SQL wrappers | Gateway-backed; legacy runtime metadata function grants are post-cutover revocation candidates |
+| Storage business membership/role checks | Resource API -> authorized/tenant PostgreSQL transaction | Retain narrow authorization dependencies pending separate review |
+| Provider upload/download/delete | Resource API -> configured object-storage provider | Intentionally remains outside DB Gateway |
+| Authenticated business-logo bind/unbind | Resource API -> signed Actor Gateway -> `gateway_set_business_logo_object` | Gateway-backed; legacy `set_business_logo_object` grant is a post-cutover revocation candidate |
+| Public business-logo lookup | Resource API -> `storage_get_public_business_logo` -> provider download grant | Preserve narrow public projection EXECUTE |
+
+### Deployment/configuration dependency reminder
+
+Production storage startup requires `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` in the Resource API runtime in addition to the Actor Gateway URL. This is distinct from the Gateway's `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` and distinct from the provider's own credentials. The Render form for the new Actor Gateway is not a substitute for configuring the existing Resource API runtime. Do not disclose, copy, or rotate any secret as part of this source-only review. Verify the existing runtime's configured variable through the already documented read-only operational process before a coordinated storage cutover; no Render inspection or change was performed in this review.
+
+No production query, SQL/ACL change, migration, Render action, deployment, credential change, object-storage action, or payment action was performed. Production effective privileges and deployed code versions are not inferred from repository source.
