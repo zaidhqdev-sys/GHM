@@ -1935,3 +1935,15 @@ The four mainline handover sections (37–40) have been copied verbatim into the
 - PR #298 remains draft and non-mergeable. Its 50-entry pending inventory and empty batch manifest remain branch-specific.
 - No production SQL, database state, Render service/configuration, credentials, deployment, or hosting resource was changed.
 - Next integration decision requires a deliberate review of the 142-commit branch delta and exact-head CI. Do not rebase/merge solely to remove the four documentation-only behind commits.
+
+---
+
+## 19 November 2026 — owner supersedes prior hosting-cost decision for early access
+
+The owner has explicitly selected Render **Free** for the initial Node Actor Gateway service supporting the free directory / early-access stage. This supersedes earlier sections that stated Free was unacceptable or that a $7/month always-on service was a prerequisite. The owner will reassess paid always-on hosting and paid-provider requirements before the paid-live launch decision.
+
+The accepted limitation is that Render Free may sleep and cold-start beyond the Resource API's existing 5-second gateway-client timeout. Current sampled gateway clients use AbortController with a 5,000 ms timeout and have no automatic retry. Before directing early-access traffic through those operations, define a safe bounded retry/recovery or explicit user-retry experience. Do not weaken authentication, signed assertions, database authorization or fail-closed behaviour.
+
+The previously shared Render form is already filled by the owner and remains unsubmitted. Preserve it. The owner controls submission. This assistant does not submit/create/deploy Render resources and has made no Render change.
+
+This hosting decision does not resolve the existing database gates: gateway schema USAGE/functions are absent from the last recorded production catalogue, exact ledger reconciliation and verified recovery remain outstanding, and provider-authorized role/ACL remediation is still required. Keep the production migration batch manifest empty and PayFast paused.
