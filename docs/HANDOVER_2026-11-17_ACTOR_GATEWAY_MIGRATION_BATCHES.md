@@ -2678,3 +2678,72 @@ The method-level source review therefore narrows the remaining direct table SELE
 ### Repository cutover inventory note
 
 The recursive `main` tree currently contains distinct manual cutovers for capability governance, registration identity, business-capability mutations, saved businesses, Business Hours, trust scores, business logos, authentication issuer privileges, and campaign/directory review (including rollback files for the latter two). This inventory is a source-tree fact only; it is not evidence that any cutover ran in production. Use these existing files when reconciling subsequent capability families rather than assuming a missing cutover or creating duplicates.
+
+
+## 19 November 2026 — Trust Score and Business Logo cutover reconciliation
+
+### Pre-workflow state
+
+Re-read the migration and hosting handovers, checked PR #298 and its changed-file inventory, and compared the branch to `main`. At review start the branch head was `378bfa00692189cca30351a259cbdf2cbc584a0f`; PR #298 was open/draft/non-mergeable, 187 commits ahead and 4 behind `main`. All source and SQL findings below are from current `main`; none establish production deployment or applied-ledger state.
+
+### Trust Score — routes, SQL grants and existing manual cutover
+
+Inspected:
+- `src/http/trust-score-router.ts`
+- `src/resources/trust-score/repository.ts` and `service.ts`
+- `src/http/trust-score-gateway-client.ts`
+- `src/actor-gateway/trust-score-reader.ts`
+- `database/migrations/20260916240000_create_trust_score.sql`
+- `database/migrations/20261111150000_add_signed_trust_score_gateway.sql`
+- `database/migrations/20261111170000_add_trust_score_read_projections.sql`
+- `database/cutovers/20261111150000_revoke_legacy_trust_score_runtime.sql`
+- `src/db/actor-gateway-trust-score-migration-contract.test.ts`
+
+**Active production route split:**
+- Authenticated `GET /api/v1/trust-scores`, `GET /api/v1/trust-scores/:businessId`, and `POST /api/v1/trust-scores/:businessId/calculate` use the signed Gateway client when configured; when `gatewayRequired` is true and no client exists they return 503 instead of falling back to the repository.
+- Public `GET /api/v1/public/trust-scores` and `GET /api/v1/public/trust-scores/:businessId` intentionally use Resource API repository methods backed by `ghm.list_public_trust_scores(text)` and `ghm.get_public_trust_score(bigint)`.
+- The Gateway read wrappers `gateway_get_trust_score` and `gateway_list_trust_scores` require signed `trust.score.read` assertions and grant EXECUTE only to `ghm_actor_gateway`. Calculation uses signed `trust.score.calculate`.
+
+**Original migration privileges:** `20260916240000_create_trust_score.sql` grants `ghm_runtime` table SELECT and sequence USAGE on `ghm.trust_score`, revokes runtime INSERT/UPDATE/DELETE, and grants runtime EXECUTE on `ghm.calculate_business_trust_score(bigint,bigint)`.
+
+**Public projections:** `20261111170000_add_trust_score_read_projections.sql` creates SECURITY DEFINER public projection functions and grants EXECUTE to `ghm_runtime`; it does not itself revoke the original table SELECT, sequence, or legacy calculation function privileges.
+
+**Existing manual cutover:** `database/cutovers/20261111150000_revoke_legacy_trust_score_runtime.sql` already exists. It revokes runtime/PUBLIC EXECUTE on `calculate_business_trust_score`, table SELECT on `trust_score`, and sequence privileges. It is marked MANUAL CUTOVER ONLY and requires Gateway routes deployed/qualified, role identities verified, and a fresh independently verified production backup. Do not create a duplicate migration or cutover.
+
+**Disposition:** preserve runtime EXECUTE on the two public projection functions and Gateway-only EXECUTE on signed wrappers. The existing manual cutover is the post-deployment privilege removal candidate for legacy direct reads/calculation. The source-level production router requires the Gateway for authenticated paths, while public paths use the SECURITY DEFINER projections. The repository still contains legacy direct table-query methods as non-production fallback. The cutover must remain unapplied until deployed Resource API version, complete non-HTTP caller inventory, live effective ACL/role state and documented recovery prerequisites are established. No production ledger/ACL query was repeated.
+
+### Business Logo — authenticated binding versus public projection/provider work
+
+Inspected:
+- `src/http/storage-router.ts`
+- `src/http/business-logo-gateway-client.ts`
+- `src/actor-gateway/business-logo-reader.ts`
+- `database/migrations/20261106090000_business_logo_storage_binding.sql`
+- `database/migrations/20261111160000_add_signed_business_logo_gateway.sql`
+- `database/cutovers/20261111160000_revoke_legacy_business_logo_runtime.sql`
+- `src/db/actor-gateway-business-logo-migration-contract.test.ts`
+
+**Authenticated logo binding:** `PUT /api/v1/businesses/:businessId/logo` and `DELETE /api/v1/businesses/:businessId/logo` validate the target object through the storage metadata Gateway and call `bindLogo`. Production sets `businessLogoGatewayRequired = config.isProduction`; the route must not fall back to the legacy database function when the Gateway is unavailable. The Actor Gateway calls signed `ghm.gateway_set_business_logo_object` with operation `business.logo.bind`.
+
+**Legacy grant:** `20261106090000_business_logo_storage_binding.sql` grants `ghm_runtime` EXECUTE on `ghm.set_business_logo_object(bigint,bigint,bigint)`. The signed wrapper migration grants its wrapper only to `ghm_actor_gateway` but does not revoke the original function grant. Existing manual cutover `20261111160000_revoke_legacy_business_logo_runtime.sql` revokes that exact legacy function EXECUTE from PUBLIC/runtime. Do not create a duplicate cutover.
+
+**Public logo route:** `GET /api/v1/public/businesses/:businessId/logo` intentionally calls `ghm.storage_get_public_business_logo(bigint)`, then requests a short-lived provider download grant and redirects. The migration defines that function as SECURITY DEFINER and grants EXECUTE to `ghm_runtime`. Preserve this grant; it is not the authenticated logo-binding function.
+
+**Provider work:** upload validation, provider upload/download grants, object deletion and cleanup remain Resource API/storage-provider responsibilities. They are not equivalent to the protected database logo-binding mutation and should not be moved into the Gateway by assumption.
+
+**Disposition:** the authenticated binding route is Gateway-backed; the legacy binding grant is an existing post-cutover revocation candidate; public projection EXECUTE and provider orchestration remain. Apply the manual cutover only after exact deployed Resource API/Gateway versions, other callers, effective production grants and backup/recovery preconditions are verified.
+
+### Combined route/ACL matrix
+
+| Capability | Active production authenticated path | Public path | Existing cutover |
+|---|---|---|---|
+| Trust Score | Signed Gateway read/calculate | Resource API SECURITY DEFINER projections | `20261111150000_revoke_legacy_trust_score_runtime.sql` |
+| Business Logo binding | Signed Gateway bind/unbind; metadata checked via storage Gateway | Resource API SECURITY DEFINER logo projection + provider download grant | `20261111160000_revoke_legacy_business_logo_runtime.sql` |
+
+### Remaining gates and no-action record
+
+- Source tree contains both exact manual cutovers. Do not author duplicates.
+- Public Trust Score projection functions and public Business Logo projection function are intentional runtime dependencies and must remain executable by `ghm_runtime`.
+- Repository fallback methods and possible callers outside the inspected HTTP routes still require complete caller inventory; source presence alone is not proof of production use, and a missing indexed search result is not proof of absence.
+- Manual cutovers are not migrations to add to `config/production-migration-batches.json`; manifest remains `[]`.
+- No production SQL/query, migration execution, ACL/role change, Render inspection/change, service deployment, credential/backup operation, provider-object operation, or payment action was performed.
