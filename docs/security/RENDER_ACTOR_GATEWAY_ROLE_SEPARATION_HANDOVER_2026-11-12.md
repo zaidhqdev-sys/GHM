@@ -3381,3 +3381,14 @@ Before tracing, the current three handovers, PR #298 metadata, migration runner 
 A separate design-only plan was added at `docs/security/PRODUCTION_MIGRATOR_AUTHORITY_REMEDIATION_PLAN_2026-11-18.md` (commit `6f1a7808e3372ddd6e89b7a06713c6b74f146d89`). It sequences the work into: preserve evidence and verify backup; provider/bootstrap-owned removal of the two unintended membership edges; narrowly scoped removal of the 16 table and 24 sequence ACL entries while preserving ownership and the intended migrator SET edge; dedicated migrator read-only preflight and exact ledger export; then exact migration reconciliation before any separately approved execution plan.
 
 This is explicitly a design, not an authorization. No production SQL, role/ACL changes, backup operation, secret access, deployment, migration or CI occurred. PR #298 remains draft and its execution manifest remains empty.
+
+
+## 18 November 2026 — complete live bootstrap membership inventory correction
+
+A fresh read-only production query of `pg_auth_members` and `pg_roles`, checked against the 12 November database grant-authority handover and PostgreSQL role-separation runbook, establishes **six** bootstrap-`postgres` ADMIN OPTION memberships held by `ghm_db_user`: `ghm_actor_gateway`, `ghm_auditor`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime`, and `ghm_schema_owner`. Each has ADMIN=true, INHERIT=false, SET=false. Earlier remediation wording that only identified migrator and schema owner was incomplete.
+
+There is a separate non-admin `ghm_db_user -> ghm_runtime` edge granted by `ghm_db_user` (ADMIN=false, INHERIT=true, SET=true). Preserve that runtime SET edge until the separately gated runtime credential cutover is qualified; do not conflate it with the bootstrap ADMIN OPTION edge. `ghm_app_user -> ghm_db_user` remains grantor postgres, ADMIN=false, INHERIT=true, SET=true. `ghm_db_user` remains LOGIN/INHERIT with CREATEDB=true and CREATEROLE=true, so the legacy application authority chain remains a critical isolation issue.
+
+Live role flags show the target actor-gateway, auditor, migrator, payment-provider and runtime roles are non-elevated; auditor and schema owner are NOLOGIN. Those target flags do not neutralize `ghm_db_user`'s admin-option membership authority. Each of the six edges needs purpose-specific dependency and recovery analysis; do not bulk revoke them. The detailed remediation plan now contains the corrected complete inventory (commit `8994a57dc974690473725bed0792189423443fcb`).
+
+No production membership, role attribute, grant, ACL, data, credential, service, setting, deployment, migration, backup or payment state was changed. No CI was run. PR #298 remains draft and its execution manifest remains empty.
