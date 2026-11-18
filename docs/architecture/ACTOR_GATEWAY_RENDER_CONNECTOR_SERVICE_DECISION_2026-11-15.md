@@ -153,3 +153,24 @@ The exact production DB login credential and assertion secret have not been prov
 8. Only after all gates pass, separately authorize the production migration execution, service deploy, setting `GHM_ACTOR_GATEWAY_URL` on `GHM-Internal-Runtime`, and controlled production smoke/cutover.
 
 **No Render service, Cloudflare resource, database role, grant, migration, secret, environment variable, deployment, or production data was changed during this follow-up.**
+
+
+## 18 November 2026 — superseding no-new-Render-compute correction
+
+The earlier dedicated Render Background Worker recommendation is superseded **for the direct Cloudflare Hyperdrive-to-Render-external-Postgres route only**.
+
+Cloudflare Hyperdrive supports an existing PostgreSQL database via its external hostname/connection string. Render explicitly supports external PostgreSQL connections from systems outside Render. This means a dedicated Render cloudflared process, Tunnel, Workers VPC TCP Service and Hyperdrive VPC route are not mandatory for this topology:
+
+Cloudflare Actor Gateway Worker → Hyperdrive → Render ghm-db external PostgreSQL endpoint → ghm_db.
+
+This removes the additional $7/month Render connector-worker dependency. Hyperdrive is included in Workers Free with a published allowance of 100,000 database statements per day. This does not establish the user's account-specific remaining quota or Worker request limits.
+
+**Mandatory transport rule:** production Hyperdrive must use PostgreSQL sslmode=verify-full and the correct Frankfurt-specific Render PostgreSQL CA certificate uploaded to Cloudflare. Cloudflare documents that verify-full checks both CA trust and hostname SAN/CN. The default require mode is encrypted and WebPKI validated, but it is not the chosen strict configuration for this production route. Do not lower TLS verification or assume Render's CA certificate without evidence.
+
+The Render external database allowlist was observed as 0.0.0.0/0. This is an existing broad public ingress setting; it is not authorization to broaden it further. Do not change the allowlist as part of this work. Use only the dedicated ghm_actor_gateway database login and retain its exact function allowlist/startup checks.
+
+This correction does not remove the production DB migration, role-administration, backup/recovery, secret-custody or authenticated route-readiness gates. Current live catalogue inspection still finds no ghm_actor_gateway schema USAGE and no gateway/assertion functions. The Worker config still has an all-zero Hyperdrive ID, workers_dev=false and no production HTTPS route. The Worker also lacks some commercial reader wiring present in the Node gateway server. Therefore this is a viable no-new-Render-compute hosting path, **not a claim that production is connected or ready to cut over**.
+
+The dedicated Render connector worker remains a valid alternative only if direct external Hyperdrive connectivity or strict CA validation cannot be established. Do not build both topologies in parallel.
+
+No Cloudflare or Render resource, secret, database role, grant, migration, allowlist, route or deployment was changed by this reassessment.
