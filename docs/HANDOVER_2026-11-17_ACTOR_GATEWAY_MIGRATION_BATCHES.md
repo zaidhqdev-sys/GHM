@@ -1032,3 +1032,29 @@ The 50-entry pending list read for candidate enumeration is from the migration-b
 5. Keep the production execution manifest empty and keep Render read-only.
 
 No production SQL, migration, role, ACL, credential, Render configuration, deployment, or hosting change was performed. This update only records source findings in the existing handover on the existing migration-batches branch.
+
+
+---
+
+## Follow-up review of the search_path correction candidate — 18 November 2026, 19:44 SAST
+
+Re-read this handover first, then inspected PR #298's exact head and changed-file patch before considering any code action.
+
+### What changed since the previous note
+
+- PR #298 head is now `3900bf7dbffe71226436e57e8d193603c43f07e2` (branch `feat/actor-gateway-production-migration-batches`); PR remains open, draft, and non-mergeable.
+- The migration-batches branch's `database/migrations/20261117020000_revoke_runtime_capability_governance.sql` (blob `9083f813c999f6054b8066d12ffafd4f9a8e1a5e`) contains a proposed correction to the mainline search_path guard. It uses `pg_options_to_table(COALESCE(p.proconfig, ARRAY[]::text[]))` to extract the configured search_path and normalizes whitespace before comparing with `pg_catalog,ghm,pg_temp`. It also checks schema-owner, SECURITY DEFINER and both role EXECUTE conditions.
+- This is consistent with the global normalizer and Actor Gateway startup checker. It corrects the previously identified mismatch **on the PR branch only**. Current `main` remains at `ddb31ff59ab470973edf60a5078a75e5f962f803` and still has the old exact-array comparison.
+- PR #298 changed-file inventory includes the migration, runner/config, CI workflow, docs and tests, but no dedicated test was identified that executes or statically verifies this migration's parsed search_path guard.
+- Exact PR-head workflow lookup returned zero workflow runs; combined commit status returned zero statuses. Therefore the correction has **no observed CI qualification** at this head. Do not describe it as tested, passed, merged or deployed.
+- PR #298 base SHA remains `b73839b27ac90446650f921d3e8ce1b5de041f04`, while current main is `ddb31ff59ab470973edf60a5078a75e5f962f803`. The branch remains stale/divergent; do not merge it or cherry-pick the migration correction without first reconciling its base and exact-head checks.
+
+### Decision
+
+Do not duplicate the correction on another branch or alter current main in this pass. Retain the PR-branch implementation as a **candidate fix**, with qualification outstanding. The production migration remains prohibited until the branch/base issue, exact SQL qualification and all production cutover prerequisites are resolved.
+
+### No repeated work
+
+The source-level mismatch itself is already documented above. Future sessions should use this section as the status record: mainline defective; PR #298 contains a candidate parser-based correction; no exact-head CI evidence; PR draft/stale/non-mergeable.
+
+No code, migration, PR state, production database, Render service, environment variable, role, ACL, deployment, or hosting resource was changed in this pass. Only this handover was updated.
