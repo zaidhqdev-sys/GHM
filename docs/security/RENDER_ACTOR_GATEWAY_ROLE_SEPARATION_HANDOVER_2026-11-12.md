@@ -3324,3 +3324,22 @@ Before this inspection, the current Actor Gateway role-separation handover, prod
 - The forensic audit must be run only with the intended dedicated `ghm_migrator` login over verified TLS, with its documented schema-owner SET path. Do not grant ledger SELECT to `ghm_app_user` as a workaround.
 - Preserve the existing Render support escalation for administrator/application role separation and obtain a fresh verified backup/recovery point before any role or ACL remediation.
 - No production data, role, membership, grant, ACL, migration, secret, Render setting, deployment or paid service was changed during this read-only inspection. No CI was run.
+
+
+## 18 November 2026 — dedicated migrator contract rechecked against live Render ACLs
+
+This is a follow-up read-only check against the existing Render `ghm-db` / `ghm_db` service. The current role-separation, migration-reconciliation and PR #298 handovers plus PR metadata and the exact migration-runner principal contract were reviewed first.
+
+**Important correction:** the dedicated `ghm_migrator` LOGIN role does exist in production. It is not absent. Its observed attributes are LOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION and NOBYPASSRLS. Its one direct membership is `ghm_schema_owner` with ADMIN OPTION=false, INHERIT=false, SET=true. That matches the intended migrator-to-owner SET edge.
+
+**The full current runner principal contract nevertheless fails on other live memberships and object ACLs:**
+- `ghm_db_user` remains a member of `ghm_migrator` with ADMIN OPTION=true, INHERIT=false, SET=false. The runner contract requires `migrator_member_count=0`.
+- `ghm_db_user` remains a member of `ghm_schema_owner` with ADMIN OPTION=true, INHERIT=false, SET=false, in addition to the intended `ghm_migrator -> ghm_schema_owner` edge. The runner contract requires exactly one member of `ghm_schema_owner`; live count is 2.
+- The exact `has_table_privilege` / `has_sequence_privilege` predicate used by `src/db/migrate.ts` returns `direct_relation_privileges=true` for `ghm_migrator`, while the contract requires false.
+- An `aclexplode` inspection confirms explicit ACL entries naming `ghm_migrator` (granted by `ghm_schema_owner`): SELECT/INSERT/UPDATE/DELETE on 16 relations (`commercial_event`, `commercial_founding_allocation`, `commercial_payment_attempt`, `commercial_payment_transaction`, `commercial_plan`, `commercial_plan_entitlement`, `commercial_plan_price`, `commercial_plan_version`, `commercial_provider_event`, `commercial_subscription`, `commercial_trial`, `country`, `currency`, `opportunity`, `opportunity_participant`, `opportunity_type`); SELECT/USAGE on 23 sequences. The ledger ACL remains SELECT for `ghm_auditor`, not `ghm_migrator`.
+- No `pg_default_acl` entry granting privileges to `ghm_migrator` was found. The per-object ACL entries are explicit; their originating migration/operation has not yet been identified. Do not guess their source.
+- The current Render query connector still authenticates as `ghm_app_user` / `ghm_db_user` (the Render Postgres metadata lists `databaseUser=ghm_app_user`). This session cannot SET ROLE to `ghm_migrator` or `ghm_schema_owner`, so it cannot execute the intended forensic audit as the dedicated login.
+
+**Disposition:** the role exists and its one intended owner SET edge is correct, but the complete production migrator principal does not satisfy the current runner contract. Do not run the predeploy audit through the app/admin connector, and do not revoke these grants or memberships without a complete source/ownership/backup review and the provider/bootstrap authority path. The live migration ledger remains unreadable through this connector; exact production ledger rows/checksums/pending prefix remain unknown.
+
+No production grant, role, ACL, migration, credential, Render setting, deployment, data or payment state was changed. No CI was run.
