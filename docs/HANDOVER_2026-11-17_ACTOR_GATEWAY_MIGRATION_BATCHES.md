@@ -2062,3 +2062,97 @@ Reviewed the current-main Resource API routers/repositories and the exact migrat
 This is a source and migration-file review only. It does not establish which of these migrations are installed in `ghm_db`, the effective production ACL after inherited memberships, or which Resource API commit is live. Do not infer a live outage or permission grant from repository state. The existing handover evidence remains the authority for what was last inspected in production; do not repeat those inspections without a specific new reason.
 
 The PR #298 manifest remains `[]`. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
+
+
+## 19 November 2026 — storage, trust-score, business-hours and directory-review route/ACL reconciliation
+
+### Scope and source files checked
+
+Re-read this handover and PR #298 first. Then checked current-main:
+- `src/http/app.ts`
+- `src/http/storage-router.ts`
+- `src/storage/repository.ts`
+- `src/storage/authorization-adapter.ts`
+- `src/storage/service.ts`
+- `src/resources/trust-score/repository.ts`
+- `src/http/trust-score-router.ts`
+- `src/resources/business-hours/repository.ts`
+- `src/http/directory-review-router.ts`
+- `src/resources/directory-review/repository.ts`
+- `src/resources/campaign/repository.ts`
+and the exact branch migrations listed below. This remains source/migration-file review only, not a production catalogue/ledger inspection.
+
+### Storage: confirmed split responsibility and a legacy function privilege gap
+
+The current Resource API storage routes remain responsible for provider interactions:
+- `POST /api/v1/storage/business-logos/upload` creates a provider upload grant.
+- `POST /api/v1/storage/objects/:objectId/complete` checks provider object metadata and bytes, then requests metadata availability.
+- `GET /api/v1/storage/objects/:objectId/access` creates a provider download grant after authorization.
+- `DELETE /api/v1/storage/objects/:objectId` deletes the provider object and then completes metadata deletion.
+- Business logo bind/unbind routes call the Gateway for the protected business-logo binding when the production-required flag is active.
+- Public logo resolution intentionally calls `ghm.storage_get_public_business_logo` through the Resource API and redirects to a short-lived provider download grant.
+
+The Gateway owns the protected metadata persistence operations and signed database assertions:
+- `20261112140000_add_signed_storage_metadata_actor_gateway.sql`: signed create-pending, get-object and mark-deletion-pending wrappers.
+- `20261112150000_add_storage_provider_workflow_attestation.sql`: signed actor plus provider-workflow attestation for mark-available and mark-deleted.
+- Both migrations grant the new wrappers to `ghm_actor_gateway` and revoke those wrapper functions from `ghm_runtime` and `ghm_migrator`.
+- The Resource API still runs `createPostgresStorageAuthorization` for business membership/owner checks. It reads `ghm.business` and uses the existing authorized/tenant transaction helpers. This is not a metadata-table read and should not be mistaken for Gateway bypass.
+
+**New security finding:** the older persistence-boundary migrations `20261004221000` and `20261004222000` revoke direct runtime access to `ghm.storage_object` but explicitly grant `ghm_runtime` EXECUTE on the legacy SECURITY DEFINER functions `ghm.storage_create_pending`, `ghm.storage_mark_available`, `ghm.storage_mark_deletion_pending`, `ghm.storage_mark_deleted` and `ghm.storage_get_object`. The later signed Gateway migrations add protected wrappers but do not revoke those legacy runtime EXECUTE grants.
+
+Those legacy functions do not carry the new signed actor assertion or provider attestation contract. In particular, the legacy mark-available/mark-deleted functions do not themselves verify provider-workflow attestation. Although production app wiring sets `storageMetadataGatewayRequired = config.isProduction || ...` and `businessLogoGatewayRequired = config.isProduction || ...`, and refuses to start production storage without `GHM_ACTOR_GATEWAY_URL`, the database role retains a direct function invocation surface if those old grants remain effective.
+
+**Required disposition:** add a separately reviewed post-deployment revocation migration for the legacy runtime EXECUTE grants only after the production Resource API is confirmed Gateway-only, the Gateway wrappers and provider attestation are installed, the provider workflow is qualified, and rollback/recovery is documented. Test direct invocation denial for each legacy function under `ghm_runtime`, while proving Gateway wrappers continue to work. Do not revoke the grants in an early additive batch and do not alter production now.
+
+### Trust score: Gateway-backed authenticated routes, intentionally retained public projections
+
+Current authenticated routes:
+- `GET /api/v1/trust-scores` → signed Gateway list when configured.
+- `GET /api/v1/trust-scores/:businessId` → signed Gateway read.
+- `POST /api/v1/trust-scores/:businessId/calculate` → signed Gateway calculate.
+
+Production app wiring sets `trustScoreGatewayRequired = config.isProduction || ...`; the router returns 503 rather than using the Resource API repository if the Gateway client is unavailable. The signed database operations are:
+- `20261111150000_add_signed_trust_score_gateway.sql`: `ghm.gateway_calculate_business_trust_score`.
+- `20261111170000_add_trust_score_read_projections.sql`: `ghm.gateway_get_trust_score` and `ghm.gateway_list_trust_scores`.
+All three wrappers are SECURITY DEFINER, owned by `ghm_schema_owner`, revoked from PUBLIC/`ghm_runtime`/`ghm_migrator`, and granted to `ghm_actor_gateway`.
+
+Public routes are separate and remain Resource API calls:
+- `GET /api/v1/public/trust-scores` → `ghm.list_public_trust_scores`.
+- `GET /api/v1/public/trust-scores/:businessId` → `ghm.get_public_trust_score`.
+The migration intentionally grants only these public projection functions to `ghm_runtime`. Do not remove those grants as part of the authenticated Gateway cutover.
+
+The fallback repository still contains direct authenticated table reads and calls `ghm.calculate_business_trust_score`, but production route wiring requires the Gateway. This legacy fallback must not be treated as the active production route. Any later removal of its grants should be a separate post-deployment revocation after live version confirmation and tests.
+
+### Business hours: authenticated operations are Gateway-required; public read is a distinct path
+
+- `GET /api/v1/businesses/:businessId/hours` uses signed Gateway `business.hours.read` in production.
+- `PUT /api/v1/businesses/:businessId/hours` uses signed Gateway `business.hours.replace` in production.
+- Production app wiring sets `businessHoursGatewayRequired = config.isProduction || ...`; missing Gateway yields 503, not a database fallback.
+- `20261111130000_add_signed_business_hours_gateway.sql` adds signed `ghm.gateway_replace_business_hours`.
+- `20261111140000_add_business_hours_read_projections.sql` adds signed `ghm.gateway_get_business_hours` for authenticated reads and `ghm.get_public_business_hours` for public visibility. The authenticated wrapper enforces active membership; the public projection limits output to active, verified, approved Businesses and is granted to `ghm_runtime`.
+- The public projection grant is intentional and must remain. Do not confuse it with direct table SELECT or authenticated Gateway access.
+- The legacy Resource API repository still contains fallback reads/writes. Production-required routing prevents those paths when configured. No post-cutover runtime function revocation is established by the two reviewed Gateway migrations; preserve this as a separate post-deployment ACL review item, not an inferred live vulnerability.
+
+### Directory review: founder moderation routes are disabled, owner presentation is Gateway-backed
+
+Current router behaviour:
+- `GET /api/v1/admin/directory-reviews/authority` returns `isFounderReviewer: false`.
+- Founder submit/list/review endpoints return the explicit disabled response and do not call legacy SECURITY DEFINER functions.
+- `GET /api/v1/businesses/:businessId/directory-review-presentation` calls the directory-review repository. The repository uses the campaign/directory-review Gateway client when present and fails closed when Gateway is required; its legacy fallback calls `ghm.get_business_directory_review_presentation`.
+- Production app constructs the repository with the Gateway client and `campaignDirectoryReviewGatewayRequired` set true.
+
+Migration `20261105230000_create_founder_directory_review.sql` originally grants legacy founder review functions to `ghm_runtime`; migration `20261109140000_close_evidence_and_founder_review_authority.sql` is the explicit founder-review shutdown boundary. Do not re-enable founder moderation or treat it as a pending Gateway route. The active owner-facing presentation read is the only directory-review route in the current router.
+
+### Campaign read/write split reaffirmed
+
+Current campaign list/get handlers use Resource API repository SQL reads, while create/update use the Gateway client when configured/required. The production Gateway-required setting therefore does not imply campaign list/get have moved to Gateway. Keep the campaign read-side SQL privileges and membership authorization dependencies in the route map until a protected read operation is designed or those reads are deliberately retained under narrow runtime access.
+
+### Current cutover disposition
+
+1. Storage legacy runtime EXECUTE grants are an explicit post-deployment revocation candidate; the signed wrappers alone do not remove the older grants.
+2. Preserve public trust-score and business-hours projection EXECUTE grants to `ghm_runtime`.
+3. Preserve Resource API business/membership reads used by storage authorization and campaign reads unless a protected replacement is introduced.
+4. Do not revive founder directory-review moderation routes.
+5. Keep all production migration batches empty until exact live ledger, effective ACLs, deployed Resource API version, verified recovery point and provider authority are reconciled.
+
+No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed during this review.
