@@ -47,7 +47,7 @@ BEGIN
         AND EXISTS (
           SELECT 1
           FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS setting
-          WHERE regexp_replace(setting, '\\s+', '', 'g') = 'search_path=pg_catalog,ghm'
+          WHERE regexp_replace(setting, '[[:space:]]+', '', 'g') = 'search_path=pg_catalog,ghm'
         )
     ) THEN
       RAISE EXCEPTION 'A signed capability gateway function has unexpected owner, SECURITY DEFINER setting, or search_path: %',
