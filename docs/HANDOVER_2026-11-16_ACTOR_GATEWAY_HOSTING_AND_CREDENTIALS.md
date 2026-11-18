@@ -1758,3 +1758,70 @@ Later, on 2026-11-16, a temporary narrowly scoped auditor membership was used to
 ### Provenance
 
 This section was reconstructed by re-reading the complete committed Amanda handover (docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md, blob 93ef68ea2591b6ec643e72e6e8fb680fcbcd34e5), its recorded follow-up commits (4fc23146b49060a119a378a44fe27105eb05d6f2, aff568929f64013da996b52f0f34f11aec1194bc), and the current Actor Gateway source contract. It is a documentation-only reconciliation. No production database, role, membership, grant, credential, secret, Render service, environment, deployment, application data, payment or consent state was changed.
+
+
+## 39. 2026-11-18 — latest production role/migrator and local-connection reconciliation
+
+### Newer production evidence reviewed
+
+Read the latest 18-Nov production evidence handovers from the draft PR #298 branch, alongside the mainline Amanda support record, production migration reconciliation, Actor Gateway source, PR #298/#299/#296 and the relevant branch comparison. The new 18-Nov role/service documents are on the unmerged PR #298 branch; they are evidence to reconcile, not mainline code or an approved mutation plan.
+
+PR/branch state at this checkpoint:
+- PR #298 remains draft/open/unmerged at head `f2e280005ce7f9bfc947a19ecbb6144957d4a340`. Its branch is 136 commits ahead and 2 commits behind main after the two 18-Nov mainline handover commits. Do not merge without reconciling/rebasing and exact-head CI.
+- PR #298 has 50 candidate pending migrations in its inventory and an empty production execution manifest. It explicitly does not identify or authorize a first batch.
+- PR #299 remains draft/open; its Project detail/update feature is unrelated to the Actor Gateway DB connection. Its reported CI blockers are an existing disposable migration security-metadata guard and the web dependency audit. Do not mix this feature into gateway work.
+- PR #296 remains draft/open and introduces a later pending Business Identity column-privilege migration. It is not in the 50-entry PR #298 inventory; if ever merged, refresh the pending inventory and ordering before any production plan.
+- The unmerged Hyperdrive branch remains a separate, unselected path. Do not merge or use it for the selected Node Actor Gateway connection.
+
+### Corrected production migrator state — connectability versus authority preflight
+
+The older Amanda handover records a successful local, strict-TLS connection using the existing `GHM_MIGRATOR_DATABASE_URL` to production `ghm_db`, with `session_user=current_user=ghm_migrator`, `BEGIN READ ONLY`, `SET ROLE ghm_schema_owner`, exact ledger read and rollback. Do not repeat that basic migrator connectivity/ledger-read test without a concrete reason.
+
+The newer 18-Nov live catalogue evidence does not contradict that historical successful connection. It identifies a separate current least-privilege runner-preflight failure:
+- `ghm_db_user` still has a bootstrap `ADMIN OPTION` membership in `ghm_migrator`, so the current runner's required `migrator_member_count=0` check fails.
+- `ghm_db_user` also has a bootstrap `ADMIN OPTION` membership in `ghm_schema_owner`; the current runner requires exactly one schema-owner membership, the intended `ghm_migrator -> ghm_schema_owner` SET-only edge.
+- `ghm_migrator` retains explicit direct privileges on 16 application relations and 24 sequences, while the current runner requires no effective direct relation/sequence privileges.
+- The exact production ledger is not available through the ordinary Render query connector; the already-established dedicated migrator connection plus owner-role read-only path is the documented route.
+- The six bootstrap `ghm_db_user` ADMIN OPTION edges are distinct role relationships. Do not bulk-revoke them or attempt to remove bootstrap-owned edges through the application/admin session. Amanda's support guidance and the 18-Nov provider-authority plan require a provider-confirmed authority path, fresh recoverable backup, exact pre-change evidence and narrowly scoped actions.
+
+This distinction is important: a SQL login can authenticate and read the ledger under a historical read-only workflow while still failing the current stricter migration-runner preflight. Do not report the historical connection as proof that today's migration executor is ready.
+
+### Production runtime is not yet on the merged principal guard
+
+The 18-Nov production legacy-runtime finding corrects any assumption that the merged PR #275 contract is live. Render `GHM-Internal-Runtime` remains on `main` at live commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, auto-deploy OFF. Its live source uses generic `DATABASE_URL` and only performs `SELECT 1`; it does not enforce `GHM_RUNTIME_DATABASE_URL` or the `ghm_runtime` principal guard. The configured secret value was not inspected, so the live process identity remains unproven. Preserve the legacy path until a separately approved runtime cutover and recovery proof; do not revoke or alter it as part of gateway connection work.
+
+The role/service dependency map records:
+- `ghm_actor_gateway` exists as LOGIN/NOINHERIT with no elevated flags, DB CONNECT true, but schema `ghm` USAGE false and no gateway API functions installed.
+- `ghm_auth_issuer` is not provisioned in production; its source exists but no production role/service is present.
+- `ghm_migrator` is a standalone operator identity, not a continuously running service.
+- The Resource API, Actor Gateway, Auth Issuer and migrator must retain separate SQL-created credentials; do not reuse the Dashboard administrator URL.
+
+### Critical test-script safety correction
+
+`scripts/qualify-actor-gateway-principal.mjs` is a disposable-PostgreSQL integration qualification, not a production read-only probe. It explicitly requires the database name `ghm_disposable_test`, requires runtime/gateway/migrator URLs and an assertion secret, and creates fixture accounts, businesses and commercial document records before cleanup. **Never point this script at production `ghm_db`.** Its fixture writes make it unsuitable for proving a production connection.
+
+The production Actor Gateway process itself also performs the complete startup ACL assertion, which is currently expected to fail because production schema USAGE and the gateway function API are absent. Do not weaken the guard or try to start the full service before those prerequisites exist.
+
+### TLS and the safe immediate connection probe
+
+Current `src/actor-gateway/database-ssl.ts` sets `rejectUnauthorized:false` for `DATABASE_SSL_MODE=external`. This encrypts the external connection but does not authenticate the PostgreSQL server certificate. The internal Render mode is intentionally plaintext on the same-region private network. The existing migration audit has a separate, proven strict-TLS pattern: strip URL-level SSL overrides and connect with `ssl: { rejectUnauthorized: true }`. Do not use the Actor Gateway's external mode as evidence of certificate-authenticated TLS, and never fall back to `rejectUnauthorized:false` for a local production connection test.
+
+The safe next local step, if the dedicated gateway URL is already available in the user's existing local secret environment, is a **one-off read-only Node PostgreSQL probe** from the existing workstation:
+- Read `GHM_ACTOR_GATEWAY_DATABASE_URL` without printing it.
+- Strip URL-level SSL options so they cannot override the explicit TLS policy.
+- Connect with `rejectUnauthorized:true` and a short connection timeout.
+- Start `BEGIN READ ONLY`; query only database identity, `pg_stat_ssl`, gateway role flags/membership, DB/schema privilege booleans, installed gateway-function counts and direct relation-privilege counts; then ROLLBACK.
+- Require `current_database=ghm_db` and `session_user=current_user=ghm_actor_gateway` to prove the dedicated login actually authenticated.
+- Treat missing schema USAGE/functions as a reported readiness blocker, not as a reason to grant access from the test script.
+
+If the gateway URL is absent or strict certificate verification fails, stop and report that exact non-secret result. Do not invent a password, copy another service's credential, change production secrets, weaken TLS, or expose a connection URL in chat. This probe establishes only database network/authentication identity and current ACL readiness; it does not start the HTTP service or authorize any production mutation.
+
+### Updated next-action order
+
+1. Keep the objective on local Node Actor Gateway → existing production `ghm_db`, using only the dedicated `ghm_actor_gateway` identity; owner retains the separate Render Web Service decision.
+2. Run the strict-TLS, read-only gateway-login probe only if the dedicated gateway connection secret already exists locally. Do not rerun the migrator test or disposable integration script.
+3. In parallel, finish the exact source-to-ledger dependency review for the first contiguous gateway prerequisite prefix. The 50-entry inventory and empty manifest on PR #298 are not authority; the 105-row ledger snapshot is dated. The older 7-entry allowlist is also not an execution plan.
+4. Do not execute migrations until the current live ledger is refreshed through the approved dedicated path, the exact checksum/order reconciliation is complete, the migrator role/ACL preflight is resolved through provider-confirmed authority, and a fresh recoverable backup exists.
+5. After approved schema/API prerequisites and credential readiness, run the gateway locally and verify the full startup ACL contract. Only then does the owner decide separately whether to create/deploy the paid Render Web Service.
+
+No production database state, migration, role, membership, ACL, credential, secret, Render service/environment, deployment, application data, payment or consent state was changed by this reconciliation. It introduced no additional paid infrastructure.
