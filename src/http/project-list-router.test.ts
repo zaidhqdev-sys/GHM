@@ -174,3 +174,27 @@ test('Project detail, update and creation deny business roles', async () => {
     assert.equal(create.status, 403);
   } finally { await close(server); }
 });
+
+
+test('Project detail and update routes remain customer-only for admin roles', async () => {
+  const context = { userId: 1, role: 'admin' as const };
+  const service: ProjectService = {
+    listOwnedProjects: async () => ({ projects: [], total: 0, limit: 50, offset: 0 }),
+    createProject: async () => project,
+    getOwnedProject: async () => project,
+    updateOwnedProject: async () => project,
+  };
+  const { server, baseUrl } = await start(service, context);
+  try {
+    const get = await fetch(`${baseUrl}/api/v1/projects/21`, {
+      headers: { Authorization: `Bearer ${tokenFor(context)}` },
+    });
+    const patch = await fetch(`${baseUrl}/api/v1/projects/21`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${tokenFor(context)}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Admin must not update customer Project' }),
+    });
+    assert.equal(get.status, 403);
+    assert.equal(patch.status, 403);
+  } finally { await close(server); }
+});
