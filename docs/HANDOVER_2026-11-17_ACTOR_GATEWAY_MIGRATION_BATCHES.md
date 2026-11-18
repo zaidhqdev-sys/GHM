@@ -1570,3 +1570,68 @@ Continue source-only by reviewing Actor Gateway health/readiness endpoint behavi
 - No code, SQL, migration, manifest, role, ACL, credential, Render setting/service/deployment, payment state or paid resource was changed.
 - No production DB connection/query was made and no Render service was inspected or modified.
 - `config/production-migration-batches.json` remains `[]`; PR #298 remains open, draft, unmerged and non-mergeable.
+
+
+---
+
+## Actor Gateway health, readiness and deployment artifact review — 19 November 2026, 00:14 SAST
+
+Continued from the bootstrap review after verifying the current PR and re-reading the handover. Source reviewed against current `main` `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+
+### Exact source refs
+
+- `src/actor-gateway/app.ts`, blob `dc66f24318fd9c720628d365196484e6df5b0231`.
+- `src/actor-gateway/app.test.ts`, blob `c494be32f2e2b7e661ce4f3ab54efd2875b3b9d4`.
+- `src/actor-gateway/server.ts`, blob `2ed8e9ffa36ead9eeb9a091f4b7061ae78ee6ceb`.
+- `package.json`, blob read from current main; `start:actor-gateway` is `node dist/actor-gateway/server.js`; `build` is `tsc`.
+- Root inventory on current main contains no `render.yaml` or `Dockerfile`; those paths return 404. The repository contains a single GitHub Actions workflow `.github/workflows/ci.yml`. Therefore repository source does not declare a Render Blueprint, Docker build, service health-check path, or deployed build/start settings.
+
+### Health/readiness behavior
+
+- `GET /healthz` is registered before `/v1` authentication and returns HTTP 200 with `{status:"ok"}`.
+- The health handler is deliberately process-only: it does not query the database, verify pool connectivity, or re-check the startup ACL state. The app test explicitly describes and verifies this behavior.
+- Database identity and exact ACL checks occur once during server startup, before `server.listen`. Startup failure closes the pool and exits nonzero; once listening, no ongoing DB readiness probe is exposed.
+- There is no separate `/readyz` endpoint in the reviewed app source. A 200 from `/healthz` proves that the HTTP process responds, not that the database is currently reachable or that authenticated operations are succeeding.
+
+### Deployment artifact and command assumptions
+
+- TypeScript emits CommonJS into `dist` (`tsconfig.json`); `npm run build` produces the entrypoint expected by `npm run start:actor-gateway`.
+- The service must build from the repository root with the committed lockfile/dependencies available. Its start command must run `npm run start:actor-gateway` after build; running the generic `npm start` would start `dist/server.js`, which is the main API and is not the Actor Gateway.
+- The Actor Gateway listens on `PORT`, defaulting to 10000, and validates that it is an integer TCP port in range. Render must provide the assigned `PORT` or allow the default.
+- No Render Blueprint or Dockerfile is present in the repository, so service root directory, build command, start command, health-check path, region, plan, internal database URL, and environment values cannot be inferred from this repo. They remain user-visible Render facts only; assistant has not inspected or changed Render.
+- The worker under `workers/actor-gateway` is a separate artifact with its own typecheck/contract tests; it is not the HTTP service entrypoint. Do not confuse its worker deployment with the Node web service.
+
+### Render inspection checklist — read-only, no changes
+
+When the user next opens the existing Actor Gateway web service, verify only:
+
+1. Service type is Web Service, not Background Worker.
+2. Repository and branch point to the intended GHM Actor Gateway source/release ref.
+3. Root directory is repository root (unless the service's saved configuration explicitly establishes another correct root).
+4. Build command is `npm ci && npm run build` (or the already-saved equivalent that installs locked dependencies and runs the TypeScript build).
+5. Start command is `npm run start:actor-gateway`, not generic `npm start`.
+6. Health-check path is `/healthz`; interpret it only as process liveness, not database readiness.
+7. Region matches the `ghm-db` Frankfurt region so the private/internal DB URL can be used.
+8. Saved `GHM_ACTOR_GATEWAY_DATABASE_URL` targets `ghm_db` using username `ghm_actor_gateway` and the private internal hostname; inspect the host/database/user only, never reveal or copy the password.
+9. `DATABASE_SSL_MODE` is exactly `internal` for that same-region internal connection.
+10. `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` is present, but do not reveal, copy, screenshot, or paste its value. Verify presence only.
+11. Required ES256 verification-key environment is complete using the existing auth foundation convention; do not reveal private signing keys. Only verification/public key material belongs in the gateway.
+12. Payment-preparation and commercial-launch flags remain false/unset while PayFast is paused.
+13. Auto-deploy remains off as previously directed. Do not deploy, save, submit, edit, or rotate anything during this inspection.
+
+### Disposition
+
+- No code defect was proven in this bounded review; no health endpoint change is being proposed.
+- The current health check is suitable only as process liveness. Operational readiness still requires startup preflight success plus authenticated DB-backed route smoke tests; an HTTP 200 health response alone is insufficient.
+- The Render checklist is a verification aid, not evidence that the live service currently matches it. The existing service's saved configuration remains unverified by the assistant.
+- The known role-membership ADMIN OPTION exception and TLS/connection conditions remain open from the prior section.
+
+### Next bounded task
+
+Inspect the complete required environment contract, particularly the ES256 verification-key loader and any rate-limit worker binding/secret requirements, and produce a non-secret checklist that distinguishes required values, optional feature flags and forbidden secrets. Do not inspect or change Render; do not request secret values.
+
+### Safety
+
+- No application code, SQL, migration, manifest, service setting, deployment, role, ACL, credential or payment state was changed.
+- No production DB connection/query and no Render inspection/action occurred.
+- `config/production-migration-batches.json` remains `[]`; PR #298 remains open, draft, unmerged and non-mergeable.
