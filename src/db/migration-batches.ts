@@ -8,7 +8,7 @@ const assertUniqueOrdered = (entries: MigrationBatchEntry[], label: string): voi
   const seen = new Set<string>();
   let previous = '';
   for (const entry of entries) {
-    if (!entry || typeof entry.version !== 'string' || !/^\\d{14}$/.test(entry.version) ||
+    if (!entry || typeof entry.version !== 'string' || !/^\d{14}$/.test(entry.version) ||
         typeof entry.name !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(entry.name)) {
       throw new Error(`${label} contains an invalid migration identity`);
     }
