@@ -1245,3 +1245,30 @@ The expected `git rev-parse HEAD` must equal `db9cbe426442d55e4009a237c8443b665a
 No local shell/repository checkout is exposed to this session, so I could not truthfully execute the commands or claim a pass. No GitHub workflow was dispatched, no dummy commit/CI change was made, and no PostgreSQL qualification was repeated. The checksum fix remains unqualified pending exact-head local build and focused unit-test output.
 
 After those results are available, continue the existing documented dependency review; keep the execution manifest empty and PR #298 draft. Render remains strictly read-only. No production SQL/state, Render setting/service/deployment, secret, credential, role, ACL, application/payment state or paid resource changed.
+
+
+---
+
+## Exact-head local validation and fixture correction — 18 November 2026, 22:13 SAST
+
+### Validation environment and first result
+
+- Created isolated local worktree `C:\\GHM-pr298-validation` at the then-current PR #298 head `01e80dc88fe5267f19347306d12fa8040157cf4c`; existing worktrees and their untracked files were left untouched.
+- Node.js `v24.18.0`, npm `11.16.0`. `npm ci` installed 167 packages and audited 169 packages with zero reported vulnerabilities. npm warned that the `argon2@0.41.1` install script was not approved by the current `allowScripts` policy; no script approval or dependency modification was performed.
+- First `npm run build` failed at `src/db/migration-batches.test.ts:35` with TS2741: the malformed repository migration fixture supplied `version` and `name` but omitted the now-required `checksum` property from `MigrationBatchEntry`.
+- This was a test-fixture typing defect. It did not indicate a failure in the checksum selector or any database/production operation.
+
+### Narrow correction committed to this PR branch
+
+- Updated only the malformed-identity test fixture to include a valid 64-character lowercase SHA-256-shaped checksum while retaining the deliberately invalid version `bad`.
+- The test continues to exercise the intended invalid migration identity path; checksum enforcement in `src/db/migration-batches.ts` is unchanged.
+- Correction committed through the GitHub repository contents API to this existing branch as `test(db): fix malformed migration fixture checksum`.
+- Exact resulting commit: `7d8ac8f4bdeb8df2d6f11ef14a3945c954b0e255`.
+- The focused test and TypeScript build have **not yet been rerun** against the corrected head. Do not describe this as qualified until the local worktree is advanced to the new exact PR head and both checks pass.
+
+### Safety
+
+- `config/production-migration-batches.json` remains `[]`; no production batch is authorized.
+- No migration SQL, pending inventory, runner behavior, CI workflow, PR base/draft state, production database, Render service/configuration, credentials, role, ACL, deployment, payment state, or paid resource was changed.
+- Render remains strictly read-only. No production connection or migration was run.
+- Next: refresh PR #298 head, update the isolated worktree without disturbing other checkouts, rerun `npm run build` and `node --require ./scripts/test-env.cjs --test dist/db/migration-batches.test.js`, then record their exact results here.
