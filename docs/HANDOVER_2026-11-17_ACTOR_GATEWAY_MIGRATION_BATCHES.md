@@ -1158,3 +1158,44 @@ Continued from the checksum gap above. Re-read the handover and the exact branch
 ### Exact-head status refresh after handover commit — 19:52 SAST
 
 The handover commit itself advanced PR #298's head to `14db42f24027d6e5fd15e82894191556480838cd`. A fresh PR lookup confirms it remains draft/open/non-mergeable. The Cloudflare Pages bot now reports a build **in progress** for this exact head. GitHub workflow-run lookup and combined commit status still return no runs/statuses. No pass/fail result is available yet; the selector change remains unqualified.
+
+
+
+---
+
+## Validation checkpoint — checksum-pinning implementation — 18 November 2026, 21:52 SAST
+
+Re-read this handover and inspected PR #298, its exact changed-file inventory, the committed selector, tests, package test command, CI workflow, hosting handover and production deployment blockers before continuing.
+
+### Exact pre-update branch state
+
+- PR #298: open, draft, non-mergeable.
+- Branch: `feat/actor-gateway-production-migration-batches`.
+- Exact inspected head: `17b42bf4ebee6631f8f965b2b70bc50d07ec5b78`.
+- Current `main`: `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Compare reports 148 commits ahead and 4 behind, with merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`. The four behind-main commits remain documentation-only; their handover content was copied into the existing hosting/credentials handover. This is not a rebase or merge, and the branch is still divergent.
+
+### Checksum implementation inspected
+
+- `src/db/migration-batches.ts` now requires a lowercase 64-character SHA-256 checksum on every migration entry.
+- The selector checks the reviewed version/name sequence against the exact contiguous pending prefix, then compares each reviewed checksum with the repository migration checksum before returning the selected batch.
+- `src/db/migration-batches.test.ts` includes changed-SQL-under-unchanged-version/name rejection and malformed-checksum rejection tests.
+- The package `test` script compiles TypeScript and includes `dist/db/migration-batches.test.js`.
+- Source inspection found no further checksum-selector correction required. This is not a compilation or test result.
+
+### Exact-head validation evidence
+
+- Cloudflare Pages bot comment reports **Deploy successful** for exact pre-update head `17b42bf`, with preview deployment `91397c17`. This is a Pages preview result only.
+- GitHub Actions workflow-run lookup for the full head SHA returned an empty list.
+- Combined commit status lookup returned an empty list.
+- No independently verified TypeScript build, migration-batch unit-test result, or PostgreSQL qualification result is available for this exact head.
+- Therefore the checksum-pinning implementation remains **unqualified**. Do not describe the Cloudflare preview as a GHM test pass.
+
+### Current safety and next action
+
+- `config/production-migration-batches.json` remains exactly `[]`.
+- Do not populate a batch, run `npm run migrate` against production, merge PR #298, rebase the divergent branch, or proceed to dependency-based batch approval on the strength of the Pages preview.
+- Obtain exact-head GHM TypeScript/test evidence before continuing. If no workflow was triggered, determine a safe, cost-neutral validation route rather than assuming success or starting an unnecessary long disposable-PostgreSQL run.
+- After validation, resume the already documented dependency review of the 36 signed gateway functions and three optional campaign/directory-review operations; do not repeat the completed source inventory.
+- Render remains strictly read-only. No Render configuration, service, deployment, database, credential, role, ACL, migration, production data, payment state or paid resource was changed in this checkpoint.
+
