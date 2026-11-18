@@ -1765,3 +1765,26 @@ Validation status:
 - Cloudflare resources and credentials are not accessible through the connected app integrations in this session. No Hyperdrive config, CA upload, Worker deployment, route or secret has been created or changed.
 
 **Immediate next gate:** establish the exact Render Frankfurt CA certificate and external hostname, then create Hyperdrive with verify-full using the restricted gateway credential only after the production role/backup/migration gates are resolved. Until then the production Actor Gateway remains disconnected.
+
+
+### Follow-up precision checks — role membership and Hyperdrive caching
+
+A separate read-only membership query has now resolved the single edge involving ghm_actor_gateway:
+- granted role: ghm_actor_gateway
+- member: ghm_db_user
+- grantor: postgres
+- ADMIN OPTION=true, INHERIT=false, SET=false
+
+This matches the bounded membership shape expected by the current source guard. It does **not** resolve the wider ghm_db_user bootstrap role-administration concern or authorize migration execution.
+
+Cloudflare's current Hyperdrive query-caching documentation confirms:
+- caching is enabled by default;
+- eligible immutable SELECT results can be cached;
+- Hyperdrive does not invalidate cached reads after a write;
+- auth, sessions, permissions, billing state and reads immediately after writes are specifically identified as cases that should use a cache-disabled configuration.
+
+Therefore this gateway must use a **cache-disabled Hyperdrive configuration**. Do not create a default-cached configuration and assume SECURITY DEFINER functions or SQL text will automatically bypass the cache. The Worker handles actor identity, membership, permission and write-after-read operations; cache-disabled is the safe single-binding choice for this gateway.
+
+Cloudflare Free Hyperdrive has a maximum of 20 origin connections per configuration. The production ghm-db instance is a small 256 MB PostgreSQL plan with a 100-connection server limit. Set a conservative Hyperdrive origin connection limit (initially 5) when creating the configuration and confirm active connections during the smoke test; do not consume the database connection budget with the maximum default.
+
+This follow-up was read-only. No role, grant, migration, credential, Cloudflare resource, Render setting, deployment, or cost was changed.
