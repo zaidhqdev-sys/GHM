@@ -610,3 +610,34 @@ No production database, Render service, deployment, credentials, payment activat
 - The ledger ACL grants SELECT to `ghm_auditor`, not directly to `ghm_migrator`. The approved audit obtains ledger access only after the intended `SET ROLE ghm_schema_owner`, but the available Render query connection is `ghm_app_user` / `ghm_db_user` and cannot SET to the migrator or owner. Therefore the exact production ledger audit remains blocked.
 - PR #298's 50-migration candidate and plan-only qualification do not establish production state. Keep its execution manifest empty and PR draft. Do not run production migrations, alter roles/grants, or use the app/admin connector as a substitute for the dedicated migrator login.
 - No production mutation, deployment, paid service or CI run occurred during this inspection.
+
+
+## 18 November 2026 — source trace of live migrator ACLs
+
+Before tracing, the current three handovers, PR #298 metadata, migration runner contract, historical PostgreSQL role-separation runbook/SQL plan, and relevant migration source files were re-read.
+
+**Source attribution — table grants**
+- `database/migrations/20260914100000_create_opportunity_core.sql` explicitly grants `SELECT, INSERT, UPDATE, DELETE` on `ghm.opportunity`, `ghm.opportunity_type`, `ghm.country`, and `ghm.currency` to `ghm_migrator`.
+- `database/migrations/20260916010000_create_opportunity_participant.sql` explicitly grants the same four table privileges on `ghm.opportunity_participant` to `ghm_migrator`.
+- `database/migrations/20260915150000_create_commercial_schema.sql` explicitly grants the same four table privileges on 11 Commercial tables: `commercial_plan`, `commercial_plan_version`, `commercial_plan_entitlement`, `commercial_plan_price`, `commercial_trial`, `commercial_subscription`, `commercial_payment_attempt`, `commercial_payment_transaction`, `commercial_provider_event`, `commercial_event`, and `commercial_founding_allocation`.
+- These three source migrations account for all 16 table names observed in the live explicit ACL expansion. Live ACLs identify `ghm_schema_owner` as grantor, consistent with execution under the migration owner; the original migration statements identify the source intent. The grants are explicit legacy migration-authority grants, not default ACL entries.
+
+**Source attribution — sequence grants**
+- The Opportunity Core migration grants `USAGE, SELECT ON ALL SEQUENCES IN SCHEMA ghm TO ghm_migrator`.
+- The Commercial schema migration repeats the same broad all-sequences grant.
+- The Opportunity Participant migration adds explicit `USAGE, SELECT` on `ghm.opportunity_participant_id_seq`.
+- Current live ACL expansion now counted **24 distinct sequences** (not 23): account_identity, business, business_membership, commercial_event, commercial_founding_allocation, commercial_payment_attempt, commercial_payment_transaction, commercial_plan_entitlement, commercial_plan, commercial_plan_price, commercial_plan_version, commercial_provider_event, commercial_subscription, commercial_trial, country, currency, enquiry, opportunity_capability_requirement, opportunity, opportunity_participant, opportunity_type, project, project_quote, and review identity sequences. Each has explicit `SELECT` and `USAGE` entries granted by `ghm_schema_owner`.
+- The two historical `ON ALL SEQUENCES` statements explain the broad grant pattern, but exact per-sequence provenance cannot be proven from the current ACL alone: each all-sequences statement affects only sequences existing at its execution time, and the later participant migration adds one named sequence. Do not claim the two statements alone prove the origin of every one of the 24 current entries without exact production ledger chronology or a historical ACL snapshot.
+
+**Why the current runner rejects this state**
+- Current `src/db/migrator-principal.ts` explicitly requires `direct_relation_privileges=false`.
+- Current `src/db/migrate.ts` computes that flag using effective `has_table_privilege` / `has_sequence_privilege` checks across every relation in schema `ghm`; the observed explicit grants cause the predicate to fail.
+- The same source contract requires zero members of `ghm_migrator` (live count 1) and exactly one member of `ghm_schema_owner` (live count 2). The extra memberships are documented in the historical role-separation runbook as bootstrap-`postgres` grants with ADMIN OPTION. That handover says `ghm_db_user` cannot revoke them and an independent provider/bootstrap-authority path is required.
+- The current `20261112170000_revoke_redundant_migrator_business_mapping_lookup.sql` removes one redundant function EXECUTE grant only; it does not remove relation/sequence ACLs or the bootstrap memberships.
+- The current forensic connection still cannot authenticate as `ghm_migrator`; therefore no exact live ledger/checksum audit has been completed.
+
+**Disposition and correction**
+- Correct the prior 23-sequence statement: current live explicit ACL expansion reports **24 sequences**. The previous count omitted one sequence and must not be repeated.
+- The source of all 16 table grants is now attributed to three named migrations. The broad sequence-grant policy is attributed to the Opportunity Core and Commercial schema migrations, with the Participant migration's named sequence grant also identified; exact historical per-sequence application chronology remains unproven.
+- Do not add speculative revoke migrations or alter production grants. Any cleanup must be designed against the exact approved migration history, dependency checks, recovery plan, and provider/bootstrap authority path. In particular, do not remove migration-owner privileges merely to make the current preflight pass.
+- No production role, membership, grant, ACL, data, migration, credential, Render setting, deployment, payment state, or paid resource was changed. No CI was run.
