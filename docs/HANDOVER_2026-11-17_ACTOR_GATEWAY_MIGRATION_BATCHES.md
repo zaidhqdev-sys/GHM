@@ -1374,3 +1374,63 @@ Continue with the defining SQL and authorization dependencies for the ten signat
 - No production database connection/query/write, migration, role/ACL/credential change, Render action, deployment, payment action, or paid resource was used.
 - `config/production-migration-batches.json` remains exactly `[]`; PR #298 remains draft/open/non-mergeable.
 - Render remains strictly read-only.
+
+
+---
+
+## Route-readiness dependency review — assertion, capability and Business helper chain — 18 November 2026, 23:52 SAST
+
+Continued from the preceding handover section after re-reading the current handover, confirming PR #298 and current-main refs. This remains a source-only review of current `main`, not a production catalog audit.
+
+### Exact refs
+
+- PR #298 pre-update head: `0a12e368cd39adf68068f9404674068054dcc827`; open, draft, unmerged, non-mergeable.
+- Current `main`: `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Migration files and relevant reader/wrapper source were read from current `main`, not the stale feature branch.
+
+### Assertion verifier prerequisites
+
+- `20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql` creates `pgcrypto` in schema `public`, then creates the 32-byte assertion-secret table and one-use nonce table in `ghm`. Both tables are owned by `ghm_schema_owner`; all direct table privileges are revoked from PUBLIC, `ghm_runtime`, `ghm_actor_gateway`, and `ghm_migrator`.
+- The later `20261111060000_bind_gateway_assertions_to_request_context.sql` replaces the initial v1 verifier with the v2 context-bound verifier. Its HMAC payload binds actor ID, operation, issued timestamp, nonce and the UTF-8 request context (hex encoded). It calls `public.hmac(..., 'sha256')`, compares all 32 MAC bytes, enforces the 60-second window, checks active account status, prunes expired nonces and rejects nonce reuse.
+- The final verifier and nine signed wrappers are explicitly assigned to `ghm_schema_owner`; PUBLIC, `ghm_runtime` and `ghm_migrator` are revoked and EXECUTE is granted to `ghm_actor_gateway`.
+- The gateway login has no direct access to the secret/nonce tables. The SECURITY DEFINER verifier accesses them as `ghm_schema_owner`. The extension function is explicitly schema-qualified, so the later pinned search path does not need to include `public`.
+- Source proves the migration attempts to create pgcrypto; it does not prove pgcrypto is installed/enabled on production or that its exact extension version and `public.hmac` catalog ACL are present. That requires a future read-only production catalog check.
+
+### Underlying helper chain
+
+| Signed operation family | Underlying helper(s) | Source ownership / authorization evidence |
+|---|---|---|
+| Capability list | `ghm.capability`, `ghm.account_identity` | Signed wrapper is SECURITY DEFINER; it enforces active system-admin status before selecting the catalogue. |
+| Capability create/update/transition | `ghm.create_capability_draft`, `ghm.update_capability_draft`, `ghm.transition_capability_lifecycle`, `ghm.capability`, `ghm.account_identity` | Helpers are SECURITY DEFINER, explicitly owned by `ghm_schema_owner`, and have pinned search_path declarations. Signed wrappers independently enforce active admin status and call those helpers. |
+| Supplier classification | `ghm.update_business_supplier_classification`, `ghm.business_membership`, `ghm.business` | Helper is SECURITY DEFINER and explicitly owned by `ghm_schema_owner`; checks active owner/administrator membership before updating Business. The legacy runtime EXECUTE grant is revoked by the gateway cutover migration; signed wrapper uses the assertion and invokes helper. |
+| Business profile | `ghm.update_business_profile`, `ghm.business_membership`, `ghm.business` | Helper is SECURITY DEFINER and explicitly owned by `ghm_schema_owner`; validates allowed patch keys and active management membership. Legacy runtime EXECUTE is revoked by the profile gateway cutover migration; signed wrapper blocks supplier fields and invokes helper. |
+| Actor identity | `ghm.account_identity` | Signed wrapper invokes the shared assertion verifier and returns only the verified active actor's own identity. |
+| Registration identity read/write | `ghm.read_business_registration_identity`, `ghm.update_business_registration_identity`, `ghm.business_registration_identity`, `ghm.business`, `ghm.business_membership`, `ghm.account_identity` | Read/write helpers are SECURITY DEFINER and owned by `ghm_schema_owner`; both enforce active Business membership with owner/administrator role. The registration table is explicitly owned by `ghm_schema_owner` and has RLS enabled. The later signed wrappers bind request context. The legacy write helper's runtime/gateway direct EXECUTE is revoked by the gated 17 November migration. |
+
+### Legacy grants and ordered cutover constraints
+
+- Capability governance helpers retain a legacy runtime grant until `20261117020000_revoke_runtime_capability_governance.sql`; that migration first asserts that the signed verifier and all four signed capability functions exist, are SECURITY DEFINER, are owned by `ghm_schema_owner`, have the expected search_path, are executable by the gateway and not executable by runtime. It then revokes direct runtime/gateway execution on the legacy helper functions and checks for unexpected grantees.
+- Registration identity write retains a legacy runtime grant until `20261117010000_revoke_runtime_business_registration_identity_write.sql`; it checks signed wrapper existence, owner/security-definer status and gateway/runtime EXECUTE state before revoking the legacy helper grant and checking for unexpected grantees.
+- The supplier and Business-profile cutover migrations revoke the legacy runtime helper EXECUTE grants. These are distinct from the later assertion-bound wrapper migrations.
+- The global search-path migration `20261112090000_pin_security_definer_search_path.sql` first refuses any SECURITY DEFINER function not owned by `ghm_schema_owner`, then normalizes every GHM SECURITY DEFINER function to `pg_catalog, ghm, pg_temp`. This is the final expected path, not the earlier per-migration `pg_catalog, ghm` declaration.
+- The 17 November capability and registration revocation migrations are explicitly documented as post-deployment cutover gates. They must not be run merely because the SQL exists. Their own comments require successful Actor Gateway deployment/startup checks and authenticated end-to-end route tests first.
+
+### What remains unproven / production gates
+
+1. The source migration sequence creates the required objects and defines the intended owner/grant posture, but repository source cannot prove that the production ledger applied them in order.
+2. The source files for the original `account_identity`, `business`, `business_membership` and `capability` tables do not themselves explicitly show all final table owners. Their actual owner, RLS/force-RLS state, relation privileges and any sequence dependencies must be checked in the production catalogs using read-only queries before claiming `ghm_schema_owner` has every required underlying relation permission.
+3. Confirm production pgcrypto extension/schema/version and `public.hmac(bytea,bytea,text)` existence/ACL, plus final verifier/wrapper/helper owners, SECURITY DEFINER flags, pinned paths and EXECUTE grants.
+4. Confirm that the 17 November cutover migrations are still unapplied or applied as expected from a fresh authoritative production ledger; do not infer their live state from this source review.
+5. Confirm the dedicated Actor Gateway runtime is actually deployed/configured and pass authenticated end-to-end tests for the capability and registration routes before any legacy runtime EXECUTE revocation batch is considered.
+
+### Result and next bounded task
+
+The assertion secret/nonce/HMAC dependency and the helper-function authorization chain are now mapped from source for the first required family. The family is **not production-qualified**: actual production catalog state, table ownership/privileges, extension presence, migration ledger and deployed-route smoke evidence remain open.
+
+Next: continue the same family by checking the exact signed wrapper signatures/argument order against reader SQL calls and migration declarations, then inspect the route-level authorization and response/error behavior for the ten operations. Do not re-run the 16 selector tests, re-enumerate the 36 signatures, or treat this source review as a live production audit.
+
+### Safety
+
+- No SQL, migration, application code, branch base, PR status, production database, Render setting/service/deployment, secret, role, ACL, credential, payment state or paid resource was changed.
+- No production connection/query was made. Render remains strictly read-only.
+- `config/production-migration-batches.json` remains `[]`; PR #298 remains draft/open/non-mergeable.
