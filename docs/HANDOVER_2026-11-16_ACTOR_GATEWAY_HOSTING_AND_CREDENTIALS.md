@@ -1643,3 +1643,100 @@ PR #296 remains a separate draft hardening candidate on `hardening/business-iden
 ### Change record
 
 This was source and handover review only. No production ledger query, migration execution, DDL, role/grant/ACL, RLS, credential, secret, Render configuration, deployment, payment, consent, or legal-document state was changed.
+
+
+## 18 November 2026 — direct Cloudflare Hyperdrive to Render Postgres reassessment
+
+**Purpose:** Reopen the hosting decision using the already-existing Cloudflare Actor Gateway Worker. This review is specifically intended to remove the additional Render compute dependency without weakening the database identity boundary.
+
+### Repository / PR / branch review performed before the decision
+
+- main was b73839b27ac90446650f921d3e8ce1b5de041f04 at review.
+- Existing branch feat/actor-gateway-production-migration-batches is 136 commits ahead of main, with merge base equal to the reviewed main head. Its PR #298 remains OPEN / DRAFT, head f2e280005ce7f9bfc947a19ecbb6144957d4a340. It contains the 50-item production pending inventory, explicit batch runner and empty execution manifest. It is not merged and must not be used to run production migrations.
+- PR #296 remains OPEN / DRAFT (5fa018304970c0e84c56b22111a7255b80fd7c60); it is a later, separate Business Identity ACL migration and is not included in the reviewed main inventory.
+- PR #299 remains OPEN / DRAFT (94a9d58894d11f0f886203af37cbd096619d447b); keep it draft and do not merge as part of this work.
+- PR #275 is MERGED (ad4fea43f2eb7bf959042b9db77a9f86e6bb531b), but its runtime-principal changes are not deployed to Render.
+- PR #269 is CLOSED, unmerged and superseded by the later consolidated gateway work; do not revive its branch as an implementation path.
+- Reviewed ADR-001, the Cloudflare Worker source/configuration and contract tests, the Render service/database inventory, the production role/service map, the migration-batch handover and current hosting handover before changing the topology assessment.
+- Created a clean implementation branch from main: feat/actor-gateway-hyperdrive-direct-render-20261118. At this handover update it contains no application code changes.
+
+### New viable no-additional-Render-compute topology
+
+Cloudflare documents Hyperdrive as able to connect to an existing PostgreSQL database using its external hostname and connection string. Render documents separate internal and external PostgreSQL URLs and explicitly supports external connections from systems outside Render. Therefore the dedicated Render cloudflared Background Worker is not a mandatory dependency if Hyperdrive can connect to the Render external PostgreSQL endpoint with strict server-certificate validation.
+
+Proposed topology:
+
+    Connect / QuoteFlow
+      -> GHM Resource API
+      -> HTTPS Actor Gateway endpoint (Cloudflare Worker)
+      -> Cloudflare Hyperdrive
+      -> Render ghm-db external PostgreSQL endpoint (TLS verify-full)
+      -> ghm_db, using only ghm_actor_gateway
+
+Cost/limits:
+- Cloudflare Hyperdrive is included in Workers Free and Paid plans. The published Free allowance is 100,000 database statements per day; Hyperdrive query caching/pooling and data transfer do not add separate charges under the documented plan. This is a published service limit, not an account-specific quota check.
+- No new Render service, Render plan upgrade, database, schedule, tunnel host, VPC service or Hyperdrive tunnel connector is required by this direct external-endpoint topology.
+- External Render database access is currently configured with 0.0.0.0/0 in the account inventory. That existing setting makes the endpoint publicly reachable subject to PostgreSQL authentication; it is not a reason to broaden access further. Do not change the allowlist as part of this work.
+- Hyperdrive's default require mode encrypts traffic and validates server certificates using WebPKI. The stronger verify-full mode is available, but requires uploading the correct region-specific Render PostgreSQL CA certificate and creating the Hyperdrive configuration with that CA and --sslmode verify-full. This is a hard prerequisite; do not silently fall back to require, verify-ca, or disabled TLS for production.
+- Hyperdrive configuration creation attempts a database connection to validate the supplied credentials. The credential must therefore be the dedicated ghm_actor_gateway login, not ghm_app_user, ghm_db_user, ghm_runtime or ghm_migrator.
+- The actual Render external hostname and correct Frankfurt CA certificate still need to be confirmed from Render's supported connection/certificate source. No connection string or secret was copied into Git or this handover.
+
+### Current production database state rechecked read-only
+
+A fresh query to Render Postgres dpg-dag0sdtbedkc7389vi2g-a returned:
+- current_database=ghm_db, PostgreSQL 18.6.
+- Connector identity remained session_user=ghm_app_user, current_user=ghm_db_user; this is not the gateway identity.
+- ghm_actor_gateway exists and has database CONNECT.
+- ghm_actor_gateway has no ghm schema USAGE and no schema CREATE.
+- No ghm.gateway_* functions exist.
+- No ghm.assert_actor_gateway* functions exist.
+- One role-membership edge involving ghm_actor_gateway exists; its exact option/grantor posture must be rechecked before migration execution.
+
+**Conclusion:** the network route can be made no-new-Render-cost, but the database API and privilege contract are not installed. Do not create Hyperdrive with any other database principal or attempt to make the gateway work through the legacy default credential.
+
+### Worker implementation gaps found before deployment
+
+The existing workers/actor-gateway/index.ts already:
+- uses Cloudflare's Node HTTP adapter and Hyperdrive binding;
+- uses pg with nodejs_compat;
+- verifies the ES256 public-key material and short-lived capability assertion secret;
+- checks session_user=current_user=ghm_actor_gateway and the complete database function allowlist before opening its listener;
+- applies per-account edge rate limiting and a 16 KiB JSON request-body limit;
+- fails closed with HTTP 503 on startup/DB identity/ACL failure.
+
+But the Worker is not deployment-ready:
+- workers/actor-gateway/wrangler.jsonc still has the all-zero placeholder Hyperdrive ID.
+- workers_dev=false, no custom route is configured, and no production HTTPS endpoint is published.
+- Worker reader wiring currently omits the commercial document approval-authority, commercial document approval and consent/payment-preparation readers present in the Node gateway server. Do not claim full API parity or cut Resource API traffic over until the required route set is explicitly reconciled. PayFast/payment activation remains frozen; payment-preparation must remain launch-disabled.
+- The Worker is currently wired to an older subset of gateway routes; the database privilege allowlist currently contains 38 signatures (with a pre-campaign compatibility allowance). The exact expected function list must be reconciled against the actual production migration batch and the routes the Resource API will call before any deployment.
+- The public Worker route must be configured only after the Worker has a verified production Hyperdrive binding and all startup checks pass. No workers.dev URL or custom hostname is currently deployed.
+
+### Migration and security gates — still hard blockers
+
+- The current production catalogue has no gateway function API and no gateway schema USAGE. The first installation chain is not applied.
+- PR #298's production migration inventory has 50 pending repository entries based on a dated 105-row ledger snapshot. Its execution manifest is empty and production batch selection is intentionally fail-closed. The 50-entry list is an inventory, not permission to execute.
+- The live ledger/checksum state has not been refreshed through a valid ghm_migrator administrator-authorized session. The Render SQL connector's ghm_app_user / effective ghm_db_user identity cannot read the migration ledger.
+- ghm_db_user retains the known bootstrap role-administration exposure. The supported Render administrator/role-remediation path remains unresolved.
+- A fresh verified production recovery point remains outstanding.
+- The first safe contiguous migration prefix has not been derived against the live ledger, migration dependencies and current production API route readiness. Do not run npm run migrate, add a guessed batch, manually create functions/grants, or apply migrations out of order.
+- The Actor Gateway capability assertion secret and database password must be provisioned through the approved secret path. Do not read, print, paste, commit or log either value.
+- No production deployment, route exposure, secret write, role change, grant, migration, database allowlist change or cost has been performed.
+
+### Next work sequence
+
+1. Obtain the Frankfurt Render Postgres external hostname and the correct region-specific CA certificate using supported Render connection/certificate information. Verify the certificate chain and SAN/hostname match before creating Hyperdrive.
+2. Recheck the exact ghm_actor_gateway role membership options and the authoritative production ledger/checksums through the dedicated administrator-authorized migration path.
+3. Derive the smallest safe contiguous additive migration batch from the actual first unapplied migration. Keep all runtime/auth/storage revocations and post-deployment cutovers out until their replacement routes are live and verified.
+4. Reconcile Worker route parity against the Node gateway and Resource API client call graph. Add missing typed readers/routes and tests without changing payment activation.
+5. Configure Hyperdrive with the dedicated gateway login, region-specific CA and verify-full; disable query caching for this application unless each query is proven safe to cache. Keep credentials out of Wrangler files and Git.
+6. Validate Hyperdrive's observed PostgreSQL application_name, session_user=current_user, TLS verification, exact gateway function allowlist, and a protected authenticated operation using a non-destructive request.
+7. Only after all database, recovery, role and route checks pass, deploy the Worker to a controlled HTTPS endpoint and connect GHM Resource API using the exact verified origin. Keep Resource API auto-deploy OFF and do not perform production cutover until separately ready.
+
+### Sources reviewed
+
+- Cloudflare Hyperdrive PostgreSQL connection guide: https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/
+- Cloudflare Hyperdrive TLS/SSL certificate verification: https://developers.cloudflare.com/hyperdrive/configuration/tls-ssl-certificates-for-hyperdrive/
+- Cloudflare Hyperdrive pricing: https://developers.cloudflare.com/hyperdrive/platform/pricing/
+- Render Postgres external connection and allowlist documentation: https://render.com/docs/postgresql-creating-connecting
+
+**Change record:** this handover update records repository/branch/PR review, read-only Render inventory and catalogue inspection, and an architecture reassessment. No application code, production DB role, grant, migration, password, secret, Render configuration, Cloudflare resource, deployment, route, payment state or schedule was changed. No new cost was incurred.
