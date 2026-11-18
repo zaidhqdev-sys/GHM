@@ -284,3 +284,9 @@ Even if the owner later approves the $7/month charge, this form is not deploymen
 **Disposition:** configuration values are mostly aligned with source, but do not submit, deploy, select Free, or incur cost now. Keep the form unsubmitted, keep existing production untouched, and preserve the current architecture/cost decision.
 
 No Render service, plan, environment variable, secret, deployment, database role/grant/migration, backup, payment state, CI or schedule was changed. No cost incurred.
+
+## 19 November 2026 — owner decision supersedes earlier no-cost assessment
+
+The owner has selected the existing planned Node/Render Actor Gateway service on **Free** for the initial early-access/free-directory stage. This supersedes the earlier recommendation that no Free service be used and the earlier statement that the $7/month always-on service was the only selected option. The owner will reassess paid always-on hosting before paid-live launch.
+
+Free sleep/cold-start behaviour remains a known reliability limitation: the current Resource API gateway clients use 5-second abort timeouts and no automatic retry. Define a safe early-access retry/recovery contract before routing those operations through the Free instance. This decision does not authorize a Cloudflare Worker, tunnel, Hyperdrive, new database, or other substitute architecture, and it does not clear production database/ledger/backup/ACL gates.
