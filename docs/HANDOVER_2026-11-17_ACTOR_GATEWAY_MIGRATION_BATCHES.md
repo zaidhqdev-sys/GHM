@@ -677,3 +677,16 @@ The map distinguishes:
 Fresh role/privilege checks also reconfirmed six bootstrap-`postgres` ADMIN OPTION memberships held by `ghm_db_user`, plus the separate non-admin runtime SET edge and the app-user-to-db-user legacy edge. A point-in-time `pg_stat_activity` sample showed only the current connector as `ghm_app_user`; it is not evidence that services never connect.
 
 No environment variable values or credentials were read. No role, ACL, service, secret, backup, deployment, migration, payment state or CI was changed. No additional cost.
+
+
+## 18 November 2026 — production legacy runtime authority finding
+
+Added `docs/security/PRODUCTION_LEGACY_RUNTIME_AUTHORITY_FINDINGS_2026-11-18.md` (commit `3f85fa345bcaa4acc6fb4da8146326efb62060be`). This follows the existing role/service map, migrator remediation plan, legacy role dependency and audit contracts, 12 November database authority handover, migration reconciliation/batch handovers, and PR #275/#298/#296/#299 review.
+
+Critical correction: merged PR #275's dedicated runtime identity guard is **not deployed**. Render service `GHM-Internal-Runtime` is still on `main` at live commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, with auto-deploy OFF. The 15 November attempts at `8f3ee574...` and `fe5a82d8...` failed. Source at live commit requires generic `DATABASE_URL`; startup only does `SELECT 1`; no runtime principal assertion. The exact current DB login remains unproven because Render env values were not read. Do not treat listening logs as identity proof.
+
+Fresh read-only production checks: `ghm_app_user -> ghm_db_user` is ADMIN=false / INHERIT=true / SET=true. `ghm_db_user` remains LOGIN/INHERIT with CREATEDB and CREATEROLE; it has bootstrap ADMIN OPTION memberships. Effective privilege checks show `ghm_app_user` has public-schema CREATE and SELECT/INSERT/UPDATE/DELETE on five legacy public tables. `ghm_runtime` has no CRUD on those legacy tables; `ghm_migrator` has no direct CRUD there. `ghm_db_user` owns `public`, five legacy tables, five sequences and ten indexes (plus PostgreSQL TOAST internals). No owned routines/default ACLs/large objects/public triggers were returned. Two legacy `public.users` rows remain subject to the separate QuoteFlow provenance hold; no row contents were queried.
+
+Next sequence is explicit: safely establish the dedicated runtime credential identity; resolve failed deployment blockers; perform a controlled, approved cutover and identity qualification; prove recovery/background/support dependencies absent; then separately qualify migrator and legacy object/data disposition. No revokes or role mutations are authorized.
+
+No secret values, user records or env-var values read. No production changes, CI, deployment, migration, backup, payment action or additional cost.
