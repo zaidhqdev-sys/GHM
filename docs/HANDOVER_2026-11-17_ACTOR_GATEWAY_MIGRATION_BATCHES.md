@@ -2827,3 +2827,97 @@ The inspected contract test checks signed allow-list extension, request-context 
 - The manual cutover remains outside `config/production-migration-batches.json`; manifest stays `[]`.
 - Before production execution, require exact deployed Resource API/Gateway versions, complete caller inventory, live effective role/ACL proof, verified recovery point, and rehearsed rollback.
 - No production SQL/query, migration or cutover execution, ACL/role change, Render inspection/change, deployment, credential/backup operation, or payment action occurred in this review.
+
+
+## 19 November 2026 — Business Capability, Saved Business and Registration Identity cutover reconciliation
+
+### Pre-workflow checkpoint
+
+Re-read the PR #298 migration and hosting handovers, PR metadata, changed-file inventory and branch comparison before inspecting source. At review start PR #298 head was `7061e6b9768d438dad719053e717b09d16e5245f`, open/draft/non-mergeable, 189 commits ahead and 4 behind `main`. Findings below are from current `main` source/migration definitions; they do not establish production deployment, ledger state or effective ACLs.
+
+### 1. Business Capability and evidence
+
+Inspected:
+- `src/http/business-capability-router.ts`
+- `src/http/business-capability-evidence-router.ts`
+- `src/resources/business-capability/repository.ts`
+- `src/resources/business-capability-evidence/repository.ts`
+- `database/migrations/20261111070000_add_signed_business_capability_mutations.sql`
+- `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql`
+- `src/db/actor-gateway-business-capability-mutation-migration-contract.test.ts`
+
+**Gateway-backed mutations in production:** assertion replacement; capability verification transitions; evidence submission; evidence review. The HTTP routers return 503 rather than falling back to legacy repository mutation paths when Gateway is required but unavailable. The signed wrappers bind actor identity, operation, request context and nonce, and are granted only to `ghm_actor_gateway`.
+
+**Direct Resource API reads remain:**
+- Business Capability assertion reads and detail/list reads use authorized or tenant-scoped transactions and direct SELECT from `ghm.business_capability`.
+- Capability evidence list/detail reads use authorized/tenant-scoped transactions and direct SELECT from `ghm.business_capability_evidence`.
+- The capability catalogue remains a separate read-only Resource API surface; catalogue governance mutations use the Gateway.
+
+**Existing manual cutover effects:** `20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` revokes:
+- runtime/PUBLIC INSERT privileges on `ghm.business_capability_evidence`, including the explicit evidence INSERT column grant;
+- runtime/PUBLIC sequence USAGE/SELECT on `ghm.business_capability_evidence_id_seq`;
+- runtime/PUBLIC EXECUTE on legacy `replace_business_capability_assertions`, `transition_business_capability_verification`, and `transition_business_capability_evidence`.
+
+It does not revoke SELECT from either capability or evidence tables, which is consistent with the direct tenant-authorized read paths. It does not revoke capability-table INSERT; this is distinct from evidence submission and must not be assumed covered by this cutover. Do not revoke the remaining SELECT grants or add broad table revocations without a separate read-path migration. The cutover has no paired rollback file in the current `main` cutover inventory; do not invent rollback SQL. Recovery requires a separately reviewed restoration procedure and deployed-version plan.
+
+**Disposition:** preserve current authorized direct reads and catalogue SELECT. Treat only the exact listed mutation grants as cutover scope. Verify all legacy function/table/sequence grants in live production and all non-HTTP callers before applying; no production ACL has been queried or changed here.
+
+### 2. Saved Business
+
+Inspected:
+- `src/http/saved-business-router.ts`
+- `src/resources/saved-business/repository.ts`
+- `database/migrations/20260916230000_create_saved_business.sql`
+- `database/migrations/20261111100000_add_signed_saved_business_gateway.sql`
+- `database/cutovers/20261111110000_revoke_legacy_saved_business_runtime.sql`
+- `src/db/actor-gateway-saved-business-migration-contract.test.ts`
+
+**Production route behaviour:** list, item read, create and delete all delegate to the signed Saved Business Gateway when configured. With `savedBusinessGatewayRequired` enabled, the router returns 503 rather than using the legacy repository when Gateway is missing. `src/http/app.ts` sets this requirement in production.
+
+**Legacy Resource API repository:** it reads `ghm.saved_business` directly and invokes `ghm.create_saved_business` / `ghm.delete_saved_business`; the original table migration grants runtime SELECT, while write operations use SECURITY DEFINER functions.
+
+**Signed Gateway wrappers:** list and item read filter by the signed actor's `account_id`; create derives account owner from the signed actor; delete likewise binds the saved item to that actor. Wrapper EXECUTE is restricted to `ghm_actor_gateway`.
+
+**Existing manual cutover:** `20261111110000_revoke_legacy_saved_business_runtime.sql` revokes all runtime/PUBLIC table SELECT/INSERT/UPDATE/DELETE, the explicit SELECT column grant, sequence privileges, and legacy create/delete function EXECUTE. This is a full direct-table and legacy-function cutover, unlike the capability-family cutover above. No paired rollback file was found in the current cutover inventory. Do not assume rollback is automatic or recreate the cutover. Any restoration needs a separately reviewed and rehearsed procedure.
+
+**Disposition:** after Gateway and Resource API deployment/qualification, this cutover removes the direct repository's database access and leaves the signed Gateway as the only route path. Confirm there are no non-HTTP repository consumers, verify actual production ACLs and satisfy the documented fresh verified backup/role gates before execution. No production state was checked or changed in this review.
+
+### 3. Business Registration Identity
+
+Inspected:
+- `src/http/business-registration-identity-router.ts`
+- `src/resources/business-registration-identity/repository.ts`
+- `database/migrations/20261110230000_add_gateway_business_registration_identity_read.sql`
+- `database/migrations/20261110233000_add_gateway_business_registration_identity_write.sql`
+- `database/migrations/20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor.sql`
+- `database/migrations/20261117010000_revoke_runtime_business_registration_identity_write.sql`
+- `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql`
+- `src/db/business-registration-identity-migration-contract.test.ts`
+
+**Production route behaviour:** authenticated registration identity GET and PUT use the signed Gateway client. When production requires the Gateway but the client is missing, both routes return 503 rather than invoking the legacy repository. The legacy repository methods call `ghm.read_business_registration_identity` and `ghm.update_business_registration_identity` inside tenant transactions.
+
+**Signed wrappers:** the later signed-assertion migration replaces first-generation actor-ID-only wrappers with one-use HMAC actor assertions for `business.registration.read` and `business.registration.update`. The wrappers are SECURITY DEFINER, owned by `ghm_schema_owner`, and executable by `ghm_actor_gateway` only.
+
+**Important chronology correction:** `20261117010000_revoke_runtime_business_registration_identity_write.sql` is an automatic migration file, not a manual cutover. It checks the signed wrapper exists, is SECURITY DEFINER/owned by `ghm_schema_owner`, is executable by `ghm_actor_gateway`, and is not executable by `ghm_runtime`; then revokes the legacy update function from PUBLIC/runtime/gateway and asserts no unexpected direct EXECUTE grantee remains. Its header nevertheless contains explicit operational deployment, startup, end-to-end and stable-URL gates. Do not infer it has run merely because it exists in source or because the migration runner may have a candidate inventory.
+
+The separate manual cutover `20261111020000_revoke_legacy_registration_identity_runtime.sql` revokes both legacy read and write function EXECUTE. The write revocation overlaps the later automatic migration. If both are applied, the repeated REVOKE is idempotent, but the automatic migration includes stronger signed-wrapper precondition and unexpected-grantee checks. Before finalizing production batch order, reconcile the exact pending migration prefix and decide whether the manual file remains the read-only residual cutover after the automatic write revocation; do not apply both blindly or duplicate SQL.
+
+**Disposition:** authenticated routes are Gateway-backed; preserve private registration data confidentiality and do not grant direct table access. The legacy read-function EXECUTE remains in scope for the manual cutover unless another explicit migration revokes it. The legacy write-function grant is addressed by the later guarded migration and also appears in the manual cutover; flag this overlap for exact ledger/ACL reconciliation. No paired rollback file was found in the current cutover inventory. No production ledger or ACL query was repeated.
+
+### Consolidated disposition matrix
+
+| Capability | Production Gateway route | Direct Resource API reads retained | Existing cutover/migration |
+|---|---|---|---|
+| Business Capability | Mutations and evidence submission/review | Capability/evidence SELECT and catalogue reads | Manual mutation cutover `20261111030000` |
+| Saved Business | List, item read, create, delete | Legacy repository methods only; production route requires Gateway | Manual full table/function cutover `20261111110000` |
+| Registration Identity | Private read and write | Legacy repository fallback only; production route requires Gateway | Manual read/write cutover `20261111020000`; later guarded automatic write-revocation migration `20261117010000` |
+
+### No-action record and next work
+
+- All exact manual cutover files above already exist; do not create duplicates.
+- No paired rollback file for these three cutovers was found in the current `main` cutover inventory. Do not invent a rollback; document this as a deployment/recovery prerequisite.
+- Business Capability direct SELECT is an intentional tenant-authorized Resource API dependency. The existing manual cutover does not revoke it.
+- Saved Business is a complete route-to-Gateway cutover in production wiring; its existing manual cutover removes table and legacy function access.
+- Registration Identity has an overlap between manual read/write revocation and a later guarded automatic write-revocation migration. Resolve exact pending prefix and live ACL before production sequencing.
+- The three manual cutovers are not to be added to `config/production-migration-batches.json`; manifest remains `[]`.
+- No production SQL/query, migration/cutover execution, ACL/role change, Render inspection/change, deployment, credential/backup operation, or payment action occurred.
