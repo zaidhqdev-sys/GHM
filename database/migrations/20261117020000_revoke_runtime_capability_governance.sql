@@ -50,8 +50,13 @@ BEGIN
           WHERE regexp_replace(setting, '[[:space:]]+', '', 'g') = 'search_path=pg_catalog,ghm'
         )
     ) THEN
-      RAISE EXCEPTION 'A signed capability gateway function has unexpected owner, SECURITY DEFINER setting, or search_path: %',
-        v_function::regprocedure;
+      RAISE EXCEPTION
+        'Signed capability gateway metadata mismatch for %: actual_owner=%, expected_owner=%, security_definer=%, proconfig=%',
+        v_function::regprocedure,
+        (SELECT pg_get_userbyid(p.proowner) FROM pg_proc p WHERE p.oid=v_function),
+        pg_get_userbyid(v_schema_owner),
+        (SELECT p.prosecdef FROM pg_proc p WHERE p.oid=v_function),
+        (SELECT p.proconfig FROM pg_proc p WHERE p.oid=v_function);
     END IF;
     IF NOT has_function_privilege(v_gateway_role,v_function,'EXECUTE') THEN
       RAISE EXCEPTION 'Actor Gateway lacks EXECUTE on signed capability function: %',v_function::regprocedure;
