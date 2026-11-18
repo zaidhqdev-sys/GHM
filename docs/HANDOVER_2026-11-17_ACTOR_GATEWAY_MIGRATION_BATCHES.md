@@ -1272,3 +1272,32 @@ After those results are available, continue the existing documented dependency r
 - No migration SQL, pending inventory, runner behavior, CI workflow, PR base/draft state, production database, Render service/configuration, credentials, role, ACL, deployment, payment state, or paid resource was changed.
 - Render remains strictly read-only. No production connection or migration was run.
 - Next: refresh PR #298 head, update the isolated worktree without disturbing other checkouts, rerun `npm run build` and `node --require ./scripts/test-env.cjs --test dist/db/migration-batches.test.js`, then record their exact results here.
+
+
+---
+
+## Exact-head local validation — successful build and focused tests — 18 November 2026, 23:36 SAST
+
+### Exact validated source and commands
+
+- Isolated worktree: `C:\\GHM-pr298-validation`.
+- Exact PR #298 head checked out: `656b11f73edcad5cf2ac7e7a995961061136004a`.
+- Worktree was clean before the guarded update; after update, `git status --short --branch` showed a clean detached HEAD at the exact expected commit.
+- `config/production-migration-batches.json` was read locally and contained exactly `[]`.
+- `npm run build` completed successfully (`tsc`, exit code 0).
+- `node --require ./scripts/test-env.cjs --test dist/db/migration-batches.test.js` completed successfully: 16 tests, 16 passed, 0 failed, 0 skipped.
+- The 16 passing tests cover explicit batch ID selection, unknown IDs, exact contiguous pending prefixes, skipped/already-applied/name-mismatched entries, duplicate identities, malformed identities and checksums, changed SQL checksum under unchanged version/name, ordered batch identities, and exact pending-inventory matching.
+
+### Interpretation and boundaries
+
+- The earlier TS2741 fixture error is resolved by the narrow test-only correction committed as `7d8ac8f4bdeb8df2d6f11ef14a3945c954b0e255`; the successful build and tests were run on its descendant, exact head `656b11f73edcad5cf2ac7e7a995961061136004a`.
+- This validates TypeScript compilation and the focused migration-batch selector tests only. It is not a full GHM test-suite result, PostgreSQL migration qualification, live production ledger refresh, production plan, or release approval.
+- No PostgreSQL connection or migration command was run. No production database, SQL, ledger, role, ACL, credential, Render service/configuration/deployment, payment state, or paid resource was changed.
+- Render remains strictly read-only. The execution manifest remains empty and must stay empty. PR #298 remains draft/open/non-mergeable; do not merge, rebase, populate the manifest, or execute production migrations on the strength of this focused pass.
+
+### Next work — resume the existing migration cutover review
+
+- Do not repeat the completed selector implementation or focused build/test.
+- Continue from the already documented inventory: review dependencies and active route readiness for the 36 signed Actor Gateway functions and resolve the three optional campaign/directory-review operations; do not reconstruct the source inventory from scratch.
+- Before any future batch proposal, the branch/base divergence, current live production ledger, verified recovery point, gateway hosting/credential readiness, database role/ownership, and route cutover evidence remain independent gates.
+- Keep the user handover current after each substantive batch of work.
