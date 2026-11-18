@@ -32,7 +32,7 @@ test('rejects duplicate versions and duplicate manifest IDs', () => {
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), duplicateIds, 'gateway-foundation-01'), /duplicate batch ID/);
 });
 test('rejects malformed, unordered and duplicate repository migration identities', () => {
-  assert.throws(() => selectProductionMigrationBatch([{ version: 'bad', name: 'first' }], new Set(), batch([migrations[0]]), 'gateway-foundation-01'), /invalid migration identity/);
+  assert.throws(() => selectProductionMigrationBatch([{ version: 'bad', name: 'first', checksum: 'a'.repeat(64) }], new Set(), batch([migrations[0]]), 'gateway-foundation-01'), /invalid migration identity/);
   assert.throws(() => selectProductionMigrationBatch([migrations[1], migrations[0]], new Set(), batch([migrations[0]]), 'gateway-foundation-01'), /strict version order/);
   assert.throws(() => selectProductionMigrationBatch([migrations[0], migrations[0]], new Set(), batch([migrations[0]]), 'gateway-foundation-01'), /duplicate version/);
 });
