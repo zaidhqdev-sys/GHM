@@ -21,6 +21,9 @@ import { PostgresBusinessLogoGatewayReader } from '../../src/actor-gateway/busin
 import { PostgresStorageMetadataGatewayReader } from '../../src/actor-gateway/storage-metadata-reader';
 import { PostgresConnectBusinessProvisioningReader } from '../../src/actor-gateway/connect-business-provisioning-reader';
 import { PostgresCampaignDirectoryReviewGatewayReader } from '../../src/actor-gateway/campaign-directory-review-reader';
+import { PostgresCommercialDocumentApprovalAuthorityReader } from '../../src/actor-gateway/commercial-document-approval-authority-reader';
+import { PostgresCommercialDocumentApprovalReader } from '../../src/actor-gateway/commercial-document-approval-reader';
+import { PostgresCommercialConsentPaymentPreparationReader } from '../../src/actor-gateway/commercial-consent-payment-preparation-reader';
 import {
   assertActorGatewayDatabaseIdentity,
   type ActorGatewayDatabaseIdentity,
@@ -257,6 +260,15 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
         storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
         connectBusinessProvisioningReader: new PostgresConnectBusinessProvisioningReader(pool, capabilityAssertionSecret),
         campaignDirectoryReviewReader: new PostgresCampaignDirectoryReviewGatewayReader(pool, capabilityAssertionSecret),
+        commercialDocumentApprovalAuthorityReader: new PostgresCommercialDocumentApprovalAuthorityReader(pool, capabilityAssertionSecret),
+        commercialDocumentApprovalReader: new PostgresCommercialDocumentApprovalReader(pool, capabilityAssertionSecret),
+        commercialConsentPaymentPreparationReader: new PostgresCommercialConsentPaymentPreparationReader(
+          pool,
+          capabilityAssertionSecret,
+        ),
+        // Payment preparation and commercial launch remain explicitly disabled.
+        commercialPaymentPreparationEnabled: false,
+        commercialLaunchAuthorized: false,
       }, {
         rateLimitDecision: async (accountId) => {
           const decision = await edgeRateLimiter.limit({ key: `actor:${accountId}` });
