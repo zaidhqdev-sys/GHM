@@ -1788,3 +1788,16 @@ Therefore this gateway must use a **cache-disabled Hyperdrive configuration**. D
 Cloudflare Free Hyperdrive has a maximum of 20 origin connections per configuration. The production ghm-db instance is a small 256 MB PostgreSQL plan with a 100-connection server limit. Set a conservative Hyperdrive origin connection limit (initially 5) when creating the configuration and confirm active connections during the smoke test; do not consume the database connection budget with the maximum default.
 
 This follow-up was read-only. No role, grant, migration, credential, Cloudflare resource, Render setting, deployment, or cost was changed.
+
+
+### Final checkpoint for this work session — 18 November 2026
+
+- Latest branch commit at checkpoint: 36e4263af235c5ff6aff106297ba7fb7fbaaca83.
+- Branch comparison against main: 5 commits ahead at the first comparison; subsequent handover and architecture addenda extend that branch. It remains based directly on main b73839b27ac90446650f921d3e8ce1b5de041f04, with no behind commits at comparison time.
+- The new branch remains separate from PR #298's 136-commit migration branch. No PR was opened, no PR was merged, and PR #296/#298/#299 states were not changed.
+- Worker source parity changes are limited to wiring the three existing commercial reader classes and explicitly keeping payment preparation/launch disabled. The contract test asserts that wiring. No TypeScript build, Worker test, Wrangler dry-run or CI run was executed, so validation remains pending.
+- The direct Hyperdrive topology is now the selected no-new-Render-compute candidate, subject to verify-full CA validation, disabled caching and conservative origin connection limit. It does not yet provide a production connection.
+- Production database state remains unchanged: the gateway role exists and its bounded ghm_db_user membership is confirmed, but schema ghm USAGE and gateway functions are absent.
+- No Hyperdrive configuration, CA certificate, Worker route, Worker secret, Render environment variable, service, database role/grant/migration, deployment, allowlist change, payment action or recurring cost was created or changed.
+
+**Next action is connection setup readiness, not another general PR audit:** obtain the Render Frankfurt external database hostname and its matching region CA certificate; then proceed through the authorized production backup/ledger/migration/role gates and create the cache-disabled, verify-full Hyperdrive configuration with the dedicated gateway login only.
