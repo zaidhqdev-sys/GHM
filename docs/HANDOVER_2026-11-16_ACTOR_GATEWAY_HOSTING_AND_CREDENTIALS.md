@@ -1697,3 +1697,64 @@ This independently reconfirms the earlier documented production blocker: the log
 ### Change boundary
 
 This checkpoint changed no production database state, role, membership, grant, migration ledger, credential, secret, Render service, Render environment, deployment, application data, payment or consent state. It created no additional paid infrastructure and incurred no new cost. The production check above was read-only.
+
+## 38. 2026-11-18 — Amanda / Render Support authority handover incorporated
+
+### Primary support record
+
+The authoritative record of the 2026-11-12 Render support conversation is:
+
+docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md
+
+Read that document before changing or recommending any production PostgreSQL role, membership, login, credential, service connection, or Actor Gateway boundary. It preserves Amanda's full explanation, exact final confirmation, observed role graph, and the later implementation refinement. It supplements this operational handover; it does not authorize changes.
+
+Amanda's final confirmation (2026-11-12 18:46:53Z) was that normal application execution should use SQL-created login(s) outside Render's Dashboard-managed credential list. Her detailed guidance was:
+- Keep the Render Dashboard-managed default user for controlled database administration.
+- Create service-specific login roles directly in PostgreSQL.
+- SQL-created roles are not listed or managed by Render; the service that uses one must hold its credential in its own environment.
+- Keep the same database host/port/database and use the SQL-created role's own username/password.
+- Do not expect Render's Dashboard connection string to become the SQL-created login; Dashboard-managed connection strings continue to use Render's managed identity.
+
+### Subsequent implementation refinement — current decision
+
+The repository's later, explicit implementation refinement supersedes the optional credential-rotation example in Amanda's numbered explanation:
+
+- Retain the existing Dashboard-managed ghm_app_user / effective ghm_db_user credential as the trusted administrative connection. Do not rotate/delete it merely to complete service separation.
+- The Resource API uses the existing SQL-created ghm_runtime directly through its dedicated GHM_RUNTIME_DATABASE_URL; its strict source contract expects session_user=current_user=ghm_runtime.
+- The Actor Gateway uses its own SQL-created ghm_actor_gateway login through GHM_ACTOR_GATEWAY_DATABASE_URL; it must not use the Dashboard default credential, ghm_runtime, or ghm_migrator.
+- ghm_migrator remains a distinct SQL-created identity for controlled migration tooling; it is not an application login and must not be placed in the Resource API or Actor Gateway connection setting.
+- ghm_schema_owner remains a NOLOGIN ownership boundary. Its membership/SET path is a separately constrained migration/ownership design.
+- The ghm_payment_provider role is outside this work; payment activation remains paused.
+- Do not copy Amanda's illustrative CREATE ROLE ghm_app_user ... IN ROLE ghm_runtime SQL. It was an example, not an approved command, and does not satisfy the current strict session_user=current_user=ghm_runtime Resource API contract.
+
+### Critical role-membership nuance — do not misread the trust graph
+
+Amanda's read-only production evidence showed the Render administrator ghm_db_user as a member of service roles, including ghm_actor_gateway, with ADMIN OPTION and the constrained options INHERIT=false, SET=false. This is an administrator-to-service-role management relationship, not proof that the service login can assume the administrator role, and not proof that the gateway has been successfully connected.
+
+The support handover records that ghm_db_user had MEMBER=true, USAGE=false, SET=false for ghm_actor_gateway at the time of inspection. Do not describe this as a demonstrated SET ROLE ghm_actor_gateway path for the administrator, and do not infer that ghm_actor_gateway can assume or administer ghm_db_user.
+
+Current Actor Gateway startup code intentionally tolerates only the trusted administrator as a member of the gateway role, and only with ADMIN=true / INHERIT=false / SET=false. The gateway login itself must have no untrusted role memberships and must authenticate with both session_user and current_user equal to ghm_actor_gateway. Never weaken this guard or grant broad table access to make startup pass.
+
+The administrator is trusted for controlled database administration. The service principal is not an administrator. Preserve this distinction in every ACL/membership analysis.
+
+### Historical credential-test evidence — do not repeat blindly
+
+The support handover and its follow-up commits record:
+- The Resource API's ghm_runtime credential was successfully authenticated locally against ghm_db.
+- A prior local ghm_migrator connection attempt timed out before PostgreSQL authentication or SQL execution. That timeout did not establish a bad password or invalid membership.
+- A production archive ledger extract contained 105 rows through 20261109210000, but was a backup snapshot, not a live query.
+
+Later, on 2026-11-16, a temporary narrowly scoped auditor membership was used to query the live production ledger (105 rows) and was then revoked. The current handover's dated production ledger and role evidence supersede the earlier timeout as the status of ledger access. Do not retry or repeat the old migrator timeout exercise unless a concrete current dependency requires it.
+
+### Required continuation discipline
+
+1. Read the Amanda role-separation handover and this section before any role/credential/ACL recommendation.
+2. Inspect current main, open PRs, branches and the latest migration/production handovers before deciding whether an earlier item is already complete or superseded.
+3. Keep the production Actor Gateway connection objective distinct from deployment: first qualify the existing Node Actor Gateway locally against ghm_db with the dedicated ghm_actor_gateway identity; the owner decides separately whether to deploy a Render Web Service.
+4. Do not use the Render admin query identity as proof of a gateway connection. A successful gateway connection must report session_user=current_user=ghm_actor_gateway and pass the exact current source privilege contract.
+5. Do not change the administrator credential, create a replacement admin, rotate roles, alter membership, provision secrets, execute production DDL, or deploy as an incidental part of a read-only audit. Require a separately reviewed exact change and explicit authorization.
+6. Keep the existing ghm-db as the only paid infrastructure dependency. No additional paid service, database, Worker, tunnel, schedule, or recurring-cost component.
+
+### Provenance
+
+This section was reconstructed by re-reading the complete committed Amanda handover (docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md, blob 93ef68ea2591b6ec643e72e6e8fb680fcbcd34e5), its recorded follow-up commits (4fc23146b49060a119a378a44fe27105eb05d6f2, aff568929f64013da996b52f0f34f11aec1194bc), and the current Actor Gateway source contract. It is a documentation-only reconciliation. No production database, role, membership, grant, credential, secret, Render service, environment, deployment, application data, payment or consent state was changed.
