@@ -1635,3 +1635,91 @@ Inspect the complete required environment contract, particularly the ES256 verif
 - No application code, SQL, migration, manifest, service setting, deployment, role, ACL, credential or payment state was changed.
 - No production DB connection/query and no Render inspection/action occurred.
 - `config/production-migration-batches.json` remains `[]`; PR #298 remains open, draft, unmerged and non-mergeable.
+
+
+---
+
+## Actor Gateway environment contract — ES256 keys, rate limiting and deployment model distinction — 18 November 2026, 23:55 SAST
+
+Continued from the preceding handover section. Re-read current handover and verified PR #298 before source review. Current-main source ref remains `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+
+### Exact source refs
+
+- `src/actor-gateway/server.ts`, blob `2ed8e9ffa36ead9eeb9a091f4b7061ae78ee6ceb`.
+- `src/actor-gateway/app.ts`, blob `dc66f24318fd9c720628d365196484e6df5b0231`.
+- `src/auth/foundation/es256-keys.ts`, blob `e60524677a16feb9e0b47ad1c1117c926a3fc92d`.
+- `src/auth/foundation/access-jwt-verifier.ts`, blob `a2e751fae3968ee2c82109ef51c9dbb5181ef08c`.
+- `workers/actor-gateway/index.ts`, blob `259efb0c82ee6c2b85c7b378d5aff551134505a8`.
+- `workers/actor-gateway/wrangler.jsonc`, blob `1753634ea381a09c2aafb92a9bc0b81b7ce40251`.
+- `workers/actor-gateway/worker-contract.test.mjs`, blob `603247fdb228de7d4a1e2e901a6205bfab2d72b0`.
+- `.github/workflows/ci.yml`, blob `1853e5f440744c7b2f5b4bcf11bb4eb646c0dad5`.
+
+### Critical deployment distinction
+
+The repository contains **two Actor Gateway deployment implementations**:
+
+1. **Node/Render web service** — `src/actor-gateway/server.ts`, started by `npm run start:actor-gateway`. This is the Render checklist documented above. It uses Node `pg.Pool` and built-in `express-rate-limit` unless a worker decision callback is supplied.
+2. **Cloudflare Worker** — `workers/actor-gateway/index.ts`, configured by `workers/actor-gateway/wrangler.jsonc`. This is a separate deployment adapter, with Hyperdrive and Cloudflare rate-limit bindings. It is not the same service configuration and does not use Render's Node server entrypoint.
+
+The repo CI currently bundles and locally smoke-tests the Cloudflare Worker. That is not evidence of a production Worker deployment. No Render or Cloudflare service has been inspected or changed. Do not mix the Worker-only bindings into the Render Node service checklist.
+
+### Node/Render web-service environment contract
+
+**Required at startup:**
+
+- `GHM_ACTOR_GATEWAY_DATABASE_URL` — dedicated connection string; verify only host/database/user in the UI, never expose password.
+- `DATABASE_SSL_MODE` — exactly `internal` for the intended same-region Render private-network URL; production refuses unset/ambiguous values.
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM` — active PKCS#8 public key PEM; literal `\n` is normalized to line breaks.
+- `GHM_JWT_ES256_KID` — active key ID, printable ASCII, 1–64 characters.
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` — canonical Base64 encoding of exactly 32 bytes, validated by all wired reader constructors.
+
+**Optional rotation inputs:**
+
+- `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM` and `GHM_JWT_ES256_PREVIOUS_KID` must either both be absent/empty or both be present and valid. Previous KID must differ from active KID. This permits verification during key rotation.
+- `PORT` is optional; defaults to 10000. Render normally supplies its assigned port.
+
+**Do not configure in the gateway:**
+
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM` — signing private key belongs only in the issuer.
+- `GHM_AUTH_TOKEN_PEPPER` — issuer-only token pepper.
+- `GHM_AUTH_ISSUER_DATABASE_URL` — issuer database URL.
+- Any runtime/migrator/database-admin URL or secret; gateway must use only its dedicated role URL.
+- Do not paste or share any secret/key values for review.
+
+**Optional commercial flags:**
+
+- `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED` and `GHM_COMMERCIAL_LAUNCH_AUTHORIZED` are enabled only by literal string `true`; keep unset/false while PayFast is paused.
+- `GHM_COMMERCIAL_PAYMENT_PROVIDER` defaults to `payfast`; it is not a credential and must not be used to activate payment processing.
+
+### Rate-limiting contract
+
+- Node/Render service has local per-account `express-rate-limit`: default 120 requests per 60 seconds, applied after Bearer verification. If no external decision callback is supplied, this local limiter is used.
+- The Cloudflare Worker adapter requires `ACTOR_GATEWAY_RATE_LIMITER`; it calls the binding with key `actor:<verified account id>`. A binding failure returns 503 (fail closed). Its Wrangler configuration defines 120 requests per 60 seconds.
+- Worker also requires `HYPERDRIVE` with a connection string, public ES256 key/KID, assertion secret and optional previous public key/KID pair.
+- Wrangler config has `workers_dev=false`, `preview_urls=false`, observability disabled, and a placeholder all-zero Hyperdrive ID plus a local disposable test connection string. This config is a source template/CI fixture, not a ready-to-deploy production binding. Do not deploy it or infer a configured production Worker from it.
+- Worker CI creates an ephemeral ES256 keypair and disposable local test credentials, then removes its local `.dev.vars`. CI's presence of these test values is not a production secret inventory.
+
+### Non-secret inspection checklist correction
+
+For the existing Render Node web service, inspect only required variable **names and presence**, active public key/KID presence, paired optional previous public key/KID presence, exact SSL mode, and URL host/database/username. Never reveal or copy any values. Ensure the private key, token pepper, issuer DB URL and admin/migrator credentials are absent.
+
+Do not add Cloudflare Worker bindings to Render. Only if the user later chooses the separate Cloudflare Worker deployment would its Hyperdrive and rate-limit bindings be relevant; that would require its own explicit deployment plan and configuration review.
+
+### Result / open gates
+
+- The ES256 contract is now exact: gateway loads public verification keys only; issuer private signing key is not needed by either gateway adapter.
+- Required and optional key variables are distinguished; previous key variables are paired.
+- Node local rate limiting and Worker binding rate limiting are distinct. Worker binding outage fails closed with 503.
+- The Worker CI smoke path is local/disposable and does not prove a production Worker deployment.
+- No runtime configuration was inspected; no service values were requested or exposed.
+- Previously documented TLS mode, known database-role membership exception, live migration state, production catalogs, startup evidence and authenticated DB-backed smoke tests remain open.
+
+### Timestamp correction
+
+The preceding health/deployment handover section was labelled 19 November 00:14 SAST. That label was premature: the user's message timestamp for that work was still 18 November 21:50 UTC (23:50 SAST). Treat that section's actual review time as 18 November 2026, approximately 23:50 SAST. This section is 18 November 2026, 23:55 SAST.
+
+### Safety
+
+- No code, SQL, migration, manifest, secret, credential, service setting, deployment, role, ACL or payment state was changed.
+- No production DB connection/query and no Render/Cloudflare service inspection/action occurred.
+- `config/production-migration-batches.json` remains `[]`; PR #298 remains open, draft, unmerged and non-mergeable.
