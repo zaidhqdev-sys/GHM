@@ -75,3 +75,11 @@ test('Worker clears failed initialization so transient startup errors can be ret
     /initialization = \(async \(\) => \{[\s\S]*?\}\)\(\)\.catch\(\(error: unknown\) => \{[\s\S]*?initialization = undefined;[\s\S]*?throw error;/,
   );
 });
+
+test('Worker wires the same commercial approval readers while keeping payment preparation disabled', () => {
+  assert.match(worker, /PostgresCommercialDocumentApprovalAuthorityReader/);
+  assert.match(worker, /PostgresCommercialDocumentApprovalReader/);
+  assert.match(worker, /PostgresCommercialConsentPaymentPreparationReader/);
+  assert.match(worker, /commercialPaymentPreparationEnabled: false/);
+  assert.match(worker, /commercialLaunchAuthorized: false/);
+});
