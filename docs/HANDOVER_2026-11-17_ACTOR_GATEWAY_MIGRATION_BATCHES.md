@@ -2006,3 +2006,59 @@ The production migration chain must be reviewed as at least three distinct acces
 3. Public read projections whose function EXECUTE grants are intentionally retained for `ghm_runtime`.
 
 Do not revoke runtime table/function privileges based solely on the fact that a related mutation now uses the Gateway. Route-level read and write paths must be evaluated independently. The production batch manifest remains `[]`; no SQL, ACL, Render, deployment, credential, or payment change was made.
+
+
+## 19 November 2026 — business-capability direct read/create paths and evidence ACL reconciliation
+
+### Source and migration evidence checked on the PR branch
+
+Reviewed the current-main Resource API routers/repositories and the exact migration files on this PR branch:
+- `src/http/business-capability-router.ts`
+- `src/http/business-capability-evidence-router.ts`
+- `src/resources/business-capability/repository.ts`
+- `src/resources/business-capability-evidence/repository.ts`
+- `src/http/app.ts`
+- `20260916210000_create_business_capability.sql`
+- `20260916213000_narrow_business_capability_runtime_insert.sql`
+- `20261105213000_create_business_capability_evidence.sql`
+- `20261105220000_replace_business_capability_assertions.sql`
+- `20261109110000_reconcile_capability_evidence_pending_state.sql`
+- `20261109120000_serialize_business_capability_assertion_replacement.sql`
+- `20261109140000_close_evidence_and_founder_review_authority.sql`
+- `20261111070000_add_signed_business_capability_mutations.sql`
+
+### Confirmed route map
+
+| Resource API route | Current production behaviour in source | Database dependency / consequence |
+|---|---|---|
+| `GET /api/v1/business-capabilities?businessId=...` | Always calls `BusinessCapabilityService.listBusinessCapabilities` directly | Repository SELECTs `ghm.business_capability`, `ghm.business`, `ghm.capability`; `ghm_runtime` SELECT on `ghm.business_capability` was explicitly granted in `20260916210000` and is not revoked by the reviewed later capability migrations |
+| `GET /api/v1/business-capabilities/:id` | Always calls Resource API service/repository directly | Same direct SELECT dependency; must remain covered by a reviewed runtime read privilege or be moved to a protected Gateway read |
+| `POST /api/v1/business-capabilities` | Calls `service.createBusinessCapability` directly; unlike PUT replacement and PATCH verification, it does not branch to `capabilityMutationGatewayClient` even when `gatewayRequired=true` | Repository checks `ghm.capability` and directly INSERTs `ghm.business_capability`; the initial table migration grants runtime INSERT and the follow-up narrows it to an explicit column list. The current source therefore retains a Resource API direct-create path instead of the signed Gateway operation |
+| `PUT /api/v1/business-capabilities` | Uses the signed Gateway replacement operation when Gateway is configured/required | Gateway wrapper calls `ghm.replace_business_capability_assertions`; the legacy runtime EXECUTE grant on that function is deliberately retained by `20261111070000` pending a separately approved manual cutover |
+| `PATCH /api/v1/business-capabilities/:id/verification` | Uses the signed Gateway verification operation when Gateway is configured/required | Gateway wrapper calls the legacy transition function internally; `20261111070000` retains legacy runtime grants pending separately approved cutover |
+| `POST /api/v1/business-capability-evidence` | Uses signed Gateway submission when Gateway is configured/required | The signed wrapper writes evidence; the Resource API fallback repository still has direct INSERT/readback code but production route dispatches to Gateway |
+| `GET /api/v1/business-capability-evidence` | Always calls Resource API repository directly, for both business evidence reads and admin pending-review list | Repository SELECT joins `ghm.business_capability_evidence`, `ghm.business_capability`, `ghm.business` and `ghm.capability`; `20261109140000` revokes `SELECT` on the evidence table from `ghm_runtime` |
+| `PATCH /api/v1/business-capability-evidence/:id/review` | Uses signed Gateway review when configured/required | Gateway wrapper calls `ghm.transition_business_capability_evidence`; the legacy runtime EXECUTE grant on the underlying function remains from earlier migrations unless a later reviewed cutover removes it |
+
+### Confirmed implications
+
+1. **Evidence GET remains incompatible with the evidence-table ACL boundary.** Migration `20261105213000` originally grants `SELECT` on the evidence table to `ghm_runtime`; migration `20261109140000` explicitly revokes it. The current evidence GET still directly selects from that table. The SECURITY DEFINER function `ghm.is_business_capability_publicly_evidence_eligible(bigint)` is a separate public eligibility projection and does not satisfy the authenticated evidence-list route. Do not restore broad evidence-table SELECT merely to make the route work.
+2. **Business-capability POST is not Gateway-routed in current source.** The app passes `capabilityMutationGatewayRequired` into the router, but the POST handler does not consult it and directly calls the Resource API service. This means the current source does not enforce a Gateway-only create path for that endpoint, despite the signed capability operation vocabulary and Gateway architecture.
+3. **The direct business-capability reads are intentionally still supported by an explicit runtime SELECT grant in the initial table migration.** This is a different access class from the evidence table and must not be removed without a protected replacement read path.
+4. **The signed mutation migration explicitly says legacy runtime grants remain pending separately approved manual cutover.** It revokes runtime access to the new signed wrapper functions, grants those wrappers to `ghm_actor_gateway`, but does not itself revoke the old runtime EXECUTE grants on `ghm.replace_business_capability_assertions` or `ghm.transition_business_capability_evidence`. The source still has fallback paths for non-Gateway operation; production route wiring must be tested before any legacy grants are removed.
+5. The existing evidence mutation Gateway wrappers return joined evidence rows from SECURITY DEFINER functions, but there is no signed evidence-list operation in the reviewed migration or client contract. A read endpoint must be added with actor/tenant scope and admin pending-review authorization, not inferred from the mutation response functions.
+
+### Required source correction before production cutover
+
+- Add a signed Actor Gateway operation for evidence list/read. It must bind the signed actor, requested business scope, and operation context; enforce active business membership for business reads; enforce explicit admin review authority for pending evidence; and return only the fields authorized for that caller.
+- Route both business and admin variants of `GET /api/v1/business-capability-evidence` through that operation in production. Add tests for cross-business denial, admin-only pending-review reads, and fail-closed behaviour when Gateway is absent.
+- Route `POST /api/v1/business-capabilities` through a signed Gateway create operation (or explicitly document and security-review a deliberate non-Gateway exception). The production-required flag must actually control this handler; it must not be silently ignored.
+- Keep `GET /api/v1/business-capabilities` and item GET on the existing narrowly scoped runtime SELECT privilege until a tenant-authorized signed read replacement is implemented and tested. Do not remove the required read grant just because mutations moved to Gateway.
+- Keep legacy mutation function grants until the matching production routes are Gateway-only, the Gateway functions and assertions are installed, end-to-end tests pass, and a separately reviewed post-deployment revocation migration is qualified.
+- Add SQL ACL tests covering direct runtime SELECT/INSERT/EXECUTE and Gateway EXECUTE for each relation/function. Assert intended privileges by exact object and role, not a blanket “runtime has no capability access” rule.
+
+### Production-state limitation
+
+This is a source and migration-file review only. It does not establish which of these migrations are installed in `ghm_db`, the effective production ACL after inherited memberships, or which Resource API commit is live. Do not infer a live outage or permission grant from repository state. The existing handover evidence remains the authority for what was last inspected in production; do not repeat those inspections without a specific new reason.
+
+The PR #298 manifest remains `[]`. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
