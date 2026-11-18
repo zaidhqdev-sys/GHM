@@ -2259,3 +2259,41 @@ The signed database operation `ghm.gateway_provision_connect_business` is added 
 - Connect provisioning requires caller/deployment tracing, not an assumption based solely on the database wrapper or client adapter.
 
 This is repository source/migration review only. It does not establish installed production migrations or effective inherited privileges in `ghm_db`. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
+
+
+## 19 November 2026 — Connect Business provisioning caller traced across GHM and ZAID Connect
+
+### Repositories and handovers checked first
+
+Re-read the current PR #298 migration/hosting handovers and PR metadata before tracing this cross-repository boundary. Inspected:
+- GHM `src/actor-gateway/app.ts`, `src/actor-gateway/server.ts`, `src/actor-gateway/connect-business-provisioning-reader.ts`, `src/http/connect-business-provisioning-gateway-client.ts`, `src/integrations/connect/business-provisioning-contracts.ts`, and their tests.
+- GHM `20261112080000_signed_connect_business_provisioning_gateway.sql` and `src/db/actor-gateway-connect-business-provisioning-migration-contract.test.ts`.
+- ZAID Connect `src/features/authentication/BusinessCreationScreen.jsx`, `src/features/authentication/identity.js`, `api/ghm/[...path].js`, and `docs/06_Implementation/GHM_BACKEND_MIGRATION_HANDOVER_2026-10-13.md`.
+
+### Confirmed GHM Gateway implementation
+
+This capability is not merely a database function without an HTTP surface:
+- `src/actor-gateway/app.ts` mounts authenticated `POST /v1/connect/businesses/provision-or-resolve`.
+- The route takes actor identity only from the verified GHM bearer token; request body is restricted to `externalBusinessId` and `name`.
+- `src/actor-gateway/server.ts` wires `PostgresConnectBusinessProvisioningReader` into the production Gateway server.
+- The reader creates the one-use signed assertion and invokes `ghm.gateway_provision_connect_business`.
+- The SQL function performs the resolve-or-provision flow in one transaction, applies the external-identity advisory lock, establishes the owner membership, and calls the existing LINK-ONLY mapping function.
+- The Gateway app tests cover authenticated invocation, membership denial and invalid input. The client tests cover URL/body/bearer forwarding, denial propagation and malformed responses.
+
+### Caller trace — no active caller found in the inspected Connect mainline
+
+The separate GHM HTTP client `HttpConnectBusinessProvisioningGatewayClient` is implemented and tested, but the inspected GHM Resource API routers/app do not construct or invoke it. Its only in-repository references are its own implementation/tests and the shared interface. The Gateway endpoint is therefore server-wired, but a Resource API-to-Gateway caller is not evidenced in GHM main.
+
+The active ZAID Connect business-creation screen does not call the resolve-or-provision endpoint. `BusinessCreationScreen.jsx` sends `POST /api/v1/businesses` through the authenticated GHM API client. Connect's identity loader then obtains canonical Business memberships from `GET /api/v1/businesses/memberships`. The Connect BFF proxies these GHM API calls to the GHM Internal Runtime; it does not target the Actor Gateway provisioning route.
+
+The existing Connect provisioning contract is specifically a legacy external UUID mapping adapter: provider `supabase` plus an external Business UUID resolves to a canonical GHM Business. It is not the current new-Business creation path, and the provider string is provenance for an external mapping, not an authentication authority. The current Connect mainline uses GHM-native account/session and canonical Business IDs for the inspected creation journey.
+
+### Cutover disposition
+
+1. Do not list Connect provisioning as an active Resource API route dependency or as a prerequisite for the current Connect new-Business creation journey.
+2. Keep the Gateway route and SQL operation as a separately bounded legacy external-mapping capability until the product owner explicitly decides whether historical Connect UUID mappings still need resolution.
+3. Before enabling or removing it, establish whether any deployed server-side consumer still sends legacy `supabase` external Business UUIDs. The repository source inspected here does not establish production traffic or the existence/absence of historical mapping rows.
+4. If no historical consumer or required mapping remains, decommissioning is a separate product/data decision; do not silently repurpose this operation for GHM-native Business creation.
+5. No Resource API client wiring should be added merely to make the old contract appear active. New GHM-native Business creation already has its own authenticated route and canonical identity lifecycle.
+
+This closes the caller-trace question at repository-source level. It does not inspect production traffic, mapping rows, or deployed Connect runtime configuration. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
