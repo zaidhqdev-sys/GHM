@@ -951,3 +951,84 @@ Therefore, the startup allowlist's optional-subset tolerance only allows the ser
 5. Keep the production batch manifest empty until the above evidence and gates are complete.
 
 No production SQL, migration, role, ACL, credential, Render configuration, deployment, or hosting change was performed. Render remains read-only. This was a documentation-only update on the existing migration-batches branch; no code, migration, PR status, or execution manifest was changed.
+
+
+---
+
+## Follow-up signature/security reconciliation — 18 November 2026, 19:37 SAST
+
+This pass continued from the previous handover section. It re-read this handover first and inspected the current-main privilege allowlist and all 50 migration candidates listed in the branch's `config/pending-migrations.production.json`. The migration SQL was fetched from **current main**, not assumed to be identical to the stale feature branch.
+
+### Allowlist reconciliation: 39 total / 36 required / 3 optional
+
+Current-main `src/actor-gateway/database-privileges.ts` (blob `41021badb1b2760ef5e26c1ab882ba0798316e0d`) contains 39 unique expected signatures. The three optional signatures are the previously documented campaign/directory-review functions. The remaining 36 required signatures have SQL definitions in the inspected current-main migration sources, grouped as follows:
+
+| Function family | Required signatures | Current-main migration source |
+|---|---:|---|
+| Signed capability assertion verifier + capability catalogue read/write/lifecycle | 5 | `20261111060000_bind_gateway_assertions_to_request_context.sql` |
+| Signed supplier classification | 1 | `20261111060000_bind_gateway_assertions_to_request_context.sql` |
+| Signed business profile update | 1 | `20261111060000_bind_gateway_assertions_to_request_context.sql` |
+| Signed actor identity read | 1 | `20261111060000_bind_gateway_assertions_to_request_context.sql` |
+| Signed registration identity read/write | 2 | `20261111060000_bind_gateway_assertions_to_request_context.sql` |
+| Signed business capability mutations | 4 | `20261111070000_add_signed_business_capability_mutations.sql` |
+| Signed Saved Businesses | 4 | `20261111100000_add_signed_saved_business_gateway.sql` |
+| Signed Business Hours | 2 | `20261111130000_add_signed_business_hours_gateway.sql`; `20261111140000_add_business_hours_read_projections.sql` |
+| Signed Trust Score | 3 | `20261111150000_add_signed_trust_score_gateway.sql`; `20261111170000_add_trust_score_read_projections.sql` |
+| Signed Business Logo | 1 | `20261111160000_add_signed_business_logo_gateway.sql` |
+| Signed Connect Business provisioning | 1 | `20261112080000_signed_connect_business_provisioning_gateway.sql` |
+| Signed Storage metadata/provider workflow | 5 | `20261112140000_add_signed_storage_metadata_actor_gateway.sql`; `20261112150000_add_storage_provider_workflow_attestation.sql` |
+| Commercial authority assertion + authority gateway | 2 | `20261116170000_add_founder_only_commercial_document_authority_gateway.sql` |
+| Commercial approval assertion + approval gateway | 2 | `20261116180000_add_founder_only_commercial_document_approval_transition.sql` |
+| Commercial payment-preparation assertion + gateway | 2 | `20261116190000_add_commercial_consent_payment_prepare_gateway.sql` |
+| **Total** | **36** | |
+
+The 36 count comprises four assertion verifiers and 32 operational gateway functions. The 3 optional campaign/directory-review signatures remain absent from migration SQL, as documented in the previous section.
+
+### Security source review
+
+For the listed signed function families, the inspected SQL shows the intended SECURITY DEFINER pattern: `ghm_schema_owner` ownership, pinned search_path, revocation from `PUBLIC`/runtime/migrator as applicable, and EXECUTE grants to `ghm_actor_gateway`. The global normalizer migration `20261112090000_pin_security_definer_search_path.sql` explicitly audits SECURITY DEFINER ownership and sets the path to `pg_catalog, ghm, pg_temp`.
+
+This is a **source-level review only**. It does not establish that any of these functions, grants, roles, tables or secrets exist in production, nor does it validate the live role membership/admin-option issue.
+
+### Newly confirmed post-deployment migration defect
+
+Current-main `database/migrations/20261117020000_revoke_runtime_capability_governance.sql` (blob `84c61e9c2c06f53a86b7a63b26e9329a609c5741`) checks the four signed capability gateway functions using:
+
+```sql
+p.proconfig @> ARRAY['search_path=pg_catalog, ghm']
+```
+
+But the preceding global migration `20261112090000_pin_security_definer_search_path.sql` (blob `d0d3ce9eb9d76ac23ba6ec9d8f27df7ec30f73df`) sets every SECURITY DEFINER function to:
+
+```sql
+search_path = pg_catalog, ghm, pg_temp
+```
+
+The Actor Gateway startup checker in `src/actor-gateway/database-privileges.ts` also explicitly expects `search_path=pg_catalog, ghm, pg_temp` (lines 198–199 in the inspected blob).
+
+**These contracts conflict.** Once the global pin migration has run, the exact `proconfig` check in `20261117020000` will not match the resulting path for the signed capability functions. This is a deterministic source-level defect in a post-deployment revocation migration. Do not run `20261117020000` as currently written. It needs a reviewed correction that agrees with the global normalizer and startup checker, plus exact-head qualification before it can become a post-deployment gate.
+
+The registration revocation migration `20261117010000` validates SECURITY DEFINER and schema-owner ownership, but does not have this explicit search_path equality check.
+
+### Migration order/dependency observations
+
+- The final six-argument request-context assertion contract is established by `20261111060000`; earlier signed migrations in the sequence contain earlier verifier/function shapes. Treat the ordered prefix as a chain; do not cherry-pick later family files out of sequence.
+- `20261112080000` creates signed Connect provisioning and uses the six-argument request-context assertion contract.
+- `20261112090000` normalizes all SECURITY DEFINER function owners/search paths and therefore must be evaluated after the function definitions it is intended to normalize.
+- Storage provider workflow attestation (`20261112150000`) is a separate provider assertion domain; its verifier is deliberately not executable by the Actor Gateway role.
+- Commercial migrations `20261116150000`–`20261116190000` build consent evidence, approval authority, founder-only authority/approval transitions and payment preparation in dependency order. PayFast remains paused; source mapping is not payment activation approval.
+- `20261117010000` and `20261117020000` remain post-deployment revocation candidates, not pre-deployment installation steps. The latter is currently defective as noted above.
+
+### Branch/current-main caution
+
+The 50-entry pending list read for candidate enumeration is from the migration-batches branch. The SQL files above were read from current `main`; this was deliberate so that the function mapping is not silently attributed to stale branch contents. The migration-batches branch remains divergent and must be reconciled before any integration decision. The inventory is not an execution manifest.
+
+### Next actions; do not repeat this source pass
+
+1. Resolve the `20261117020000` search_path contradiction in source, with a narrowly scoped change and tests on the exact intended post-deployment state. Do not execute it in production.
+2. Complete dependency-level review of the 36 mapped functions (including underlying table/sequence dependencies, signed assertion operations, route call sites and grants) and confirm no migration file has drifted between current main and the stale branch.
+3. Resolve the three optional campaign/directory-review functions: implement signed SQL wrappers or disable the corresponding reader/routes and revise startup allowlist/tests.
+4. Reconcile current-main migration order and checksums with fresh, administrator-authorized production ledger evidence and a recoverable backup before any batch is proposed.
+5. Keep the production execution manifest empty and keep Render read-only.
+
+No production SQL, migration, role, ACL, credential, Render configuration, deployment, or hosting change was performed. This update only records source findings in the existing handover on the existing migration-batches branch.
