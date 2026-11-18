@@ -1301,3 +1301,76 @@ After those results are available, continue the existing documented dependency r
 - Continue from the already documented inventory: review dependencies and active route readiness for the 36 signed Actor Gateway functions and resolve the three optional campaign/directory-review operations; do not reconstruct the source inventory from scratch.
 - Before any future batch proposal, the branch/base divergence, current live production ledger, verified recovery point, gateway hosting/credential readiness, database role/ownership, and route cutover evidence remain independent gates.
 - Keep the user handover current after each substantive batch of work.
+
+
+
+---
+
+## Route-readiness dependency review — first required function family — 18 November 2026, 23:38 SAST
+
+Re-read this handover and rechecked PR #298, its current branch head, the branch comparison, and the current-main Actor Gateway privilege source before continuing. This is a source-only review; the stale migration-batches branch is not treated as current-main authority.
+
+### Exact repository state
+
+- PR #298 remains open, draft, unmerged and non-mergeable.
+- Pre-update PR head: `3d2ff9afa8b6201bd60348480ad2cee0cb9ede59`.
+- Current `main`: `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Branch comparison: 153 commits ahead / 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`. Do not merge, rebase, or treat the feature-branch inventory as current-main authority.
+- The existing handover's 39-signature inventory was reused; no re-enumeration of all 36 required signatures was performed.
+
+### First required family mapped: 10 signatures
+
+The first family in the existing 36-function matrix contains the assertion verifier and nine operational signatures:
+
+| Signed SQL function | HTTP route / caller | Reader |
+|---|---|---|
+| `ghm.assert_actor_gateway_capability(...)` | Called internally by the signed wrappers; no direct HTTP route | Shared SQL verifier |
+| `ghm.gateway_list_capabilities(...)` | `GET /v1/admin/capabilities` | `PostgresCapabilityGovernanceReader.list` |
+| `ghm.gateway_create_capability_draft(...)` | `POST /v1/admin/capabilities/drafts` | `createDraft` |
+| `ghm.gateway_update_capability_draft(...)` | `PATCH /v1/admin/capabilities/:capabilityId/draft` | `updateDraft` |
+| `ghm.gateway_transition_capability_lifecycle(...)` | `POST /v1/admin/capabilities/:capabilityId/transition` | `transition` |
+| `ghm.gateway_update_business_supplier_classification(...)` | `PUT /v1/businesses/:businessId/supplier-classification` | `PostgresSupplierClassificationReader` |
+| `ghm.gateway_update_business_profile(...)` | `PATCH /v1/businesses/:businessId/profile` | `PostgresBusinessProfileReader` |
+| `ghm.gateway_get_actor_identity(...)` | `GET /v1/actor/me` | `PostgresActorIdentityReader` |
+| `ghm.gateway_read_business_registration_identity(...)` | `GET /v1/businesses/:businessId/registration-identity` | `PostgresBusinessRegistrationIdentityReader` |
+| `ghm.gateway_update_business_registration_identity(...)` | `PUT /v1/businesses/:businessId/registration-identity` | `PostgresBusinessRegistrationIdentityReader` |
+
+Current-main source refs inspected:
+- `src/actor-gateway/database-privileges.ts`, blob `41021badb1b2760ef5e26c1ab882ba0798316e0d`.
+- `src/actor-gateway/app.ts`, blob `dc66f24318fd9c720628d365196484e6df5b0231`.
+- `src/actor-gateway/capability-governance-reader.ts`, blob `e433df6a8067d989ea6375d078a632a0172165c4`.
+- `src/actor-gateway/supplier-classification-reader.ts`, blob `b34c82b9ad51c7f563815121a90726226421d53e`.
+- `src/actor-gateway/business-profile-reader.ts`, blob `98e668d442580f5d1a398a6ccd29d6a5d1f2941b`.
+- `src/actor-gateway/actor-identity-reader.ts`, blob `1a3cb0adc483a0aa9e5bb78b4ad220a33c8fd9db`.
+- `src/actor-gateway/business-registration-identity-reader.ts`, blob `96e9c0e07c9dffa3d37a6db142bc723d066100d6`.
+- `database/migrations/20261111060000_bind_gateway_assertions_to_request_context.sql`, blob `f45833f833aa94cb5d661a6323a6af9cd3fb2cb2`.
+
+### Confirmed route and assertion properties
+
+- The Express app applies Bearer-token verification to all `/v1` routes before JSON parsing or route handlers. The verified account ID is placed in `res.locals.actorAccountId`; account-keyed rate limiting is applied, and the JSON parser is bounded to 16 KB.
+- Each of the inspected readers creates a short-lived signed assertion bound to its operation and exact request context, then calls the corresponding `ghm.gateway_*` function inside a database transaction.
+- The SQL verifier requires `session_user = 'ghm_actor_gateway'`, validates the active account, checks the 32-byte assertion secret, verifies the HMAC signature, enforces a 60-second assertion window, and inserts a one-use nonce; duplicate nonce insertion is rejected as replay.
+- Capability catalogue operations additionally enforce an active system administrator account in SQL.
+- The wrapper migration assigns the signed functions to `ghm_schema_owner`, revokes EXECUTE from PUBLIC, `ghm_runtime`, and `ghm_migrator`, and grants EXECUTE to `ghm_actor_gateway`. The later global search-path normalizer must still be applied in sequence and checked against the final pinned path.
+
+### Dependency chain still open — do not call this family fully qualified
+
+The wrapper bodies reveal the next database dependency edges to verify from their defining migrations and ACLs:
+- Capability draft/list/lifecycle: `ghm.capability`, `ghm.create_capability_draft`, `ghm.update_capability_draft`, and `ghm.transition_capability_lifecycle`.
+- Supplier classification: `ghm.update_business_supplier_classification` and its underlying Business relation dependencies.
+- Business profile: `ghm.update_business_profile` and the Business columns/relations it mutates.
+- Actor identity and assertion verification: `ghm.account_identity`, `ghm.actor_gateway_capability_assertion_secret`, `ghm.actor_gateway_capability_assertion_nonce`, and the `public.hmac` implementation/extension dependency.
+- Registration identity: `ghm.read_business_registration_identity`, `ghm.update_business_registration_identity`, and their Business membership/ownership authorization dependencies.
+
+This pass maps HTTP route -> reader -> signed SQL wrapper and verifies the wrapper-level assertion/grant pattern. It does **not** yet establish the complete underlying helper-function EXECUTE chain, table/sequence access required by `ghm_schema_owner`, extension availability, exact grants/ownership for every helper, or production presence. Those checks remain required before this family can be marked dependency-complete.
+
+### Next bounded review
+
+Continue with the defining SQL and authorization dependencies for the ten signatures above, beginning with the assertion secret/nonce and HMAC prerequisite, then the capability helper functions and Business/registration helper functions. Record each dependency's creating migration, owner, SECURITY DEFINER/search_path, ACL, table/sequence dependencies, and route authorization. Then proceed to the next family in the existing 36-function matrix. Do not re-run the selector tests, re-enumerate the 36 signatures, or treat this source review as live production evidence.
+
+### Safety
+
+- No code or migration SQL was changed in this review.
+- No production database connection/query/write, migration, role/ACL/credential change, Render action, deployment, payment action, or paid resource was used.
+- `config/production-migration-batches.json` remains exactly `[]`; PR #298 remains draft/open/non-mergeable.
+- Render remains strictly read-only.
