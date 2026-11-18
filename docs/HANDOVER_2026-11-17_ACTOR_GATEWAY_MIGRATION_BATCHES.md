@@ -568,3 +568,14 @@ No production database, Render service, deployment, credentials, payment activat
 - The new selector unit tests are included in the still-pending repository test-suite step; they have not yet been separately reported as passing. The regex literal correction is committed at `614147ac4201374bae771f4b48699fd13610283a`.
 - This is the first automatic PR run after the source changes, not a manually requested duplicate CI cycle. Do not dispatch or rerun another workflow for the known picomatch audit finding. Wait for the current quality job's terminal result, then record the exact final status.
 - PR #298 remains draft and based on current main. PR #297 remains draft/stale-base. Production manifest remains empty. No production DB or deployment action occurred.
+
+
+## Terminal CI result — exact PR #298 head — 18 November 2026, 03:32 UTC
+
+- Re-read this handover and PR #298 before checking the terminal workflow result. PR #298 remains open/draft at exact head `6eb0ec8222336819984cb624e26dd840aa555251`, based on current main `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- The first automatic run `44230418928` was cancelled during the test-suite step; no conclusion is drawn from that cancelled attempt.
+- The subsequent automatic PR run `44230605506` completed. The full `quality` job passed all 76 steps, including build, complete test suite, migration audit policy tests, runtime boundary verification, the full set of disposable PostgreSQL qualifications, and the production migration plan-only fixture. No steps failed or were skipped.
+- The separate `web-quality` job passed its web build and all 26 web tests, then failed only at the restored direct `npm audit --audit-level=moderate` step. npm reported five high-severity path findings for the same picomatch GHSA-fc5q-39xc-vjpf advisory; this is the known unresolved toolchain dependency finding. No waiver, local patch, dependency exclusion or audit bypass was reintroduced.
+- The migration plan-only qualification passed: all 50 pending inventory entries were enumerated with SHA-256 checksums and the disposable fixture's 105-row ledger/catalog were unchanged. This is plan-only validation and is not authorization to execute migrations against production.
+- Net result: **all GHM quality and database/security qualification checks passed; the overall PR workflow remains red solely because the intentionally enforced web dependency audit detects the unresolved picomatch advisory.**
+- No further CI rerun is warranted until the advisory/dependency finding changes or a substantive source change requires validation. Keep PR #298 draft. PR #297 remains the stale-base alternative and is not to be merged. Production batch manifest remains empty; no live production migration, deployment, Render change, payment activation or paid resource was used.
