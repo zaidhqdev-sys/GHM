@@ -2747,3 +2747,83 @@ Inspected:
 - Repository fallback methods and possible callers outside the inspected HTTP routes still require complete caller inventory; source presence alone is not proof of production use, and a missing indexed search result is not proof of absence.
 - Manual cutovers are not migrations to add to `config/production-migration-batches.json`; manifest remains `[]`.
 - No production SQL/query, migration execution, ACL/role change, Render inspection/change, service deployment, credential/backup operation, provider-object operation, or payment action was performed.
+
+
+## 19 November 2026 — Campaign and Directory Review cutover/rollback reconciliation
+
+### Pre-workflow checkpoint
+
+Re-read both Actor Gateway handovers, fetched PR #298 metadata and changed-file inventory, and compared the branch with `main`. At review start PR #298 head was `b9a09d396f205db18d9296766ead6df27638aa17`, open/draft/non-mergeable, 188 commits ahead and 4 behind `main`. All source/SQL evidence below is from current `main`; no live production ledger, effective ACL, or deployed service state was inferred.
+
+### Exact files inspected
+
+- `database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql`
+- `database/cutovers/20261112161000_campaign_directory_review_actor_gateway_rollback.sql`
+- `database/migrations/20260918180000_create_campaign.sql`
+- `database/migrations/20261105230000_create_founder_directory_review.sql`
+- `src/http/campaign-router.ts`
+- `src/http/directory-review-router.ts`
+- `src/resources/campaign/repository.ts`
+- `src/resources/directory-review/repository.ts`
+- `src/actor-gateway/campaign-directory-review-reader.ts`
+- `src/db/campaign-directory-review-actor-gateway-migration-contract.test.ts`
+- `src/resources/campaign-directory-review-gateway-repository.test.ts`
+
+### Campaign route split: mutations Gateway-backed, reads remain tenant-authorized Resource API queries
+
+The manual cutover extends the signed actor assertion allow-list with `campaign.create`, `campaign.update`, and `directory_review.presentation.read`; it creates the matching signed SECURITY DEFINER wrappers, revokes their EXECUTE from PUBLIC/runtime/migrator, and grants EXECUTE only to `ghm_actor_gateway`. The wrappers bind request context and delegate to the existing business-management functions.
+
+The Resource API repository uses the Gateway for:
+- `POST /api/v1/campaigns` create;
+- `PATCH /api/v1/campaigns/:campaignId` update.
+
+The repository retains direct reads for:
+- `GET /api/v1/campaigns?businessId=...` list;
+- `GET /api/v1/campaigns/:campaignId` detail.
+
+Those reads execute inside `withAuthorizedTransaction`, explicitly check active business membership/role, and then SELECT `ghm.campaign`. The original campaign migration grants `ghm_runtime` table SELECT and sequence USAGE but no direct INSERT/UPDATE/DELETE; writes are SECURITY DEFINER functions. Therefore **do not revoke table SELECT or sequence access as part of this cutover** without first moving and testing the list/detail read paths. The current design deliberately protects mutation authority while retaining tenant-scoped read access in the Resource API.
+
+### Directory Review: owner presentation Gateway-backed; founder workflow remains disabled
+
+- Owner/administrator presentation route `GET /api/v1/businesses/:businessId/directory-review-presentation` delegates to the signed Gateway client when configured. The cutover's `gateway_get_business_directory_review_presentation` validates the one-use signed `directory_review.presentation.read` assertion and delegates to `ghm.get_business_directory_review_presentation`.
+- Founder authority endpoint currently returns `{ isFounderReviewer: false }`; it does not query the founder reviewer table.
+- Founder submission, queue-list and decision routes remain deterministically disabled with HTTP 403. The router comment explicitly states they must never invoke the revoked legacy submit/list/review SECURITY DEFINER functions.
+- The original founder migration creates reviewer/event tables with RLS and revokes all table privileges from PUBLIC/runtime. It grants runtime EXECUTE on legacy founder functions, but the routes above do not call those functions after founder workflow was disabled.
+- The new Gateway cutover does **not** re-enable founder submission, list or decision functionality. It adds only owner presentation. Do not represent the Gateway work as a founder moderation workflow replacement or as authorization to enable those endpoints.
+
+### Existing cutover and rollback semantics
+
+The cutover file is explicitly MANUAL CUTOVER ONLY and guarded by `session_user = ghm_migrator` and `current_user = ghm_schema_owner`. It:
+- adds the three signed operations to the assertion allow-list with a guard against partial extension;
+- creates the three signed wrappers and grants them only to `ghm_actor_gateway`;
+- revokes runtime/PUBLIC execution of the legacy `create_campaign`, `update_campaign`, and `get_business_directory_review_presentation` functions.
+
+It does **not** revoke campaign table SELECT/sequence privileges, because campaign list/detail remain Resource API reads.
+
+The paired rollback is also manual and role-guarded. It restores runtime EXECUTE on the three legacy functions and revokes Gateway execution on the three wrappers. It does not drop the wrapper functions, revert migration history, or remove the added assertion allow-list operation names. The rollback comments require Gateway routes out of traffic and a Resource API version restored to legacy function callers. Rehearse this exact sequence and confirm deployed-version compatibility before any production cutover; don't assume rollback is a complete schema rollback.
+
+### Tests and remaining proof
+
+The inspected contract test checks signed allow-list extension, request-context binding, Gateway-only wrapper grants, legacy runtime function revocation, rollback grants/revocations, and idempotent handling of the allow-list extension. The repository test verifies that Campaign create/update and owner presentation delegate to the Gateway with the verified bearer token. This is source/test contract evidence; it is not a production deployment or effective-ACL check.
+
+### Current privilege disposition
+
+| Resource | Runtime disposition after cutover |
+|---|---|
+| Campaign create/update legacy function EXECUTE | Revoke (existing manual cutover) |
+| Campaign table SELECT | Preserve for tenant-authorized list/detail routes |
+| Campaign identity sequence USAGE | Preserve pending sequence consumer review; not part of cutover |
+| Directory-review legacy founder submit/list/review EXECUTE | Revoke; founder routes remain disabled |
+| Legacy owner presentation function EXECUTE | Revoke; signed Gateway wrapper replaces it |
+| Signed Campaign/review Gateway wrappers | Grant only to `ghm_actor_gateway` |
+| Founder reviewer/event tables | Keep RLS and no runtime table grants |
+| Founder workflow activation | Not authorized by this cutover |
+
+### No-action and next-step record
+
+- Both exact cutover and rollback files already exist. Do not duplicate them.
+- The Campaign table SELECT is an intentional remaining Resource API dependency, not a bypass by itself; the reads are wrapped in authorized tenant transactions and explicit membership predicates.
+- Founder moderation remains disabled. No Gateway endpoint in this cutover replaces founder submission, queue listing or moderation decisions.
+- The manual cutover remains outside `config/production-migration-batches.json`; manifest stays `[]`.
+- Before production execution, require exact deployed Resource API/Gateway versions, complete caller inventory, live effective role/ACL proof, verified recovery point, and rehearsed rollback.
+- No production SQL/query, migration or cutover execution, ACL/role change, Render inspection/change, deployment, credential/backup operation, or payment action occurred in this review.
