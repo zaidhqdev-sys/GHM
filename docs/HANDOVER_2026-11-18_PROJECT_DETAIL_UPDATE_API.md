@@ -28,9 +28,9 @@ The existing Project repository scopes records to the authenticated account ID a
 
 - The TypeScript build, Actor Gateway Worker dry-run bundle, GHM web build and all 26 web tests passed in run 44207713671.
 - The migration step failed at `20261117020000_revoke_runtime_capability_governance.sql` while validating `ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)`.
-- The first attempted whitespace-normalization correction did not resolve the failure. The next commit changed the SQL regex to a POSIX whitespace class, but its run still failed at the same metadata guard. The earlier claim that whitespace alone was the root cause was premature and is withdrawn.
-- Diagnostic commit `66b1dae9830e1f9723e4c34ee754aab0b5beac96` changes the exception to report actual owner, expected owner, `prosecdef`, and `proconfig` for the exact failing function. That run was cancelled by a subsequent branch update before the diagnostic result was captured; a fresh CI run is required.
-- No security predicate has been removed or relaxed.
+- The first attempted whitespace-normalization correction did not resolve the failure. The subsequent migration history review identified the actual mismatch: `20261112090000_pin_security_definer_search_path.sql` deliberately pins every GHM `SECURITY DEFINER` function to `search_path = pg_catalog, ghm, pg_temp`, and `20261112140000_add_signed_storage_metadata_actor_gateway.sql` explicitly preserves that three-entry path on the shared signed assertion verifier. The later cutover guard incorrectly required only `pg_catalog, ghm`, so it rejected the intended temporary-schema-safe configuration.
+- Commit `e5bdfdb409a4607fbf3040be04ea9a0c7d9b928f` updates the guard to accept only the canonical pinned path `pg_catalog, ghm, pg_temp` after whitespace normalization. This preserves the security invariant: `pg_catalog` first, trusted `ghm` second, and `pg_temp` explicitly last. It does not permit arbitrary schemas or remove the owner, `SECURITY DEFINER`, ACL, or runtime-denial checks.
+- This correction is awaiting CI qualification. The earlier metadata diagnostic commit remains in branch history but the final guard uses the generic failure message again.
 - The same run's web audit reports five high-severity findings caused by the single picomatch ReDoS advisory GHSA-fc5q-39xc-vjpf across the Vite/Vitest dependency tree. The installed version is picomatch 4.0.7. The current advisory says versions through 4.0.7 are affected and does not publish a patched version. Do not force-downgrade Vite or suppress the audit; recheck for an upstream patched picomatch release before remediation.
 - The GHM CI workflow currently applies the full migration set to disposable PostgreSQL before running later qualification steps. This is CI-only, not production, but it is the long-running step. No production database was touched.
 - No migrations were applied to Render, no production data changed, and no services or paid resources were added.
@@ -42,3 +42,11 @@ The existing Project repository scopes records to the authenticated account ID a
 - Commit `c4462abdec2aaa3746c21974f00a6202c49ce022` makes PATCH customer-only.
 - Commit `ecc08472ebff8e2c280e0cd60e6cb448f4e3430d` adds an HTTP contract test proving both Project GET and PATCH reject an administrator context. This second commit is on the branch but has not yet received a dedicated CI run.
 - No production API deployment or database change has occurred.
+
+
+## Final migration guard finding — 18 November 2026
+
+- The failure was caused by an inconsistency between the global SECURITY DEFINER path pinning migration (which requires `pg_catalog, ghm, pg_temp`) and the later capability cutover guard (which incorrectly required `pg_catalog, ghm`).
+- The fix now validates the exact pinned three-schema path, with whitespace normalization only. It does not relax ownership, SECURITY DEFINER, gateway-only execution, or runtime denial requirements.
+- Project PATCH now explicitly denies administrator roles as well as business roles, matching the account-owned Project service contract. A dedicated admin denial HTTP test was added.
+- The branch has not been merged or deployed. All migration execution remains CI-only against disposable PostgreSQL.
