@@ -766,3 +766,62 @@ The exact first safe production prefix is **not yet selected**. It must include 
 ### Disposition
 
 No production migration, role, membership, grant, ACL, data, credential, backup, Render setting, service, environment variable, deployment, payment state, or paid resource was changed. No Render write action was performed. No production execution batch was selected or authorized. The next work is source-to-ledger dependency and active-route cutover reconciliation, followed by refreshed evidence through the already-approved dedicated paths; do not repeat the successful gateway login test without a specific changed condition.
+
+
+## 18 November 2026 19:16Z — active Resource API route-to-gateway cutover trace
+
+### Source revision and PR state rechecked
+
+This pass read the existing handover first, then current `main` route composition and gateway implementation, and checked the relevant merged/open PRs and changed-file lists.
+
+- Current `main` remains `ddb31ff59ab470973edf60a5078a75e5f962f803` at the recorded comparison.
+- PR #272 (unified Actor Gateway integration stack) is merged.
+- PR #275 (Resource API runtime database login isolation) is merged. Its production config requires the runtime principal and retains the fail-closed gateway routing behavior.
+- PR #296 (Business Identity runtime INSERT ACL narrowing) remains draft/open/unmerged.
+- PR #297 (explicit contiguous production migration batches) remains draft/open/unmerged at head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- PR #298 (reviewed Actor Gateway migration batches) remains draft/open/unmerged at head `f2e280005ce7f9bfc947a19ecbb6144957d4a340`.
+- The migration-batches branch is 137 commits ahead and 4 behind current `main`; its merge base is `b73839b27ac90446650f921d3e8ce1b5de041f04`. It is stale and must be reconciled before any PR/merge decision. No PR was merged and no CI was triggered by this documentation update.
+
+### Active Resource API routing behavior in current main
+
+The following route groups already have HTTP gateway clients and select them when `GHM_ACTOR_GATEWAY_URL` is configured. In production, the relevant `gatewayRequired` flags make the legacy repository fallback unavailable (the route returns 503 if the gateway client is absent). This is an existing fail-closed cutover design, not a request to add a fallback.
+
+| Resource API surface | Gateway operations / route group | Production behavior |
+|---|---|---|
+| Business supplier classification | `PATCH /api/v1/businesses/:businessId` with only `isSupplier`; gateway `PUT /v1/businesses/:businessId/supplier-classification` | Gateway required; absent client returns 503 |
+| Business profile update | `PATCH /api/v1/businesses/:businessId` for non-supplier profile fields; gateway `PATCH /v1/businesses/:businessId/profile` | Gateway required; absent client returns 503 |
+| Capability governance | Capability catalogue list, draft create/update, lifecycle transition; gateway `/v1/admin/capabilities...` | Router has no direct repository fallback; absent gateway client returns 503 |
+| Business capability assertions and evidence | Replace/verify capability assertions, submit/review evidence; gateway `/v1/businesses/:businessId/capabilities`, `/v1/business-capabilities/:id/verification`, `/v1/business-capability-evidence...` | Gateway required in production |
+| Business registration identity | Read/update registration identity routes; gateway `/v1/businesses/:businessId/registration-identity` | Gateway required in production |
+| Business hours | List/replace hours; gateway `/v1/businesses/:businessId/hours` | Gateway required in production |
+| Saved Businesses | List/get/create/delete; gateway `/v1/saved-businesses...` | Gateway required in production |
+| Trust scores | List/get/calculate; gateway `/v1/trust-scores...` | Gateway required in production |
+| Business logo and storage metadata | Logo binding and object metadata lifecycle; gateway `/v1/businesses/:businessId/logo` and `/v1/storage/metadata...` | Gateway required in production when storage is enabled |
+| Campaign/directory review authority | Campaign and directory review operations through the gateway-backed repository/readers | Production gateway-required repository behavior |
+
+The gateway server currently wires the corresponding Postgres readers for capability governance, supplier classification, Business profile, Business Capability mutations/evidence, registration identity, hours, saved Businesses, trust scores, logos, storage metadata, Connect provisioning, campaign/directory review, and additional commercial-document operations. The gateway app authenticates the bearer token itself, derives the account ID from the verified access token, and passes that verified identity to each reader. The database reader creates a one-use HMAC assertion bound to actor, operation, and operation context before calling the signed `ghm.gateway_*` function.
+
+### Important runtime startup distinction
+
+Current `src/config.ts` parses `GHM_ACTOR_GATEWAY_URL` as optional. However, in production with storage configured, `createApp` throws during startup if the URL is absent; it also requires the storage workflow attestation secret. The November 18 deployment blocker handover records that the prior deployment reached this exact fail-closed guard after the build fix. The other gateway-required routes fail closed with 503 if their client is absent. Therefore the runtime URL is not a harmless optional setting for a production deployment with storage enabled.
+
+Do not insert a placeholder URL, point the runtime to itself, use a sandbox endpoint, or deploy around the startup guard. The dedicated gateway host is a separate always-on Render Web Service in the selected architecture, and its recurring cost remains unapproved. No existing service is an approved substitute.
+
+### Post-deployment revocations remain separate
+
+The two migrations introduced by draft PR #297 are explicitly post-deployment cutover operations:
+
+- `20261117010000_revoke_runtime_business_registration_identity_write` checks that the signed gateway registration function exists, is SECURITY DEFINER/owned by `ghm_schema_owner`, and is executable by `ghm_actor_gateway` but not `ghm_runtime`; its header requires a deployed gateway, authenticated registration read/write end-to-end tests, and a stable HTTPS runtime URL before execution.
+- `20261117020000_revoke_runtime_capability_governance` checks the signed verifier and all four signed capability operations, their owner, SECURITY DEFINER setting, fixed `pg_catalog,ghm,pg_temp` search path, gateway EXECUTE, and absence of runtime EXECUTE before revoking the three legacy runtime governance functions. Its header requires deployed gateway startup checks and authenticated capability list/create/update/transition end-to-end tests.
+
+These migrations must remain outside the pre-deployment installation batch. They are not generic ACL cleanup and must not be executed until their application-level operational gates have actually passed.
+
+### Cutover conclusion
+
+The active Resource API is already structured for a fail-closed HTTP gateway cutover. The missing production pieces are not additional client code or another connection-string attempt: they are (1) a cost-approved dedicated gateway host, (2) the exact signed gateway database function/ACL migration chain installed through a reviewed contiguous batch, (3) a strict verified-TLS database connection for the production gateway, and (4) authenticated positive/negative end-to-end checks before the separate legacy revocation migrations.
+
+The current production catalogue still lacks `ghm_actor_gateway` schema USAGE and gateway functions. Thus the current main gateway server would fail its startup ACL assertion if pointed at production today. Do not deploy it or set the runtime URL before the DB prerequisite chain and host/cost gates are resolved.
+
+### Disposition
+
+This is source/PR/handover inspection and documentation only. No Render write action, production database mutation, migration, grant, role change, deployment, CI run, new branch, paid service, or application data change occurred. The next safe work is a migration-to-reader dependency matrix (each reader operation ↔ exact SQL function signature ↔ migration version ↔ grant principal ↔ route smoke test) and then an exact-main reconciliation of PR #297/#298. No production batch is selected or authorized.
