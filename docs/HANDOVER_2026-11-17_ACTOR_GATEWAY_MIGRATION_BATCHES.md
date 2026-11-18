@@ -399,3 +399,43 @@ No production SQL, database role/grant, secret, Render resource, deployment, or 
 - Keep PR #298 draft and unmerged.
 - Do not set `GHM_MIGRATION_BATCH_ID`, run a production migration, alter production grants/roles, deploy the Actor Gateway, or enable payment activation.
 - Next technical review should trace the actual GHM runtime and Connect/QuoteFlow route implementations against the signed operation names, canonical JSON assertion contexts, and SQL function signatures. The Supabase mapping identifier above should be resolved as part of that source review, before proposing any batch.
+
+
+## Runtime and Connect route-wiring review — 18 November 2026
+
+### Confirmed route/client wiring
+
+The source review compared `src/actor-gateway/app.ts`, its reader construction in `src/actor-gateway/server.ts`, the GHM Resource API composition in `src/http/app.ts`, and the corresponding gateway HTTP clients.
+
+| Capability family | Actor Gateway endpoint(s) | GHM Resource API wiring | Status from source review |
+|---|---|---|---|
+| Actor identity | `GET /v1/actor/me` | No consumer identified in the reviewed Resource API composition | Gateway endpoint exists; caller path not established |
+| Business registration identity | `GET/PUT /v1/businesses/:id/registration-identity` | Router uses gateway client when configured; production requires gateway and otherwise returns 503 | Wired, fail-closed |
+| Capability catalogue governance | `GET/POST /v1/admin/capabilities...` | Admin catalogue router uses gateway client; missing client returns 503 | Wired, fail-closed for admin operations |
+| Supplier classification / Business profile | `PUT /v1/businesses/:id/supplier-classification`; `PATCH /v1/businesses/:id/profile` | Gateway clients are constructed from `GHM_ACTOR_GATEWAY_URL`; request handlers return 503 when unavailable | Wired, fail-closed at operation |
+| Business capability assertions / evidence | `PUT /v1/businesses/:id/capabilities`; verification and evidence submit/review routes | Mutation gateway client is passed to capability and evidence routers; production marks gateway required | Wired, fail-closed |
+| Business hours | `GET/PUT /v1/businesses/:id/hours` | Gateway client is configured from the Actor Gateway URL; production marks it required | Wired, fail-closed |
+| Saved Business | `GET/POST/DELETE /v1/saved-businesses...` | Gateway client is passed to Saved Business router; production marks it required | Wired, fail-closed |
+| Trust score | `GET /v1/trust-scores...`; `POST /v1/trust-scores/:id/calculate` | Gateway client is passed to Trust Score router; production marks it required | Wired, fail-closed |
+| Business logo | `PUT /v1/businesses/:id/logo` | Gateway client is passed into storage routes; production marks gateway required | Wired when storage routes are enabled |
+| Storage metadata | `POST/GET /v1/storage/metadata...` and lifecycle transitions | Per-request store factory uses Actor Gateway URL, bearer token, and provider-attestation secret; production storage requires URL and secret | Wired, but requires a separate provider attestation configuration and provider workflow |
+| Campaign directory review | Campaign create/update and business directory-review presentation endpoints | Campaign and directory-review repositories receive gateway client; production marks it required | Wired, fail-closed |
+| Connect Business provisioning | `POST /v1/connect/businesses/provision-or-resolve` | Actor Gateway endpoint and reader exist; a gateway HTTP client and `ConnectBusinessAdapter` exist, but the reviewed `src/http/app.ts` and `connect-service-router.ts` do not instantiate or dispatch them | **Not connected to a confirmed GHM Resource API route** |
+| Commercial document authority / approval / consent payment preparation | Founder authority, approval and payment preparation endpoints | Actor Gateway routes and readers exist; payment preparation is guarded by explicit feature/launch flags | Endpoint implementation exists; no production activation is authorized |
+
+### Confirmed integration blockers
+
+1. **Connect Business provisioning is not end-to-end wired in this repository.** `src/actor-gateway/app.ts` exposes the endpoint and `src/actor-gateway/server.ts` constructs its reader. `HttpConnectBusinessProvisioningGatewayClient` and `ConnectBusinessAdapter` exist, but the adapter is only referenced by its own unit test in the reviewed source tree. The Resource API composition does not construct it, and `src/http/connect-service-router.ts` has no Business provisioning dispatch. Therefore the SQL gateway function and Actor Gateway endpoint do not establish a usable Connect application path yet.
+2. **The Connect service identity boundary still explicitly depends on Supabase identity references.** `src/http/connect-service-router.ts` rejects any external identity provider other than `supabase`; `src/integrations/connect/trusted-request-context.ts` types and validates only `provider: 'supabase'`; `src/integrations/connect/authorization-binding.ts` rejects any other provider; and `src/integrations/connect/identity-adapter.ts` resolves through `EXTERNAL_IDENTITY_PROVIDER_SUPABASE`. This is a real remaining Supabase integration dependency, not merely the historical provider label in the Business mapping migration. The agreed re-sign-up path means the replacement should bind to an authenticated GHM account identity, not preserve a mandatory Supabase identity lookup. Do not remove these checks piecemeal: change the trusted assertion/request contract, identity binding, account lookup, and Connect caller together with tests.
+3. **Business provisioning's SQL migration still uses the `supabase` mapping key** in its advisory-lock namespace, mapping lookup, and mapping creation. Even if the old Connect UUID is retained as a legacy external identifier for data reconciliation, the active provider key and new mapping contract must be decided and made consistent with the GHM-native identity cutover before this migration is eligible for production.
+4. **The Actor Gateway URL is not globally mandatory in Resource API startup.** It is read as optional configuration. Individual production routes are designed to fail closed (503) when their gateway is required but not configured; storage adds explicit startup checks only when storage is enabled. Thus a healthy Resource API process does not prove that all gateway-backed routes are usable. Deployment readiness needs an explicit gateway configuration and authenticated path qualification, not just `/healthz` or `/readyz`.
+5. **The Actor Gateway itself is not shown as deployed or reachable by this source review.** Its startup requires `GHM_ACTOR_GATEWAY_DATABASE_URL`, ES256 verification keys, and a canonical 32-byte `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`; startup then checks exact database identity, memberships, and function ACL allow-list. These checks are intentionally strict. The unresolved Render role-membership issue means this startup gate remains unqualified.
+
+### Route-readiness decision
+
+- Existing route/client code is a useful implementation base, but it is not proof that the Actor Gateway is production-ready.
+- Do not execute the production migration prefix or either post-deployment revoke migration based on this code review.
+- The highest-priority implementation gap is the **Connect identity cutover and Business provisioning route wiring**. The next code change should move Connect's trusted end-user binding to the GHM account identity already established by the verified Connect service request, then wire Business provisioning through the internal Actor Gateway client without exposing the Actor Gateway URL or database credentials to the browser.
+- Preserve the existing integration-principal assertion, replay store, lifecycle check, governed operation registry and end-user authorization binding. The Connect integration principal must not become the end-user account.
+- Resolve the `supabase` Business mapping key as part of that coordinated change; do not silently rename historical mapping rows or strand existing Connect users.
+- Keep the production migration manifest empty and PR #298 draft/unmerged. No production SQL, roles, grants, deployments, secrets, payment activation or paid resources were changed in this review.
