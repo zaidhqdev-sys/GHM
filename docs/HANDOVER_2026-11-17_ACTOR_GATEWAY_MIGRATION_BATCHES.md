@@ -1723,3 +1723,57 @@ The preceding health/deployment handover section was labelled 19 November 00:14 
 - No code, SQL, migration, manifest, secret, credential, service setting, deployment, role, ACL or payment state was changed.
 - No production DB connection/query and no Render/Cloudflare service inspection/action occurred.
 - `config/production-migration-batches.json` remains `[]`; PR #298 remains open, draft, unmerged and non-mergeable.
+
+
+---
+
+## 19 November 2026 — Actor Gateway environment contract source verification
+
+Re-read this handover before continuing. The latest preceding checkpoint requested a source-level verification of the Node/Render environment contract and a strict separation from the unselected Cloudflare Worker adapter. This section records that bounded review; it does not authorize deployment or database changes.
+
+### Exact source verification
+
+Reviewed the current-main source at `ddb31ff59ab470973edf60a5078a75e5f962f803`:
+
+- `src/actor-gateway/server.ts`, blob `2ed8e9ffa36ead9eeb9a091f4b7061ae78ee6ceb`.
+- `src/actor-gateway/database-ssl.ts`, blob `18666ce9f8dedba17d5bc402bfdb53e14d635620`.
+- `src/auth/foundation/es256-keys.ts`, blob `e60524677a16feb9e0b47ad1c1117c926a3fc92d`.
+- `src/actor-gateway/actor-identity-reader.ts`, blob `1a3cb0adc483a0aa9e5bb78b4ad220a33c8fd9db`.
+- `src/actor-gateway/database-principal.ts`, blob `ff32cd0ae0b4014041bc726790074a481ddd6006`.
+- `src/actor-gateway/database-privileges.ts`, blob `41021badb1b2760ef5e26c1ab882ba0798316e0d`.
+- Separate Cloudflare Worker source `workers/actor-gateway/index.ts`, blob `259efb0c82ee6c2b85c7b378d5aff551134505a8`; Wrangler template `workers/actor-gateway/wrangler.jsonc`, blob `1753634ea381a09c2aafb92a9bc0b81b7ce40251`.
+
+### Confirmed Node/Render environment contract
+
+Required:
+- `GHM_ACTOR_GATEWAY_DATABASE_URL` — dedicated SQL-created `ghm_actor_gateway` login; never reuse Dashboard/admin, runtime or migrator credentials.
+- `DATABASE_SSL_MODE` — explicit in production; `internal` is the intended setting for the same-region Render private-network URL.
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM` and `GHM_JWT_ES256_KID` — active public verification key and key ID.
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` — canonical Base64 encoding of exactly 32 bytes; reader constructors validate decoded length and canonical re-encoding.
+
+Optional:
+- `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM` and `GHM_JWT_ES256_PREVIOUS_KID` — both absent/empty or both valid; previous KID must differ from active KID.
+- `PORT` — defaults to 10000 and must parse as a valid TCP port.
+- Commercial flags are opt-in only. Keep `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED` and `GHM_COMMERCIAL_LAUNCH_AUTHORIZED` unset/false while PayFast remains paused. Provider code defaults to `payfast`; that default does not activate payment processing.
+
+Forbidden in the gateway:
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_AUTH_TOKEN_PEPPER`, `GHM_AUTH_ISSUER_DATABASE_URL`, and any admin/migrator/runtime credential. The Node server calls `loadEs256VerificationKeys()`, which loads only the public active/previous keys; the issuer private key is not needed.
+
+### TLS correction
+
+The source has two explicit modes: `internal` returns `ssl: false`; `external` returns `{ rejectUnauthorized: false }`. The latter encrypts traffic but does not authenticate the PostgreSQL server certificate. Therefore:
+- The staged same-region Render private URL must use `DATABASE_SSL_MODE=internal` as recorded in the hosting handover.
+- Do not describe the source's `external` mode as strict certificate verification.
+- A separate workstation probe against an external endpoint must enforce its own strict certificate/hostname verification; it must not inherit the application's weaker external-mode setting.
+
+### Deployment adapter distinction
+
+The Node/Render server and Cloudflare Worker are separate adapters. The Worker requires Cloudflare `HYPERDRIVE` and `ACTOR_GATEWAY_RATE_LIMITER` bindings; its Wrangler file contains a zero-ID Hyperdrive placeholder and disposable local connection string. Worker CI/source configuration is not evidence of a deployed production Worker and must not be mixed into the Render service's environment checklist. The selected hosting path remains Node/Render; no Cloudflare deployment is selected here.
+
+### Startup consequence and disposition
+
+The Node server does not listen until it has connected using the dedicated gateway URL, verified `session_user=current_user=ghm_actor_gateway`, checked role flags/memberships, and passed the exact database privilege/function allow-list. The production evidence already recorded above says the gateway role lacks `ghm` schema USAGE and the gateway API functions are not installed. Thus, merely filling all environment variables cannot make startup pass; the database release gates remain blocking. Do not weaken these guards or attempt startup as a substitute for the ordered migration/ACL plan.
+
+### Branch and action boundary
+
+At this review, PR #298 branch head was `5b820086d8e4a187c1f6d52f9cc85e0e117b42e9`; comparison with main `ddb31ff59ab470973edf60a5078a75e5f962f803` reports 159 commits ahead and 4 behind. This documentation-only checkpoint does not reconcile those four commits, rebase the branch, or authorize merge. The manifest remains empty. No code, SQL, production DB, local PostgreSQL session, Render form/service, secret, role, ACL, migration, deployment, payment state or paid resource was changed. No repeated database probe or audit was run.
