@@ -1968,3 +1968,41 @@ A further inspection of current-main `src/http/connect-service-router.ts` and it
 - Therefore do not treat Connect Business provisioning as an active Resource API route awaiting a migration mapping. Its current product caller, if any, must be identified before including it in a live cutover plan. No route or SQL function is inferred.
 
 This supersedes the table row's implication that an existing Resource API provisioning route is awaiting mapping. The accurate state is: Gateway-side endpoint listed; current Resource API caller not found in the inspected router; product usage and any remaining direct database path remain unverified.
+
+
+## 19 November 2026 — confirmed Resource API evidence-read privilege conflict
+
+### Route and wiring verified on current main
+
+Inspected:
+- `src/http/app.ts` — constructs `BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository())` without a Gateway-backed read repository and registers the evidence router with the capability-mutation Gateway client.
+- `src/http/business-capability-evidence-router.ts` — `POST /api/v1/business-capability-evidence` and `PATCH /api/v1/business-capability-evidence/:evidenceId/review` dispatch to the Gateway when the client is configured/required; `GET /api/v1/business-capability-evidence` always calls the Resource API service/repository directly.
+- `src/resources/business-capability-evidence/repository.ts` — list/read queries select from `ghm.business_capability_evidence` joined to `ghm.business_capability`, `ghm.business` and `ghm.capability`.
+- `database/migrations/20261109140000_close_evidence_and_founder_review_authority.sql` — explicitly executes `REVOKE SELECT ON TABLE ghm.business_capability_evidence FROM ghm_runtime`.
+
+### Finding
+
+The authenticated evidence-list GET route is not migrated behind the Actor Gateway, while the earlier authority-hardening migration revokes the Resource API runtime role's direct SELECT privilege on the evidence table. The signed capability mutation migration (`20261111070000_add_signed_business_capability_mutations.sql`) supplies Gateway operations for evidence submission and review, but does not add a Gateway evidence-list/read operation or change the Resource API GET route.
+
+This is a concrete route/ACL dependency conflict to resolve before production cutover. Depending on the effective production ACL (including inherited grants), the current GET route will fail with a database permission error once the revocation is effective. Do not claim the route is already broken in live production without checking the actual effective privilege; the live catalogue/role state has not been re-inspected for this checkpoint.
+
+### Required disposition
+
+- Keep the existing evidence-list route out of any migration batch that would remove its last effective read privilege until the read path is deliberately resolved.
+- Preferred security-preserving options for a source change: add a narrowly scoped, tenant-authorized signed Actor Gateway evidence-read operation and route the GET through it; or provide a reviewed SECURITY DEFINER read projection with a strict actor/tenant authorization contract and grant only the required execution privilege. The first option keeps the sensitive evidence read behind the existing signed gateway boundary.
+- Do not simply re-grant broad `SELECT` on `ghm.business_capability_evidence` to `ghm_runtime` to make the endpoint work. That would undo the explicit confidentiality boundary introduced by `20261109140000`.
+- Add route tests proving the GET route calls the selected protected read path in production, tests denying cross-business evidence disclosure, and a negative SQL/ACL test proving `ghm_runtime` cannot directly read the evidence table.
+- Reconcile the current production effective ACL and actual route deployment version using existing handover evidence before planning any live migration. No repeat production audit was performed here.
+
+### Adjacent direct-read paths retained
+
+The same source review confirmed that business-capability assertion reads and related evidence joins remain Resource API SQL reads. The direct table-read privileges for `ghm.business_capability`, `ghm.capability`, `ghm.business` and `ghm.business_membership` must be mapped separately; the evidence-table revocation alone does not establish their ACL state. Public business-hours and trust-score reads intentionally use separate SECURITY DEFINER projections (`ghm.get_public_business_hours`, `ghm.get_public_trust_score`, `ghm.list_public_trust_scores`) granted to `ghm_runtime`; those public projection grants are not equivalent to granting direct table access.
+
+### Cutover impact
+
+The production migration chain must be reviewed as at least three distinct access classes:
+1. Gateway-only signed actor mutations and sensitive reads.
+2. Resource API runtime SQL reads that intentionally remain and therefore require narrow, explicit effective privileges or protected read projections.
+3. Public read projections whose function EXECUTE grants are intentionally retained for `ghm_runtime`.
+
+Do not revoke runtime table/function privileges based solely on the fact that a related mutation now uses the Gateway. Route-level read and write paths must be evaluated independently. The production batch manifest remains `[]`; no SQL, ACL, Render, deployment, credential, or payment change was made.
