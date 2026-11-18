@@ -2998,3 +2998,88 @@ No separate Business Profile manual cutover file or paired rollback was found in
 - Business Profile's internal legacy function grant is distinct from direct runtime execution of the legacy entry point; preserve only what the SECURITY DEFINER wrapper requires.
 - These findings do not populate `config/production-migration-batches.json`; it remains `[]`.
 - No production SQL/query, migration execution, ACL/role change, Render inspection/change, service deployment, credential/backup operation, or payment action occurred.
+
+
+## 19 November 2026 — Supplier signed-wrapper chronology resolved; Storage Metadata and Connect provisioning reconciliation
+
+### Pre-workflow checkpoint
+
+Re-read the PR #298 migration/hosting handovers, PR metadata, changed-file inventory and branch comparison. At review start PR #298 head was `5a9260f1513721a23f253fef2d03585d77789809`, open/draft/non-mergeable, 191 commits ahead and 4 behind `main`. Source, migration and specialist handover evidence below is from current `main`; no production ledger or effective ACL was inferred.
+
+### 1. Supplier Classification signature chronology — resolved
+
+The previously missing migration was located:
+
+`database/migrations/20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql`
+
+It explicitly:
+- extends the assertion allow-list with `supplier.classification.update`;
+- replaces the account-ID-only `ghm.assert_actor_gateway_capability` signature with the signed HMAC verifier;
+- drops the old three-argument Gateway supplier wrapper;
+- recreates `ghm.gateway_update_business_supplier_classification` with issued-at, nonce and signature parameters;
+- verifies the signed actor assertion before delegating to the legacy underlying supplier update function;
+- restricts wrapper EXECUTE to `ghm_actor_gateway`, revoking PUBLIC/runtime/migrator;
+- pins SECURITY DEFINER ownership and search_path.
+
+`src/actor-gateway/supplier-classification-reader.ts` calls the matching seven-argument SQL wrapper and creates the same operation-bound assertion. The migration contract test checks the signature, assertion operation, old wrapper removal and Gateway-only grant.
+
+**Conclusion:** the apparent account-ID/HMAC mismatch was migration chronology, not an unresolved implementation gap. The later signed-wrapper migration closes it. Production still requires exact pending-prefix/ledger and effective-grant proof; source existence does not establish application.
+
+### 2. Storage Metadata — route, dual-proof lifecycle and production cutover boundary
+
+Re-read specialist handover `docs/HANDOVER_2026-11-12_STORAGE_METADATA_GATEWAY.md`, storage architecture contract, exact signed metadata migration, Resource API storage router/client, Gateway reader and migration contract tests.
+
+**Resource API routes:** `src/http/storage-router.ts` obtains the caller bearer token and uses the storage metadata Gateway store factory for metadata create/read/deletion-pending/availability/deletion transitions. In required mode, absent bearer token is rejected and missing Gateway factory returns unavailable; it does not fall back to direct PostgreSQL metadata calls. The production app wiring is documented in the specialist handover. Business Logo public retrieval remains a narrow approved-logo path; it is not a broad storage metadata read grant.
+
+**Five replacement operations:**
+- create pending metadata;
+- read metadata;
+- mark deletion pending;
+- mark available;
+- mark deleted.
+
+The first three require a one-use v2 signed actor assertion. Provider-confirmed availability and deletion require a second, separate Resource API HMAC attestation, verified in PostgreSQL with operation/context/expiry/nonce checks. The Actor Gateway does not possess the provider signing key. The database public Business Logo read exception requires active Business, public Business Logo identity and `status='available'`; private reads require active membership; owner/administrator authority is required for management mutations.
+
+The specialist handover records disposable PostgreSQL 18 dual-proof and lifecycle qualification, including invalid signature/expiry/context/operation/metadata, cross-business actor and nonce replay rejection. It also records a localhost/disposable five-function legacy grant revocation/rollback rehearsal: runtime/migrator/Actor Gateway direct calls denied during the rehearsal, replacement wrappers retained, and original grants restored. This is not production ACL evidence or a production cutover.
+
+**Important production blockers remain:** no production five-function revocation has occurred; no fresh independently verified production backup; Render role-administration/provider authority issue remains; no verified deployed Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ R2 full lifecycle against a dedicated non-production bucket. The only previously identified R2 bucket `zaid-ghm-production` is not established as non-production and must not be mutated for qualification. Keep Connect upload/removal controls disabled until the full non-production lifecycle passes. Do not invent a SQL cutover file: the existing revocation evidence is a disposable qualification script and handover, not a production-ready manual cutover/rollback pair.
+
+### 3. Connect Business provisioning — signed atomic Gateway operation
+
+Inspected:
+- `database/migrations/20261112080000_signed_connect_business_provisioning_gateway.sql`
+- `src/actor-gateway/connect-business-provisioning-reader.ts`
+- `src/http/connect-business-provisioning-gateway-client.ts`
+- `src/integrations/connect/business-adapter.ts`
+- `src/db/actor-gateway-connect-business-provisioning-migration-contract.test.ts`
+- `docs/architecture/GHM_CONNECT_BUSINESS_PROVISIONING_LINKING_CONTRACT.md`
+
+The Connect Business adapter requires the verified caller bearer token and delegates to `POST /v1/connect/businesses/provision-or-resolve`. The Gateway reader constructs a one-use v2 assertion bound to `business.connect.provision` and calls `ghm.gateway_provision_connect_business`.
+
+The SECURITY DEFINER SQL operation:
+- verifies the signed actor assertion and operation context;
+- uses a transaction advisory lock for the external Business identity;
+- resolves an existing canonical mapping only when the actor is an active member (or system-admin path);
+- otherwise creates the canonical Business, creates exactly one active owner membership for the signed actor, links the external mapping and returns `provisioned`;
+- fails on mapping conflict rather than claiming success;
+- grants wrapper EXECUTE only to `ghm_actor_gateway`;
+- revokes the legacy `ghm.auth_link_business_external_mapping` helper from PUBLIC, runtime, migrator, Actor Gateway and the named service roles.
+
+The provider value `supabase` in the mapping is explicitly historical external-identity provenance for Connect Business UUIDs, not Supabase authentication, persistence, or an approved active target-runtime dependency. The architecture contract expressly distinguishes this metadata from session authority and says no production routing/data cutover or provider cleanup is authorized by the construction contract.
+
+**Disposition:** source/migration contract is present and its migration test asserts signed operation, owner-owned wrapper, Gateway-only EXECUTE, advisory lock, membership requirement and legacy helper revocation. Production deployment/ledger/ACL proof remains separate. Do not treat this one bounded mapping adapter as authorization to retain Supabase as a target dependency or as approval to run production provisioning.
+
+### Consolidated status
+
+| Area | Source state | Production state / action |
+|---|---|---|
+| Supplier Classification | Signed assertion chronology confirmed by `20261111030000` | Verify exact applied prefix and effective grants; no production action |
+| Storage Metadata | Five signed Gateway operations; dual proof for provider-confirmed transitions; disposable qualification passed | Production legacy grants remain; full deployed non-prod provider journey, backup and role authority remain blockers |
+| Connect provisioning | Signed atomic actor Gateway operation and mapping-helper revocation in migration source | No production rollout/provisioning authorized by this review |
+
+### No-action record
+
+- No duplicate supplier migration, storage cutover or Connect provisioning SQL was created.
+- No production SQL/query, migration execution, ACL/role/secret change, provider bucket/object operation, Render inspection/change, deployment, backup operation or payment action occurred.
+- Production migration manifest remains `[]`.
+- Continue only with remaining route/privilege families and exact-head PR/branch reconciliation. Do not re-run already recorded PostgreSQL qualification or storage grant rehearsal absent a source change or specific failed exact-head evidence.
