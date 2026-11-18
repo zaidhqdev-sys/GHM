@@ -3273,3 +3273,15 @@ The QuoteFlow PR #25 follow-up dependency identified in the prior section has no
 Exact QuoteFlow source head: `3be84d19068d46b57ab6a0f0e012cf7144a21973`. At the time of this handover update, exact-head CI #244 (run `44422791748`) and Android preview #130 (run `44422791668`) were still in progress. Do not mark the client qualification complete until both conclusions and any required fixes are recorded.
 
 No Auth Issuer URL has been invented or configured. Production issuer hosting/role/credentials/network/TLS/backup and coordinated database cutover remain outstanding. No Render, production database, secret, service, deployment, or user data was changed.
+
+
+### QuoteFlow split-origin CI correction — 19 November
+
+The first QuoteFlow CI #244 run (`44422791748`) failed during TypeScript typecheck before Jest. Its three errors were traced and corrected on the existing QuoteFlow PR #25 branch:
+1. One selected-Business membership-list request lacked the new explicit Resource API origin.
+2. The legacy qualification smoke-test still imported the removed single-origin resolver; it now resolves the Resource API origin for its historical sandbox-host check.
+3. The QuoteFlow legal documents/acceptance API still imported the removed resolver; it now uses the Resource API origin, as a protected resource/legal API rather than an authentication lifecycle endpoint.
+
+The origin normalizer was also corrected and the source re-fetched. Latest corrected QuoteFlow source commit is `8fc34181356c5684eb1f009abf8b27e69b00052f`; latest QuoteFlow branch handover commit at the time of recording is `8fbdf4b0c4148514f884f6bab94fa1b9c4c40d27`.
+
+The failing run #244 was on the earlier merge head and is not a validation pass. The Android preview #130 was still assembling for an earlier source head at last poll. No successful exact-head typecheck/Jest/Android preview result has been observed after corrections. Keep this work in pending qualification status.
