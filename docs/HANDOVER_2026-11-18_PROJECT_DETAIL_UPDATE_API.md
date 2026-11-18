@@ -60,3 +60,18 @@ The existing Project repository scopes records to the authenticated account ID a
 - Commit `72f4b82340c6862a8d7c11a8d7810550aff973f2` adds explicit HTTP denial coverage for both business and administrator roles across Project create, detail read and update, asserting the Project service is never called.
 - The run's web dependency audit remains blocked by five high-severity findings in the existing picomatch/Vite dependency tree. No force downgrade or audit suppression has been applied.
 - A new CI run is required for the latest two commits. No merge, deployment, production migration, payment activation, or paid infrastructure change has occurred.
+
+
+
+## CI result and picomatch security audit follow-up — 18 November 2026
+
+- Run [44213277321](https://github.com/zaidhqdev-sys/GHM/actions/runs/44213277321) completed. The `quality` job passed, including migration application to disposable PostgreSQL, Capability catalogue governance lifecycle qualification, legacy capability RPC cutover, gateway-only access checks, runtime boundary verification, the complete test suite, and the other listed database/security qualification steps.
+- The `web-quality` job passed dependency installation, web build, and all 26 web tests. Its only failed step was `npm audit --audit-level=moderate`.
+- The audit log identifies five high-severity findings, all arising from one advisory, GHSA-fc5q-39xc-vjpf / CVE-2026-112366, for picomatch ReDoS via single-branch repeated extglobs. The five entries are dependency-path repetitions, not five distinct package vulnerabilities.
+- The current lockfile resolves one picomatch package at 4.0.7, marked development-only. It is reached through the Vite/Vitest toolchain (including fdir/tinyglobby). The finding is therefore in the build/test dependency tree, not the production React runtime dependency set. This does not make the audit finding irrelevant or justify suppressing it.
+- The upstream proposals specifically addressing this CVE include picomatch PRs #237 and #238 for the 4.x line and #246 for the 2.x line. These are proposals, not an official published patched release. A more comprehensive proposed bounded-ambiguity guard is in upstream PR #261; it changes compatibility behavior for ambiguous/unproven repeated patterns and is not an approved upstream release. Do not copy it into GHM without independent review and regression validation.
+- The advisory is marked unreviewed in the GitHub Advisory Database, and an upstream issue comment reports that a dispute has been submitted. The advisory remains present and npm audit still fails on it. Treat the scanner result as an active CI gate until the advisory is formally withdrawn or a verified remediation is available; do not infer that the report is false merely because it is disputed.
+- Correction to the previous interim investigation: the earlier-mentioned upstream PRs #259/#262 are not the primary proposals for this specific CVE. The relevant focused proposals are #237/#238/#246; #261 is a later, broader mitigation proposal.
+- No dependency override, package fork, audit exception, forced downgrade, or security-gate suppression has been introduced. No code change or additional CI run was made as part of this investigation.
+- Next action: monitor the specific upstream CVE proposals/advisory status and evaluate a published fix when available. If a pre-release mitigation is considered, it must be reviewed against the affected matching semantics and adversarial regression corpus first. Keep PR #299 draft until the audit gate is legitimately resolved.
+- No production database, production service, payment activation, new paid infrastructure, or deployment was touched.
