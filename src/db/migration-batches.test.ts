@@ -4,9 +4,9 @@ import { selectProductionMigrationBatch, type MigrationBatch } from './migration
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 
 const migrations = [
-  { version: '20261110010000', name: 'first' },
-  { version: '20261110100000', name: 'second' },
-  { version: '20261110210000', name: 'third' },
+  { version: '20261110010000', name: 'first', checksum: 'a'.repeat(64) },
+  { version: '20261110100000', name: 'second', checksum: 'b'.repeat(64) },
+  { version: '20261110210000', name: 'third', checksum: 'c'.repeat(64) },
 ];
 const batch = (entries: typeof migrations): MigrationBatch[] => [
   { id: 'gateway-foundation-01', purpose: 'Install reviewed gateway foundation', migrations: entries },
@@ -41,6 +41,22 @@ test('rejects malformed batch IDs, missing purpose and empty batches', () => {
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [{ id: 'valid-id', purpose: ' ', migrations: [migrations[0]] }], 'valid-id'), /invalid batch/);
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), [{ id: 'valid-id', purpose: 'valid', migrations: [] }], 'valid-id'), /invalid batch/);
 });
+
+test('rejects changed SQL checksum under an unchanged version and name', () => {
+  const changedSql = [{ ...migrations[0], checksum: 'd'.repeat(64) }];
+  assert.throws(
+    () => selectProductionMigrationBatch(migrations, new Set(), batch(changedSql), 'gateway-foundation-01'),
+    /checksum mismatch.*20261110010000_first/,
+  );
+});
+test('rejects malformed reviewed migration checksums', () => {
+  const malformed = [{ ...migrations[0], checksum: 'not-a-sha256' }];
+  assert.throws(
+    () => selectProductionMigrationBatch(migrations, new Set(), batch(malformed), 'gateway-foundation-01'),
+    /invalid migration identity/,
+  );
+});
+
 test('rejects unordered batch identities', () =>
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), batch([migrations[1], migrations[0]]), 'gateway-foundation-01'), /strict version order/));
 
