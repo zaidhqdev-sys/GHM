@@ -165,3 +165,11 @@ Migration-related branches were also checked:
 ## 8. Change record
 
 This handover records source review and the user's supplied read-only audit. It does not claim a new production audit was run. No production SQL, migration, role/grant, secret, environment variable, Render service, Cloudflare resource, deployment or application data was changed.
+
+
+## Current branch reconciliation note — 18 November 2026, 03:34 UTC
+
+- Current `main` is `b73839b27ac90446650f921d3e8ce1b5de041f04`. PR #298 is the current runner candidate based on that main; its 50-entry pending inventory and empty execution manifest are candidate branch artifacts, not production authorization.
+- PR #296's Business Identity INSERT privilege migration `20261116200000_narrow_business_identity_runtime_insert.sql` is not present in current main or PR #298's 50-entry inventory. It remains isolated on a stale-base, draft, non-mergeable PR branch. Its exact-head CI passed, but it is not included in the current 50-entry plan and must not be applied or silently appended.
+- PR #297 and #285 are stale/non-mergeable runner alternatives; PR #286 is separate storage metadata ACL/cutover work. PR #298 remains the sole current runner candidate, draft and unmerged. Its full quality job passed 76/76, while the direct web npm audit remains blocked by the known picomatch advisory.
+- No production migration, ACL/role change, inventory expansion, execution batch selection, deployment, or CI rerun was performed during this reconciliation. Keep production execution blocked pending live ledger/checksum reconciliation, role authority resolution, dedicated Actor Gateway credentials/hosting proof, verified backup/recovery and rollback gates.
