@@ -189,3 +189,11 @@ Even if the owner later approves the $7/month charge, this form is not deploymen
 **Disposition:** configuration values are mostly aligned with source, but do not submit, deploy, select Free, or incur cost now. Keep the form unsubmitted, keep existing production untouched, and preserve the current architecture/cost decision.
 
 No Render service, plan, environment variable, secret, deployment, database role/grant/migration, backup, payment state, CI or schedule was changed. No cost incurred.
+
+## 19 November 2026 — owner decision supersedes prior plan selection
+
+The owner has explicitly selected Render **Free** for the initial Node Actor Gateway early-access/free-directory stage. This supersedes earlier text stating that Free must not be selected or that a paid $7/month Web Service is a prerequisite. Paid always-on hosting/provider requirements will be reviewed before paid-live launch.
+
+The owner-provided form is filled but not submitted; preserve it for the owner. Free may sleep and cold-start beyond the Resource API's 5-second client timeout. The current gateway clients do not automatically retry; define bounded recovery or an explicit early-access retry experience before routing traffic. Do not weaken security or fail-closed behaviour.
+
+This does not clear production database prerequisites, exact migration/ledger reconciliation, recovery-point, role/ACL authority or gateway credential qualification gates. No service has been created or deployed by this assistant.
