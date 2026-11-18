@@ -165,3 +165,13 @@ Migration-related branches were also checked:
 ## 8. Change record
 
 This handover records source review and the user's supplied read-only audit. It does not claim a new production audit was run. No production SQL, migration, role/grant, secret, environment variable, Render service, Cloudflare resource, deployment or application data was changed.
+
+
+## Follow-up branch disposition — 18 November 2026
+
+- The explicit-batch implementation in this PR was compared against PR #298's exact head and the current `main` branch before any further migration-runner changes. PR #297 is based on `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`, while current `main` is `b73839b27ac90446650f921d3e8ce1b5de041f04`; GitHub reports PR #297 as non-mergeable. Keep PR #297 draft and do not merge or cherry-pick its runner as a second implementation.
+- PR #298 is based on current main and is the selected integration candidate, not merge-approved. Its 50-entry `pending-migrations.production.json` is the current branch inventory guard; the manifest remains empty. It has a full-plan-only mode that does not require a batch ID, while the production execution path still requires a committed named batch.
+- The useful strict validation from this PR was selectively carried into PR #298's selector: exact 14-digit version syntax, migration-name syntax, unique/strict ordering, validated batch ID/purpose/non-empty list, duplicate rejection and contiguous-prefix selection. PR #298's own inventory guard separately requires exact equality with the live pending queue.
+- The PR #298 web audit workaround was removed; direct `npm audit --audit-level=moderate` is restored. This PR's own web workflow also retains the direct audit. The picomatch advisory remains a known blocker; do not weaken or bypass the audit.
+- PR #298's latest source edits have not yet received CI or disposable PostgreSQL qualification. This PR's earlier qualification evidence applies only to its previously recorded exact head and must not be represented as validation of PR #298's new head.
+- Production execution remains prohibited: the 105-row production ledger is dated evidence, no fresh live ledger export was taken, the batch manifest is empty, and Actor Gateway hosting/credentials, role authority, verified recovery point, API readiness and reviewed first-prefix selection remain outstanding.
