@@ -3083,3 +3083,87 @@ The provider value `supabase` in the mapping is explicitly historical external-i
 - No production SQL/query, migration execution, ACL/role/secret change, provider bucket/object operation, Render inspection/change, deployment, backup operation or payment action occurred.
 - Production migration manifest remains `[]`.
 - Continue only with remaining route/privilege families and exact-head PR/branch reconciliation. Do not re-run already recorded PostgreSQL qualification or storage grant rehearsal absent a source change or specific failed exact-head evidence.
+
+
+## 19 November 2026 — Business Hours, Trust Score and Business Logo privilege reconciliation
+
+### Pre-workflow checkpoint
+
+Re-read the PR #298 migration and hosting handovers, current PR metadata, changed-file inventory and branch comparison before continuing. At review start PR #298 head was `25f595bb23161adabd786568ff16332ece9f2255`, open/draft/non-mergeable, 192 commits ahead and 4 behind `main`. Source and SQL evidence below is from current `main`; no production ledger, deployed version or effective ACL was inferred.
+
+### 1. Business Hours
+
+Inspected:
+- `src/http/app.ts` Business Hours route wiring
+- `src/http/business-hours-gateway-client.ts`
+- `src/actor-gateway/business-hours-reader.ts`
+- `database/migrations/20261111130000_add_signed_business_hours_gateway.sql`
+- `database/migrations/20261111140000_add_business_hours_read_projections.sql`
+- `database/cutovers/20261111130000_revoke_legacy_business_hours_runtime.sql`
+
+Authenticated member list and replacement are Gateway-backed. Production config sets `businessHoursGatewayRequired = true`; the Resource API returns unavailable rather than falling back to the legacy repository if the Gateway is absent. The signed reader binds read/replace operations to the actor and Business context.
+
+The read-projection migration creates:
+- `ghm.gateway_get_business_hours`, signed assertion + active membership, EXECUTE only for `ghm_actor_gateway`;
+- `ghm.get_public_business_hours`, SECURITY DEFINER projection restricted to active, verified, approved Businesses, EXECUTE for `ghm_runtime`.
+
+The manual cutover revokes runtime/PUBLIC EXECUTE on legacy `ghm.replace_business_hours`, direct SELECT on `ghm.business_hours`, and sequence privileges. It intentionally does not revoke the public projection function. This is a full authenticated table-read cutover while preserving the explicitly approved public projection.
+
+**Disposition:** retain the public projection EXECUTE grant; revoke legacy member-table/function/sequence access only after Gateway and Resource API deployment qualification, exact role proof and verified backup. Existing manual cutover has no paired rollback file in the cutover inventory. No production ACL or ledger was checked.
+
+### 2. Trust Score
+
+Inspected:
+- `src/http/app.ts` Trust Score route wiring
+- `src/http/trust-score-gateway-client.ts`
+- `src/actor-gateway/trust-score-reader.ts`
+- `database/migrations/20261111150000_add_signed_trust_score_gateway.sql`
+- `database/migrations/20261111170000_add_trust_score_read_projections.sql`
+- `database/cutovers/20261111150000_revoke_legacy_trust_score_runtime.sql`
+
+Private/member Trust Score read, filtered list and calculation are signed Gateway operations. The calculation wrapper binds the signed actor and Business context; member read wrappers check active membership. Production requires the Gateway for these private routes.
+
+The read-projection migration separately exposes:
+- `ghm.get_public_trust_score(bigint)`;
+- `ghm.list_public_trust_scores(text)`.
+
+Both are SECURITY DEFINER, limited to active/verified/approved Businesses and granted to `ghm_runtime`; these are deliberate public projections, not private-table access.
+
+The manual cutover revokes runtime/PUBLIC EXECUTE on legacy `ghm.calculate_business_trust_score`, direct SELECT on `ghm.trust_score`, and sequence privileges. It does not revoke the two public projection functions.
+
+**Disposition:** preserve the two narrowly scoped public projection grants. Do not re-grant direct table SELECT or legacy calculation execution. Manual cutover has no paired rollback file in the cutover inventory. Production application/ACL remains unverified.
+
+### 3. Business Logo
+
+Inspected:
+- `src/http/app.ts` Business Logo and storage Gateway wiring
+- `src/http/business-logo-gateway-client.ts`
+- `src/actor-gateway/business-logo-reader.ts`
+- `database/migrations/20261111160000_add_signed_business_logo_gateway.sql`
+- `database/cutovers/20261111160000_revoke_legacy_business_logo_runtime.sql`
+- `database/migrations/20261106090000_business_logo_storage_binding.sql`
+
+Business Logo binding is a signed `business.logo.bind` Gateway operation. Production requires both the Business Logo Gateway and Storage Metadata Gateway; the Resource API also fails startup if production storage is enabled without an Actor Gateway URL. Logo object lifecycle remains governed by the Storage Metadata dual-proof boundary documented above.
+
+The manual cutover revokes runtime/PUBLIC EXECUTE on legacy `ghm.set_business_logo_object`; it does not revoke public logo presentation or the separate narrowly scoped approved-logo retrieval path. Do not interpret this one-function cutover as a complete Storage Metadata cutover or as permission to enable uploads before the non-production R2 lifecycle qualification.
+
+**Disposition:** preserve public approved-logo retrieval; revoke only the legacy binding entry point after Gateway qualification and recovery prerequisites. No paired rollback file was found in the cutover inventory. Storage Metadata production cutover blockers remain unchanged.
+
+### Consolidated privilege disposition
+
+| Resource | Legacy runtime access removed by existing cutover | Deliberately retained runtime surface |
+|---|---|---|
+| Business Hours | Replace function EXECUTE, table SELECT, sequence privileges | Approved public-hours projection function |
+| Trust Score | Calculation function EXECUTE, table SELECT, sequence privileges | Approved public single/list projection functions |
+| Business Logo | Legacy logo-object binding function EXECUTE | Public approved-logo presentation/retrieval path |
+| Storage metadata | Not yet production-cut over | No broad direct metadata table grant is authorized |
+
+### Rollback and production prerequisites
+
+- No paired rollback SQL was found for the Business Hours, Trust Score or Business Logo manual cutovers. Do not invent rollback scripts or assume that re-granting a few privileges is a complete recovery procedure.
+- Before any manual cutover, require the exact deployed Resource API/Gateway versions, complete non-HTTP caller inventory, production ledger and effective ACL evidence, fresh independently verified recovery point, and a rehearsed restoration plan.
+- Keep the public projection grants narrowly scoped to their SECURITY DEFINER functions; do not replace them with direct runtime table SELECT.
+- All three Gateway HTTP clients currently default to five-second abort timeouts. This remains an availability concern for a sleeping Free service; do not add blanket mutation retries. In particular, Business Hours PUT and Business Logo PUT are mutations; Trust Score POST calculation also requires explicit idempotency/recovery analysis before replay.
+- Existing cutover files were inspected; no duplicate cutover or rollback file was created.
+- Production migration manifest remains `[]`.
+- No production SQL/query, migration execution, ACL/role/credential change, Render inspection/change, service deployment, storage-provider operation, backup operation or payment action occurred.
