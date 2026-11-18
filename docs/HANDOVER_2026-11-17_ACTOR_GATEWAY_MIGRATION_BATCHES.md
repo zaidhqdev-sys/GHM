@@ -1777,3 +1777,35 @@ The Node server does not listen until it has connected using the dedicated gatew
 ### Branch and action boundary
 
 At this review, PR #298 branch head was `5b820086d8e4a187c1f6d52f9cc85e0e117b42e9`; comparison with main `ddb31ff59ab470973edf60a5078a75e5f962f803` reports 159 commits ahead and 4 behind. This documentation-only checkpoint does not reconcile those four commits, rebase the branch, or authorize merge. The manifest remains empty. No code, SQL, production DB, local PostgreSQL session, Render form/service, secret, role, ACL, migration, deployment, payment state or paid resource was changed. No repeated database probe or audit was run.
+
+---
+
+## 19 November 2026 — owner decision: Free Render early-access hosting
+
+The owner has explicitly selected the Render **Free Web Service** for the initial Actor Gateway / free-directory early-access stage, with a later infrastructure review when ZAID Technologies is ready to move to paid live services. This supersedes earlier notes that treated the $7/month instance as a prerequisite or described Free as categorically unacceptable.
+
+### Hosting decision now in force
+
+- Initial service: ghm-actor-gateway, Node/Render adapter, Frankfurt, repository zaidhqdev-sys/GHM, branch main.
+- Initial plan: **Free**, for early access and the free directory service.
+- Later stage: reassess paid always-on hosting and provider requirements at the paid-launch decision; do not assume a date or activate paid providers automatically.
+- The owner has accepted the Free instance lifecycle limitations for the early-access stage. Render Free may spin down after inactivity and cold-start latency may exceed the Resource API five-second gateway timeout. This is an explicit early-access reliability limitation, not a reason to silently substitute paid compute or weaken authorization.
+- Before connecting production traffic, inspect the Resource API gateway timeout/retry behaviour and define how early-access clients recover from a cold-start timeout. Do not claim the Free service is always-on or meets the five-second bound.
+- The existing Render form was supplied by the owner and is filled but not submitted. Preserve its settings; the owner will submit it. No Render service has been created or deployed by the assistant.
+
+### Database and release gates remain unchanged
+
+Free hosting does not remove the database prerequisites. The current production evidence recorded in this handover still says ghm_actor_gateway lacks ghm schema USAGE and the gateway API functions are not installed. Startup will fail closed until the exact, reviewed migration/ACL prerequisites are safely resolved.
+
+- Keep config/production-migration-batches.json empty.
+- Do not execute production migrations, alter roles/ACLs, or change production secrets as part of the hosting-plan decision.
+- Exact production ledger reconciliation, verified recovery point, provider-authorized role/ACL remediation, dedicated gateway identity/function qualification, and route-level positive/negative tests remain required.
+- Keep PayFast/payment activation paused.
+- No Render form submission, service creation, deployment, database write, role/ACL change, migration execution, secret read, or paid-resource action occurred in this checkpoint.
+
+### Next work
+
+1. Review the exact migration chain and its function/schema dependencies against the branch candidate inventory and source callers; do not infer an executable prefix from repository order alone.
+2. Review the four commits by which this branch is behind main before any integration decision. They were previously identified as documentation-only, but must be rechecked at the current exact refs.
+3. Inspect Resource API gateway timeout/retry handling for the Free early-access cold-start case.
+4. Keep the migration manifest empty until exact live ledger and all production release gates are satisfied.
