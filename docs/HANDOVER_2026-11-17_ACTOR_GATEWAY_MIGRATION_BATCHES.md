@@ -439,3 +439,38 @@ The source review compared `src/actor-gateway/app.ts`, its reader construction i
 - Preserve the existing integration-principal assertion, replay store, lifecycle check, governed operation registry and end-user authorization binding. The Connect integration principal must not become the end-user account.
 - Resolve the `supabase` Business mapping key as part of that coordinated change; do not silently rename historical mapping rows or strand existing Connect users.
 - Keep the production migration manifest empty and PR #298 draft/unmerged. No production SQL, roles, grants, deployments, secrets, payment activation or paid resources were changed in this review.
+
+
+## Correction — Connect's current identity path versus legacy service integration — 18 November 2026
+
+The preceding route review overstated the scope of Supabase identity usage. A targeted inspection of the current `zaid-connect/main` frontend and GHM Resource API establishes the following distinction:
+
+### Current Connect browser identity is GHM-native
+
+- `src/features/authentication/ghmWebAuthClient.js` obtains a GHM access token and canonical `accountId` from the GHM web-auth endpoints. The access token is held in memory and sent as a Bearer token to the same-origin GHM API proxy.
+- `src/features/authentication/identity.js` loads `/api/v1/profile`, checks that the returned profile ID equals the authenticated GHM account ID, and loads `/api/v1/businesses/memberships`. It sets `authUserId` to the GHM account ID. There is no `externalIdentity`/Supabase subject in this current identity resolution path.
+- `BusinessCreationScreen.jsx` calls `POST /api/v1/businesses` through `ghmAuth.apiFetch`. GHM's Resource API protects that route with bearer authentication and registered `business.create` authorization, then creates the business and its active membership through the Business Identity service.
+- The browser proxy forwards the GHM Bearer token to the Resource API and does not forward the refresh cookie on ordinary API calls.
+
+Therefore, **do not redesign the active Connect browser identity around a new Supabase-to-GHM mapping replacement**. The current user-facing path already uses GHM identity and direct GHM business/membership APIs. The earlier recommendation to replace Supabase identity across that path is withdrawn.
+
+### Legacy GHM Connect service route remains a separate concern
+
+- GHM `src/http/connect-service-router.ts` exposes `POST /api/v1/connect/service`, requires a signed integration assertion, and currently accepts a `provider: 'supabase'` external identity which it resolves through `ConnectIdentityAdapterImpl`.
+- A repository code search of `zaid-connect/main` for `/api/v1/connect/service` found only architecture/interface/handover documentation, not an application caller. A search for `externalIdentity` in that repository returned no code matches.
+- This is evidence that the legacy server-to-server route is not used by the current Connect frontend, but not proof that no other integration consumer exists. Do not remove or change its contract until its registered integration consumers and operational usage are checked.
+- The Connect Business provisioning gateway client/adapter/Actor Gateway endpoint likewise has no confirmed current browser application call path in the reviewed source. The active user flow creates GHM Businesses directly and receives the GHM business ID/membership.
+
+### Remaining Supabase investigation
+
+A code search still finds Supabase references in 25 files under Connect `src/`, including compatibility libraries and feature/service modules. That is a separate remaining-removal audit; it must distinguish active imports/runtime calls from historical schemas, migration fixtures, documentation and dead code. Do not infer that Supabase is fully removed merely because the primary auth/business creation path is GHM-native.
+
+### Corrected implementation sequence
+
+1. Preserve the already-working GHM-native browser authentication, account identity, membership resolution and business creation paths.
+2. Inventory all remaining Connect `src/` Supabase imports and runtime call sites, grouped by feature, before editing them.
+3. Trace the legacy `/api/v1/connect/service` integration registration/consumer list and decide whether it should be retained as a generic provider-neutral integration seam, migrated to GHM bearer identity, or retired.
+4. Only wire Connect Business provisioning if a documented active caller and data requirement justify an external Business mapping. Do not introduce a mapping solely to satisfy an unused adapter.
+5. Keep Actor Gateway production cutovers blocked until the runtime role, live migration ledger, recovery point and end-to-end gateway checks are qualified.
+
+This correction is a source/documentation review only. No runtime code, production database, Render service, deployment, credential or application data was changed.
