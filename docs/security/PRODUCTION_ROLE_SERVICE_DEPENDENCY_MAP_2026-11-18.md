@@ -1,0 +1,135 @@
+# Production PostgreSQL Role ↔ Service Dependency Map — 18 November 2026
+
+**Status:** READ-ONLY INVENTORY — no role or service changes authorized  
+**Repository branch:** `feat/actor-gateway-production-migration-batches`  
+**PR:** #298, draft/open; reviewed head at time of inspection: `45384ef5e0c9b684e3cb1fc205bb61e92d8db43f`  
+**Database:** Render `ghm-db` / `ghm_db`, PostgreSQL 18, Frankfurt  
+**Render workspace:** existing ZAID Technologies workspace; no new resources requested or created
+
+## Evidence reviewed first
+
+Before inspecting production roles or services, this review re-read:
+- `docs/security/PRODUCTION_MIGRATOR_AUTHORITY_REMEDIATION_PLAN_2026-11-18.md`;
+- role-separation, production migration reconciliation and migration-batch handovers;
+- `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md`;
+- the legacy role dependency qualification and remediation audit;
+- database authority and runtime reconciliation documents;
+- Auth Issuer isolation handover and PayFast production/callback handovers;
+- PR #298, #296 and #299 status and heads, plus relevant historical PR #272, #274, #275 and PayFast PR #233;
+- current source contracts for Resource API, Actor Gateway, Auth Issuer and PayFast callback.
+
+PR #298, #296 and #299 remain draft/open. PR #272 is closed; PR #274 and #275 are closed. PayFast PR #233 remains draft/open. This inspection did not change PR state or merge code.
+
+## 1. Live production role and membership snapshot
+
+The Render SQL connector still authenticates as `session_user=ghm_app_user`, effective `current_user=ghm_db_user`. All SQL in this review was read-only.
+
+| Role | Exists | LOGIN | INHERIT | Elevated flags | DB CONNECT | `ghm` USAGE | `ghm` CREATE |
+|---|---:|---:|---:|---|---:|---:|---:|
+| `ghm_runtime` | Yes | Yes | No | None | Yes | Yes | No |
+| `ghm_migrator` | Yes | Yes | No | None | Yes | No | No |
+| `ghm_schema_owner` | Yes | No | No | None | Yes | Yes | Yes |
+| `ghm_actor_gateway` | Yes | Yes | No | None | Yes | No | No |
+| `ghm_auditor` | Yes | No | Yes | None | Yes | Yes | No |
+| `ghm_payment_provider` | Yes | Yes | No | None | Yes | Yes | No |
+| `ghm_auth_issuer` | **No** | — | — | — | — | — | — |
+| `ghm_db_user` | Yes | Yes | Yes | CREATEDB + CREATEROLE | Yes | Yes | Yes |
+| `ghm_app_user` | Yes | Yes | Yes | None | Yes | Yes | No |
+
+For the target roles, SUPERUSER, REPLICATION and BYPASSRLS are false. LOGIN roles other than the legacy `ghm_db_user` have CREATEDB=false and CREATEROLE=false.
+
+### Complete observed bootstrap membership edges
+
+The following six edges are granted by bootstrap `postgres` to `ghm_db_user`; each has ADMIN OPTION=true, INHERIT=false and SET=false:
+
+- `ghm_db_user -> ghm_actor_gateway`
+- `ghm_db_user -> ghm_auditor`
+- `ghm_db_user -> ghm_migrator`
+- `ghm_db_user -> ghm_payment_provider`
+- `ghm_db_user -> ghm_runtime`
+- `ghm_db_user -> ghm_schema_owner`
+
+Two other edges are distinct and must not be conflated with those six:
+- `ghm_app_user -> ghm_db_user`, granted by `postgres`, ADMIN=false / INHERIT=true / SET=true.
+- `ghm_db_user -> ghm_runtime`, granted by `ghm_db_user`, ADMIN=false / INHERIT=true / SET=true.
+
+The intended `ghm_migrator -> ghm_schema_owner` edge also exists, granted by `ghm_db_user`, ADMIN=false / INHERIT=false / SET=true.
+
+The six bootstrap edges are not a blanket revoke list. Each must be mapped to a live credential, active service, operational fallback, ownership and recovery dependency before any provider-authorized change.
+
+## 2. Role-by-role service and credential dependency
+
+### `ghm_runtime` — Resource API
+
+- **Intended consumer:** existing Render `GHM-Internal-Runtime` service (`srv-damupsek1f9s73eq8kkg`), Frankfurt, Free plan, branch `main`, build `npm ci --include=dev && npm run build`, start `npm start`, health `/healthz`, auto-deploy OFF.
+- **Source contract:** production `src/config.ts` requires `GHM_RUNTIME_DATABASE_URL`; `src/server.ts` verifies `session_user=current_user=ghm_runtime` at startup. The older generic `DATABASE_URL` fallback is development-only.
+- **Secret boundary:** actual Render environment values were not read. Do not disclose, rotate or copy the URL. The role-to-service binding is the intended contract; the live secret value cannot be independently proven from this read-only inventory.
+- **Live DB evidence:** role exists, LOGIN/NOINHERIT, CONNECT and schema USAGE true, CREATE false. No `ghm_runtime` connection was present in the point-in-time `pg_stat_activity` snapshot. This is not proof the service never connects.
+- **Do not remove:** the non-admin `ghm_db_user -> ghm_runtime` SET/INHERIT edge until a reviewed credential/service cutover proves the production Resource API no longer depends on the legacy path. Keep the bootstrap ADMIN OPTION edge separately classified for provider-authority remediation.
+- **Open verification:** confirm runtime's configured secret resolves to `ghm_runtime` using the approved local secret source without printing it; verify runtime function allowlist enforcement state without exposing environment values.
+
+### `ghm_migrator` — standalone migration operator
+
+- **Intended consumer:** the standalone repository migration runner, not a continuously running Render web service.
+- **Source contract:** `GHM_MIGRATOR_DATABASE_URL`; the runner requires `session_user=current_user=ghm_migrator`, then explicitly `SET ROLE ghm_schema_owner`.
+- **Live DB evidence:** role exists, LOGIN/NOINHERIT, CONNECT true, schema USAGE/CREATE false. Its intended single SET membership to `ghm_schema_owner` is correct.
+- **Contract failure:** the live runner preflight still fails because `ghm_db_user` has the bootstrap ADMIN OPTION membership and the migrator retains explicit direct ACLs on 16 relations and 24 sequences. Direct ledger SELECT is false; ledger access is expected only after SET ROLE to the owner.
+- **No service:** no Render migration-runner service exists in the current service inventory. The credential is an operator-controlled secret and must not be put into the Resource API or Actor Gateway.
+- **Open verification:** exact production ledger access/audit through the dedicated credential remains blocked; no connection as `ghm_migrator` was visible in the point-in-time activity snapshot.
+
+### `ghm_schema_owner` — non-login ownership identity
+
+- **Intended consumer:** no application or hosted service. It owns schema `ghm` and governed objects; the migration process enters it explicitly through the migrator's SET-capable membership.
+- **Live DB evidence:** role exists, NOLOGIN/NOINHERIT, no elevated flags, database CREATE true, schema USAGE/CREATE true.
+- **Credential:** none by design. Do not set a password, enable LOGIN, or create a service for this role.
+- **Preserve:** schema/object/ledger ownership and the single intended `ghm_migrator -> ghm_schema_owner` SET edge.
+
+### `ghm_actor_gateway` — dedicated authorization boundary
+
+- **Intended consumer:** a dedicated Render Web Service named `ghm-actor-gateway`, Frankfurt, using `npm run start:actor-gateway` and `GHM_ACTOR_GATEWAY_DATABASE_URL`. It must be isolated from the Resource API.
+- **Hosting decision:** no such production service exists. The 16 November hosting handover explicitly rejects using `GHM-Internal-Runtime`, `zaid-ai-workforce`, or sandbox/qualification services as substitutes. A dedicated always-on service would add recurring cost and is not approved under the user's current no-additional-paid-service limit.
+- **Live DB evidence:** role exists, LOGIN/NOINHERIT, CONNECT true, schema USAGE/CREATE false. No gateway/assertion functions were found in schema `ghm`; no gateway EXECUTE grants are available. The role is not provisioned for production use.
+- **Credential:** `GHM_ACTOR_GATEWAY_DATABASE_URL` belongs only on the future dedicated service; never add it to Resource API configuration. `GHM_ACTOR_GATEWAY_URL` is the Resource API's HTTPS client origin, not a database credential.
+- **Disposition:** do not set a gateway password, provision grants, deploy a free/sleeping substitute, or change the hosting decision. Wait for the separately approved cost and production migration gates.
+
+### `ghm_auditor` — non-login audit privilege role
+
+- **Intended consumer:** read-only audit authority, not a service login.
+- **Live DB evidence:** role exists, NOLOGIN, INHERIT=true, non-elevated, schema USAGE true; it has SELECT on `ghm.ghm_schema_migrations`.
+- **Membership reality:** the only observed member is `ghm_db_user`, via bootstrap `postgres`, ADMIN=true / INHERIT=false / SET=false. There is no direct LOGIN identity with a usable SET path into `ghm_auditor`.
+- **Disposition:** the role currently represents a privilege grant target, not a usable audit connection. Do not turn it into LOGIN or add membership to `ghm_app_user` as a workaround. The migration audit remains the dedicated `ghm_migrator` + SET OWNER workflow, not an invented auditor connection.
+
+### `ghm_payment_provider` — PayFast callback identity
+
+- **Intended consumer:** the dedicated PayFast callback process `src/payfast-callback-server.ts`, using `PAYFAST_CALLBACK_DATABASE_URL`; its readiness check requires `session_user=current_user=ghm_payment_provider`.
+- **Render inventory:** `ghm-payfast-callback-sandbox` (`srv-dbma100u01pc738qpavg`) exists on the separate sandbox environment, branch `release/payfast-settlement-isolation-main-20261104`, free plan, start `npm run start:payfast-callback`. It is not a production service. The sandbox API and identity-qualification services are likewise separate sandbox/qualification resources. Do not repurpose them for production.
+- **Current production correction:** the live production role `ghm_payment_provider` now exists as LOGIN/NOINHERIT, with CONNECT and schema USAGE true and CREATE false. The two production functions `commercial_get_payfast_attempt(bigint)` and `commercial_apply_payfast_payment_result(...)` exist, and this role can execute them. `ghm_runtime` cannot execute either function. The generic `commercial_apply_payment_result(...)` is not executable by this provider role.
+- **Historical documentation correction:** older 4–5 November PayFast notes stating that the production role or these functions were absent are stale relative to this 18 November live catalogue snapshot. This catalogue evidence does not prove which migration/operation installed them: exact production ledger rows/checksums remain inaccessible through the current connector.
+- **Operational status:** PayFast remains paused. No production callback service was found in Render; no `ghm_payment_provider` connection was present in the point-in-time activity snapshot. The actual secret value/configuration was not read.
+- **Disposition:** preserve the provider function boundary; do not activate payment, create/repurpose a callback service, rotate credentials, or infer production callback readiness from role/function existence.
+
+### `ghm_auth_issuer` — planned isolated authentication issuer
+
+- **Source contract:** issuer process exists in source (`src/auth-issuer/server.ts`, `start:auth-issuer`) and requires `GHM_AUTH_ISSUER_DATABASE_URL`; it is designed to authenticate as `ghm_auth_issuer`.
+- **Live production evidence:** role `ghm_auth_issuer` does not exist. No dedicated production issuer service is present in the Render service inventory.
+- **Disposition:** production issuer isolation is not deployed. Do not set issuer credentials, create the role, or claim the Auth Issuer is isolated. The Resource API currently remains the existing production process; the isolation/cutover handover remains a separate blocker.
+
+## 3. Point-in-time activity evidence and limits
+
+The read-only `pg_stat_activity` query at this inspection found only the current Render connector session as `ghm_app_user`; no sessions were visible for runtime, migrator, Actor Gateway, payment provider, auditor or Auth Issuer. This is one snapshot only. Idle/disconnected services, external clients, or activity at other times are not disproven.
+
+No Render environment variable values, connection strings, passwords, private keys, signing material, callback secrets or credential metadata were read. Render service metadata was used only to identify service names, branches, plans, commands, regions and environment associations.
+
+## 4. Remediation consequences
+
+1. Do not bulk revoke the six bootstrap ADMIN OPTION memberships. Role consumers and recovery paths differ; Actor Gateway and Auth Issuer do not yet have production service cutovers, while runtime, migration and payment roles have distinct existing responsibilities.
+2. Keep `ghm_db_user -> ghm_runtime` non-admin SET path until the Resource API's direct `ghm_runtime` credential is independently confirmed and the old connection path is proven unused.
+3. Keep `ghm_migrator -> ghm_schema_owner` exactly as specified. Resolve the explicit migrator object ACLs only through the reviewed provider/bootstrap authority and narrowly scoped ACL plan.
+4. Keep `ghm_payment_provider` function execution separate from `ghm_runtime`; PayFast remains paused and no production callback host is available.
+5. Do not add Render services, databases, schedules, or recurring spend. The Actor Gateway always-on service is explicitly cost-blocked.
+6. Obtain the exact production ledger and recoverable backup evidence through the approved provider/admin route before any production mutation or migration.
+7. Treat the absence of a production Auth Issuer role/service as a distinct architecture blocker, not as a reason to add issuer credentials to the Resource API.
+
+## 5. Change record
+
+Read-only GitHub branch/PR/source/handover review, Render service inventory/detail reads, and PostgreSQL catalog/activity SELECTs only. No role, membership, ACL, object, data, secret, environment variable, service, deployment, migration, backup, network, payment or CI state was changed. No new or recurring cost was incurred.
