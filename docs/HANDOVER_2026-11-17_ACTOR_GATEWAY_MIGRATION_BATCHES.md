@@ -2516,3 +2516,67 @@ Likewise, `src/http/storage-router.ts` retains a non-Gateway fallback to `ghm.se
 Production storage startup requires `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` in the Resource API runtime in addition to the Actor Gateway URL. This is distinct from the Gateway's `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` and distinct from the provider's own credentials. The Render form for the new Actor Gateway is not a substitute for configuring the existing Resource API runtime. Do not disclose, copy, or rotate any secret as part of this source-only review. Verify the existing runtime's configured variable through the already documented read-only operational process before a coordinated storage cutover; no Render inspection or change was performed in this review.
 
 No production query, SQL/ACL change, migration, Render action, deployment, credential change, object-storage action, or payment action was performed. Production effective privileges and deployed code versions are not inferred from repository source.
+
+
+## 19 November 2026 — business-hours public projection and residual SQL dependency reconciliation
+
+### Required pre-workflow checks and authoritative branch state
+
+Re-read this migration handover and the hosting/credentials handover before starting this workstream. Re-fetched PR #298 metadata, its changed-file inventory, and compared the PR branch with `main`. At the start of this review the authoritative PR head was `e0f0698616884bf8db94237ba2fd0955d4fb6067`; PR #298 was open, draft and non-mergeable, 184 commits ahead and 4 behind `main`. The earlier storage/logo section contains a stale “pre-review head” copied from its initial drafting checkpoint; use the actual GitHub PR head and this section for current checkpoint tracking, not that historical value.
+
+### Source files inspected on current `main`
+
+- `src/http/app.ts`
+- `src/http/business-hours-gateway-client.ts`
+- `src/resources/business-hours/repository.ts`
+- `src/resources/business-hours/service.ts`
+- `src/actor-gateway/app.ts`
+- `src/actor-gateway/business-hours-reader.ts`
+
+### Authenticated Business Hours routes
+
+Production sets `businessHoursGatewayRequired = config.isProduction` in `src/http/app.ts`. The authenticated routes are:
+- `GET /api/v1/businesses/:businessId/hours`
+- `PUT /api/v1/businesses/:businessId/hours`
+
+Both route to `HttpBusinessHoursGatewayClient` when configured. If the Gateway client is absent while the production-required flag is true, the route returns 503 instead of falling back to the Resource API repository. The Actor Gateway mounts:
+- `GET /v1/businesses/:businessId/hours`
+- `PUT /v1/businesses/:businessId/hours`
+
+Its `PostgresBusinessHoursGatewayReader` uses signed request assertions and the SQL wrappers `ghm.gateway_get_business_hours` and `ghm.gateway_replace_business_hours`. Therefore the authenticated read/replace paths are Gateway-backed in production source. The repository's legacy `getBusinessHours` and `replaceBusinessHours` methods remain fallback paths, not evidence of the active production route invoking them.
+
+### Public Business Hours route is intentionally not Gateway-backed
+
+The active public route is `GET /api/v1/public/businesses/:businessId/hours`. It calls `businessHoursService.listPublicBusinessHours`, which calls `PostgresBusinessHoursRepository.listPublicBusinessHours`. That repository:
+1. directly checks `ghm.business` for `is_active = true`, `is_verified = true`, and `verification_status = 'approved'`;
+2. reads the public hours through `ghm.get_public_business_hours($1)`.
+
+This is a public projection path and is separate from the authenticated Gateway-backed route. Do not classify it as an authenticated Gateway bypass or revoke its required narrow privileges as part of the Gateway cutover. The public route is registered with `requireRegisteredPublicAccess('business_hours', 'readPublic')`.
+
+The repository also contains `getPublicBusinessHours(context, businessId)`, which uses `withAuthorizedTransaction` and directly reads `ghm.business_hours`. No invocation of this method was identified in the inspected `src/http/app.ts` route wiring; treat it as a repository capability / possible unused or elsewhere-injected path, not as a proven active HTTP route. Trace all call sites before any ACL decision.
+
+### Privilege and migration conclusion — source proof is not live ACL proof
+
+This source review establishes the required public dependencies (`ghm.business` approved/active predicate and `ghm.get_public_business_hours`) and the signed Gateway SQL wrapper names. It does **not** establish the exact current grants, grantors, ownership, PUBLIC privileges, or effective production privileges. Do not invent a grant matrix from the TypeScript call sites. Before production migration planning, map the exact migration definitions and ACL statements for:
+- `ghm.get_public_business_hours`;
+- the `ghm.business` columns needed by the public active/verified/approved predicate;
+- `ghm.gateway_get_business_hours` and `ghm.gateway_replace_business_hours`;
+- the legacy `ghm.replace_business_hours` fallback;
+- direct `ghm.business_hours` access used by the repository's `getPublicBusinessHours` method, if any live caller exists.
+
+Preserve the public projection and its minimum required privileges. Do not restore broad table SELECT or remove public projection access without proving a replacement and all callers.
+
+### Timeout and retry implication
+
+The inspected `HttpBusinessHoursGatewayClient` defaults to a 5,000 ms AbortController timeout for both list and replace. The authenticated `GET` is read-only and may be eligible for a bounded cold-start retry after careful response/error classification. The `PUT` replaces a complete hours collection; although it may be state-idempotent for identical input, no retry should be added until the endpoint's authorization, assertion nonce/replay behavior, and retry semantics are tested end-to-end. No blanket retry is approved by this review.
+
+### Current disposition
+
+| Route / operation | Production source path | Cutover disposition |
+|---|---|---|
+| Authenticated hours GET | Resource API -> signed Actor Gateway -> `gateway_get_business_hours` | Gateway-backed; legacy repository read is fallback only |
+| Authenticated hours PUT | Resource API -> signed Actor Gateway -> `gateway_replace_business_hours` | Gateway-backed; legacy repository write is fallback only |
+| Public hours GET | Resource API -> approved/active business predicate -> `get_public_business_hours` | Preserve narrow public projection privileges |
+| Repository `getPublicBusinessHours` | Authorized transaction -> direct `business_hours` SELECT | No active router caller identified; trace before privilege changes |
+
+No production SQL/query, migration, ACL/role change, Render inspection/change, deployment, credential operation, backup operation, or payment action was performed. Production grants and deployed service versions remain unverified by this source-only review.
