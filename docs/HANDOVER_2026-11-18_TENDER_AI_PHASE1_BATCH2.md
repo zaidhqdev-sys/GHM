@@ -19,3 +19,9 @@ B6 secret provisioning; B7 Gateway service (not approved); B8 auth issuer; B9 Re
 ## Next
 Batch 3: saved summaries (`tender_analysis`, version-2 validator with generated fixtures), then batch 4 (audit events
 for analyses), batch 5 (integration/security tests), batch 6 (handovers).
+
+## Branch reconciliation (2026-11-19)
+* `origin/main` = `ddb31ff5` (four docs-only commits after the old base `b73839b2`). Branch merged with `git merge origin/main` (no rebase, no force push); merge commit `134d5531`. All batch 2 work preserved.
+* The "218-line difference" was not a deletion: `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md` was added to main after the branch base. No commit on this branch touches it; after the merge it is byte-identical to main.
+* Both security migrations (`20261117010000`, `20261117020000`) and `production-pending-migration-allowlist.ts` are identical to main. The only migration differing from main is the tender migration.
+* Full suite after the merge: 1111 tests, 1109 pass, 0 fail, 2 skipped.
