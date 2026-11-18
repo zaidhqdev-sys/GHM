@@ -589,3 +589,13 @@ No production database, Render service, deployment, credentials, payment activat
 - Keep the ACL migration as a separately tracked pending change. If it is later accepted into current main, its inventory inclusion must be a separately reviewed change to the exact pending prefix, with checksums and disposable PostgreSQL qualification. No production batch can be selected while the execution manifest is empty.
 - PR #296's production catalog evidence is read-only. Do not execute its revoke/grant migration, alter production roles, or change any ACL under this runner work.
 - No PR #296 code was copied, rebased, cherry-picked or modified by this branch reconciliation. No CI rerun or production action occurred.
+
+
+## Live production audit access blocker — 18 November 2026
+
+- Re-read this PR #298 handover, the role-separation handover, the production migration reconciliation handover and PR #298 metadata before the read-only Render query.
+- The existing Render `ghm-db` query interface connected as `session_user=ghm_app_user`, `current_user=ghm_db_user`. SELECT on `ghm.ghm_schema_migrations` failed with SQLSTATE 42501. The table is owned by `ghm_schema_owner`, and the current connection cannot SET ROLE to that owner.
+- The visible `n_live_tup=105` statistic has a last auto-analyze date of 2026-09-21. It is not an exact or current ledger count. The 50-entry pending inventory remains a repository candidate, not a live production pending-list assertion.
+- Live role catalogue confirms `ghm_db_user` still has CREATEROLE/CREATEDB and ADMIN OPTION over multiple protected roles, while `ghm_app_user` can SET ROLE `ghm_db_user`. Catalog search returned zero `ghm.gateway_%` and zero `ghm.assert_actor_gateway%` functions in schema `ghm`.
+- Do not grant ledger access to the application login or alter production roles as an audit workaround. Resolve the existing Render role-separation support escalation and use the intended dedicated `ghm_migrator` identity with verified TLS and its documented schema-owner SET path. Obtain a fresh verified backup before any production change.
+- No production ledger rows/checksums were read, no production migration was run, and no role/ACL/credential/secret/Render/deployment state was changed. No CI was run. The execution manifest remains empty and PR #298 remains draft.
