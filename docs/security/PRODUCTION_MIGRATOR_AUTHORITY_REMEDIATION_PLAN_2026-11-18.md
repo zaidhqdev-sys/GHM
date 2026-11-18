@@ -44,6 +44,27 @@ No exact production migration versions, checksums, order, or pending prefix has 
 
 ## Remediation sequence — gated, no execution yet
 
+### Corrected complete live membership inventory — 18 November 2026
+
+A fresh read-only production `pg_auth_members` query, cross-checked against the 12 November database grant-authority handover and the historical role-separation runbook, found **six** distinct bootstrap-`postgres` ADMIN OPTION edges from `ghm_db_user`:
+
+| Member | Granted role | Grantor | ADMIN | INHERIT | SET |
+|---|---|---|---:|---:|---:|
+| `ghm_db_user` | `ghm_actor_gateway` | `postgres` | true | false | false |
+| `ghm_db_user` | `ghm_auditor` | `postgres` | true | false | false |
+| `ghm_db_user` | `ghm_migrator` | `postgres` | true | false | false |
+| `ghm_db_user` | `ghm_payment_provider` | `postgres` | true | false | false |
+| `ghm_db_user` | `ghm_runtime` | `postgres` | true | false | false |
+| `ghm_db_user` | `ghm_schema_owner` | `postgres` | true | false | false |
+
+The `ghm_runtime` membership has a **second, separate** edge granted by `ghm_db_user`: ADMIN=false, INHERIT=true, SET=true. Preserve this non-admin runtime SET path until the separately gated application-credential/runtime cutover is qualified. Do not conflate it with the bootstrap ADMIN OPTION edge.
+
+The application login `ghm_app_user` is itself a member of `ghm_db_user` (grantor `postgres`, ADMIN=false, INHERIT=true, SET=true). Live role flags confirm `ghm_db_user` is LOGIN/INHERIT and retains CREATEDB=true and CREATEROLE=true. Thus the legacy app-to-db-user authority chain remains a separate high-priority isolation issue; removal of membership edges alone does not retire or neutralize that chain.
+
+The live role flags for `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, and `ghm_runtime` are LOGIN/NOINHERIT and have no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS attributes. `ghm_auditor` and `ghm_schema_owner` are NOLOGIN/NOINHERIT and likewise non-privileged. These safe target-role flags do not neutralize the ADMIN OPTION held by `ghm_db_user`.
+
+**Correction:** earlier versions of this plan scoped bootstrap cleanup to only the `ghm_migrator` and `ghm_schema_owner` memberships. That was incomplete. The full live catalogue has six bootstrap ADMIN OPTION edges. Do not treat all six as an automatically approved bulk revoke: each role has a distinct purpose and must have its active credential, recovery, service, and operational dependencies checked.
+
 ### Gate 0 — preserve and approve the evidence
 
 1. Preserve the current role membership, role attributes, schema/table/sequence ACLs, object owners, schema owner, ledger owner/ACL and Render service identity as a dated evidence snapshot.
