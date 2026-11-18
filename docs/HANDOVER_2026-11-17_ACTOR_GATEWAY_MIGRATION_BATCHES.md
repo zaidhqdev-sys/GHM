@@ -1876,3 +1876,17 @@ All four diffs are documentation-only. The four sections had already been copied
 ### Current action boundary
 
 No production ledger query/audit, local PostgreSQL command, Render inspection/action, form submission, service creation, deployment, migration execution, role/ACL/credential change, backup operation, payment action or paid resource action occurred during this review. The owner-filled Render form remains unsubmitted. The migration manifest remains empty.
+
+## 19 November 2026 — owner clarification: one continuous Render service
+
+The owner clarified the intended lifecycle for the already-filled, not-yet-submitted `ghm-actor-gateway` Render form:
+
+- Create **one** dedicated Node Render Web Service named `ghm-actor-gateway` on the **Free** plan for now.
+- That same service is used for early access and the initial free-directory users. “Early access” is not a separate service, environment, deployment, or architecture from the later paid/upgrade instance.
+- When revenue and operational needs justify paid compute, upgrade the **existing Free service in place** to the appropriate paid plan. Keep the same Render service, repository/branch, service identity, configuration, secrets, database identity, and endpoint. This is a compute-plan change, not a second service, parallel deployment, or infrastructure migration.
+- Do not create a second paid gateway or duplicate the service for a later launch.
+- Free sleep/cold-start and the existing five-second Resource API client timeout remain real reliability constraints. Address them with a bounded, secure recovery/retry or early-access availability contract; do not weaken authentication, authorization, or fail-closed checks. These constraints do not change the one-service lifecycle decision.
+- The owner-provided form remains **unsubmitted**. This clarification does not authorize the assistant to create, submit, configure, or deploy anything in Render.
+- All production database, migration/ledger, backup/recovery, role/ACL authority, credential, and endpoint cutover gates remain independently outstanding. The plan upgrade does not clear those gates.
+
+This section supersedes any wording elsewhere in this document that could imply a separate paid-stage service, a second deployment, or a migration from a Free service to a different paid instance.
