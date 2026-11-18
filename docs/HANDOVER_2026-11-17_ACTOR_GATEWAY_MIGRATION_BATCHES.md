@@ -1498,3 +1498,75 @@ Next bounded task: inspect the dedicated Actor Gateway service bootstrap/configu
 - No application or migration code was changed.
 - No production database connection/query/write, migration, role/ACL/credential change, Render action/deployment, payment action, or paid resource was used.
 - `config/production-migration-batches.json` remains `[]`; PR #298 remains draft/open/non-mergeable.
+
+
+---
+
+## Actor Gateway bootstrap, connection and startup preflight review — 19 November 2026, 00:06 SAST
+
+Continued after re-reading the latest handover and verifying PR #298. Source review is pinned to current `main` `ddb31ff59ab470973edf60a5078a75e5f962f803`; it is not a Render inspection or production runtime test.
+
+### Exact source refs
+
+- `src/actor-gateway/server.ts`, blob `2ed8e9ffa36ead9eeb9a091f4b7061ae78ee6ceb`.
+- `src/actor-gateway/database-principal.ts`, blob `ff32cd0ae0b4014041bc726790074a481ddd6006`.
+- `src/actor-gateway/database-ssl.ts`, blob `18666ce9f8dedba17d5bc402bfdb53e14d635620`.
+- `src/actor-gateway/database-privileges.ts`, blob `41021badb1b2760ef5e26c1ab882ba0798316e0d`.
+- `src/actor-gateway/request-assertion.ts`, blob `36d671e57498e5908bd44d6c47fdbf14dc14d08e`.
+- `src/actor-gateway/database-principal.test.ts`, blob `d071e8c23b21fc206bb399812714bfaaacdfeb81`.
+- `src/actor-gateway/database-ssl.test.ts`, blob `aee9410ff2ffbdd624cbf079beae3298f148ccdf`.
+- `src/actor-gateway/database-privileges.test.ts`, blob `8bc3a0c945a1390d418f1bc5be929844ce6d8f99`.
+- `src/actor-gateway/database-startup-acl-contract.test.ts`, blob `c494be32f2e2b7e661ce4f3ab54efd2875b3b9d4`.
+
+### Bootstrap and startup sequence
+
+- Required environment inputs include `GHM_ACTOR_GATEWAY_DATABASE_URL`, explicit production `DATABASE_SSL_MODE`, `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`, and ES256 verification keys loaded by the auth foundation key loader. Missing/invalid inputs throw during module initialization.
+- The assertion secret is canonical Base64 for exactly 32 bytes. Each wired reader constructor decodes and checks both byte length and canonical re-encoding before accepting the key; `createActorGatewayAssertion` independently rejects any non-32-byte Buffer.
+- One shared pg Pool is created with max 10 connections, 5-second connection timeout and 30-second idle timeout. HTTP server timeouts are 10 seconds request, 5 seconds headers and 5 seconds keep-alive.
+- The server wires all current reader families to that Pool and shared assertion secret, including capability, supplier/profile, registration, saved-business, hours, trust-score, logo, storage, Connect provisioning, campaign/directory-review and commercial readers. Payment-preparation feature/launch booleans default false unless explicitly set to the literal string `true`.
+- Before listening, startup runs a database identity query, calls `assertActorGatewayDatabaseIdentity`, reads the function/relation/default-ACL catalog through `readActorGatewayDatabasePrivileges`, and calls `assertActorGatewayDatabasePrivileges`. The listener opens only after both checks pass. A startup error logs only the error name, closes the Pool and sets a failing process exit code.
+- SIGTERM/SIGINT close the HTTP listener and Pool; uncaught exceptions and unhandled rejections log a bounded error and terminate nonzero.
+
+### Database principal finding — known membership is explicitly allow-listed
+
+The startup query requires both `session_user` and `current_user` to equal `ghm_actor_gateway`, LOGIN true, NOINHERIT, and all superuser/createdb/createrole/replication/bypass-RLS flags false. It rejects the gateway being a member of any other role and rejects any membership into the gateway role except one exact special case: member `ghm_db_user`, with `admin_option=true`, `inherit_option=false`, `set_option=false`.
+
+The unit test explicitly names this exception as “the Render administrator member”. This is not a membership-free principal. It matches the previously documented unexpected membership anomaly; startup intentionally tolerates the narrowly constrained state. The role membership still carries ADMIN OPTION, so it is a residual governance dependency and must be resolved/confirmed through the existing Render support escalation and a later authorized read-only production catalog check. Do not infer that it has been removed. Do not attempt to change it.
+
+### TLS / network transport finding
+
+- Production refuses missing or ambiguous `DATABASE_SSL_MODE`; only `internal` or `external` are accepted.
+- `internal` selects `ssl: false`, relying on the Render same-region private network/internal connection URL.
+- `external` selects TLS with `rejectUnauthorized: false`. The source comment correctly says this encrypts traffic but does **not** authenticate the server certificate.
+- For the intended same-region Render deployment, the target mode is `internal` with the Render internal database URL. Do not change service configuration here. The actual saved environment value and URL form have not been read/verified by this source review.
+- The user-supplied dedicated role URL is not proof that the service has the correct saved environment, target host, TLS mode or credential.
+
+### ACL verifier and secret handling
+
+- Startup requires database CONNECT and `ghm` schema USAGE; rejects database/schema CREATE and any direct table/view/materialized-view/foreign-table or sequence privileges for the gateway login.
+- It compares the exact executable function allow-list (including the explicitly supported pre/post optional campaign/directory-review set), rejects PUBLIC and runtime execution, unsafe default function ACLs, SECURITY DEFINER functions with unexpected owner/search_path, PUBLIC EXECUTE on SECURITY DEFINER functions and unexpected non-owner function grantees.
+- The verifier is intentionally stricter than merely checking that each required function exists: the expected signatures remain present even when a function is absent, so the actual-vs-expected comparison fails closed.
+- Secret format and all reader constructor validations are established by source. The actual configured production secret value/length is not and must never be exposed in chat or copied into logs.
+
+### Readiness disposition
+
+| Concern | Source review result | Production proof still required |
+|---|---|---|
+| Dedicated DB login identity | Strict startup check | Read-only production session_user/current_user and role attributes |
+| Role membership | One exact `ghm_db_user` ADMIN OPTION exception tolerated | Resolve/confirm existing support escalation; read-only membership catalog check |
+| TLS mode | Explicit mode required; internal mode disables TLS, external mode skips certificate verification | Verify saved service env and internal URL without exposing credentials |
+| Assertion secret | Canonical Base64, exactly 32 bytes enforced in reader constructors | Confirm only presence/configuration through approved secure UI; never disclose value |
+| Function/relation ACL | Exact startup allow-list and deny checks | Successful startup evidence from deployed target |
+| Pool and reader wiring | Source wiring complete | Successful deployed startup and authenticated route smoke tests |
+
+**No source defect was proven that justifies changing code in this pass.** The bootstrap is fail-closed on required environment, principal identity and ACL state. However, the membership exception is a known residual risk, and source code cannot prove the saved Render configuration or actual production catalogs.
+
+### Next bounded task
+
+Continue source-only by reviewing Actor Gateway health/readiness endpoint behavior and deployment artifact/start command assumptions, then reconcile the deployed service configuration requirements as a checklist for the user to inspect in Render (assistant remains read-only). No request to submit environment values, deploy, or change settings.
+
+### Safety
+
+- No code, SQL, migration, manifest, role, ACL, credential, Render setting/service/deployment, payment state or paid resource was changed.
+- No production DB connection/query was made and no Render service was inspected or modified.
+- `config/production-migration-batches.json` remains `[]`; PR #298 remains open, draft, unmerged and non-mergeable.
