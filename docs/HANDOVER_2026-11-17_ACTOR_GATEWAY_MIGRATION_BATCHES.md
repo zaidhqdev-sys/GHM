@@ -1199,3 +1199,49 @@ Re-read this handover and inspected PR #298, its exact changed-file inventory, t
 - After validation, resume the already documented dependency review of the 36 signed gateway functions and three optional campaign/directory-review operations; do not repeat the completed source inventory.
 - Render remains strictly read-only. No Render configuration, service, deployment, database, credential, role, ACL, migration, production data, payment state or paid resource was changed in this checkpoint.
 
+
+
+
+---
+
+## Follow-on validation attempt — 18 November 2026, 21:55 SAST
+
+Re-read the current migration-batches handover, PR #298, current branch comparison, package scripts, TypeScript configuration and CI workflow before choosing the next validation route.
+
+### Updated exact state after the preceding handover commit
+
+- PR #298 head is now `db9cbe426442d55e4009a237c8443b665a189564` (the previous validation note's `17b42bf` was the pre-handover-commit head).
+- PR remains open, draft and non-mergeable.
+- Current `main` remains `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Branch comparison: 149 commits ahead / 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`. Four behind-main changes remain documentation-only and reconciled in the hosting handover. No rebase/merge performed.
+- Exact-head workflow-run lookup returned an empty list; exact-head combined commit statuses returned an empty list. No exact-head build/test result is available.
+
+### CI cost and trigger assessment
+
+The checked-in `.github/workflows/ci.yml` runs on pull requests targeting `main`, but the exact head currently has no returned PR workflow run. Its single `quality` job provisions PostgreSQL 18 and has a 25-minute timeout; it applies the full migration set to disposable PostgreSQL and runs numerous qualification scripts, including migration-plan-only, commercial workflow, Actor Gateway, storage, campaign/directory and cutover suites. It is not a narrow checksum-selector test. Do not start/retry that full workflow merely to obtain the small validation needed here.
+
+The workflow also has `workflow_dispatch`, but the connected GitHub actions available in this session expose read operations and rerun operations for existing runs, not workflow dispatch. There is no existing run to rerun. Do not create a dummy commit or alter CI triggers just to force this broad suite.
+
+### Lowest-cost deterministic validation route
+
+The checked-in package scripts establish:
+- `npm run build` is `tsc`, using the root strict TypeScript configuration and compiling all `src/**/*`.
+- `npm test` repeats that build and then runs the full large Node test list plus additional checks; it is broader than needed for the checksum fix.
+- The focused unit test is already compiled into the build output and can be run independently after the build.
+
+On an existing local checkout at this exact branch head, with dependencies already installed, the narrowly scoped validation is:
+
+```powershell
+PS C:\GHM-main> git status --short --branch
+PS C:\GHM-main> git rev-parse HEAD
+PS C:\GHM-main> npm run build
+PS C:\GHM-main> node --require ./scripts/test-env.cjs --test dist/db/migration-batches.test.js
+```
+
+The expected `git rev-parse HEAD` must equal `db9cbe426442d55e4009a237c8443b665a189564`. If the local checkout is not already at this exact commit, stop rather than switching branches or pulling over local work. This focused route does not connect to PostgreSQL, execute migrations, run disposable DB qualification, or require a new paid service. It validates the full source TypeScript build and the migration-batch selector tests, but not the full GHM suite or production readiness.
+
+### Current disposition
+
+No local shell/repository checkout is exposed to this session, so I could not truthfully execute the commands or claim a pass. No GitHub workflow was dispatched, no dummy commit/CI change was made, and no PostgreSQL qualification was repeated. The checksum fix remains unqualified pending exact-head local build and focused unit-test output.
+
+After those results are available, continue the existing documented dependency review; keep the execution manifest empty and PR #298 draft. Render remains strictly read-only. No production SQL/state, Render setting/service/deployment, secret, credential, role, ACL, application/payment state or paid resource changed.
