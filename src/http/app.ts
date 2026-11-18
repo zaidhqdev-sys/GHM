@@ -1092,6 +1092,66 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/projects/:projectId', resourceAuthMiddleware, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      if (context.role !== 'customer' && context.role !== 'admin') {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      const rawId = req.params.projectId;
+      const projectId = typeof rawId === 'string' && /^[1-9]\\d*$/.test(rawId) && Number.isSafeInteger(Number(rawId))
+        ? Number(rawId)
+        : null;
+      if (projectId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const project = await projectService.getOwnedProject(context, projectId);
+      if (!project) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ project });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.patch('/api/v1/projects/:projectId', resourceAuthMiddleware, requireRegisteredAccess('project', 'update'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      if (context.role !== 'customer' && context.role !== 'admin') {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      const rawId = req.params.projectId;
+      const projectId = typeof rawId === 'string' && /^[1-9]\\d*$/.test(rawId) && Number.isSafeInteger(Number(rawId))
+        ? Number(rawId)
+        : null;
+      const input = parseProjectUpdateInput(req.body);
+      if (projectId === null || !input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const project = await projectService.updateOwnedProject(context, projectId, input);
+      res.status(200).json({ project });
+    } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes(' is required') ||
+        error.message.includes(' must be between ') ||
+        error.message.includes('must be null or a non-negative number') ||
+        error.message === 'budgetMax must be greater than or equal to budgetMin' ||
+        error.message === 'Invalid Project urgency' ||
+        error.message === 'Project update requires at least one field'
+      )) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      handleError(error, res);
+    }
+  });
+
   registerEnquiryRoutes(app, enquiryService, resourceAuthMiddleware);
   registerCampaignRoutes(app, campaignService, resourceAuthMiddleware);
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
