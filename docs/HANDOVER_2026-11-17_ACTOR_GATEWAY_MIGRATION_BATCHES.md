@@ -579,3 +579,13 @@ No production database, Render service, deployment, credentials, payment activat
 - The migration plan-only qualification passed: all 50 pending inventory entries were enumerated with SHA-256 checksums and the disposable fixture's 105-row ledger/catalog were unchanged. This is plan-only validation and is not authorization to execute migrations against production.
 - Net result: **all GHM quality and database/security qualification checks passed; the overall PR workflow remains red solely because the intentionally enforced web dependency audit detects the unresolved picomatch advisory.**
 - No further CI rerun is warranted until the advisory/dependency finding changes or a substantive source change requires validation. Keep PR #298 draft. PR #297 remains the stale-base alternative and is not to be merged. Production batch manifest remains empty; no live production migration, deployment, Render change, payment activation or paid resource was used.
+
+
+## Separate Business Identity INSERT ACL migration disposition — 18 November 2026, 03:34 UTC
+
+- Re-read PR #296 and its dedicated hosting/credentials handover before considering its relationship to this branch. PR #296 is draft/non-mergeable, exact head `0228893c6a4597b15e10a619cb1e1a55121462dc`, based on stale `7236c82aff4fe6f100e20740c0bac8b9b94fe789`; current main is `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- PR #296 adds migration `20261116200000_narrow_business_identity_runtime_insert.sql` and its contract test. The migration is absent from current main and from this branch's 50-entry pending inventory. Do not silently absorb it into this runner PR or add it to the pending inventory/manifest: its exact position and full production-prefix dependencies still need reconciliation.
+- PR #296's exact-head CI run `43951246621` passed both quality and web-quality. This validates that PR's code at its exact head only; it does not authorize production application or remove its stale-base status.
+- Keep the ACL migration as a separately tracked pending change. If it is later accepted into current main, its inventory inclusion must be a separately reviewed change to the exact pending prefix, with checksums and disposable PostgreSQL qualification. No production batch can be selected while the execution manifest is empty.
+- PR #296's production catalog evidence is read-only. Do not execute its revoke/grant migration, alter production roles, or change any ACL under this runner work.
+- No PR #296 code was copied, rebased, cherry-picked or modified by this branch reconciliation. No CI rerun or production action occurred.
