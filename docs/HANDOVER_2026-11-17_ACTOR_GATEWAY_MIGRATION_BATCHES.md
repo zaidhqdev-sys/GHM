@@ -487,3 +487,45 @@ Owner direction: the retired provider is not part of ZAID Technologies' product 
 - This terminology decision does not authorize deleting data, changing production identities, or altering production database objects.
 
 The existing Connect browser login, account/profile verification, membership loading, and Business creation flows remain the canonical GHM-native paths. Preserve them while auditing and replacing any residual legacy implementation paths.
+
+
+## Connect remaining legacy backend audit — 18 November 2026
+
+This is a source-level audit of `zaid-connect/main` (111 files under `src/` at the inspected revision). It distinguishes live client/database calls from compatibility code, generated types and historical artifacts. It is not a claim that the Connect application has been fully migrated.
+
+### Confirmed active legacy access paths
+
+- `src/lib/lib_supabase.js` is a live client module. It creates a browser SDK client from build-time URL/anonymous-key variables and exposes direct Auth, profile, Business, membership, verification-document, storage, logo, analytics, referral, capability, trust-score, onboarding and commercial service operations.
+- `src/features/projects/projectsService.js` still imports that client and contains direct project, quote and RPC operations. It also imports GHM project/list/quote services and has a feature-flagged GHM quote caller. The migration is therefore partial/fallback-based, not a complete cutover.
+- `src/features/opportunities/opportunityService.js` still performs direct opportunity, type, capability-requirement reads and writes.
+- `src/features/opportunities/OpportunityRequirementsEditor.jsx` directly checks authorization and reads capabilities through the legacy client.
+- `src/features/marketplace/marketplaceService.js` has a direct Business directory query path while its enquiry path already uses GHM. This must be consolidated behind the GHM marketplace API.
+- `src/features/administration/AdminCommercialLaunchPanel.jsx`, `AdminVerificationScreen.jsx`, `AdminCapabilitiesPanel.jsx`, `BusinessCommercialPanel.jsx`, `AnalyticsScreen.jsx`, `TrustScoreScreen.jsx`, `AIQuoteAnalyzerScreen.jsx`, `OnboardingPanel.jsx`, and `RelationshipOutcomeScreen.jsx` import service functions from the legacy client module. Each operation must be traced to its GHM endpoint and permission contract before removal.
+- `src/components/components_index.jsx` still accepts a client object as a prop for referral and verification flows; callers and rendered routes must be traced before changing its contract.
+- `src/lib/lib_notifications.js` still persists push subscriptions directly through the old client.
+- `src/features/ai/aiProxyClient.js` calls a legacy edge-function endpoint directly using public build-time configuration.
+- `src/supabase/supabase_edge_functions.ts` contains webhook/reminder implementations and direct subscription/business/notification writes. These are backend responsibilities and must be reconciled with GHM-owned webhook, subscription, notification and provider-neutral workflows before they are retired.
+- `package.json` still declares `@supabase/supabase-js`; `src/lib/database.types.ts` is generated database typing, not by itself proof of runtime dependency.
+
+### Already GHM-backed or mixed paths
+
+- Browser authentication, canonical account ID, profile identity check, Business memberships and Business creation are GHM-native and must be preserved.
+- Marketplace enquiries already use the GHM API.
+- Project quote/list services include GHM callers, but the parent project service retains direct fallback code.
+- Project lifecycle helper is pure logic with no I/O; no backend rewrite is needed there.
+
+### Migration order — do not remove the client first
+
+1. **Inventory contract parity:** map every exported function from `lib_supabase.js` to an existing GHM endpoint, authorization capability, response shape and pagination/filter contract. Mark genuine gaps rather than inventing new endpoints.
+2. **Projects and Opportunities:** finish the existing GHM project/quote caller path, route all project operations through it, and implement the missing opportunity list/type/requirements API in GHM with the same owner/member/public visibility rules. Remove direct fallback only after contract and integration tests pass.
+3. **Business directory and administration:** route directory, capability, trust, verification, commercial launch and onboarding operations through existing GHM routes or explicitly scoped new GHM endpoints. Keep server-side authorization authoritative.
+4. **Notifications and media:** move push-subscription persistence and media metadata/storage operations behind GHM; keep provider-specific upload/attestation details server-side.
+5. **AI and PDF:** move AI proxy configuration and any document metadata/storage persistence to GHM-owned server endpoints; do not expose service credentials in browser bundles.
+6. **Webhook and subscription jobs:** reconcile the edge-function behaviours with GHM's existing webhook, subscription and notification modules. Payment activation remains frozen; do not call any payment provider or activate plans during this migration.
+7. **Remove dead compatibility surface:** once no runtime import/caller remains, remove the old client package, environment variables, generated types and unused function bundles in one coordinated PR. Keep historical SQL/backup artifacts out of runtime builds; retain only what the recovery/audit policy requires.
+
+### Immediate next implementation target
+
+The largest shared blocker is the monolithic `lib_supabase.js` service surface and the direct project/opportunity fallback paths. Start with an export-to-GHM endpoint matrix and source-level contract tests, then implement one coherent project/opportunity caller cutover. Do not change the GHM-native auth or Business creation flow.
+
+No production database, Render service, deployment, credentials, payment activation, or paid infrastructure was changed during this audit.
