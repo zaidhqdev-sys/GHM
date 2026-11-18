@@ -1110,3 +1110,46 @@ The plan-only test script builds a local disposable database, seeds a synthetic 
 - The three campaign/directory-review signed SQL wrappers remain absent as documented above.
 
 No code, SQL migration, batch manifest, test, CI workflow, PR state, production database, Render setting, credential, role, ACL, deployment, or paid resource was changed. Only this handover was updated.
+
+
+---
+
+## Implementation checkpoint — reviewed migration checksum pinning — 18 November 2026, 19:51 SAST
+
+Continued from the checksum gap above. Re-read the handover and the exact branch files before making a narrowly scoped source change.
+
+### Changes committed to the existing migration-batches branch
+
+1. `src/db/migration-batches.ts` — commit `720791d12cbeaeaf47aa82bbf5d8f90ab73abfc6`, blob `ac8faf03de76b06d52085bb5c3e6e6000b2e0fa6`.
+   - `MigrationBatchEntry` now requires `version`, `name`, and `checksum`.
+   - Batch validation requires a lowercase 64-character SHA-256 hex digest.
+   - After validating the exact contiguous pending version/name prefix, the selector compares each reviewed checksum with the current repository migration checksum and throws a migration-specific checksum mismatch before returning a selection.
+   - The runner already passes loaded `Migration` records containing the canonical `migrationSqlChecksum` result, so this adds a reviewed-body comparison without changing how SQL is executed.
+
+2. `src/db/migration-batches.test.ts` — commit `5c9f30077ce1b3ace530d8935450726158e7dd0e`, blob `faab3286b469552c85353d0c014a149040607235`.
+   - Existing selector fixtures now carry valid SHA-256-shaped checksums.
+   - Added a test proving that changed SQL represented by a different checksum is rejected even when version and name are unchanged.
+   - Added malformed-checksum rejection coverage.
+
+3. `config/production-migration-batches.json` remains exactly `[]`. No execution batch was created.
+
+### Validation status — do not overstate
+
+- PR #298 now points to head `5c9f30077ce1b3ace530d8935450726158e7dd0e`; it remains draft/open/non-mergeable.
+- GitHub workflow-run lookup and combined commit status for that exact head returned no workflow runs/statuses at the time checked.
+- Cloudflare Pages bot comment reported its build as **in progress** for this head; this is not a completed validation result.
+- No local build or test execution was performed through the GitHub connector.
+- Therefore TypeScript compilation and the new tests remain **unverified**. Do not call the checksum fix qualified until exact-head checks complete and results are inspected.
+
+### Scope and safety
+
+- Only the selector and its unit test were changed, on the existing feature branch.
+- No migration SQL, production pending inventory, execution manifest, CI workflow, PR base, or PR draft state was changed.
+- No production database query/write, migration, role/ACL/credential change, Render action, deployment, or paid resource was used.
+- Continue to keep the execution manifest empty. Do not create a first batch until checksum pinning is qualified, the 36 required function dependency/cutover review is complete, the three optional campaign/directory-review operations are resolved, and fresh authorized production ledger plus recoverable backup evidence exists.
+
+### Next action — avoid repeating implementation
+
+1. Inspect the Cloudflare Pages build result for exact head `5c9f30077ce1b3ace530d8935450726158e7dd0e`; separately confirm GitHub CI status.
+2. If validation fails, fix only the demonstrated failure and update this section.
+3. If validation passes, continue dependency review; do not infer production readiness from selector tests.
