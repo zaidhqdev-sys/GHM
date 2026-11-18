@@ -1434,3 +1434,67 @@ Next: continue the same family by checking the exact signed wrapper signatures/a
 - No SQL, migration, application code, branch base, PR status, production database, Render setting/service/deployment, secret, role, ACL, credential, payment state or paid resource was changed.
 - No production connection/query was made. Render remains strictly read-only.
 - `config/production-migration-batches.json` remains `[]`; PR #298 remains draft/open/non-mergeable.
+
+
+---
+
+## Route-readiness review — signed wrapper argument reconciliation and HTTP behavior — 18 November 2026, 23:58 SAST
+
+Re-read the latest handover and PR #298 before continuing. Source review used current `main` at `ddb31ff59ab470973edf60a5078a75e5f962f803`. No production connection or runtime action was performed.
+
+### Exact source refs
+
+- `database/migrations/20261111060000_bind_gateway_assertions_to_request_context.sql`, blob `f45833f833aa94cb5d661a6323a6af9cd3fb2cb2`.
+- `src/actor-gateway/request-assertion.ts`, blob `36d671e57498e5908bd44d6c47fdbf14dc14d08e`.
+- `src/actor-gateway/capability-governance-reader.ts`, blob `e433df6a8067d989ea6375d078a632a0172165c4`.
+- `src/actor-gateway/supplier-classification-reader.ts`, blob `b34c82b9ad51c7f563815121a90726226421d53e`.
+- `src/actor-gateway/business-profile-reader.ts`, blob `98e668d442580f5d1a398a6ccd29d6a5d1f2941b`.
+- `src/actor-gateway/actor-identity-reader.ts`, blob `1a3cb0adc483a0aa9e5bb78b4ad220a33c8fd9db`.
+- `src/actor-gateway/business-registration-identity-reader.ts`, blob `96e9c0e07c9dffa3d37a6db142bc723d066100d6`.
+- `src/actor-gateway/app.ts`, blob `dc66f24318fd9c720628d365196484e6df5b0231`.
+
+### Signature and argument-order reconciliation
+
+The ten required signatures (shared verifier plus nine operations) were compared against the SQL declarations and each TypeScript reader call. The operation names, arities and positional order match:
+
+| Operation | SQL wrapper | Reader SQL arity | Context binding |
+|---|---|---:|---|
+| Assertion verifier | `assert_actor_gateway_capability` | 6 parameters | actor, operation, issued time, nonce, context, signature |
+| Capability list | `gateway_list_capabilities` | 5 | empty object |
+| Capability create | `gateway_create_capability_draft` | 12 | name, slug, description, parentId, sortOrder, sourceReference, version |
+| Capability update | `gateway_update_capability_draft` | 13 | capabilityId plus the create fields |
+| Capability transition | `gateway_transition_capability_lifecycle` | 9 | capabilityId, targetStatus, replacedByCapabilityId, version |
+| Supplier classification | `gateway_update_business_supplier_classification` | 7 | businessId, isSupplier |
+| Business profile | `gateway_update_business_profile` | 7 | businessId, patch |
+| Actor identity | `gateway_get_actor_identity` | 5 | empty object |
+| Registration identity read | `gateway_read_business_registration_identity` | 6 | businessId |
+| Registration identity update | `gateway_update_business_registration_identity` | 9 | businessId, registrationStatus, registrationNumber, legalName |
+
+The registration reader's SQL chooses the correct `gateway_read_...` / `gateway_update_...` names and appends the Business ID and update fields after the five assertion arguments. The request assertion uses the same v2 payload format as SQL: `ghm-actor-gateway:v2|accountId|operation|issuedAt|nonce|hex(UTF-8 JSON context)`. The SQL wrapper's JSONB context comparisons match the context keys and values assembled by each reader, including explicit null/default values for capability drafts and registration updates.
+
+**No signature/argument-order defect was found in these ten reader-to-wrapper paths.** This is static source reconciliation, not a live SQL execution or proof that the migrations are installed.
+
+### HTTP authentication, validation and error behavior
+
+- All `/v1` requests pass through Bearer-token verification before JSON parsing and route handlers. The verified account ID is stored in `res.locals.actorAccountId`; per-account rate limiting is applied. The optional external rate-limit decision fails closed with 503. JSON body parsing is limited to 16 KB.
+- Capability list/create/update/transition routes validate UUIDs and request shape before calling the reader. Authorization is enforced in the signed SQL wrappers by active system-admin status, rather than a separate Express role check. SQLSTATE 42501 maps to 403; invalid/check failures map to 400; uniqueness/business conflicts map to 409; unexpected failures are logged without SQL details and return 503.
+- Supplier/profile routes validate positive safe Business IDs and allowed body shape. SQL helper/wrapper authorization failures are mapped to 404 to avoid disclosing Business existence; validation errors map to 400; unexpected errors return 503.
+- Actor identity maps SQLSTATE 42501 to 401 and unexpected errors to 503.
+- Registration read/update validate positive decimal Business IDs; update requires exactly the three allowed fields and validates status/number/legal-name combinations. Authorization/not-found SQLSTATEs map to 404, validation/check SQLSTATEs map to 400, unexpected failures return 503.
+- The application uses one common authenticated actor identity for the entire /v1 route tree; the SQL assertion independently binds that identity to the operation and arguments. Database authorization remains the authoritative Business membership/system-admin check.
+
+### Readiness conclusion and follow-up
+
+- Static SQL declaration ↔ TypeScript reader signature/argument order: **reconciled for all ten entries**.
+- Request assertion payload ↔ SQL context comparison: **reconciled for all nine operations**.
+- HTTP authentication, input validation and response/error mapping: **source-reviewed**.
+- No runtime integration test, production migration-state verification, production catalog inspection, deployed-service check or authenticated end-to-end smoke test was performed. Those remain mandatory before a production cutover decision.
+- No discrepancy requiring a source change was identified in this bounded pass. No code or SQL was modified.
+
+Next bounded task: inspect the dedicated Actor Gateway service bootstrap/configuration and startup preflight against the exact required role, connection TLS, assertion secret, pool settings and reader wiring. Keep Render strictly read-only; source configuration inspection only until a separately authorized read-only production check is necessary.
+
+### Safety
+
+- No application or migration code was changed.
+- No production database connection/query/write, migration, role/ACL/credential change, Render action/deployment, payment action, or paid resource was used.
+- `config/production-migration-batches.json` remains `[]`; PR #298 remains draft/open/non-mergeable.
