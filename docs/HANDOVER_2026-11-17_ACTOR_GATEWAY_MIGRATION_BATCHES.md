@@ -703,3 +703,66 @@ Render event/log evidence now establishes both November 15 failures:
 Therefore the build fix alone cannot make PR #275 deployable. Keep auto-deploy OFF; wait for an affordable/approved genuine gateway host, qualify its identity/credential/ACL/signed assertion contract, then prepare the runtime cutover. Do not deploy, edit environment variables, change roles/ACLs, or incur cost.
 
 No Render configuration, secrets, deployment, database, CI, payment state or hosting resource was changed.
+
+
+## 18 November 2026 19:09Z — owner boundary, production login evidence, and migration-chain review
+
+### Owner's Render access boundary
+
+The owner explicitly confirmed that Render is **read-only for assistant activity**. Permitted work is limited to inspection and read-only queries. Do not create, edit, submit, deploy, restart, pause, delete, or otherwise mutate any Render service, database, setting, environment variable, credential, role, membership, grant, migration, backup, or deployment. This restriction is permanent for this work unless the owner explicitly changes it. Repository review/documentation is separate from Render and must not be represented as a Render change.
+
+### Dedicated gateway login — workstation evidence supplied by owner
+
+The owner successfully authenticated through the existing Render external PostgreSQL hostname using the separately provisioned `ghm_actor_gateway` credential. The supplied psql output established:
+
+- `current_database=ghm_db`
+- `session_user=current_user=ghm_actor_gateway`
+- TLS 1.3 encryption was negotiated.
+- Earlier role-attribute inspection showed LOGIN and NOINHERIT, with no SUPERUSER, CREATEDB, CREATEROLE, REPLICATION, or BYPASSRLS.
+- The required bootstrap membership `ghm_db_user -> ghm_actor_gateway` is ADMIN OPTION true, INHERIT false, SET false. Preserve it; the principal-guard migration explicitly allows this exact relationship.
+- A first read-only privilege query was interrupted by a server-closed-connection message. psql reconnected successfully; the query did not return a result, and no cause is inferred.
+- The subsequent relation privilege query completed and returned zero rows for direct table DML and sequence USAGE/SELECT/UPDATE across `ghm`.
+
+The psql connection used `sslmode=require`; this proves encryption, not strict certificate/hostname verification. Do not describe strict TLS verification as passed.
+
+### Fresh read-only production catalogue inspection
+
+The existing Render PostgreSQL query connector was used only for SELECT/catalogue inspection in the ZAID Technologies workspace against the existing `ghm-db` instance. The observed production state was:
+
+- `ghm` schema exists.
+- `ghm_actor_gateway` does not have effective `USAGE` on `ghm`.
+- `ghm.assert_actor_gateway(bigint)` is absent.
+- No Actor Gateway feature functions were present in `ghm`.
+- No direct table DML or sequence privileges were found for `ghm_actor_gateway`.
+- The `ghm_db_user -> ghm_actor_gateway` bootstrap membership is preserved as designed.
+
+This means the dedicated database login is qualified for authentication, but the production database API/ACL prerequisite is not installed. The failed psql query must not be mistaken for a privilege denial or proof of a database crash.
+
+### Source and PR reconciliation for the first pending migration prefix
+
+Re-read current `main` source and the migration-batch branch, including the exact SQL for the first pending migrations and signed-assertion replacements.
+
+- `20261110010000_add_business_supplier_classification` creates a SECURITY DEFINER write function accepting caller-supplied `p_account_id`, checks that supplied account's active Business membership, and grants the function to `ghm_runtime`. It does not independently bind that ID to the authenticated request principal.
+- `20261110160000_add_admin_capability_catalogue_governance` creates SECURITY DEFINER capability governance functions accepting caller-supplied `p_actor_account_id`, checks the supplied account's administrator status, and grants those functions to `ghm_runtime`.
+- `20261110210000_add_actor_gateway_principal_guard` creates the session-user assertion and grants the gateway schema USAGE/function EXECUTE, but explicitly states it is not yet wired to feature RPCs. It does not by itself complete the identity cutover.
+- `20261110250000_add_gateway_capability_governance` initially adds unsigned gateway wrappers. Subsequent migrations replace these with one-use HMAC assertions: capability governance (`20261111020000`), supplier classification (`20261111030000`), Business profile (`20261111040000`), registration/self identity (`20261111050000`), and request-context binding (`20261111060000`). `20261111070000` adds signed Business Capability mutation operations.
+- `20261117010000` and `20261117020000` are explicit post-deployment cutover/revocation migrations. Their SQL preconditions require the signed gateway operations and, in the operational comments, a deployed gateway with passing authenticated end-to-end tests. They must not be pulled forward into a pre-deployment batch.
+
+The migration runner's execution normalizer strips each migration's outer BEGIN/COMMIT wrappers so the selected batch executes inside the runner's transaction. This preserves batch atomicity; do not treat the intermediate migration states as externally committed states within one correctly executed batch.
+
+The exact first safe production prefix is **not yet selected**. It must include all required gateway assertion and feature dependencies while respecting the separate post-deployment revocation gates and currently active Resource API route behavior. A successful SQL login alone does not satisfy those gates.
+
+### PR #298 exact status and remaining execution gates
+
+- PR #298 remains draft/open/unmerged at head `f2e280005ce7f9bfc947a19ecbb6144957d4a340`, based on `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- Current `main` was observed at `ddb31ff59ab470973edf60a5078a75e5f962f803`; the PR branch is 136 commits ahead and 4 behind. Rebase/current-main reconciliation and exact-head CI are required before any merge decision.
+- The branch's production execution manifest remains empty (`[]`). Its 50-entry pending inventory is not a live ledger refresh or execution authorization.
+- No PR-triggered workflow runs, combined commit statuses, or review submissions were returned for that exact PR head during this inspection. Do not claim CI passed.
+- PR #296 remains draft/open/unmerged and proposes an additional pending Business Identity ACL migration. If it is ever merged, refresh the complete production pending inventory and ordering before any batch plan.
+- The 105-row production ledger export remains a dated snapshot through 2026-11-09, not a current pre-execution ledger.
+- Production migration execution remains blocked by the dedicated migrator authority/ACL preflight, current live ledger refresh, fresh recoverable backup evidence, and the unapproved paid always-on Actor Gateway hosting decision.
+- The local PostgreSQL 18.6 restore of the November 14 logical export is historical restore evidence only; it is not a fresh backup or a Render PITR/recovery test.
+
+### Disposition
+
+No production migration, role, membership, grant, ACL, data, credential, backup, Render setting, service, environment variable, deployment, payment state, or paid resource was changed. No Render write action was performed. No production execution batch was selected or authorized. The next work is source-to-ledger dependency and active-route cutover reconciliation, followed by refreshed evidence through the already-approved dedicated paths; do not repeat the successful gateway login test without a specific changed condition.
