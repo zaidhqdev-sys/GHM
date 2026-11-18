@@ -2631,3 +2631,50 @@ Do not bundle this candidate into the initial Gateway installation prefix. It is
 The source migration definitions establish intended grants, not production effective privileges. The GitHub code-search endpoint returned zero/incomplete indexed results for `getPublicBusinessHours` and `ghm.business_hours`; treat that as an indexing limitation, not a clean call-site audit. Next source task: inspect the complete repository call graph and remaining migration history for direct business-hours table/function use, then map the exact migration prefix. Production ledger/ACL verification remains a separate gated activity and must not be repeated without a documented reason.
 
 No production SQL/query, migration, ACL/role change, Render action, deployment, credential or backup operation was performed.
+
+
+## 19 November 2026 — Business Hours caller trace completed; existing manual cutover corrected
+
+### Reconciliation correction
+
+The preceding section identified the Business Hours table SELECT and legacy replacement EXECUTE grants as post-deployment revocation candidates. That is true as a description of the required privilege change, but the repository already contains the exact manual cutover file:
+`database/cutovers/20261111130000_revoke_legacy_business_hours_runtime.sql`.
+
+It performs, in one transaction:
+- `REVOKE ALL ON FUNCTION ghm.replace_business_hours(bigint,bigint,jsonb) FROM PUBLIC,ghm_runtime`;
+- `REVOKE SELECT ON TABLE ghm.business_hours FROM PUBLIC,ghm_runtime`;
+- `REVOKE ALL ON SEQUENCE ghm.business_hours_id_seq FROM PUBLIC,ghm_runtime`.
+
+It is explicitly marked MANUAL CUTOVER ONLY and documents the preconditions: Gateway routes deployed and qualified, role identities verified, and a fresh independently verified production backup. This cutover file is already present on `main`; do not create a duplicate migration or new cutover for the same privilege set.
+
+### Repository method-level trace
+
+Inspected current `main`:
+- `src/resources/business-hours/repository.ts`
+- `src/resources/business-hours/service.ts`
+- `src/http/business-hours-http.test.ts`
+- `src/db/actor-gateway-business-hours-migration-contract.test.ts`
+- the recursive Git tree (not truncated) to enumerate Business Hours source/test files and all existing manual cutovers.
+
+Repository methods:
+- `listPublicBusinessHours` checks public business status and reads via `ghm.get_public_business_hours($1)`;
+- `getBusinessHours` uses `withTenantTransaction` and also reads via `ghm.get_public_business_hours($1)`, not direct `ghm.business_hours`;
+- `getPublicBusinessHours` uses `withAuthorizedTransaction` and directly SELECTs `ghm.business_hours`;
+- `replaceBusinessHours` uses `withTenantTransaction` and calls legacy `ghm.replace_business_hours`.
+
+The service class exposes all repository methods, but the inspected production HTTP route wiring selects the Gateway client for authenticated GET/PUT when `businessHoursGatewayRequired` is true. The HTTP test explicitly proves PUT returns 503 and does not invoke the legacy repository when Gateway is required but unavailable, and separately proves that the configured Gateway client is used. The existing contract test reads the manual cutover file and asserts that the legacy function, table SELECT and sequence privileges are revoked.
+
+The method-level source review therefore narrows the remaining direct table SELECT concern to `getPublicBusinessHours`. No invocation was found in the inspected HTTP route wiring; the service API still exposes it. The repository-wide caller trace is **not conclusively complete**: GitHub code search returned zero/incomplete results, and the full 453-file source set was enumerated but not downloaded and text-scanned. Do not label the method globally unused. It remains a residual call-site verification item before applying the cutover.
+
+### Correct Business Hours disposition
+
+- The exact manual cutover already exists. No duplicate SQL should be authored.
+- The public projection function `ghm.get_public_business_hours(bigint)` remains granted to `ghm_runtime`; it supports both public list and the tenant-authorized repository read method.
+- The direct table SELECT and legacy replacement function privileges are only removed by the manual cutover; source existence does not establish that it has run in production.
+- The cutover also revokes sequence USAGE. This is intentional in the existing file and should not be omitted from any review of its effect.
+- Do not apply the cutover until all documented production preconditions are independently met, including live role/identity authority, exact deployed Gateway/Resource API versions, complete caller inventory, and verified backup/recovery point.
+- No production ledger or ACL query was repeated in this task. No production SQL, migration, ACL/role change, Render action, deployment, credential or backup operation occurred.
+
+### Repository cutover inventory note
+
+The recursive `main` tree currently contains distinct manual cutovers for capability governance, registration identity, business-capability mutations, saved businesses, Business Hours, trust scores, business logos, authentication issuer privileges, and campaign/directory review (including rollback files for the latter two). This inventory is a source-tree fact only; it is not evidence that any cutover ran in production. Use these existing files when reconciling subsequent capability families rather than assuming a missing cutover or creating duplicates.
