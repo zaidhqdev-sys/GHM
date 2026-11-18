@@ -3259,3 +3259,17 @@ Owner-approved migration policy remains fresh GHM registration rather than autom
 ### No-action record
 
 Repository source, handover, PR, branch and pending SQL definitions only. No production SQL/catalog query, migration execution, role/membership/ACL change, credential/secret read or write, Render/Cloudflare setting, service, deployment, route/traffic change, QuoteFlow installed-app/local-storage operation, user record, legacy mapping row, payment state, or backup operation occurred.
+
+
+## 19 November 2026 — QuoteFlow split-origin implementation progress
+
+The QuoteFlow PR #25 follow-up dependency identified in the prior section has now been implemented on its existing branch `feature/quoteflow-ghm-native-cutover` (no new branch/PR):
+- Auth lifecycle calls route to the separately configured `EXPO_PUBLIC_GHM_AUTH_ISSUER_BASE_URL`.
+- Managed Business, membership and Business create/context calls route to `EXPO_PUBLIC_GHM_RESOURCE_API_BASE_URL`.
+- The issuer origin deliberately has no fallback; missing issuer configuration disables GHM authentication.
+- The Resource API origin retains the existing GHM Internal Runtime default.
+- Client routing and missing-issuer fail-closed tests were added; QuoteFlow's own handover was updated.
+
+Exact QuoteFlow source head: `3be84d19068d46b57ab6a0f0e012cf7144a21973`. At the time of this handover update, exact-head CI #244 (run `44422791748`) and Android preview #130 (run `44422791668`) were still in progress. Do not mark the client qualification complete until both conclusions and any required fixes are recorded.
+
+No Auth Issuer URL has been invented or configured. Production issuer hosting/role/credentials/network/TLS/backup and coordinated database cutover remain outstanding. No Render, production database, secret, service, deployment, or user data was changed.
