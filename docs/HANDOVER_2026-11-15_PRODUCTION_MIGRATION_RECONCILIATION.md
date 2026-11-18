@@ -232,3 +232,10 @@ Before tracing, the current three handovers, PR #298 metadata, migration runner 
 - The source of all 16 table grants is now attributed to three named migrations. The broad sequence-grant policy is attributed to the Opportunity Core and Commercial schema migrations, with the Participant migration's named sequence grant also identified; exact historical per-sequence application chronology remains unproven.
 - Do not add speculative revoke migrations or alter production grants. Any cleanup must be designed against the exact approved migration history, dependency checks, recovery plan, and provider/bootstrap authority path. In particular, do not remove migration-owner privileges merely to make the current preflight pass.
 - No production role, membership, grant, ACL, data, migration, credential, Render setting, deployment, payment state, or paid resource was changed. No CI was run.
+
+
+## 18 November 2026 — gated remediation plan created
+
+A separate design-only plan was added at `docs/security/PRODUCTION_MIGRATOR_AUTHORITY_REMEDIATION_PLAN_2026-11-18.md` (commit `6f1a7808e3372ddd6e89b7a06713c6b74f146d89`). It sequences the work into: preserve evidence and verify backup; provider/bootstrap-owned removal of the two unintended membership edges; narrowly scoped removal of the 16 table and 24 sequence ACL entries while preserving ownership and the intended migrator SET edge; dedicated migrator read-only preflight and exact ledger export; then exact migration reconciliation before any separately approved execution plan.
+
+This is explicitly a design, not an authorization. No production SQL, role/ACL changes, backup operation, secret access, deployment, migration or CI occurred. PR #298 remains draft and its execution manifest remains empty.
