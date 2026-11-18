@@ -2156,3 +2156,48 @@ Current campaign list/get handlers use Resource API repository SQL reads, while 
 5. Keep all production migration batches empty until exact live ledger, effective ACLs, deployed Resource API version, verified recovery point and provider authority are reconciled.
 
 No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed during this review.
+
+
+## 19 November 2026 — business-logo legacy function grant remains after signed Gateway wrapper
+
+### Reconciliation performed
+
+Re-read the PR #298 handover, hosting handover and current PR state before this pass. Then inspected current-main `src/http/storage-router.ts`, current-main `src/http/app.ts`, and these exact PR-branch migrations:
+- `20261106090000_business_logo_storage_binding.sql`
+- `20261111160000_add_signed_business_logo_gateway.sql`
+- `20261112140000_add_signed_storage_metadata_actor_gateway.sql`
+- `20261112150000_add_storage_provider_workflow_attestation.sql`
+
+### Route behaviour
+
+- `PUT /api/v1/businesses/:businessId/logo` and `DELETE /api/v1/businesses/:businessId/logo` call the signed Business Logo Gateway client in production. The production app sets `businessLogoGatewayRequired = config.isProduction || ...`; if the client is missing, the handler fails closed rather than executing the legacy repository fallback.
+- `GET /api/v1/public/businesses/:businessId/logo` deliberately uses `ghm.storage_get_public_business_logo(bigint)` to resolve the public provider key. That public projection is separate and must remain available to `ghm_runtime`.
+- The Gateway wrapper `ghm.gateway_set_business_logo_object(...)` is SECURITY DEFINER, owned by `ghm_schema_owner`, revoked from PUBLIC/`ghm_runtime`/`ghm_migrator`, and granted to `ghm_actor_gateway`. It validates the signed actor assertion before calling the underlying binding function.
+
+### New ACL finding
+
+The original migration `20261106090000_business_logo_storage_binding.sql` grants `EXECUTE` on legacy `ghm.set_business_logo_object(bigint,bigint,bigint)` to `ghm_runtime`. The later signed Gateway migration adds the protected wrapper but does not revoke the legacy runtime grant.
+
+Therefore, while the production Resource API route is Gateway-required, the database runtime principal retains a direct invocation surface for the old actor-ID-parameterized function if that grant remains effective. This is the same category of residual legacy invocation surface identified for the five storage metadata functions; it is a distinct function and must be included explicitly in the post-deployment ACL revocation inventory.
+
+### Required disposition
+
+- Add `ghm.set_business_logo_object(bigint,bigint,bigint)` to the separately reviewed post-deployment runtime EXECUTE revocation candidate list.
+- Before revocation, verify the deployed Resource API version uses the signed Gateway wrapper in production and verify `ghm_actor_gateway` can execute the wrapper successfully with valid signed assertions.
+- Keep `ghm.storage_get_public_business_logo(bigint)` EXECUTE available to `ghm_runtime`; it is the intended public logo projection and is not the legacy write function.
+- Add SQL tests proving `ghm_runtime` cannot execute the legacy binding function after cutover, `ghm_actor_gateway` can execute only the signed wrapper, and public logo resolution remains available through the public projection.
+- Do not revoke either function in the additive pre-deployment batch and do not alter production now.
+
+### Consolidated post-deployment revocation candidates identified so far
+
+These are source/migration-derived candidates, not an approved executable migration:
+1. Storage legacy functions: `ghm.storage_create_pending`, `ghm.storage_mark_available`, `ghm.storage_mark_deletion_pending`, `ghm.storage_mark_deleted`, `ghm.storage_get_object`.
+2. Business logo legacy binding: `ghm.set_business_logo_object(bigint,bigint,bigint)`.
+3. Business registration identity legacy write: handled by the existing guarded candidate migration `20261117010000_revoke_runtime_business_registration_identity_write.sql`.
+4. Capability governance legacy write functions: handled by the existing guarded candidate migration `20261117020000_revoke_runtime_capability_governance.sql`.
+
+Do not include public projection functions (`ghm.storage_get_public_business_logo`, `ghm.get_public_business_hours`, `ghm.get_public_trust_score`, `ghm.list_public_trust_scores`) in that revocation set. Their narrowly scoped `ghm_runtime` EXECUTE grants are intentional.
+
+This list is not exhaustive for every legacy function in the entire database. It only consolidates the specific Gateway cutover families inspected in this handover. A complete function-level ACL matrix and exact live effective privileges remain prerequisites before producing any revocation migration or execution batch.
+
+No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
