@@ -50,3 +50,13 @@ The existing Project repository scopes records to the authenticated account ID a
 - The fix now validates the exact pinned three-schema path, with whitespace normalization only. It does not relax ownership, SECURITY DEFINER, gateway-only execution, or runtime denial requirements.
 - Project PATCH now explicitly denies administrator roles as well as business roles, matching the account-owned Project service contract. A dedicated admin denial HTTP test was added.
 - The branch has not been merged or deployed. All migration execution remains CI-only against disposable PostgreSQL.
+
+
+## CI result and Project route test correction — 18 November 2026
+
+- Run [44210945203](https://github.com/zaidhqdev-sys/GHM/actions/runs/44210945203) completed. All migrations applied successfully to disposable PostgreSQL. The isolated auth issuer baseline qualification, isolated Actor Gateway principal qualification, local Actor Gateway Worker smoke test, Argon2id interoperability qualification, storage provider attestation qualification, storage metadata grant/revocation qualification, signed Connect Business provisioning qualification, Business registration forward migration qualification, Opportunity marketplace SQL qualification, and storage lifecycle/tenant authorization qualification all passed.
+- Correction to the earlier interim report: the isolated Actor Gateway principal did **not** fail. It passed. The 7 failures were all Project HTTP tests in `src/http/app.test.ts`; the tests used `business` auth contexts after the route contract had been changed to customer-only. Expected customer operations consequently returned 403 before reaching payload validation/service execution. The implementation's role guard behaved as designed; the test fixtures were stale.
+- Commit `f697549eafa605033f1ec355886f939a7e34356e` updates the seven customer-operation fixtures/assertions to use customer contexts.
+- Commit `72f4b82340c6862a8d7c11a8d7810550aff973f2` adds explicit HTTP denial coverage for both business and administrator roles across Project create, detail read and update, asserting the Project service is never called.
+- The run's web dependency audit remains blocked by five high-severity findings in the existing picomatch/Vite dependency tree. No force downgrade or audit suppression has been applied.
+- A new CI run is required for the latest two commits. No merge, deployment, production migration, payment activation, or paid infrastructure change has occurred.
