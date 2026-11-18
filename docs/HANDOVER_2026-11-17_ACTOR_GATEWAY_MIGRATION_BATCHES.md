@@ -1809,3 +1809,70 @@ Free hosting does not remove the database prerequisites. The current production 
 2. Review the four commits by which this branch is behind main before any integration decision. They were previously identified as documentation-only, but must be rechecked at the current exact refs.
 3. Inspect Resource API gateway timeout/retry handling for the Free early-access cold-start case.
 4. Keep the migration manifest empty until exact live ledger and all production release gates are satisfied.
+
+---
+
+## 19 November 2026 — migration dependency review and Free early-access timeout contract
+
+### Migration chain findings from exact SQL source
+
+Reviewed the candidate production pending inventory and the following migration bodies on this branch:
+- 20261110210000_add_actor_gateway_principal_guard.sql
+- 20261110220000_add_actor_gateway_self_identity_read.sql
+- 20261110230000_add_gateway_business_registration_identity_read.sql
+- 20261110233000_add_gateway_business_registration_identity_write.sql
+- 20261110250000_add_gateway_capability_governance.sql
+- 20261110260000_gateway_supplier_classification_cutover.sql
+- 20261110270000_gateway_business_profile_update.sql
+- 20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql
+- 20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor.sql
+- 20261111060000_bind_gateway_assertions_to_request_context.sql
+- 20261111070000_add_signed_business_capability_mutations.sql
+- 20261111100000_add_signed_saved_business_gateway.sql
+
+Confirmed dependencies:
+1. 20261110210000 is the foundation: it requires the pre-provisioned LOGIN/NOINHERIT gateway role and the documented bounded administrator membership; it creates ghm.assert_actor_gateway, grants ghm schema USAGE, and grants the gateway principal function execution. The next identity/feature wrappers depend on this.
+2. 20261110220000 adds the first own-identity reader; 20261110230000 and 20261110233000 add registration identity wrappers. These first-generation wrappers rely on the account-ID assertion.
+3. 20261111020000 replaces capability wrappers with short-lived signed assertion verification, creates protected secret/nonce tables and the HMAC verifier. 20261111050000 extends signed assertion operations to identity and registration. 20261111060000 binds assertions to request context and replaces function signatures; subsequent signed feature migrations depend on this evolved contract.
+4. 20261111070000 adds signed Business Capability operations; 20261111100000 adds signed Saved Business operations.
+5. 20261110260000 and 20261110270000 revoke direct ghm_runtime EXECUTE on their legacy supplier-classification and Business-profile write functions. Those revocations are security cutovers, not merely additive gateway setup. Their position in the global pending queue must be evaluated against the deployed Resource API route clients and exact live state; do not isolate or reorder them by hand.
+6. Later signed feature migrations (Business Hours, Trust Score, Business Logo, storage metadata, Connect provisioning, campaign/directory review, and commercial governance) extend the same assertion protocol and must be reviewed as a dependency chain before any production batch.
+
+### Why no first production batch is selected
+
+The branch's candidate inventory begins with five migrations earlier than the first Actor Gateway principal migration:
+- 20261110010000_add_business_supplier_classification
+- 20261110100000_create_account_onboarding_progress
+- 20261110120000_create_business_relationship_outcome_read_models
+- 20261110140000_allow_pending_storage_object_cleanup
+- 20261110160000_add_admin_capability_catalogue_governance
+
+The runner intentionally permits only an exact contiguous prefix of the *live* pending queue. Therefore the gateway foundation cannot be selected as a standalone first batch while those earlier candidate entries remain pending. The 50-entry inventory is not a live ledger; the dated 105-row ledger snapshot is not an execution authority. The dedicated migrator preflight/ledger reconciliation, backup/recovery and provider-authority gates remain unresolved. Keep config/production-migration-batches.json equal to [] and do not execute npm run migrate against production.
+
+The disposable plan-only qualification script is a CI fixture that creates/drops its own local ghm_db and seeds 95 applied plus 10 retained rows. It is not a production audit or a substitute for the exact live ledger. It verifies that plan output leaves its disposable ledger/catalog unchanged; it does not authorize a live production plan.
+
+### Free early-access Resource API timeout finding
+
+Read the current-main Resource API gateway clients:
+- src/http/business-registration-identity-gateway-client.ts
+- src/http/saved-business-gateway-client.ts
+- src/http/business-hours-gateway-client.ts
+- src/http/capability-governance-gateway-client.ts
+
+Each uses AbortController with a default 5,000 ms timeout and clears the timer after the request. No automatic retry or cold-start recovery is implemented in these clients. Render Free may sleep and cold-start longer than this bound. Thus a first request after sleep is expected to abort/fail at the Resource API client rather than wait for the gateway to wake.
+
+Owner decision remains Free for early-access/free-directory stage. Before routing these gateway-backed operations through a Free instance, a separate source change/design must define bounded retry/client recovery or a deliberate early-access availability contract. Never weaken token verification, signed assertions, SQL authorization, or fail-closed behavior to hide a timeout. Paid always-on compute is a later owner decision, not a prerequisite to continue source qualification.
+
+### Four commits behind main — exact diff confirmation
+
+Re-fetched the four previously identified mainline commits and inspected their diffs:
+- dc4cbd011ab75a8630e4ab8b111dd2c99c9969ef — appends hosting handover section 37 (production DB connection checkpoint).
+- f52ec0a9fa199ca3855aa39e911b732e0f520ef0 — appends hosting handover section 38 (Amanda / Render Support authority handover).
+- aa3842ddb67ec44f1e6fcdeb328cb2e77ddaade2 — appends hosting handover section 39 (production role/migrator and local connection reconciliation).
+- ddb31ff59ab470973edf60a5078a75e5f962f803 — appends hosting handover section 40 (owner correction that the gateway DB URL is staged in the unsubmitted form).
+
+All four diffs are documentation-only. The four sections had already been copied into the PR branch hosting handover in its documented reconciliation checkpoint. No source or migration code is hidden in these four behind-main commits. This does not reconcile the 163-commit ahead delta and does not authorize a merge/rebase.
+
+### Current action boundary
+
+No production ledger query/audit, local PostgreSQL command, Render inspection/action, form submission, service creation, deployment, migration execution, role/ACL/credential change, backup operation, payment action or paid resource action occurred during this review. The owner-filled Render form remains unsubmitted. The migration manifest remains empty.
