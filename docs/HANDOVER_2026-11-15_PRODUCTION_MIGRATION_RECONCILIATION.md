@@ -186,3 +186,18 @@ This handover records source review and the user's supplied read-only audit. It 
 - PR #298's 50-entry candidate inventory and plan-only qualification remain repository/disposable-fixture evidence only. They are not evidence of the exact production pending queue. Its execution manifest remains empty.
 - Next safe step: resolve the Render-supported administrator/application login separation and obtain an authorized dedicated `ghm_migrator` connection with verified TLS and documented schema-owner SET capability; then run the existing read-only forensic predeploy audit and preserve its exact output. Do not run `npm run migrate`, do not change production roles/ACLs, and do not grant ledger access to the application login as a workaround.
 - A fresh verified production backup/recovery point remains a prerequisite for any eventual role or migration change. No database write, grant, role change, migration, secret, Render configuration, deployment, payment action, paid resource or CI run occurred.
+
+
+## 18 November 2026 — exact live migrator-principal contract check
+
+- Re-read the production reconciliation, Render role-separation and PR #298 migration-batch handovers, the exact runner source `src/db/migrate.ts` / `src/db/migrator-principal.ts`, and PR state before this read-only follow-up.
+- Correction to the prior blocker description: production role `ghm_migrator` **exists** and is LOGIN/NOINHERIT with no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS. It has exactly one direct membership to `ghm_schema_owner` with ADMIN=false, INHERIT=false, SET=true. This single edge matches the intended migration SET path.
+- The full principal contract still fails:
+  1. `ghm_db_user` is a member of `ghm_migrator` with ADMIN OPTION=true / INHERIT=false / SET=false; live `migrator_member_count=1`, expected 0.
+  2. `ghm_db_user` is also a member of `ghm_schema_owner` with ADMIN OPTION=true / INHERIT=false / SET=false. Together with `ghm_migrator`, live `schema_owner_membership_count=2`, expected 1.
+  3. The exact direct relation/sequence privilege predicate in the migration runner returns true, expected false.
+- Direct ACL expansion confirmed explicit `ghm_migrator` grants by `ghm_schema_owner`: SELECT/INSERT/UPDATE/DELETE on 16 named relations (commercial event/allocation/payment/plan/subscription/trial tables, country, currency, opportunity, opportunity participant/type) and SELECT/USAGE on 23 sequences. No `pg_default_acl` entries for `ghm_migrator` were found. The migration ledger itself grants SELECT to `ghm_auditor`, not `ghm_migrator`.
+- The source/operation that created these per-object grants has not yet been attributed. Do not infer it from current ACLs; trace migration history and historical handovers before proposing remediation.
+- Render's read-only query connector is bound to `databaseUser=ghm_app_user`, observed session `session_user=ghm_app_user`, `current_user=ghm_db_user`. It cannot SET ROLE to the dedicated migrator or schema owner, so it cannot run the intended forensic audit. The audit must use the dedicated `GHM_MIGRATOR_DATABASE_URL` credential through the approved local checkout with `DATABASE_SSL=true` and verified TLS, once the principal contract has been reconciled.
+- Exact live migration ledger rows/checksums/order remain unavailable. The stale 105-row table statistic must not be used as an exact count. PR #298's 50-entry inventory remains candidate-only; execution manifest remains empty.
+- No grant, role, ACL, migration, secret, Render setting, deployment or production data changed. No CI was run.
