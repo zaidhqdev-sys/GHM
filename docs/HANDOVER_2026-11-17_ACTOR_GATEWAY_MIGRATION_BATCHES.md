@@ -2921,3 +2921,80 @@ The separate manual cutover `20261111020000_revoke_legacy_registration_identity_
 - Registration Identity has an overlap between manual read/write revocation and a later guarded automatic write-revocation migration. Resolve exact pending prefix and live ACL before production sequencing.
 - The three manual cutovers are not to be added to `config/production-migration-batches.json`; manifest remains `[]`.
 - No production SQL/query, migration/cutover execution, ACL/role change, Render inspection/change, deployment, credential/backup operation, or payment action occurred.
+
+
+## 19 November 2026 — Capability Governance, Supplier Classification and Business Profile reconciliation
+
+### Pre-workflow checkpoint
+
+Re-read the PR #298 migration/hosting handovers, PR metadata, changed-file inventory and branch comparison. At review start PR #298 head was `6f07cd226b7508a74c4222e6194b282cedbe69bb`, open/draft/non-mergeable, 190 commits ahead and 4 behind `main`. Source and migration findings below are from current `main`, not evidence of production deployment or applied-ledger state.
+
+### 1. Capability Governance
+
+Inspected:
+- `src/http/capability-catalogue-router.ts`
+- `src/resources/capability/repository.ts`
+- `src/http/capability-governance-gateway-client.ts`
+- `src/actor-gateway/capability-governance-reader.ts`
+- `database/migrations/20261110250000_add_gateway_capability_governance.sql`
+- `database/migrations/20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql`
+- `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+- `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql`
+
+**Route split:** selectable/public capability catalogue reads remain in the Resource API repository. Administrative list, draft creation, draft update and lifecycle transition routes call the signed Gateway client; those routes return 503 if no Gateway client is configured. The catalogue's ordinary read route is not the admin Gateway list operation and must not be revoked with governance mutation privileges.
+
+**Migration chronology:** the first Gateway governance migration created caller-account-ID wrappers and granted them to `ghm_actor_gateway`, while explicitly leaving legacy runtime grants until cutover. The signed-assertion migration replaces those wrappers with short-lived, one-use assertion-bound operations. The later automatic migration `20261117020000_revoke_runtime_capability_governance.sql` is materially stronger than the original manual cutover: it verifies required roles, signed verifier/wrapper existence, SECURITY DEFINER ownership/search_path, Gateway EXECUTE and absence of runtime EXECUTE, then revokes the three legacy draft/create/update/lifecycle functions and checks for unexpected direct grantees.
+
+**Manual overlap:** `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql` also revokes the same three legacy governance functions. This overlaps the later guarded automatic migration. The automatic migration includes stronger preconditions and unexpected-grantee assertions. Resolve its exact position in the contiguous pending migration prefix and the live ACL state before deciding whether the manual cutover remains needed; do not blindly apply both or duplicate the SQL. Both are legacy governance function revocations; neither authorizes revoking catalogue SELECT.
+
+**Disposition:** preserve Resource API catalogue reads; use signed Gateway for administrative governance; prefer the later guarded migration's precondition/ACL verification as the authoritative source of the legacy mutation revocation plan. No paired rollback file was found for the original manual cutover. No production ledger or ACL query was performed.
+
+### 2. Supplier Classification
+
+Inspected:
+- `src/http/app.ts` business update route
+- `src/http/supplier-classification-gateway-client.ts`
+- `src/actor-gateway/supplier-classification-reader.ts`
+- `database/migrations/20261110260000_gateway_supplier_classification_cutover.sql`
+- `database/migrations/20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql` (assertion operation allow-list evolution)
+
+The Resource API accepts supplier classification as the isolated `isSupplier` update shape on `PATCH /api/v1/businesses/:businessId`. It calls the supplier Gateway client and returns 503 when the client is absent; it does not fall back to the legacy repository mutation. After the Gateway write it fetches the managed Business through the Resource API service for response presentation, so the follow-up tenant-scoped read remains an intentional Resource API dependency.
+
+Migration `20261110260000_gateway_supplier_classification_cutover.sql` creates a Gateway wrapper, grants it to `ghm_actor_gateway`, and revokes PUBLIC/runtime EXECUTE on the legacy `ghm.update_business_supplier_classification` function in the same migration. It is not a manual cutover file and has no paired rollback in the current cutover inventory.
+
+**Assertion caution:** the inspected supplier reader creates a signed HMAC actor assertion for `supplier.classification.update`, but the reviewed migration excerpt creates the earlier account-ID wrapper. The exact later migration that changes this supplier wrapper to the signed-assertion signature was not located in the inspected files. Do not assume the operation is fully migrated to the final signed contract solely from the reader source; reconcile the full migration sequence and wrapper signature before production activation. This is a source/migration contract gap requiring focused follow-up, not a claim that production is currently vulnerable.
+
+### 3. Business Profile
+
+Inspected:
+- `src/http/app.ts` business update route
+- `src/http/business-profile-gateway-client.ts`
+- `src/actor-gateway/business-profile-reader.ts`
+- `database/migrations/20261110270000_gateway_business_profile_update.sql`
+- `database/migrations/20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql`
+- `database/migrations/20261110265000_reconcile_business_profile_legacy_contract.sql`
+- `database/migrations/20261109100000_persist_business_profile_presentation_fields.sql`
+
+The non-supplier Business profile PATCH path calls the Gateway client and returns 503 if it is unavailable; no legacy repository write fallback is used. Following the Gateway mutation, the Resource API loads the managed Business for response presentation. This is an intentional post-mutation Resource API read and should not be confused with direct legacy write authority.
+
+The initial Gateway profile migration revokes PUBLIC/runtime EXECUTE on the legacy `ghm.update_business_profile` function and grants the initial wrapper to the Gateway role. The later signed-assertion migration replaces that wrapper with a short-lived, one-use `business.profile.update` assertion. The earlier business-profile contract reconciliation restores the legacy underlying function's EXECUTE to `ghm_runtime`; that is an internal function invoked by the SECURITY DEFINER Gateway wrapper. The direct legacy caller-facing function remains revoked by the Gateway cutover migration. Do not treat the internal underlying grant as a reason to re-grant the public legacy entry point.
+
+No separate Business Profile manual cutover file or paired rollback was found in the current cutover inventory; the revocation is performed by the existing migration sequence. Verify exact deployed migration prefix and effective grants before relying on that state.
+
+### Consolidated disposition
+
+| Capability | Production mutation path | Remaining Resource API reads | Revocation mechanism |
+|---|---|---|---|
+| Capability Governance | Signed Gateway admin list/draft/update/transition | Selectable/public catalogue reads | Later guarded automatic migration `20261117020000`; overlaps manual `20261111010000` |
+| Supplier Classification | Gateway-only supplier update | Managed Business response read | Existing migration `20261110260000`; signed-wrapper migration sequence needs focused signature reconciliation |
+| Business Profile | Gateway-only profile update | Managed Business response read | Existing migrations `20261110270000` + signed assertion evolution `20261111040000` |
+
+### No-action record and follow-up
+
+- Existing migrations/manual cutover files were used; no duplicate cutover or rollback was authored.
+- Do not revoke the catalogue read path or the Resource API's managed Business response reads.
+- Capability Governance has a manual/automatic revocation overlap; reconcile exact pending prefix and live grants before production sequencing.
+- Supplier Classification has an unresolved source/migration wrapper-signature chronology: Gateway reader emits HMAC assertion, while the inspected initial migration creates an account-ID wrapper. Locate and verify the later signed wrapper migration before production activation.
+- Business Profile's internal legacy function grant is distinct from direct runtime execution of the legacy entry point; preserve only what the SECURITY DEFINER wrapper requires.
+- These findings do not populate `config/production-migration-batches.json`; it remains `[]`.
+- No production SQL/query, migration execution, ACL/role change, Render inspection/change, service deployment, credential/backup operation, or payment action occurred.
