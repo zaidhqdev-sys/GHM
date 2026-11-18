@@ -174,3 +174,10 @@ This correction does not remove the production DB migration, role-administration
 The dedicated Render connector worker remains a valid alternative only if direct external Hyperdrive connectivity or strict CA validation cannot be established. Do not build both topologies in parallel.
 
 No Cloudflare or Render resource, secret, database role, grant, migration, allowlist, route or deployment was changed by this reassessment.
+
+
+### Hyperdrive cache and connection-limit settings
+
+The Actor Gateway must use a cache-disabled Hyperdrive configuration. Hyperdrive enables eligible read caching by default and does not invalidate cached reads after writes. This is not acceptable for actor identity, tenant membership, permissions, auth/session state or immediate read-after-write operations. Use the Wrangler/dashboard cache-disabled setting at Hyperdrive creation; do not rely on SQL function volatility or query parsing as a cache-control mechanism.
+
+The Cloudflare Free Hyperdrive tier permits up to 20 origin connections per configuration. Start with a conservative origin connection limit of 5 for the existing small Render PostgreSQL instance and verify actual active connections before any wider traffic cutover.
