@@ -30,6 +30,7 @@ export type Resource =
   | 'opportunity'
   | 'opportunity_participant'
   | 'saved_business'
+  | 'tender_tracking'
   | 'trust_score'
   | 'campaign'
   | 'directory'
@@ -40,9 +41,9 @@ export type Resource =
   | 'capability_catalogue';
 
 const roleResources: Record<GhmRole, readonly Resource[]> = {
-  admin: ['capability_catalogue', 'profile', 'business', 'business_capability', 'business_capability_evidence', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'directory', 'commercial', 'onboarding', 'business_relationship', 'outcome'],
+  admin: ['capability_catalogue', 'profile', 'business', 'business_capability', 'business_capability_evidence', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'tender_tracking', 'trust_score', 'campaign', 'directory', 'commercial', 'onboarding', 'business_relationship', 'outcome'],
   customer: ['profile', 'business', 'business_capability', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'commercial', 'onboarding', 'business_relationship', 'outcome'],
-  business: ['profile', 'business', 'business_capability', 'business_capability_evidence', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'commercial', 'onboarding', 'business_relationship', 'outcome'],
+  business: ['profile', 'business', 'business_capability', 'business_capability_evidence', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'tender_tracking', 'trust_score', 'campaign', 'commercial', 'onboarding', 'business_relationship', 'outcome'],
 };
 
 const isGhmRole = (value: unknown): value is GhmRole => value === 'admin' || value === 'customer' || value === 'business';

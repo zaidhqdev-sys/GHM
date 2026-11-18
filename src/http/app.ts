@@ -51,6 +51,8 @@ import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
+import { registerTenderTrackingRoutes } from './tender-tracking-router';
+import { HttpTenderTrackingGatewayClient, type TenderTrackingGatewayClient } from './tender-tracking-gateway-client';
 import { HttpSavedBusinessGatewayClient, type SavedBusinessGatewayClient } from './saved-business-gateway-client';
 import { PostgresOnboardingProgressRepository } from '../resources/onboarding/repository';
 import { DefaultOnboardingProgressService } from '../resources/onboarding/service';
@@ -189,6 +191,7 @@ export interface AppDependencies {
   readonly campaignDirectoryReviewGatewayRequired?: boolean;
   readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
   readonly savedBusinessGatewayRequired?: boolean;
+  readonly tenderTrackingGatewayClient?: TenderTrackingGatewayClient;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
   readonly businessRegistrationIdentityGatewayRequired?: boolean;
   readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
@@ -1096,6 +1099,13 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerCampaignRoutes(app, campaignService, resourceAuthMiddleware);
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware, savedBusinessGatewayClient, savedBusinessGatewayRequired);
+  // Tender tracking is Gateway-only in every environment: no direct-database path exists.
+  registerTenderTrackingRoutes(
+    app,
+    dependencies.tenderTrackingGatewayClient
+      ?? (config.actorGatewayUrl ? new HttpTenderTrackingGatewayClient(config.actorGatewayUrl) : undefined),
+    resourceAuthMiddleware,
+  );
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
   registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware, capabilityMutationGatewayClient, capabilityMutationGatewayRequired);

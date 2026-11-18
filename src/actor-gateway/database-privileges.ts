@@ -28,6 +28,20 @@ export const assertActorGatewayDatabasePrivileges = (
     'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
   ].map(normalizeSignature));
   const preCampaignReviewExpected = expected.filter(signature => !campaignReviewFunctions.has(signature));
+  // Tender tracking functions ship in a feature-branch migration that is not on
+  // every database yet. A database without them is accepted; a database with only
+  // SOME of them, or with extras, is not.
+  const tenderTrackingFunctions = new Set([
+    'ghm.gateway_create_tender_tracking(bigint, bigint, uuid, text, text, bigint, text, text, text, text, text, uuid, uuid)',
+    'ghm.gateway_list_tender_tracking(bigint, bigint, uuid, text, text, bigint, text, integer, bigint)',
+    'ghm.gateway_get_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint)',
+    'ghm.gateway_update_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, jsonb, uuid, uuid)',
+    'ghm.gateway_archive_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
+    'ghm.gateway_delete_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
+  ].map(normalizeSignature));
+  const withoutTender = (list: string[]): string[] => list.filter(signature => !tenderTrackingFunctions.has(signature));
+  const acceptable = [expected, preCampaignReviewExpected, withoutTender(expected), withoutTender(preCampaignReviewExpected)]
+    .map(list => JSON.stringify(list));
   const publicFunctions = [...privileges.public_executable_functions].sort();
   const runtimeFunctions = [...privileges.runtime_executable_functions].sort();
   const failures: string[] = [];
@@ -37,8 +51,7 @@ export const assertActorGatewayDatabasePrivileges = (
   if (privileges.schema_usage !== true) failures.push('schema_usage_missing');
   if (privileges.schema_create !== false) failures.push('schema_create_granted');
   if (privileges.direct_relation_privileges !== false) failures.push('direct_relation_privileges');
-  if (JSON.stringify(actual) !== JSON.stringify(expected)
-    && JSON.stringify(actual) !== JSON.stringify(preCampaignReviewExpected)) failures.push('gateway_function_allow_list_mismatch');
+  if (!acceptable.includes(JSON.stringify(actual))) failures.push('gateway_function_allow_list_mismatch');
   if (publicFunctions.length !== 0) failures.push('public_gateway_function_execution');
   if (runtimeFunctions.length !== 0) failures.push('runtime_gateway_function_execution');
   if (privileges.unsafe_function_defaults !== false) failures.push('unsafe_future_function_defaults');
@@ -61,6 +74,12 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
       'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
+      'ghm.gateway_create_tender_tracking(bigint, bigint, uuid, text, text, bigint, text, text, text, text, text, uuid, uuid)',
+      'ghm.gateway_list_tender_tracking(bigint, bigint, uuid, text, text, bigint, text, integer, bigint)',
+      'ghm.gateway_get_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint)',
+      'ghm.gateway_update_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, jsonb, uuid, uuid)',
+      'ghm.gateway_archive_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
+      'ghm.gateway_delete_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
       'ghm.gateway_calculate_business_trust_score(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_create_capability_draft(bigint, bigint, uuid, text, text, text, text, text, uuid, integer, text, integer)',
       'ghm.gateway_create_saved_business(bigint, bigint, uuid, text, text, bigint)',

@@ -17,6 +17,7 @@ export type ResourceOperation =
   | 'replyAsCustomer'
   | 'replyAsAdmin'
   | 'delete'
+  | 'archive'
   | 'calculate'
   | 'accept';
 
@@ -55,6 +56,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'onboarding', operations: ['read', 'create', 'update'] },
   { resource: 'business_relationship', operations: ['read'] },
   { resource: 'outcome', operations: ['read'] },
+  { resource: 'tender_tracking', operations: ['read', 'create', 'update', 'archive', 'delete'] },
   { resource: 'capability_catalogue', operations: ['read', 'create', 'update', 'transition'] },
 ];
 

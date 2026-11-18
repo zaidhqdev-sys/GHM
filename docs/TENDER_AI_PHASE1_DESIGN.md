@@ -1,6 +1,7 @@
 # ZAID Tender AI — GHM Phase 1 design (tracking, saved summaries, audit)
 
 **Branch:** `feat/tender-ai-phase1`, created from GHM `main` at `b73839b2` (2026-11-18).
+**Batch 2 (tracking read/write) is implemented on this branch: see §8.**
 **Status:** development approved by the owner for this branch only (2026-11-18). **Nothing here is merged, applied to any database, deployed, or authorized for production.** Migration reconciliation (42+ pending production migrations) remains unresolved; the tender migrations must not enter `main` until it is.
 **Tender AI side:** repo `zaidhqdev-sys/zaid-tenderai`, branch `feat/tender-web-app`, head `d0c7bf5` (version-2 projection contract, read and write validators).
 
@@ -77,3 +78,37 @@ Gateway generates `requestId` per tender request. The incoming `x-request-id` is
 ## 7. What remains blocked for production (unchanged by this branch)
 
 B1 Render role remediation; B2 backup; B3 staged runner; B5 disposable-DB qualification (this branch's SQL has not run on any database); B6 secret provisioning; B7 Gateway service (an always-on Render service is not approved); B8 auth issuer; B9 Resource API redeploy; B10 adding the Tender AI origin; and the 42+ pending-migration reconciliation. Merging, applying, deploying and spending are not authorized.
+
+## 8. Batch 2 outcome (tracking read/write)
+
+Implemented: migration `20261118100000_create_tender_tracking_and_audit.sql`; Gateway validator, reader, request-id
+context and bounded logger; six Gateway routes; Resource API client, router and registry entry; privilege-checker
+update; tests. **None of the SQL has run on any PostgreSQL database.** Evidence is static contract tests, a
+pure-JS PostgreSQL *syntax* parse (libpg-query, scratch directory, not a dependency), and fake-pool/fake-reader tests.
+
+Decisions taken in batch 2 (and the G6 resolution):
+
+* **G6:** a `tender_tracking` resource is registered (read, create, update, archive, delete); `archive` was added to the
+  `ResourceOperation` vocabulary. Roles `admin` and `business` only; `customer` has none. Fine-grained authorization is
+  NOT decided there: it is repeated server-side in SQL from `business_membership`.
+* **Authorization inside SQL:** every gateway function checks (1) context equals arguments, (2) the one-use signed
+  assertion, (3) active membership with the right role. Non-members, and nonexistent Businesses, are `42501` -> 403.
+* **Archive vs permanent delete:** separate functions, routes, and audit types `tender.tracking.archive` /
+  `tender.tracking.delete`. Update cannot set `archived`; archived records cannot be edited. The audit table has no
+  foreign key to the record, so the delete event survives; there is no cascade anywhere to audit history.
+* **Audit:** written by an internal helper in the same function (same transaction) as the change; allow-listed metadata
+  (changed field names, stage from/to) only; denials are logs only.
+* **Caps in SQL:** at most 500 active and 2000 total per Business under a per-Business advisory lock.
+* **Privilege checker:** `database-privileges.ts` accepts a database with all six tender gateway functions or none (so a
+  database without the feature-branch migration still qualifies), and rejects any partial or extra set. Internal helper
+  functions have no gateway EXECUTE grant and are intentionally not listed.
+* **`scripts/qualify-actor-gateway-principal.mjs` unchanged:** it is a live-database script and cannot run here; adding
+  tender cases to it is part of the disposable-database qualification (B5).
+* **Parity:** see `docs/TENDER_AI_CONTRACT_PARITY.md`. Tracking fixtures are done; version-2 summary fixtures are batch 3.
+
+### Not yet proven (needs a disposable PostgreSQL run, B5)
+
+SQL executes at all; plpgsql semantics (composite-type handling in `tender_tracking_json`, `FOR SHARE`, advisory lock,
+`hmac` availability, `jsonb` context equality with real parameter binding); RLS/privilege effects; the triggers actually
+rejecting UPDATE/DELETE/TRUNCATE; `ON DELETE RESTRICT`; check constraints; real nonce replay; concurrency on the caps.
+The replay and tamper tests in `tender-tracking-reader.test.ts` exercise a *model* of the verifier, not the SQL.

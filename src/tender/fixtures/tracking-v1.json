@@ -1,0 +1,447 @@
+{
+  "fixtureSet": "tracking-v1",
+  "generatedFrom": "src/domain/tender/persistence-contract.ts (Zod schemas)",
+  "create": [
+    {
+      "name": "minimal",
+      "input": {
+        "title": "Road maintenance"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "full",
+      "input": {
+        "title": "Road maintenance",
+        "referenceNumber": "RFQ-2026/14",
+        "issuerName": "City of Example",
+        "sourceUrl": "https://example.org/t/1",
+        "closingAt": "2026-12-01T10:00:00Z"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "offset closing",
+      "input": {
+        "title": "T",
+        "closingAt": "2026-12-01T12:00:00+02:00"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "fractional closing",
+      "input": {
+        "title": "T",
+        "closingAt": "2026-12-01T10:00:00.123Z"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "title trimmed",
+      "input": {
+        "title": "  padded  "
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "title 300",
+      "input": {
+        "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "title 301",
+      "input": {
+        "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "title blank",
+      "input": {
+        "title": "   "
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "title missing",
+      "input": {},
+      "tenderAiValid": false
+    },
+    {
+      "name": "title number",
+      "input": {
+        "title": 5
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "reference 120",
+      "input": {
+        "title": "T",
+        "referenceNumber": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "reference 121",
+      "input": {
+        "title": "T",
+        "referenceNumber": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "reference empty",
+      "input": {
+        "title": "T",
+        "referenceNumber": ""
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "reference null",
+      "input": {
+        "title": "T",
+        "referenceNumber": null
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "issuer 200",
+      "input": {
+        "title": "T",
+        "issuerName": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "issuer 201",
+      "input": {
+        "title": "T",
+        "issuerName": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "http url",
+      "input": {
+        "title": "T",
+        "sourceUrl": "http://example.org/x"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "ftp url",
+      "input": {
+        "title": "T",
+        "sourceUrl": "ftp://example.org/x"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "javascript url",
+      "input": {
+        "title": "T",
+        "sourceUrl": "javascript:alert(1)"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "url credentials",
+      "input": {
+        "title": "T",
+        "sourceUrl": "https://user:pw@example.org/x"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "url username only",
+      "input": {
+        "title": "T",
+        "sourceUrl": "https://user@example.org/x"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "url with space",
+      "input": {
+        "title": "T",
+        "sourceUrl": "https://example.org/a b"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "url uppercase scheme",
+      "input": {
+        "title": "T",
+        "sourceUrl": "HTTPS://example.org/x"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "url 500",
+      "input": {
+        "title": "T",
+        "sourceUrl": "https://example.org/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "url 501",
+      "input": {
+        "title": "T",
+        "sourceUrl": "https://example.org/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "url too short",
+      "input": {
+        "title": "T",
+        "sourceUrl": "https://"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "closing date only",
+      "input": {
+        "title": "T",
+        "closingAt": "2026-12-01"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "closing no zone",
+      "input": {
+        "title": "T",
+        "closingAt": "2026-12-01T10:00:00"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "closing garbage",
+      "input": {
+        "title": "T",
+        "closingAt": "tomorrow"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "closing impossible",
+      "input": {
+        "title": "T",
+        "closingAt": "2026-13-45T10:00:00Z"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "unknown key",
+      "input": {
+        "title": "T",
+        "stage": "saved"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "actor injection",
+      "input": {
+        "title": "T",
+        "actorAccountId": 1
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "business injection",
+      "input": {
+        "title": "T",
+        "businessId": 2
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "array body",
+      "input": [
+        {
+          "title": "T"
+        }
+      ],
+      "tenderAiValid": false
+    },
+    {
+      "name": "null body",
+      "input": null,
+      "tenderAiValid": false
+    },
+    {
+      "name": "string body",
+      "input": "title",
+      "tenderAiValid": false
+    }
+  ],
+  "update": [
+    {
+      "name": "title only",
+      "input": {
+        "title": "New"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "stage evaluating",
+      "input": {
+        "stage": "evaluating"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "stage submitted",
+      "input": {
+        "stage": "submitted"
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "stage archived",
+      "input": {
+        "stage": "archived"
+      },
+      "tenderAiValid": true,
+      "ghmDiffers": "archive is a separate operation"
+    },
+    {
+      "name": "stage unknown",
+      "input": {
+        "stage": "won"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "clear reference",
+      "input": {
+        "referenceNumber": null
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "clear issuer",
+      "input": {
+        "issuerName": null
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "clear url",
+      "input": {
+        "sourceUrl": null
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "clear closing",
+      "input": {
+        "closingAt": null
+      },
+      "tenderAiValid": true
+    },
+    {
+      "name": "clear title",
+      "input": {
+        "title": null
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "empty object",
+      "input": {},
+      "tenderAiValid": false
+    },
+    {
+      "name": "unknown key",
+      "input": {
+        "title": "T",
+        "businessId": 2
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "http url",
+      "input": {
+        "sourceUrl": "http://example.org"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "bad closing",
+      "input": {
+        "closingAt": "soon"
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "reference empty",
+      "input": {
+        "referenceNumber": ""
+      },
+      "tenderAiValid": false
+    },
+    {
+      "name": "array body",
+      "input": [],
+      "tenderAiValid": false
+    }
+  ],
+  "pathId": [
+    {
+      "name": "1",
+      "input": "1",
+      "tenderAiValid": true
+    },
+    {
+      "name": "123456789012345",
+      "input": "123456789012345",
+      "tenderAiValid": true
+    },
+    {
+      "name": "16 digits",
+      "input": "1234567890123456",
+      "tenderAiValid": false
+    },
+    {
+      "name": "zero",
+      "input": "0",
+      "tenderAiValid": false
+    },
+    {
+      "name": "leading zero",
+      "input": "01",
+      "tenderAiValid": false
+    },
+    {
+      "name": "negative",
+      "input": "-1",
+      "tenderAiValid": false
+    },
+    {
+      "name": "decimal",
+      "input": "1.5",
+      "tenderAiValid": false
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "tenderAiValid": false
+    },
+    {
+      "name": "letters",
+      "input": "1a",
+      "tenderAiValid": false
+    },
+    {
+      "name": "number type",
+      "input": 1,
+      "tenderAiValid": false
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import { PostgresBusinessProfileReader } from './business-profile-reader';
 import { PostgresGatewayCapabilityMutationReader } from './business-capability-mutation-reader';
 import { PostgresSavedBusinessGatewayReader } from './saved-business-reader';
 import { PostgresBusinessHoursGatewayReader } from './business-hours-reader';
+import { PostgresTenderTrackingGatewayReader } from './tender-tracking-reader';
 import { PostgresTrustScoreGatewayReader } from './trust-score-reader';
 import { PostgresBusinessLogoGatewayReader } from './business-logo-reader';
 import { PostgresStorageMetadataGatewayReader } from './storage-metadata-reader';
@@ -65,6 +66,7 @@ const app = createActorGatewayApp({
   businessCapabilityMutationReader: new PostgresGatewayCapabilityMutationReader(pool, capabilityAssertionSecret),
   savedBusinessReader: new PostgresSavedBusinessGatewayReader(pool, capabilityAssertionSecret),
   businessHoursReader: new PostgresBusinessHoursGatewayReader(pool, capabilityAssertionSecret),
+  tenderTrackingReader: new PostgresTenderTrackingGatewayReader(pool, capabilityAssertionSecret),
   trustScoreReader: new PostgresTrustScoreGatewayReader(pool, capabilityAssertionSecret),
   businessLogoReader: new PostgresBusinessLogoGatewayReader(pool, capabilityAssertionSecret),
   storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
