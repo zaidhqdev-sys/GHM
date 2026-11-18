@@ -142,7 +142,7 @@ test('customer can update an owned Project through the detail route', async () =
   } finally { await close(server); }
 });
 
-test('Project detail and update deny non-customer non-admin roles', async () => {
+test('Project detail, update and creation deny business roles', async () => {
   const context = { userId: 31, role: 'business' as const };
   const service: ProjectService = {
     listOwnedProjects: async () => ({ projects: [], total: 0, limit: 50, offset: 0 }),
@@ -158,7 +158,19 @@ test('Project detail and update deny non-customer non-admin roles', async () => 
       headers: { Authorization: `Bearer ${tokenFor(context)}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: 'Updated Project Title' }),
     });
+    const create = await fetch(`${baseUrl}/api/v1/projects`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tokenFor(context)}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'New Customer Project',
+        description: 'A sufficiently detailed customer project description.',
+        category: 'Construction',
+        province: 'KwaZulu-Natal',
+        city: 'Durban',
+      }),
+    });
     assert.equal(get.status, 403);
     assert.equal(patch.status, 403);
+    assert.equal(create.status, 403);
   } finally { await close(server); }
 });

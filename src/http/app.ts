@@ -1067,6 +1067,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.post('/api/v1/projects', resourceAuthMiddleware, requireRegisteredAccess('project', 'create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
+      if (context.role !== 'customer') {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
       const input = parseProjectCreateInput(req.body);
 
       if (!input) {
@@ -1095,7 +1099,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.get('/api/v1/projects/:projectId', resourceAuthMiddleware, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      if (context.role !== 'customer' && context.role !== 'admin') {
+      if (context.role !== 'customer') {
         res.status(403).json({ error: 'forbidden' });
         return;
       }
