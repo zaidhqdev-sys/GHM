@@ -1890,3 +1890,69 @@ The owner clarified the intended lifecycle for the already-filled, not-yet-submi
 - All production database, migration/ledger, backup/recovery, role/ACL authority, credential, and endpoint cutover gates remain independently outstanding. The plan upgrade does not clear those gates.
 
 This section supersedes any wording elsewhere in this document that could imply a separate paid-stage service, a second deployment, or a migration from a Free service to a different paid instance.
+
+
+## 19 November 2026 — Resource API route-to-Gateway and legacy database-call reconciliation
+
+### Source scope and method
+
+Re-read this handover and the current `main` implementations of `src/http/app.ts`, the Gateway HTTP clients, the corresponding HTTP routers, and resource repositories. Compared the supplier-classification and Business-profile cutover SQL against the PR #298 branch migrations. This is a source-code reconciliation only; it is not evidence of the live production catalogue or ledger.
+
+### Confirmed route and operation map
+
+| Resource API route / capability | Resource API Gateway client operation | Gateway endpoint | Legacy Resource API database path still present in source |
+|---|---|---|---|
+| `GET /api/v1/saved-businesses`, `GET /:savedBusinessId`, `POST /api/v1/saved-businesses`, `DELETE /:savedBusinessId` | list, get, create, delete | `GET/POST /v1/saved-businesses`; item `GET/DELETE /v1/saved-businesses/:id` | `ghm.create_saved_business`, direct reads of `ghm.saved_business`, `ghm.delete_saved_business`; production marks Gateway required |
+| `GET/PUT /api/v1/businesses/:businessId/registration-identity` | readRegistrationIdentity, updateRegistrationIdentity | `GET/PUT /v1/businesses/:id/registration-identity` | `ghm.read_business_registration_identity`, `ghm.update_business_registration_identity`; production marks Gateway required |
+| `GET/PUT /api/v1/businesses/:businessId/hours` | list, replace | `GET/PUT /v1/businesses/:id/hours` | `ghm.replace_business_hours`, direct `ghm.business_hours` read; public read path uses `ghm.get_public_business_hours`; production marks Gateway required for authenticated routes |
+| `PATCH /api/v1/businesses/:businessId` when the patch contains only `isSupplier` | update | `PUT /v1/businesses/:id/supplier-classification` | Legacy function `ghm.update_business_supplier_classification`; migration `20261110260000` creates `ghm.gateway_update_business_supplier_classification` and revokes direct `ghm_runtime` EXECUTE on the legacy function |
+| `PATCH /api/v1/businesses/:businessId` for Business profile fields | update | `PATCH /v1/businesses/:id/profile` | Legacy function `ghm.update_business_profile`; migration `20261110270000` creates `ghm.gateway_update_business_profile` and revokes direct `ghm_runtime` EXECUTE on the legacy function |
+| `GET /api/v1/admin/capabilities`, `POST /api/v1/admin/capabilities/drafts`, `PATCH /api/v1/admin/capabilities/:capabilityId/draft`, `POST /api/v1/admin/capabilities/:capabilityId/transition` | list, createDraft, updateDraft, transition | Matching `/v1/admin/capabilities...` endpoints | `ghm.create_capability_draft`, `ghm.update_capability_draft`, `ghm.transition_capability_lifecycle`; catalogue reads remain SQL-backed in the Resource API repository |
+| `PUT /api/v1/business-capabilities` (business capability assertion replacement) and verification transition | replace, verify | `PUT /v1/businesses/:id/capabilities`; `POST /v1/business-capabilities/:id/verification` | `ghm.replace_business_capability_assertions`, `ghm.transition_business_capability_verification`; reads remain direct table queries |
+| `POST /api/v1/business-capability-evidence`, `PATCH /api/v1/business-capability-evidence/:evidenceId/review` | submitEvidence, reviewEvidence | `POST /v1/business-capability-evidence`; `PATCH /v1/business-capability-evidence/:id/review` | `ghm.transition_business_capability_evidence`; evidence reads and business-capability lookups remain SQL-backed |
+| `GET /api/v1/trust-scores`, `GET /api/v1/trust-scores/:businessId`, `POST /api/v1/trust-scores/:businessId/calculate` | list, get, calculate | `GET /v1/trust-scores`, `GET /v1/trust-scores/:id`, `POST /v1/trust-scores/:id/calculate` | SQL table reads and `ghm.calculate_business_trust_score`; public trust-score routes remain separate and call `ghm.get_public_trust_score` / `ghm.list_public_trust_scores` |
+| `PUT/DELETE /api/v1/businesses/:businessId/logo` | bind | `PUT /v1/businesses/:id/logo` | Legacy logo binding calls `ghm.set_business_logo_object`; public logo resolution calls `ghm.storage_get_public_business_logo`. Production requires Gateway for protected logo mutation |
+| Storage upload completion, object access, deletion and metadata lifecycle | storage metadata create/read/deletion-pending/available/deleted | `/v1/storage/metadata` and item lifecycle endpoints | Legacy store calls `ghm.storage_create_pending`, `ghm.storage_get_object`, `ghm.storage_mark_available`, `ghm.storage_mark_deletion_pending`, `ghm.storage_mark_deleted`; production storage requires Gateway and provider workflow attestation |
+| `POST/PATCH /api/v1/campaigns` | createCampaign, updateCampaign | `POST /v1/campaigns`, `PATCH /v1/campaigns/:id` | `ghm.create_campaign`, `ghm.update_campaign`; campaign list/get remain direct Resource API SQL reads in current source |
+| `GET /api/v1/businesses/:businessId/directory-review-presentation` | getDirectoryReviewPresentation | `GET /v1/businesses/:id/directory-review-presentation` | `ghm.get_business_directory_review_presentation`; admin directory-review authority/list/mutation routes are distinct and are not shown as Gateway-backed by this router |
+| Connect Business provisioning | Gateway operation identified in the existing Gateway endpoint inventory | `POST /v1/connect/businesses/provision-or-resolve` | The exact current Resource API route/adapter and legacy database function mapping is not established by the files reviewed in this checkpoint; keep as an explicit unresolved mapping item rather than assuming it is fully cut over |
+
+### Important route-level distinctions
+
+- The public trust-score and public business-hours reads are separate public Resource API paths; they are not evidence that authenticated Gateway-backed operations can bypass the Gateway.
+- Campaign creation/update are Gateway-routed when configured, but campaign list/get still execute through the Resource API repository. Do not describe all campaign operations as cut over.
+- Business capability and evidence mutations are Gateway-routed, while related list/read queries remain SQL-backed in the Resource API. Their direct relation/function privileges must be considered separately from the Gateway mutation allowlist.
+- The business profile and supplier classification routes are two mutually exclusive PATCH shapes in `app.ts`; the supplier route accepts only the `isSupplier` field, while other profile patches use the profile Gateway.
+- The production app marks saved-business, registration-identity, business-hours, trust-score, business-logo, storage-metadata and campaign/directory-review Gateway paths required. Capability mutation is also production-required. Capability catalogue governance is constructed from the Gateway URL and its router returns 503 if the client is unavailable. No legacy fallback is permitted when the production-required Gateway dependency is missing.
+
+### Free-plan timeout evidence expanded
+
+The following additional current-main clients were checked and each has a default 5,000 ms AbortController timeout: supplier classification, Business profile, capability mutation, trust score, business logo, storage metadata, and campaign/directory review. Together with saved business, business registration identity, business hours and capability governance, the source confirms the timeout assumption spans the Gateway-backed capability set, not just four clients. The inspected clients do not implement automatic cold-start retry.
+
+Do not implement blanket retries. Safe retry classification remains operation-specific:
+- Read-only GETs may receive one bounded retry for a narrowly classified transport timeout/cold-start failure, subject to a total request deadline and no retry on authorization/validation responses.
+- PUT operations require an endpoint-specific idempotency/replace-semantics proof before retry.
+- POST, PATCH and DELETE mutations must not be automatically replayed after an ambiguous timeout unless a durable idempotency key or equivalent deduplication contract is implemented and tested.
+- Never replay with a refreshed/altered actor identity, drop the bearer token, bypass signed assertions, or turn a Gateway failure into direct Resource API database fallback in production.
+
+### Migration-order consequence
+
+The source map demonstrates that the Gateway is not an isolated new service: multiple production Resource API routes depend on its signed actor context, while some adjacent reads still use Resource API database access. Therefore each migration must be evaluated against:
+1. the exact function signature and ACL change;
+2. the current production route path and whether it is Gateway-required;
+3. any remaining Resource API direct read or fallback call that depends on the same table/function;
+4. the contiguous pending migration order and the deployed Resource API version;
+5. positive and negative tests for both Gateway authorization and the remaining Resource API access path.
+
+In particular, migrations `20261110260000` and `20261110270000` revoke `ghm_runtime` EXECUTE on the supplier-classification and Business-profile legacy functions. They must not be treated as harmless additive Gateway migrations or deployed ahead of the corresponding live route/client cutover.
+
+### Still unresolved — do not infer
+
+- Exact live production installed-function signatures, owners, grants and relation privileges.
+- The current production migration ledger and exact contiguous pending prefix.
+- Exact Connect provisioning route/adapter-to-function mapping.
+- Whether any route not explicitly described above has additional hidden database-function dependencies through its service/repository layer.
+- Production backup/recovery evidence and provider-authorized role/ACL remediation.
+- A tested, bounded Free cold-start recovery contract.
+
+Keep `config/production-migration-batches.json` equal to `[]`. No production query, SQL write, migration, Render action, deployment, credential change, or payment action was performed for this source reconciliation.
