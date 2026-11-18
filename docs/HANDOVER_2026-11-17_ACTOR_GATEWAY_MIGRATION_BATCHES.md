@@ -886,3 +886,68 @@ This matrix is a source mapping, not production execution authorization. The exa
 ### Disposition
 
 Source-only inspection and handover update. No Render writes, no SQL mutation, no migration execution, no role/ACL changes, no credential/secret provisioning, no CI, no deploy, no new service or paid resource. The next work is to resolve the remaining migration-version mapping from current main and reconcile the complete source migration order against the administrator-supplied production ledger evidence. The current dated ledger snapshot is insufficient for a batch.
+
+
+---
+
+## Follow-up source reconciliation — 18 November 2026, 19:35 SAST
+
+This section records the next read-only source pass so that later sessions do not repeat it.
+
+### Refs and inventory checked
+
+- Read this handover at branch `feat/actor-gateway-production-migration-batches` before continuing.
+- Compared that branch with current `main`: the branch remains divergent, 139 commits ahead and 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`. Do not merge, rebase, or treat the branch inventory as a current-main authority.
+- Enumerated the complete `database/migrations` directory on both `main` and the migration-batches branch. Both currently expose 145 migration files and the same campaign/directory-review migration filenames.
+- The current-main Actor Gateway privilege source is `src/actor-gateway/database-privileges.ts` (blob `41021badb1b2760ef5e26c1ab882ba0798316e0d`). It lists the three campaign/directory-review signed functions as the only optional subset:
+  - `ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)`
+  - `ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)`
+  - `ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)`
+
+### Confirmed legacy SQL versus missing signed replacement
+
+The complete migration-directory listing and exact SQL reads establish the following:
+
+1. `20260918180000_create_campaign.sql` creates only the legacy `ghm.create_campaign(bigint,bigint,text)` and `ghm.update_campaign(bigint,bigint,text,text)`. They are granted to `ghm_runtime`, not the signed gateway principal.
+2. `20260918180100_fix_campaign_function_column_ambiguity.sql` replaces those same legacy signatures; it does not create signed gateway wrappers.
+3. `20261105230000_create_founder_directory_review.sql` creates the legacy `ghm.get_business_directory_review_presentation(bigint,bigint)` (along with the legacy directory-review workflow functions), granted to `ghm_runtime`. It does not create `ghm.gateway_get_business_directory_review_presentation(...)`.
+4. No migration filename in the complete 145-file directory on either checked ref identifies a campaign/directory-review signed gateway migration. The pending migration inventories (48/50 entries in their respective PR revisions) likewise have no such named migration.
+5. Exact source search on current main did not return any other SQL definition for the three signed function names. The SQL definitions above are the confirmed legacy implementations, not evidence that the signed replacements exist.
+
+**Conclusion:** the three signed campaign/directory-review SQL counterparts are not present in the inspected migration directory on either ref. This is now a confirmed repository-source gap, not merely an unclear mapping. Do not claim those three functions are installed or migration-ready.
+
+### Additional runtime wiring finding
+
+The three operations are not merely dormant optional capabilities:
+
+- `src/actor-gateway/server.ts` unconditionally constructs `PostgresCampaignDirectoryReviewGatewayReader` and injects it as `campaignDirectoryReviewReader`.
+- `src/actor-gateway/app.ts` registers POST `/v1/campaigns`, PATCH `/v1/campaigns/:campaignId`, and GET `/v1/businesses/:businessId/directory-review-presentation`; those handlers call the reader.
+- The reader directly invokes the three missing signed SQL functions.
+
+Therefore, the startup allowlist's optional-subset tolerance only allows the service to start without those functions; it does **not** make the wired endpoints operational. The deployment contract must either (a) add and qualify the three signed SQL implementations and their ACL/assertion contracts, or (b) explicitly remove/disable the corresponding routes and reader wiring and revise the allowlist/tests. No implementation choice has been made in this handover update.
+
+### Exact source evidence already inspected
+
+- `src/actor-gateway/campaign-directory-review-reader.ts` blob `e0674ef958d8c4e496c0dd0c88bd8145ee83fae5`: signed assertion operations `campaign.create`, `campaign.update`, `directory_review.presentation.read` and direct calls to the three signed function names.
+- `src/actor-gateway/app.ts` blob `dc66f24318fd9c720628d365196484e6df5b0231`: three HTTP handlers listed above.
+- `src/actor-gateway/server.ts`: unconditional reader construction and dependency injection.
+- `20260918180000_create_campaign.sql` blob `6effa1cac6e2ce918a34b3ffff0c85334f505140`.
+- `20260918180100_fix_campaign_function_column_ambiguity.sql` blob `c1de6b8a1945c40edd7d31bfe20c3da031ccd6fc`.
+- `20261105230000_create_founder_directory_review.sql` blob `fb4f4dfc1579c93f6314f2af0c5f7c1f555022c6`.
+
+### Other verified migration-family details
+
+- `20261112140000_add_signed_storage_metadata_actor_gateway.sql` defines the signed storage metadata create/get/delete-pending functions and the signed capability assertion verifier, with schema-owner ownership, pinned search_path and explicit gateway EXECUTE grants.
+- `20261112150000_add_storage_provider_workflow_attestation.sql` defines storage-provider attestation secret/nonce storage and the signed mark-available/mark-deleted functions. Its secret/nonce tables are not directly accessible to the gateway.
+- Commercial migration source was read for `20261116150000` through `20261116190000`. The payment-prepare migration depends on the commercial consent evidence and authority/approval chain; PayFast remains paused and is not an activation workstream.
+- The global security-definer search_path pin migration `20261112090000_pin_security_definer_search_path.sql` sets `pg_catalog, ghm, pg_temp`. The two 17 November legacy runtime revocation migrations must be evaluated against that exact pinned path and remain post-deployment cutover gates as documented elsewhere in this handover.
+
+### Next work; do not repeat the checks above
+
+1. Reconcile the 39 required/optional function signatures against every current-main migration definition, grant, owner, SECURITY DEFINER setting, and pinned search_path. Maintain a signature-to-migration matrix; do not infer from filenames.
+2. Review the exact current-main dependency order for the remaining 36 functions, including the assertion verifier/secret/nonce prerequisites and storage/commercial dependencies.
+3. Reconcile the four commits by which the migration-batches branch is behind current main before any branch integration decision.
+4. Obtain fresh administrator-authorized production ledger evidence and a recoverable backup before deriving any production batch. The dated 105-row ledger snapshot is not sufficient authorization.
+5. Keep the production batch manifest empty until the above evidence and gates are complete.
+
+No production SQL, migration, role, ACL, credential, Render configuration, deployment, or hosting change was performed. Render remains read-only. This was a documentation-only update on the existing migration-batches branch; no code, migration, PR status, or execution manifest was changed.
