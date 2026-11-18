@@ -2248,7 +2248,7 @@ Re-read the latest migration and hosting handovers, PR #298 metadata/comments, c
 
 ### Connect provisioning scope boundary
 
-The signed database operation `ghm.gateway_provision_connect_business` is added by `20261112080000_signed_connect_business_provisioning_gateway.sql`; it verifies the version-2 signed assertion and grants the wrapper only to `ghm_actor_gateway`, while revoking direct runtime and other service-role access to the legacy mapping helper. The Resource API app/router files inspected in this pass do not mount a matching `/v1/connect/businesses/provision-or-resolve` route; the HTTP client exists as an integration adapter. Treat the gateway-side operation as a separate Connect integration boundary, not as proof that the Resource API currently exposes or exercises that endpoint. Its actual caller/deployment and end-to-end route contract remain to be traced before including it in the Resource API cutover sequence.
+The signed database operation `ghm.gateway_provision_connect_business` is added by `20261112080000_signed_connect_business_provisioning_gateway.sql`; it verifies the version-2 signed assertion and grants the wrapper only to `ghm_actor_gateway`, while revoking direct runtime and other service-role access to the legacy mapping helper. The Actor Gateway itself mounts the authenticated `/v1/connect/businesses/provision-or-resolve` route. The separate Resource API app does not construct or invoke its HTTP client, and the current ZAID Connect business-creation journey uses the GHM-native `/api/v1/businesses` route instead. See the later section “Connect Business provisioning caller traced across GHM and ZAID Connect” for the cross-repository caller trace and the legacy external-mapping disposition.
 
 ### Updated disposition
 
@@ -2297,3 +2297,69 @@ The existing Connect provisioning contract is specifically a legacy external UUI
 5. No Resource API client wiring should be added merely to make the old contract appear active. New GHM-native Business creation already has its own authenticated route and canonical identity lifecycle.
 
 This closes the caller-trace question at repository-source level. It does not inspect production traffic, mapping rows, or deployed Connect runtime configuration. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
+
+
+## 19 November 2026 — Business Capability create and evidence-read routes are not fully Gateway-cut over
+
+### Handovers and branch state checked first
+
+Re-read this migration handover, the hosting/credentials handover, PR #298 metadata, current changed-file inventory and branch comparison before inspecting the remaining capability routes. This section supersedes any earlier assumption that all Business Capability mutation routes are Gateway-backed.
+
+### Business Capability create — confirmed production route bypass
+
+Inspected current-main:
+- `src/http/business-capability-router.ts`
+- `src/resources/business-capability/repository.ts`
+- `src/http/app.ts`
+
+Inspected current-main migration history:
+- `20260916210000_create_business_capability.sql`
+- `20260916213000_narrow_business_capability_runtime_insert.sql`
+
+Inspected the Gateway implementation and signed migration already recorded above:
+- `src/actor-gateway/business-capability-mutation-reader.ts`
+- `20261111070000_add_signed_business_capability_mutations.sql`
+- `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql`
+
+**Finding:** `PUT /api/v1/business-capabilities` and `PATCH /api/v1/business-capabilities/:businessCapabilityId/verification` use the signed Gateway client when production requires it. However, the separate `POST /api/v1/business-capabilities` route still calls `service.createBusinessCapability(...)` directly and does not inspect `gatewayRequired` or use the Gateway client.
+
+That service reaches `PostgresBusinessCapabilityRepository.createBusinessCapability`, which performs a direct INSERT into `ghm.business_capability`. The historical migration `20260916213000` intentionally narrows but does not remove `ghm_runtime` INSERT: it still grants INSERT on `business_id`, `capability_id`, `proficiency_level`, `description`, `effective_from`, `effective_until`, `source_reference`, and `created_by`. The signed Gateway migration adds a signed replacement for assertion replacement and verification, but not a distinct signed single-create operation. The existing manual cutover file revokes legacy assertion/evidence functions and evidence table INSERT; it does not revoke this remaining `business_capability` column-level INSERT grant.
+
+**Disposition / blocker:**
+1. Treat the POST route as an active production legacy-write path, not as an already-cut-over route.
+2. Add a signed Gateway create operation (with explicit operation name, context binding, tenant/owner authorization, active/selectable capability validation and replay protection) and route production POST through it; alternatively, make the product/API contract intentionally use the existing signed replacement operation, but only if semantics and clients are proven equivalent.
+3. Only after the replacement route is deployed and qualified should a separately reviewed cutover revoke the remaining `ghm_runtime` INSERT column privileges and sequence privileges that are no longer required. Do not revoke the INSERT grant now.
+4. Add route tests proving production POST fails closed without the Gateway and never reaches the direct repository method; add SQL ACL tests proving the old INSERT is denied after the approved cutover and signed create succeeds.
+
+### Business Capability Evidence — read operations remain direct Resource API SQL
+
+Inspected:
+- `src/http/business-capability-evidence-router.ts`
+- `src/resources/business-capability-evidence/repository.ts`
+- `src/http/app.ts`
+- `src/actor-gateway/business-capability-mutation-reader.ts`
+- `20261111070000_add_signed_business_capability_mutations.sql`
+- `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql`
+
+**Finding:** evidence submission and review are Gateway-backed in production, but `GET /api/v1/business-capability-evidence` remains a direct Resource API repository read for both:
+- business-scoped evidence list (`listForBusiness`); and
+- admin pending/verified evidence queue (`listForVerification`).
+
+The repository executes SELECTs against `ghm.business_capability_evidence` joined to Business Capability, Business and Capability. The Gateway reader and signed SQL wrappers inspected here provide evidence submit/review operations, but no corresponding signed evidence-list operations. The original evidence migration grants `ghm_runtime` SELECT on the evidence table, and the manual mutation cutover revokes INSERT/sequence access and legacy mutation functions, not SELECT.
+
+**Disposition / blocker:** this is a missing Gateway read path, not evidence that the existing read is automatically an authorization bypass. The Resource API applies operation authorization and tenant/admin checks before querying. Nevertheless, if the intended production boundary requires all sensitive evidence access to pass through Actor Gateway, implement signed tenant-scoped business evidence listing and a separately authorized admin verification queue read before removing the Resource API SELECT grant. Do not revoke SELECT until both read paths exist, are tested, and production routes use them. Review whether the admin queue should expose only pending items; current repository query includes both `pending` and `verified`, so preserve/adjust that product behavior only through an explicit contract decision.
+
+### Updated capability cutover status
+
+| Route / operation | Current production behaviour | Status |
+|---|---|---|
+| PUT `/api/v1/business-capabilities` | Signed Gateway assertion replacement | Gateway-backed |
+| PATCH `/api/v1/business-capabilities/:id/verification` | Signed Gateway transition | Gateway-backed |
+| POST `/api/v1/business-capabilities` | Direct Resource API INSERT | **Uncut legacy write — blocker** |
+| POST `/api/v1/business-capability-evidence` | Signed Gateway submit | Gateway-backed |
+| PATCH `/api/v1/business-capability-evidence/:id/review` | Signed Gateway review | Gateway-backed |
+| GET `/api/v1/business-capability-evidence` | Direct Resource API SELECT for tenant list/admin queue | **Gateway read path missing** |
+
+The signed capability Gateway is therefore not yet a complete replacement for all Business Capability and Evidence routes. Do not describe this family as fully cut over. Keep the existing cutover file and production migration manifest unchanged until the new create operation, read operations, route wiring, tests, live dependency review and migration ordering are complete.
+
+No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
