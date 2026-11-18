@@ -1,4 +1,4 @@
-export type MigrationBatchEntry = { version: string; name: string };
+export type MigrationBatchEntry = { version: string; name: string; checksum: string };
 export type MigrationBatch = { id: string; purpose: string; migrations: MigrationBatchEntry[] };
 
 const identityKey = ({ version, name }: MigrationBatchEntry): string => `${version}_${name}`;
@@ -9,7 +9,8 @@ const assertUniqueOrdered = (entries: MigrationBatchEntry[], label: string): voi
   let previous = '';
   for (const entry of entries) {
     if (!entry || typeof entry.version !== 'string' || !/^\d{14}$/.test(entry.version) ||
-        typeof entry.name !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(entry.name)) {
+        typeof entry.name !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(entry.name) ||
+        typeof entry.checksum !== 'string' || !/^[a-f0-9]{64}$/.test(entry.checksum)) {
       throw new Error(`${label} contains an invalid migration identity`);
     }
     if (seen.has(entry.version)) throw new Error(`${label} contains duplicate version ${entry.version}`);
@@ -54,5 +55,13 @@ export const selectProductionMigrationBatch = (
       selectedIdentities.some((identity, index) => identity !== pendingPrefix[index])) {
     throw new Error(`Production migration batch ${batchId} is not an exact contiguous prefix of the pending queue`);
   }
-  return pending.slice(0, selected.migrations.length);
+  const selectedPending = pending.slice(0, selected.migrations.length);
+  for (let index = 0; index < selectedPending.length; index += 1) {
+    if (selected.migrations[index].checksum !== selectedPending[index].checksum) {
+      throw new Error(
+        `Production migration batch ${batchId} checksum mismatch for ${selectedPending[index].version}_${selectedPending[index].name}: reviewed=${selected.migrations[index].checksum}, repository=${selectedPending[index].checksum}`,
+      );
+    }
+  }
+  return selectedPending;
 };
