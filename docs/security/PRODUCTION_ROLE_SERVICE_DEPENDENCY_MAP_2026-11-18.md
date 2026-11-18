@@ -195,3 +195,13 @@ Even if the owner later approves the $7/month charge, this form is not deploymen
 **Disposition:** configuration values are mostly aligned with source, but do not submit, deploy, select Free, or incur cost now. Keep the form unsubmitted, keep existing production untouched, and preserve the current architecture/cost decision.
 
 No Render service, plan, environment variable, secret, deployment, database role/grant/migration, backup, payment state, CI or schedule was changed. No cost incurred.
+
+## 19 November 2026 — Actor Gateway early-access hosting decision
+
+The owner explicitly selected the Render **Free Web Service** for the initial Actor Gateway stage supporting the free directory / early-access audience. The prior hosting notes that described a dedicated paid service as cost-blocked or Free as categorically unacceptable are superseded for this early-access stage. Paid always-on hosting and provider requirements will be reviewed before paid live launch.
+
+This is a hosting-stage decision, not evidence that the gateway is provisioned or production-ready. The current role state remains unchanged: ghm_actor_gateway has no ghm schema USAGE and no installed gateway API functions; the service identity and function allowlist have not passed startup qualification. The owner-filled Render form remains unsubmitted. The owner controls submission; no service was created or deployed here.
+
+Render Free can sleep and cold-start beyond the Resource API five-second timeout. Early-access availability must account for this limitation; inspect timeout/retry behaviour before routing directory traffic. Do not weaken authorization or present Free as always-on.
+
+No role, ACL, credential, Render resource, database, migration, deployment, payment state or paid infrastructure was changed.
