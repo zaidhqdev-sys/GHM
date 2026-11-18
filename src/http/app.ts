@@ -1100,7 +1100,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         return;
       }
       const rawId = req.params.projectId;
-      const projectId = typeof rawId === 'string' && /^[1-9]\\d*$/.test(rawId) && Number.isSafeInteger(Number(rawId))
+      const projectId = typeof rawId === 'string' && /^[1-9]\d*$/.test(rawId) && Number.isSafeInteger(Number(rawId))
         ? Number(rawId)
         : null;
       if (projectId === null) {
@@ -1126,7 +1126,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         return;
       }
       const rawId = req.params.projectId;
-      const projectId = typeof rawId === 'string' && /^[1-9]\\d*$/.test(rawId) && Number.isSafeInteger(Number(rawId))
+      const projectId = typeof rawId === 'string' && /^[1-9]\d*$/.test(rawId) && Number.isSafeInteger(Number(rawId))
         ? Number(rawId)
         : null;
       const input = parseProjectUpdateInput(req.body);
