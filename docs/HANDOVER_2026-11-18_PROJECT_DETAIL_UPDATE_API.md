@@ -125,3 +125,32 @@ The existing Project repository scopes records to the authenticated account ID a
 - Rechecked the live GitHub Advisory Database page: it currently labels GHSA-fc5q-39xc-vjpf `Unreviewed`, published 19 October 2026, with affected picomatch through 4.0.7 and no fixed version. OSV's imported JSON still records `github_reviewed: true` at 17 November 2026, so the aggregator metadata conflicts with the live GitHub advisory presentation. For GHM's CI decision, record the primary GitHub page as currently unreviewed and do not claim the advisory has been withdrawn. References: GitHub Advisory Database GHSA-fc5q-39xc-vjpf; OSV GHSA-fc5q-39xc-vjpf.
 - Decision: retain `npm audit --audit-level=moderate` as a visible CI gate. Do not suppress the development dependency finding. No production runtime exposure has been demonstrated, but the full PR-head caller scan remains outstanding and should be completed in the actual checkout using a local recursive search (including scripts, config, tests and web source) before closing the reachability question.
 - No code or dependency changes, no new CI run, no merge, no deployment, no production database operation, no payment activation, and no paid infrastructure were performed.
+
+
+## Exact local PR-head scan procedure — 18 November 2026
+
+The remote connector verified the PR head/tree and configuration, but could not complete a recursive blob-content scan (585 source-like files). GitHub code search returned no hits but marked results incomplete. The full reachability question remains open. To complete it without installing anything or incurring cost, run this against the existing Windows checkout:
+
+```powershell
+PS C:\GHM-main>
+>> git fetch origin feat/project-detail-update-api
+>> git switch feat/project-detail-update-api
+>> git pull --ff-only origin feat/project-detail-update-api
+>> Write-Host "`n=== PR HEAD ===" -ForegroundColor Cyan
+>> git rev-parse HEAD
+>> Write-Host "`n=== DIRECT GLOB LIBRARY REFERENCES ===" -ForegroundColor Cyan
+>> git grep -n -I -E "picomatch|micromatch|minimatch|fast-glob|tinyglobby|anymatch|globSync|globParent" HEAD -- src scripts web workers .github package.json package-lock.json
+>> Write-Host "`n=== GLOB / REGEX / FILE DISCOVERY CALLS ===" -ForegroundColor Cyan
+>> git grep -n -I -E "glob\(|globSync\(|globStream\(|fastGlob|matchBase|new RegExp|RegExp\(|readdir|readdirSync|walkDir|readDir" HEAD -- src scripts web workers .github
+>> Write-Host "`n=== USER-CONTROLLED PATTERN / PATH SOURCES ===" -ForegroundColor Cyan
+>> git grep -n -I -E "req\.(body|query|params)|request\.(body|query|params)|process\.env|pattern|include|exclude|filePath|fileName|directory" HEAD -- src scripts web workers .github
+>> Write-Host "`n=== WORKTREE STATUS ===" -ForegroundColor Cyan
+>> git status --short
+```
+
+- The first search identifies direct package/library references.
+- The second identifies file-discovery and regex call sites that may indirectly use glob parsing.
+- The third supplies candidate sources to trace into those call sites. It will produce noisy results; only paths where untrusted request data or externally supplied configuration reaches a matcher are security-relevant.
+- Do not paste secrets or .env contents. The commands inspect tracked source only and do not install packages, modify files, contact production, or run CI.
+- Preserve the output and trace each candidate caller to its source. If no direct imports exist, inspect Vite/Vitest dependency call paths and whether CI processes only trusted checked-out source/configuration.
+- This scan is not marked complete until the actual output is reviewed. No code or dependency changes are authorized by this scan procedure.
