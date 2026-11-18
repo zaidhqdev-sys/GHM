@@ -1740,3 +1740,28 @@ But the Worker is not deployment-ready:
 - Render Postgres external connection and allowlist documentation: https://render.com/docs/postgresql-creating-connecting
 
 **Change record:** this handover update records repository/branch/PR review, read-only Render inventory and catalogue inspection, and an architecture reassessment. No application code, production DB role, grant, migration, password, secret, Render configuration, Cloudflare resource, deployment, route, payment state or schedule was changed. No new cost was incurred.
+
+
+### Implementation progress on the direct-Hyperdrive branch — 18 November 2026
+
+Branch feat/actor-gateway-hyperdrive-direct-render-20261118 was created from main b73839b27ac90446650f921d3e8ce1b5de041f04 after the repository, PR and handover review above.
+
+Changes made:
+- Updated workers/actor-gateway/index.ts to wire the three commercial readers already present in the Node gateway server: commercial document approval authority, commercial document approval, and consent/payment preparation.
+- Explicitly set commercialPaymentPreparationEnabled=false and commercialLaunchAuthorized=false in the Worker. This keeps the payment-preparation endpoint disabled; no payment provider activation or settlement path is enabled.
+- Added a Worker contract test pinning the three reader bindings and both disabled payment flags.
+- Updated this hosting handover and the Render connector architecture decision to record the direct Hyperdrive route and its gates.
+
+Commits on the new branch:
+- c28e92e1d6aeb9a3ff9de3fa87f0cc512e85e1d8 — direct Hyperdrive production connection handover.
+- ee6bf7cd4ca30f17175f97625f4b2a5259b50734 — superseding architecture decision.
+- 8f0b84dea96305a3c8a30d7cad6ac8b44dcadb74 — Worker commercial reader wiring.
+- eded0292ecf2f2a8ca539db170807f90ad0c47be — Worker contract test.
+
+Validation status:
+- Source-level review confirms the three reader classes and matching dependency properties exist in the Node gateway implementation.
+- No TypeScript build, Worker test, Wrangler dry-run, or CI run has yet been executed for this branch. Do not describe the code as tested or deployment-ready.
+- No PR has been opened for this branch. PR #298 remains the separate draft migration-batch PR; PR #296 and #299 remain drafts and unchanged.
+- Cloudflare resources and credentials are not accessible through the connected app integrations in this session. No Hyperdrive config, CA upload, Worker deployment, route or secret has been created or changed.
+
+**Immediate next gate:** establish the exact Render Frankfurt CA certificate and external hostname, then create Hyperdrive with verify-full using the restricted gateway credential only after the production role/backup/migration gates are resolved. Until then the production Actor Gateway remains disconnected.
