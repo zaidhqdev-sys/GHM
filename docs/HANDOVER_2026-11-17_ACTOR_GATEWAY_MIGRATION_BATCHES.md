@@ -3167,3 +3167,95 @@ The manual cutover revokes runtime/PUBLIC EXECUTE on legacy `ghm.set_business_lo
 - Existing cutover files were inspected; no duplicate cutover or rollback file was created.
 - Production migration manifest remains `[]`.
 - No production SQL/query, migration execution, ACL/role/credential change, Render inspection/change, service deployment, storage-provider operation, backup operation or payment action occurred.
+
+
+## 19 November 2026 — Auth Issuer, external identity and QuoteFlow provisioning reconciliation
+
+### Mandatory pre-review state check
+
+Before this pass, re-read the PR #298 migration-batch handover, hosting/credentials handover, production migration reconciliation, role/service dependency map, production runtime deployment blockers, and PR #298 metadata/changed-file inventory. PR #298 is still the draft production migration-batch PR; its changed files are a bounded migration-runner/config/docs/test set, not an implementation PR for Auth Issuer or QuoteFlow. Branch comparison against current `main` reports the migration-batches branch `feat/actor-gateway-production-migration-batches` at 193 commits ahead / 4 behind, diverged, with merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`. Do not describe it as current-main-equivalent or rebase it as an incidental part of this review.
+
+The branch's committed production migration inventory still has 50 exact pending entries. `config/production-migration-batches.json` remains empty. The 50-entry inventory is based on the dated 105-row snapshot; it is not a live ledger or execution authorization.
+
+### 1. Authentication Issuer — source and disposable qualification versus production state
+
+Inspected current-main source:
+- `src/auth-issuer/server.ts`, `app.ts`, `database-principal.ts`, `database-privileges.ts`;
+- `src/http/auth-router.ts`, `src/http/app.ts`, `src/server.ts`;
+- `src/auth/foundation/persistence.ts`, `src/auth/ghm-auth-service.ts`;
+- the Auth Issuer manual cutover and rollback SQL;
+- PR #276 and `docs/security/AUTH_ISSUER_ISOLATION_QUALIFICATION_HANDOVER_2026-11-13.md`.
+
+**Source contract:** the issuer process requires `GHM_AUTH_ISSUER_DATABASE_URL`, loads ES256 signing keys, uses the isolated `ghm_auth_issuer` login, and checks its exact principal flags and ten-function EXECUTE allow-list before listening. It has auth lifecycle routes for registration, login, refresh, logout, password recovery/reset and the bounded QuoteFlow migration-reset recovery/completion exception. Its DB verifier denies direct relation/sequence privileges, schema CREATE, unsafe SECURITY DEFINER/default ACLs, unexpected function grants, and unexpected Resource API auth-function grants.
+
+**Resource API source contract:** current `src/server.ts` calls `createApp({ authRoutesEnabled: false })`; the current Resource API app retains auth-route registration only for explicit embedded/test fixtures. The production Resource API source therefore does not mount auth lifecycle routes. However, the recorded live Render Resource API deployment is still old commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, where `src/server.ts` calls `createApp()` without disabling auth routes, has no runtime principal assertion, and performs only `SELECT 1` before listening. This is a source/live-deployment mismatch, not proof of a completed issuer traffic cutover.
+
+**Disposable qualification:** the 17 November exact qualification record reports the isolated issuer pre-cutover/cutover and lifecycle/runtime-denial tests passed against disposable PostgreSQL, including registration/login, password rehash, concurrent reset, refresh/logout, recovery replay/session revocation, QuoteFlow migration reset, rollback, startup ACL checks, default ACL and SECURITY DEFINER checks. This proves the tested disposable contracts only.
+
+**Production state:** the 18 November read-only role/service inventory reports that production `ghm_auth_issuer` does not exist and no dedicated production Auth Issuer service exists. The role, issuer secret custody, host/network/TLS, production migration ledger, backup/restore, and live issuer end-to-end qualification are therefore not established. Do not create the role, set credentials, apply the manual cutover, or point clients at an unprovisioned endpoint as part of this source review.
+
+Existing manual-only cutover:
+- `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql`
+- rollback: `database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql`
+
+The cutover requires `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, an existing correctly constrained issuer login and coordinated issuer/client routing. It removes Resource API auth lifecycle RPC execution and grants the issuer its allow-list. Its paired rollback restores selected runtime auth RPCs and removes issuer function/schema access, but explicitly does not restore an old binary, signing keys, service configuration or client routing. Never apply either file without a rehearsed coordinated service/client/DB rollback.
+
+### 2. Authentication and QuoteFlow pending migration families
+
+Reviewed the exact pending SQL definitions:
+- `20261111210000_revoke_runtime_account_external_identity_table_access`
+- `20261111220000_revoke_unused_auth_runtime_entry_points`
+- `20261111230000_add_token_bound_recovery_revocation_result`
+- `20261111240000_revoke_runtime_quoteflow_migration_provisioning`
+- `20261111250000_revoke_runtime_external_identity_link`
+- `20261111260000_revoke_runtime_external_identity_bootstrap`
+- `20261112020000_add_token_bound_password_recovery_reset`
+- `20261112030000_add_conditional_password_rehash`
+- `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration`.
+
+Disposition:
+- Account external-identity table and sequence direct access are revoked from `ghm_runtime`; narrow SECURITY DEFINER lookup/link/bootstrap/provision functions are separately granted in that migration, then subsequent migrations remove runtime migration provisioning, arbitrary link and bootstrap EXECUTE.
+- The account-ID-only session revoke/password change/disable functions are identified by the migration as unused application entry points and revoked from runtime.
+- Recovery is evolved to token-bound reset/revocation operations. Conditional password rehash is a separate guarded operation; preserve its caller semantics and race protection.
+- QuoteFlow migration-account provisioning and reset-enrollment registration are migration/operator authority, not ordinary application sign-up. The Auth Issuer may read/complete an already approved enrollment through its bounded allow-list, but may not register or alter the approved enrollment provenance.
+- These are ordered migration dependencies and privilege changes, not a license to run the 50-entry queue. Exact live applied-prefix/checksum and effective grants remain unknown until the authorized migration audit path succeeds.
+
+### 3. External identity — distinguish lookup compatibility from active identity authority
+
+Current GHM `ConnectIdentityAdapterImpl` is lookup-only. It resolves an existing UUID subject through `ghm.auth_lookup_external_identity`; it does not create mappings. The legacy `POST /api/v1/connect/service` route still validates a provider-specific external identity envelope and binds the mapped account to a current active GHM account and registered resource authorization. It is a separate server-to-server integration seam, not the current Connect browser login.
+
+The current Connect browser journey uses GHM-native auth, GHM account IDs, GHM managed-Business/membership APIs and GHM Business creation. Do not redesign that active browser path around a legacy external identity mapping, infer identity from matching email/name, or create new crosswalks.
+
+The signed Connect Business provisioning SQL/Actor Gateway operation is a separate legacy external-Business mapping adapter. The inspected Resource API does not construct/invoke its HTTP client, and the current Connect Business creation screen calls authenticated `POST /api/v1/businesses` instead. Keep the provisioning endpoint bounded and dormant unless an actual deployed consumer and historical mapping requirement are established. Do not repurpose it for native Business creation.
+
+The historical provider label in a mapping is provenance only; it is not an authentication authority or target dependency. Do not expose retired provider terminology in product/UI/docs, rename/delete historical mapping rows, or change production identities as part of this audit.
+
+### 4. QuoteFlow cross-repository reconciliation
+
+Reviewed `zaidhqdev-sys/QuoteFlow`:
+- PR #25 is still open/unmerged on `feature/quoteflow-ghm-native-cutover`;
+- its branch compares 179 commits ahead / 0 behind `main`;
+- its changed-file inventory includes the GHM auth client/adapter/context, clean storage-scope support, README and handover;
+- current PR branch `src/lib/ghmAuthClient.ts` supports fresh GHM registration and uses GHM bearer-authenticated managed-Business, membership and Business-create routes;
+- `src/state/AuthContext.tsx` activates a clean canonical GHM account/Business storage namespace without importing or attaching historical local namespaces;
+- `src/lib/env.ts` currently uses one GHM base URL (defaulting to the Resource API) for both auth lifecycle and Resource API calls.
+
+**New cutover dependency:** this single-origin client is incompatible with the isolated issuer topology. The Auth Issuer serves register/login/refresh/logout and recovery; the Resource API serves managed-Business, membership and Business operations. Before issuer cutover, QuoteFlow must split its configuration into separate Auth Issuer and Resource API origins, route each operation to the correct service, fail closed when the issuer origin is absent, and add contract tests proving the separation. Do not point all calls at the issuer or all auth lifecycle calls at the Resource API after cutover.
+
+This requirement and the cross-repository review were appended to QuoteFlow's own `HANDOVER.md` in commit `5bccff51bec4359662f5a8a551b40263f09eeb59`. That is a documentation-only handover update on the existing QuoteFlow feature branch; no QuoteFlow runtime code or PR state changed.
+
+Owner-approved migration policy remains fresh GHM registration rather than automatic legacy identity linking. The two known non-owner bot accounts remain excluded. Fresh registration does not authorize attaching/deleting legacy local records, inferring ownership, or bypassing GHM Business membership authorization.
+
+### 5. Required next sequence
+
+1. Preserve current GHM-native Connect/QuoteFlow browser authentication and Business creation; do not revive identity mapping as the default onboarding path.
+2. Implement/test QuoteFlow's split Auth Issuer and Resource API origins on its existing PR #25 branch, then qualify exact-head CI and Android preview/device flow.
+3. Reconcile the deployed GHM Resource API version and route cutover; the current production deployment at `c7cf1eb` predates the `authRoutesEnabled:false` source contract.
+4. Establish an approved Auth Issuer hosting/compute path that satisfies the Argon2id CPU budget without weakening password hashing or silently adding paid infrastructure. This review does not choose or deploy a host.
+5. Only after hosting, issuer role/credential, TLS/network, secrets, backup/restore, exact live ledger and service/client end-to-end proof are established should the manual issuer cutover and rollback be considered.
+6. Check whether any specifically approved QuoteFlow migration-reset enrollment still needs the bounded legacy exception. No production enrollment rows were queried; do not run account migration provisioning or reset-enrollment registration without explicit need/authority.
+7. Keep the production batch manifest empty; do not execute migrations or manual cutovers from this review.
+
+### No-action record
+
+Repository source, handover, PR, branch and pending SQL definitions only. No production SQL/catalog query, migration execution, role/membership/ACL change, credential/secret read or write, Render/Cloudflare setting, service, deployment, route/traffic change, QuoteFlow installed-app/local-storage operation, user record, legacy mapping row, payment state, or backup operation occurred.
