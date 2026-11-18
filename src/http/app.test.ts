@@ -681,6 +681,49 @@ test('project create route binds authenticated context and returns the created p
   }
 });
 
+test('Project create, detail and update routes deny business and administrator roles', async () => {
+  let serviceCalls = 0;
+  const projectService = {
+    createProject: async () => { serviceCalls += 1; throw new Error('must not be called'); },
+    getOwnedProject: async () => { serviceCalls += 1; throw new Error('must not be called'); },
+    updateOwnedProject: async () => { serviceCalls += 1; throw new Error('must not be called'); },
+  } as unknown as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    for (const role of ['business', 'admin'] as const) {
+      const token = tokenFor({ userId: 42, role });
+      const headers = {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      };
+      const create = await fetch(`${baseUrl}/api/v1/projects`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          title: 'Kitchen renovation',
+          description: 'Renovation project for a residential kitchen and related finishes.',
+          category: 'construction', province: 'KwaZulu-Natal', city: 'Durban',
+        }),
+      });
+      assert.equal(create.status, 403, `${role} cannot create Projects`);
+
+      const read = await fetch(`${baseUrl}/api/v1/projects/101`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      assert.equal(read.status, 403, `${role} cannot read customer Projects`);
+
+      const update = await fetch(`${baseUrl}/api/v1/projects/101`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ title: 'Updated kitchen renovation' }),
+      });
+      assert.equal(update.status, 403, `${role} cannot update customer Projects`);
+    }
+    assert.equal(serviceCalls, 0);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('project owner read route returns the owned project', async () => {
   let receivedContext: AuthContext | undefined;
   let receivedProjectId: number | undefined;
