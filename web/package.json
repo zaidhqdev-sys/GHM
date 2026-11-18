@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "postinstall": "node scripts/patch-picomatch-redos.mjs",
-    "audit:security": "node scripts/audit-security.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "^19.0.0",
