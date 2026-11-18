@@ -2580,3 +2580,54 @@ The inspected `HttpBusinessHoursGatewayClient` defaults to a 5,000 ms AbortContr
 | Repository `getPublicBusinessHours` | Authorized transaction -> direct `business_hours` SELECT | No active router caller identified; trace before privilege changes |
 
 No production SQL/query, migration, ACL/role change, Render inspection/change, deployment, credential operation, backup operation, or payment action was performed. Production grants and deployed service versions remain unverified by this source-only review.
+
+
+## 19 November 2026 — Business Hours migration ACL reconciliation
+
+### Pre-workflow rule and branch checkpoint
+
+Re-read the migration and hosting handovers, PR #298 metadata, changed-file inventory, and branch comparison before this task. At review start, PR #298 head was `33bab1e8600a85fb6addc6ec8189730f709e3d77`, open/draft/non-mergeable, 185 commits ahead and 4 behind `main`. Source SQL below was fetched from the current `main` branch; it is source evidence, not proof of the live production ledger or effective ACLs.
+
+### Exact migration definitions inspected
+
+- `database/migrations/20260916223000_create_business_hours.sql`
+- `database/migrations/20261111130000_add_signed_business_hours_gateway.sql`
+- `database/migrations/20261111140000_add_business_hours_read_projections.sql`
+
+### Confirmed grants and function boundaries in source
+
+**Original table grant:** `20260916223000_create_business_hours.sql` creates `ghm.business_hours`, transfers ownership to `ghm_schema_owner`, then explicitly grants:
+- `USAGE` on schema `ghm` to `ghm_runtime`;
+- `SELECT` on table `ghm.business_hours` to `ghm_runtime`;
+- `USAGE` on sequence `ghm.business_hours_id_seq` to `ghm_runtime`.
+
+The same migration defines `ghm.replace_business_hours(bigint,bigint,jsonb)` as SECURITY DEFINER, revokes PUBLIC, and grants EXECUTE to `ghm_runtime`. It grants no runtime INSERT/UPDATE/DELETE table privileges.
+
+**Signed write wrapper:** `20261111130000_add_signed_business_hours_gateway.sql` creates `ghm.gateway_replace_business_hours(...)`, verifies a signed `business.hours.replace` assertion, delegates to `ghm.replace_business_hours`, revokes wrapper EXECUTE from PUBLIC/runtime/migrator and grants it to `ghm_actor_gateway`. It explicitly says existing runtime grants remain until a separate manual cutover is approved. It does not revoke runtime EXECUTE on the legacy `ghm.replace_business_hours` function or the table SELECT grant.
+
+**Signed member read and public projection:** `20261111140000_add_business_hours_read_projections.sql` creates `ghm.gateway_get_business_hours(...)`, verifies signed `business.hours.read`, checks active membership with owner/administrator/member role, revokes wrapper EXECUTE from PUBLIC/runtime/migrator and grants it to `ghm_actor_gateway`. It also creates `ghm.get_public_business_hours(bigint)` as SECURITY DEFINER, revokes its EXECUTE from PUBLIC/migrator and grants EXECUTE to `ghm_runtime`. It does not revoke `SELECT` on `ghm.business_hours` from `ghm_runtime`.
+
+### Route/caller interpretation
+
+Current Resource API source in `src/http/app.ts` routes authenticated Business Hours GET and PUT through the Gateway in production, returning 503 rather than falling back when the production-required Gateway is absent. The public route `GET /api/v1/public/businesses/:businessId/hours` uses `PostgresBusinessHoursRepository.listPublicBusinessHours`, which checks approved/active business state and calls `ghm.get_public_business_hours`. The public function grant is therefore a real active production dependency.
+
+The repository also contains legacy methods `getBusinessHours` and `replaceBusinessHours`, plus `getPublicBusinessHours` (direct table SELECT). The production route wiring inspected selects Gateway for authenticated GET/PUT. No active HTTP route invocation of `getPublicBusinessHours` was identified in the inspected router wiring. A repository-wide call-site proof is not yet complete: the available GitHub code-search queries returned no indexed matches, which is not evidence that no callers exist. Do not claim the method is unused globally.
+
+### Security/cutover conclusion
+
+The source proves that `ghm_runtime` receives broad table-level SELECT in the original migration and that the later signed Gateway migrations do not revoke it. The public projection is separately available through a SECURITY DEFINER function, so it does not inherently require direct table SELECT. However, the remaining repository methods and any non-HTTP callers must be exhaustively accounted for before removing the table grant.
+
+Record the following as a **post-deployment ACL revocation candidate, not an approved immediate migration**:
+- revoke `SELECT ON ghm.business_hours` from `ghm_runtime`, only after proving no active production Resource API or other runtime caller depends on direct reads;
+- separately evaluate revoking EXECUTE on legacy `ghm.replace_business_hours(bigint,bigint,jsonb)` from `ghm_runtime`, after confirming production route cutover and other callers;
+- preserve EXECUTE on `ghm.get_public_business_hours(bigint)` for `ghm_runtime`;
+- preserve the Gateway wrapper EXECUTE grants for `ghm_actor_gateway`;
+- do not revoke sequence USAGE merely because table SELECT is removed; inspect actual sequence consumers/privileges separately.
+
+Do not bundle this candidate into the initial Gateway installation prefix. It is a least-privilege post-cutover step and must be based on the exact production deployed version, live ledger, effective ACL/ownership state, complete caller inventory, rollback plan, and verified recovery point. No live production ACL has been queried or changed.
+
+### Evidence limitations and next work
+
+The source migration definitions establish intended grants, not production effective privileges. The GitHub code-search endpoint returned zero/incomplete indexed results for `getPublicBusinessHours` and `ghm.business_hours`; treat that as an indexing limitation, not a clean call-site audit. Next source task: inspect the complete repository call graph and remaining migration history for direct business-hours table/function use, then map the exact migration prefix. Production ledger/ACL verification remains a separate gated activity and must not be repeated without a documented reason.
+
+No production SQL/query, migration, ACL/role change, Render action, deployment, credential or backup operation was performed.
