@@ -3295,3 +3295,32 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 The missing URL is not a typo or a Render variable that can be guessed. It is missing because the Actor Gateway has not been deployed and does not yet have a valid database connection binding. The correct resolution is to create and qualify the gateway's real Cloudflare deployment and only then configure the exact hostname in Render. Under the currently verified no-cost/host constraints, the network-host prerequisite remains unresolved, so keep the startup gate intact and the production deployment/cutover blocked.
 
 No Cloudflare resource, route, tunnel, Hyperdrive config, secret, Render variable, database role/grant, deployment, or product cutover was created or changed while documenting this resolution.
+
+
+## 18 November 2026 — fresh live Render role and ledger-access evidence
+
+Before this inspection, the current Actor Gateway role-separation handover, production migration reconciliation handover, PR #298 migration-batch handover and PR #298 status were re-read. This section records a fresh read-only catalogue check against the existing Render PostgreSQL service `ghm-db` / database `ghm_db` (PostgreSQL 18, Frankfurt; Render service ID `dpg-dag0sdtbedkc7389vi2g-a`).
+
+**Connection identity**
+- Render's available query interface connected with `session_user=ghm_app_user`, `current_user=ghm_db_user`.
+- This is the application/admin-derived connection, not a dedicated `ghm_migrator` audit login.
+
+**Role catalogue**
+- `ghm_db_user` is LOGIN, non-superuser, and retains `CREATEROLE=true`, `CREATEDB=true`, `INHERIT=true`.
+- `ghm_app_user` is a member of `ghm_db_user` with INHERIT and SET enabled; the live query session operates as `ghm_db_user`.
+- The live membership catalogue showed ADMIN OPTION memberships from `ghm_db_user` over `ghm_actor_gateway`, `ghm_auditor`, `ghm_migrator`, `ghm_payment_provider` and `ghm_schema_owner`. It also showed multiple `ghm_runtime` membership rows with different SET/INHERIT/ADMIN OPTION attributes.
+- Effective membership checks showed `ghm_app_user` can SET ROLE `ghm_db_user` and `ghm_runtime`, but cannot directly SET ROLE `ghm_actor_gateway`, `ghm_migrator`, `ghm_schema_owner` or `ghm_payment_provider`.
+- This confirms the role-administration boundary remains unresolved. It does not authorize an improvised REVOKE/GRANT or credential change.
+
+**Ledger access**
+- Direct SELECT from `ghm.ghm_schema_migrations` failed with PostgreSQL SQLSTATE 42501 (permission denied).
+- The table is owned by `ghm_schema_owner`; the observed ACL grants SELECT to `ghm_auditor`, not the active `ghm_db_user` session.
+- The active session cannot SET ROLE `ghm_schema_owner`; no bypass was attempted.
+- `pg_stat_user_tables.n_live_tup=105` was visible, but its last auto-analyze was 2026-09-21. This is stale approximate table statistics, **not** a current exact ledger row count. Do not cite 105 as a verified live ledger count.
+- Catalog search returned zero `ghm.gateway_%` and zero `ghm.assert_actor_gateway%` routines in schema `ghm`. This is a direct catalogue observation; it is not a substitute for exact ledger/checksum reconciliation.
+
+**Disposition**
+- Exact production migration versions, checksums, row count and pending prefix remain unknown because the ledger could not be read.
+- The forensic audit must be run only with the intended dedicated `ghm_migrator` login over verified TLS, with its documented schema-owner SET path. Do not grant ledger SELECT to `ghm_app_user` as a workaround.
+- Preserve the existing Render support escalation for administrator/application role separation and obtain a fresh verified backup/recovery point before any role or ACL remediation.
+- No production data, role, membership, grant, ACL, migration, secret, Render setting, deployment or paid service was changed during this read-only inspection. No CI was run.
