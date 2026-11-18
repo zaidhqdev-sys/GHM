@@ -825,3 +825,64 @@ The current production catalogue still lacks `ghm_actor_gateway` schema USAGE an
 ### Disposition
 
 This is source/PR/handover inspection and documentation only. No Render write action, production database mutation, migration, grant, role change, deployment, CI run, new branch, paid service, or application data change occurred. The next safe work is a migration-to-reader dependency matrix (each reader operation ↔ exact SQL function signature ↔ migration version ↔ grant principal ↔ route smoke test) and then an exact-main reconciliation of PR #297/#298. No production batch is selected or authorized.
+
+
+## 18 November 2026 19:20Z — reader-to-SQL function and startup ACL dependency matrix
+
+### Exact runtime startup contract
+
+Re-read `src/actor-gateway/database-privileges.ts` and `src/actor-gateway/server.ts` on current `main`.
+
+The gateway does not merely check that one assertion function exists. Before opening its HTTP listener, it:
+
+1. verifies `session_user=current_user` is the dedicated gateway identity and validates its login attributes/membership boundary;
+2. verifies database CONNECT, no database CREATE, schema `ghm` USAGE, no schema CREATE;
+3. verifies zero direct table/view/sequence privileges;
+4. compares the complete effective EXECUTE set against the explicit 39-signature allowlist in `src/actor-gateway/database-privileges.ts` (with a narrowly documented temporary allowance for the three campaign/directory-review functions to be absent);
+5. rejects any gateway function executable by PUBLIC or `ghm_runtime`;
+6. rejects unsafe default function grants, unsafe SECURITY DEFINER owner/search_path settings, public SECURITY DEFINER execution, and unexpected function grantees.
+
+This exact startup contract is stricter than the earlier single-function presence check. The current production catalogue, which has no gateway schema USAGE and no gateway functions, cannot pass it.
+
+### Reader-to-function mapping verified from current main
+
+| Reader / API operation | Exact SQL function(s) called | Migration family identified |
+|---|---|---|
+| Actor identity read | `gateway_get_actor_identity` | `20261110210000` principal guard + `20261110220000` self-identity read |
+| Registration identity read/write | `gateway_read_business_registration_identity`, `gateway_update_business_registration_identity` | `20261110230000`, `20261110233000`, then signed binding `20261111050000` |
+| Capability governance | `gateway_list_capabilities`, `gateway_create_capability_draft`, `gateway_update_capability_draft`, `gateway_transition_capability_lifecycle` | `20261110250000`, then signed assertion binding `20261111020000` |
+| Supplier classification | `gateway_update_business_supplier_classification` | `20261110260000`, then signed binding `20261111030000` |
+| Business profile | `gateway_update_business_profile` | `20261110265000`, `20261110270000`, then signed binding `20261111040000` |
+| Business Capability assertions/evidence | `gateway_replace_business_capability_assertions`, `gateway_transition_business_capability_verification`, `gateway_submit_business_capability_evidence`, `gateway_transition_business_capability_evidence` | signed mutation family `20261111070000` |
+| Saved Businesses | `gateway_list_saved_businesses`, `gateway_get_saved_business`, `gateway_create_saved_business`, `gateway_delete_saved_business` | `20261111100000` |
+| Business hours | `gateway_get_business_hours`, `gateway_replace_business_hours` | `20261111130000` |
+| Trust scores | `gateway_get_trust_score`, `gateway_list_trust_scores`, `gateway_calculate_business_trust_score` | `20261111150000` plus read-projection support migrations |
+| Business logo binding | `gateway_set_business_logo_object` | `20261111160000` |
+| Storage object metadata | `gateway_storage_create_pending`, `gateway_storage_get_object`, `gateway_storage_mark_deletion_pending`, `gateway_storage_mark_available`, `gateway_storage_mark_deleted` | Storage metadata gateway migration family; exact full ordered migration mapping remains to be verified against the complete migration directory before batch selection |
+| Campaign/directory review | `gateway_create_campaign`, `gateway_update_campaign`, `gateway_get_business_directory_review_presentation` | Campaign/directory-review gateway migration family; this is the only explicitly optional three-function subset in the current startup allowlist |
+| Connect Business provisioning | `gateway_provision_connect_business` | Connect provisioning migration family; current browser path does not establish a requirement to wire this route without a confirmed caller |
+| Commercial document/payment preparation | commercial authority, approval, and payment-prepare gateway functions | separate commercial workflow migrations and operational authorization gates; PayFast remains paused and excluded from current work |
+
+The exact function signatures and complete expected allowlist are maintained in source, not duplicated here. Before execution, derive the manifest from that source and compare every signature/grant with the exact SQL migration file and live production ledger.
+
+### Shared signed-assertion dependency
+
+The HMAC assertion verifier `ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)` is part of the gateway's expected executable set. The signed feature functions depend on it and on the provisioned assertion-secret/nonce objects. The current source migration family creates/replaces the verifier in the signed gateway migration files, and the repository contains a dedicated database-verifier secret provisioning workflow. This secret is not the database password and must never be pasted into chat, committed to Git, or placed in an unreviewed environment.
+
+The production plan must therefore explicitly account for:
+- the migration that creates the secret and nonce storage objects;
+- an administrator-authorized, one-time secret provisioning path;
+- matching the exact secret to the gateway service only after the hosting/cost gate is approved;
+- a real signed request proving actor, operation, context, nonce replay rejection and failure on forged assertions.
+
+Do not execute a migration prefix that leaves the service unable to pass its exact startup allowlist or signed assertion checks.
+
+### Consequence for the production batch boundary
+
+A pre-deployment batch must install the full database API/ACL contract required by the actual intended gateway deployment, including all functions that the server's exact allowlist expects (or the source-approved optional campaign subset). The two `20261117010000` / `20261117020000` legacy runtime revocation migrations remain post-deployment gates and must be excluded from this installation batch.
+
+This matrix is a source mapping, not production execution authorization. The exact storage, campaign, commercial and Connect provisioning migration versions, plus the complete pending prefix and checksums, still require a fresh current-main migration-directory/ledger reconciliation. PR #297/#298 remain drafts and the batch branch is stale.
+
+### Disposition
+
+Source-only inspection and handover update. No Render writes, no SQL mutation, no migration execution, no role/ACL changes, no credential/secret provisioning, no CI, no deploy, no new service or paid resource. The next work is to resolve the remaining migration-version mapping from current main and reconcile the complete source migration order against the administrator-supplied production ledger evidence. The current dated ledger snapshot is insufficient for a batch.
