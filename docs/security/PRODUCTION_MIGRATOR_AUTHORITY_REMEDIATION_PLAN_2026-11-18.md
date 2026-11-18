@@ -133,3 +133,21 @@ Only after exact reconciliation, backup verification, successful plan-only quali
 ## Explicit non-actions in this design pass
 
 No production SQL or ACL changes, role/membership changes, backup operations, secret reads/rotations, Render configuration changes, migrations, deployment, traffic/payment changes, paid infrastructure or CI were performed. This document is a design record only.
+
+
+## 18 November 2026 — production role/service dependency map
+
+Added `docs/security/PRODUCTION_ROLE_SERVICE_DEPENDENCY_MAP_2026-11-18.md` (commit `f455277958d96783f235a2928073d95a3494c848`). This was preceded by re-reading the existing remediation plan, role/migration/hosting/Auth Issuer/PayFast handovers, relevant PR states, source principal contracts and live Render/DB inventory.
+
+The map distinguishes:
+- `ghm_runtime`: intended active Resource API identity; service is GHM-Internal-Runtime. The actual secret value was not read, so the configured identity remains to be independently verified without disclosing the credential.
+- `ghm_migrator`: operator-controlled standalone migration identity; no Render service. Current live direct ACL and bootstrap membership contract still fails.
+- `ghm_schema_owner`: NOLOGIN schema/ledger ownership identity; preserve its ownership and the one intended migrator SET edge.
+- `ghm_actor_gateway`: role exists but has no gateway functions/grants or dedicated production service. The always-on Render host is explicitly cost-blocked; do not use the Resource API or a sandbox service as substitute.
+- `ghm_auditor`: NOLOGIN audit privilege role with ledger SELECT; only observed member is legacy `ghm_db_user` via bootstrap ADMIN OPTION, so it is not an independent usable audit login.
+- `ghm_payment_provider`: correct production LOGIN role and two PayFast settlement functions now exist; provider can execute both while runtime cannot. This corrects stale older PayFast handovers, but does not mean PayFast is activated or a production callback service exists. PayFast remains paused.
+- `ghm_auth_issuer`: source implementation exists, but production role and dedicated service are absent.
+
+Fresh role/privilege checks also reconfirmed six bootstrap-`postgres` ADMIN OPTION memberships held by `ghm_db_user`, plus the separate non-admin runtime SET edge and the app-user-to-db-user legacy edge. A point-in-time `pg_stat_activity` sample showed only the current connector as `ghm_app_user`; it is not evidence that services never connect.
+
+No environment variable values or credentials were read. No role, ACL, service, secret, backup, deployment, migration, payment state or CI was changed. No additional cost.
