@@ -598,7 +598,7 @@ test('project create route rejects server-owned fields before service execution'
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = tokenFor({ userId: 42, role: 'business' });
+    const token = tokenFor({ userId: 42, role: 'customer' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects`, {
       method: 'POST',
@@ -640,7 +640,7 @@ test('project create route binds authenticated context and returns the created p
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = tokenFor({ userId: 42, role: 'business' });
+    const token = tokenFor({ userId: 42, role: 'customer' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects`, {
       method: 'POST',
@@ -661,7 +661,7 @@ test('project create route binds authenticated context and returns the created p
     });
 
     assert.equal(response.status, 201);
-    assert.deepEqual(receivedContext, { userId: 42, role: 'business' });
+    assert.deepEqual(receivedContext, { userId: 42, role: 'customer' });
     assert.deepEqual(receivedInput, {
       title: 'Kitchen renovation',
       description: 'Renovation project for a residential kitchen and related finishes.',
@@ -721,7 +721,7 @@ test('project non-owner read route returns not found', async () => {
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = tokenFor({ userId: 99, role: 'business' });
+    const token = tokenFor({ userId: 99, role: 'customer' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       headers: { authorization: `Bearer ${token}` },
@@ -743,7 +743,7 @@ test('project routes reject invalid ids', async () => {
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = tokenFor({ userId: 42, role: 'business' });
+    const token = tokenFor({ userId: 42, role: 'customer' });
 
     const getResponse = await fetch(`${baseUrl}/api/v1/projects/not-an-id`, {
       headers: { authorization: `Bearer ${token}` },
@@ -787,7 +787,7 @@ test('project update route returns updated owner project', async () => {
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = tokenFor({ userId: 42, role: 'business' });
+    const token = tokenFor({ userId: 42, role: 'customer' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       method: 'PATCH',
@@ -802,7 +802,7 @@ test('project update route returns updated owner project', async () => {
     });
 
     assert.equal(response.status, 200);
-    assert.deepEqual(receivedContext, { userId: 42, role: 'business' });
+    assert.deepEqual(receivedContext, { userId: 42, role: 'customer' });
     assert.equal(receivedProjectId, 101);
     assert.deepEqual(receivedInput, {
       title: 'Updated kitchen renovation',
@@ -829,7 +829,7 @@ test('project update route rejects status and account ownership mutation', async
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = tokenFor({ userId: 42, role: 'business' });
+    const token = tokenFor({ userId: 42, role: 'customer' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       method: 'PATCH',
@@ -861,7 +861,7 @@ test('project update route maps closed-project denial to conflict', async () => 
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = tokenFor({ userId: 42, role: 'business' });
+    const token = tokenFor({ userId: 42, role: 'customer' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       method: 'PATCH',
