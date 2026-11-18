@@ -2363,3 +2363,78 @@ The repository executes SELECTs against `ghm.business_capability_evidence` joine
 The signed capability Gateway is therefore not yet a complete replacement for all Business Capability and Evidence routes. Do not describe this family as fully cut over. Keep the existing cutover file and production migration manifest unchanged until the new create operation, read operations, route wiring, tests, live dependency review and migration ordering are complete.
 
 No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
+
+
+## 19 November 2026 — Capability catalogue, Campaign reads, Directory Review and Trust Score reconciliation
+
+### Handovers and branch state checked first
+
+Re-read this migration handover and the hosting/credentials handover, checked PR #298 metadata and branch comparison, and confirmed the production batch manifest remains empty. Then inspected the current-main Resource API routers/repositories and the exact PR-branch migration/cutover files listed below. This is repository-source reconciliation only; no production state is inferred.
+
+### Capability catalogue
+
+Current-main routes:
+- GET /api/v1/capabilities calls CapabilityService.listSelectableCapabilities and reads ghm.capability through PgCapabilityRepository.
+- Admin list/draft/create/update/lifecycle routes call the Capability Governance Gateway client and fail closed with 503 when the client is absent.
+- Gateway routes are mounted at /v1/admin/capabilities and corresponding draft/transition operations.
+
+Privilege/migration chain:
+- 20260914150000_create_capability_catalogue.sql grants ghm_runtime SELECT on ghm.capability and deliberately makes runtime catalogue access read-only.
+- 20261110160000_add_admin_capability_catalogue_governance.sql initially grants the legacy SECURITY DEFINER admin draft/update/transition functions to ghm_runtime.
+- 20261110250000_add_gateway_capability_governance.sql adds the Gateway wrappers; 20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql replaces the first-generation account-ID wrappers with signed one-use assertions.
+- 20261117020000_revoke_runtime_capability_governance.sql is the guarded revocation candidate for the three legacy runtime governance functions. It checks the gateway role, schema owner and signed replacement function privileges before revocation, and rejects unexpected direct EXECUTE grantees.
+
+Disposition: the public selectable catalogue read is an intentional read-only Resource API query; preserve ghm_runtime SELECT on ghm.capability. Admin governance writes are Gateway-routed and have a guarded legacy-function revocation candidate already in the migration chain. Do not add duplicate revocation logic. The guarded migration remains pending/unexecuted until the production prefix, role/authority and route-version prerequisites are established.
+
+### Campaign routes — create/update cut over; reads remain direct SQL
+
+Current-main routes:
+- POST /api/v1/campaigns and PATCH /api/v1/campaigns/:campaignId call the Gateway-backed Campaign repository methods in production.
+- GET /api/v1/campaigns and GET /api/v1/campaigns/:campaignId still query ghm.campaign directly in the Resource API repository, including an explicit active-membership check for business list reads.
+- Gateway server mounts create and update routes only; there is no Campaign get/list Gateway route or reader method in the inspected src/actor-gateway/app.ts / src/actor-gateway/campaign-directory-review-reader.ts.
+
+Privilege/migration chain:
+- 20260918180000_create_campaign.sql grants ghm_runtime SELECT on ghm.campaign, revokes direct table INSERT/UPDATE/DELETE, and initially grants runtime EXECUTE on ghm.create_campaign and ghm.update_campaign.
+- Manual cutover database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql installs signed create/update wrappers, grants those wrappers to ghm_actor_gateway, and revokes runtime EXECUTE on the legacy create/update functions. It does not revoke Campaign table SELECT.
+- The matching rollback file restores the old function grants and removes Gateway wrapper access; it is a rollback artifact, not an executable migration.
+
+Disposition / remaining read boundary: Campaign writes are Gateway-routed after the coordinated manual cutover, but Campaign list/detail reads remain direct Resource API SQL. This is not currently a direct write bypass: table writes are revoked and the read route checks membership. If the intended steady-state boundary requires all tenant Campaign data reads to pass through Actor Gateway, add signed, tenant-scoped Campaign get/list operations and route the GET endpoints through them before considering removal of ghm_runtime SELECT. Preserve the current SELECT grant until then. Do not revoke or migrate this read privilege now.
+
+### Directory Review
+
+Current-main routes:
+- GET /api/v1/businesses/:businessId/directory-review-presentation calls the Gateway-backed repository in production.
+- Founder submission/list/review endpoints are deterministically disabled with 403; the router explicitly avoids invoking the old SECURITY DEFINER functions from the shared runtime.
+- GET /api/v1/admin/directory-reviews/authority returns isFounderReviewer: false; it is not a database-backed reviewer-authority read.
+
+The signed presentation wrapper and the allow-list extension are part of the manual Campaign/Directory Review cutover file above. Its legacy presentation function runtime grant is revoked there; the new wrapper is granted only to ghm_actor_gateway.
+
+Disposition: owner presentation read is Gateway-backed; founder review operations are disabled, not an uncut live route. Do not treat the disabled endpoints as active migration prerequisites. Keep the cutover's coordinated-release requirement.
+
+### Trust Score
+
+Current-main routes:
+- Private authenticated GET /api/v1/trust-scores, GET /api/v1/trust-scores/:businessId, and POST /api/v1/trust-scores/:businessId/calculate use the Gateway client in production and return 503 if the Gateway is required but unavailable.
+- Public GET /api/v1/public/trust-scores and GET /api/v1/public/trust-scores/:businessId use narrowly scoped public projection functions through the Resource API.
+
+Migration chain:
+- 20261111150000_add_signed_trust_score_gateway.sql installs signed calculation wrapper ghm.gateway_calculate_business_trust_score.
+- 20261111170000_add_trust_score_read_projections.sql installs signed ghm.gateway_get_trust_score and ghm.gateway_list_trust_scores wrappers for private reads, granting EXECUTE only to ghm_actor_gateway.
+- The same read-projection migration deliberately preserves ghm.get_public_trust_score(bigint) and ghm.list_public_trust_scores(text) EXECUTE for ghm_runtime, and revokes PUBLIC/ghm_migrator.
+
+Disposition: private reads and calculation are Gateway-backed; public projections remain intentional Resource API reads. Preserve the two public projection EXECUTE grants. Do not add them to the legacy runtime revocation candidates.
+
+### Consolidated update to the route/read inventory
+
+| Capability | Production route status | ACL disposition |
+|---|---|---|
+| Capability catalogue selectable list | Direct Resource API SELECT | Preserve read-only ghm.capability SELECT |
+| Capability admin governance | Signed Gateway writes/list | Existing guarded legacy function revocation candidate |
+| Campaign create/update | Signed Gateway after manual cutover | Legacy functions revoked by manual cutover |
+| Campaign list/detail | Direct Resource API SELECT + membership check | Gateway read methods missing; preserve table SELECT |
+| Directory Review owner presentation | Signed Gateway read | Legacy presentation function revoked by manual cutover |
+| Directory Review founder submit/list/review | Disabled 403 | Not an active route dependency |
+| Trust Score private read/list/calculate | Signed Gateway | Gateway-only wrapper EXECUTE |
+| Trust Score public projections | Resource API public functions | Preserve narrow public projection EXECUTE |
+
+This review does not establish which of these migrations/cutovers are installed in production or the effective privileges of the live role memberships. Production ledger/effective-ACL reconciliation and the coordinated Resource API/Gateway release remain prerequisites. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
