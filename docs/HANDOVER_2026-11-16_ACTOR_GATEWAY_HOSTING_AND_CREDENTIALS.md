@@ -1825,3 +1825,39 @@ If the gateway URL is absent or strict certificate verification fails, stop and 
 5. After approved schema/API prerequisites and credential readiness, run the gateway locally and verify the full startup ACL contract. Only then does the owner decide separately whether to create/deploy the paid Render Web Service.
 
 No production database state, migration, role, membership, ACL, credential, secret, Render service/environment, deployment, application data, payment or consent state was changed by this reconciliation. It introduced no additional paid infrastructure.
+
+
+## 40. 2026-11-18 — owner correction: Actor Gateway DB URL already staged in Render Web Service form
+
+### Corrected configuration status
+
+The owner clarified at 2026-11-18 17:05Z that they already created/entered the `GHM_ACTOR_GATEWAY_DATABASE_URL` value in the Actor Gateway Render Web Service creation/configuration form. They used the existing `ghm-db` **internal connection URL**, changed the username to `ghm_actor_gateway`, and deliberately have not deployed the Web Service because the database connection must be qualified first.
+
+This supersedes the earlier statement that the URL had not been provisioned at all. The accurate state is:
+
+- **Staged in the not-yet-deployed Actor Gateway Web Service form:** owner confirms yes.
+- **Live environment variable on a deployed Actor Gateway service:** no; the service has not been deployed, intentionally.
+- **Present in the user's local workstation environment:** not established and must not be assumed.
+- **Successfully authenticated to PostgreSQL as `ghm_actor_gateway`:** not yet proven.
+- **Credential value:** not inspected by the assistant; never retrieve, print, copy into chat or record in a handover.
+
+The internal connection hostname is the correct network target for a Render-hosted service in the same Render private network/region. It is not a workstation-routable endpoint. Therefore the staged internal URL cannot itself be used for a local workstation connection probe.
+
+### Important credential distinction
+
+Changing the username component of a Render internal connection URL does not by itself create or set the PostgreSQL password for `ghm_actor_gateway`. PostgreSQL authenticates the username against that role's own stored password verifier. The staged URL will authenticate only if its password component is the valid password for `ghm_actor_gateway` (or the database uses a separately verified authentication mechanism). Do not assume the Dashboard-managed `ghm_db_user` password is automatically valid for the SQL-created `ghm_actor_gateway` login.
+
+Amanda's guidance remains controlling: the SQL-created service login must use its own credential, independently held by the service. Do not alter the Dashboard administrator password, borrow another service's credential, or weaken the role boundary.
+
+### Correct qualification route without deploying
+
+1. Preserve the existing staged Render form exactly as the owner configured it; do not submit, create or deploy the service during qualification.
+2. To qualify from the existing workstation, use the existing Render **external** PostgreSQL hostname with the dedicated `ghm_actor_gateway` username and its own valid password, if that credential is already securely available to the owner locally. The internal hostname in the staged form is not reachable from the workstation.
+3. Run only a one-off read-only strict-TLS connection probe, never the full Actor Gateway server or the disposable fixture qualification script. Confirm `current_database=ghm_db`, `session_user=current_user=ghm_actor_gateway`, SSL verification, role flags, schema usage, gateway function allowlist and absence of direct relation grants; rollback the read-only transaction.
+4. If the dedicated password is not known/available, or strict certificate/hostname verification fails, stop. Do not infer the password from the Dashboard URL, rotate it, reset it, set it equal to the admin password, or change production role credentials as an incidental test. Prepare a separately reviewed, owner-authorized credential-provisioning step that preserves the existing staged service configuration until the replacement value is safely entered.
+5. A successful login probe is only network/authentication qualification. Current production evidence still shows `ghm_actor_gateway` has no `ghm` schema USAGE and no gateway functions installed, so the full Actor Gateway startup contract cannot pass until the exact migration/ACL prerequisites are safely resolved.
+6. After all database and service prerequisites are qualified, the owner decides when to submit/deploy the staged Render Web Service. No deployment is part of this qualification step.
+
+### Change boundary
+
+This is a documentation correction based on the owner's clarification. No Render form was read or changed by the assistant; no environment variable was created, read or modified; no password or secret was accessed; no production SQL, role, membership, grant, migration, deployment or service creation occurred; and no additional paid infrastructure or cost was introduced.
