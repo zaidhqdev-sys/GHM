@@ -10,12 +10,12 @@ import {
   RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
   RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
   RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-  RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS,
+  RUNTIME_DATABASE_FUNCTION_REVOCATION_GROUPS,
   RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS,
   RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL,
 } from './runtime-database-privileges';
 
-const CUTOVER_GROUPS = Object.values(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS);
+const CUTOVER_GROUPS = Object.values(RUNTIME_DATABASE_FUNCTION_REVOCATION_GROUPS);
 const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) =>
   RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.filter(signature =>
     !CUTOVER_GROUPS.some((group, index) =>
@@ -26,11 +26,11 @@ const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) 
 
 const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 
-test('runtime startup accepts all 512 reviewed combinations of the nine manual cutovers', () => {
+test('runtime startup accepts all 1024 reviewed combinations of nine manual cutovers and one migration revocation', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
-  assert.equal(CUTOVER_GROUPS.length, 9);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 2, 3, 3, 2, 1, 1, 1]);
-  assert.equal(ALL_STAGES.length, 512);
+  assert.equal(CUTOVER_GROUPS.length, 10);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 3, 3, 2, 1, 1, 1, 1]);
+  assert.equal(ALL_STAGES.length, 1024);
   assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
 
   for (const functions of ALL_STAGES) {
@@ -103,24 +103,28 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
   }
 });
 
-test('registration identity functions are accepted only before their explicit manual gateway cutover', () => {
-  const registration = [
-    'ghm.read_business_registration_identity(bigint, bigint)',
-    'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
-  ];
-  for (const signature of registration) {
-    assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
-    assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
-    assert.ok((RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
-    assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
-    for (const functions of [
-      RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
-      RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-      RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-      RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-    ]) {
-      assert.ok(!(functions as readonly string[]).includes(signature), signature);
-    }
+test('registration write revocation is a migration stage while registration read remains until its manual cutover', () => {
+  const read = 'ghm.read_business_registration_identity(bigint, bigint)';
+  const write = 'ghm.update_business_registration_identity(bigint, bigint, text, text, text)';
+  assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(read));
+  assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(write));
+
+  for (let mask = 0; mask < ALL_STAGES.length; mask += 1) {
+    const actual = new Set(ALL_STAGES[mask]);
+    const readCutoverApplied = (mask & (1 << 2)) !== 0;
+    const writeMigrationApplied = (mask & (1 << 9)) !== 0;
+    assert.equal(actual.has(read), !readCutoverApplied, `registration read stage ${mask}`);
+    assert.equal(actual.has(write), !writeMigrationApplied, `registration write stage ${mask}`);
+  }
+
+  for (const functions of [
+    RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  ]) {
+    assert.ok(!(functions as readonly string[]).includes(read));
+    assert.ok(!(functions as readonly string[]).includes(write));
   }
 });
 
