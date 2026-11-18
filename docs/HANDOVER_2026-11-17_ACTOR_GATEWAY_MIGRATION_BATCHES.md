@@ -1956,3 +1956,15 @@ In particular, migrations `20261110260000` and `20261110270000` revoke `ghm_runt
 - A tested, bounded Free cold-start recovery contract.
 
 Keep `config/production-migration-batches.json` equal to `[]`. No production query, SQL write, migration, Render action, deployment, credential change, or payment action was performed for this source reconciliation.
+
+
+### Follow-up correction — Connect provisioning endpoint is not a current Resource API route
+
+A further inspection of current-main `src/http/connect-service-router.ts` and its registration in `src/http/app.ts` narrows the earlier unresolved Connect item:
+
+- The current Connect service router dispatches governed operations for saved-business reads, customers, quotes, enquiries, projects, opportunities, opportunity participants and project quotes.
+- It does not define a Business provisioning route or dispatch a Business identity/provisioning capability.
+- The Gateway-side endpoint `POST /v1/connect/businesses/provision-or-resolve` remains an item from the previously recorded Gateway endpoint inventory, but this source review did not establish a current Resource API caller for it.
+- Therefore do not treat Connect Business provisioning as an active Resource API route awaiting a migration mapping. Its current product caller, if any, must be identified before including it in a live cutover plan. No route or SQL function is inferred.
+
+This supersedes the table row's implication that an existing Resource API provisioning route is awaiting mapping. The accurate state is: Gateway-side endpoint listed; current Resource API caller not found in the inspected router; product usage and any remaining direct database path remain unverified.
