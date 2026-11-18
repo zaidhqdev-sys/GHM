@@ -98,3 +98,19 @@ Do not:
 ## 6. Change record
 
 Only existing handover/PR/source reads, Render service/deployment/event/log metadata reads, and package manifest reads were used. No environment variable values or secrets were read. No Render service configuration, build command, environment variable, deployment, database role, membership, ACL, migration, data, backup, payment state, CI, schedule, or hosting resource was changed. No additional cost was incurred.
+
+## 19 November 2026 — hosting decision superseded for early access
+
+The owner has now explicitly selected Render **Free** for the initial ghm-actor-gateway early-access stage supporting the free directory service. The prior statement that an always-on paid service is a prerequisite is superseded for this stage. The owner intends to reassess paid hosting/provider requirements before paid live launch.
+
+This changes the hosting/cost decision only. It does **not** clear the technical production blockers in this document:
+- the gateway role lacks ghm schema USAGE and the gateway API functions are not installed;
+- the dedicated identity, exact privilege allowlist and signed-assertion path still require qualification;
+- production migration ledger reconciliation and recovery/authority gates remain unresolved;
+- Resource API production configuration must not point to an unavailable or unqualified gateway.
+
+Free compute may sleep and cold-start beyond the Resource API five-second timeout. Treat this as a known early-access availability limitation. Before relying on it for directory traffic, inspect the actual Resource API timeout/retry contract and establish safe client recovery. Do not weaken authentication or claim always-on availability.
+
+The owner has the previously reviewed Render form filled but not submitted. Preserve it; the owner controls submission. This assistant has not submitted the form, created a service, deployed, or changed Render.
+
+No database, migration, secret, role, ACL, payment, service, deployment or paid-resource action occurred.
