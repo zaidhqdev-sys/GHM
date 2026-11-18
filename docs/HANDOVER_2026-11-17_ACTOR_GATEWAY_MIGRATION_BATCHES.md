@@ -1058,3 +1058,55 @@ Do not duplicate the correction on another branch or alter current main in this 
 The source-level mismatch itself is already documented above. Future sessions should use this section as the status record: mainline defective; PR #298 contains a candidate parser-based correction; no exact-head CI evidence; PR draft/stale/non-mergeable.
 
 No code, migration, PR state, production database, Render service, environment variable, role, ACL, deployment, or hosting resource was changed in this pass. Only this handover was updated.
+
+
+---
+
+## Follow-up migration-runner integration review — 18 November 2026, 19:47 SAST
+
+Re-read this handover before inspecting the branch delta. Compared current `main` (`ddb31ff59ab470973edf60a5078a75e5f962f803`) with `feat/actor-gateway-production-migration-batches` (`3900bf7dbffe71226436e57e8d193603c43f07e2`, before this documentation commit). GitHub reports the branch is divergent: 143 commits ahead, 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+
+### Files reviewed in the source delta
+
+- `src/db/migrate.ts`
+- `src/db/migration-batches.ts`
+- `src/db/migration-batches.test.ts`
+- `src/db/production-pending-migration-allowlist.ts`
+- `config/production-migration-batches.json`
+- `scripts/qualify-production-migration-plan-only.mjs`
+- `scripts/migration-audit-checksum.test.mjs`
+- `package.json`
+- `.github/workflows/ci.yml`
+
+### Positive controls confirmed
+
+- Production migration runner checks target DB/host, SSL certificate verification, the authenticated `ghm_migrator` identity, schema-owner role transition and role/privilege boundary before migration work.
+- It takes a transaction-scoped advisory lock, reads the ledger, verifies checksums for every already-applied migration, checks the pending allowlist against the exact live pending queue and rejects out-of-order gaps.
+- Normal production execution requires `GHM_MIGRATION_BATCH_ID`; batch selection requires an exact contiguous prefix of pending migration version/name identities.
+- The production batch manifest is currently an empty array. Therefore no production batch ID can be selected and normal execution fails closed.
+- `GHM_MIGRATION_PLAN_ONLY=true` selects the complete pending list for printing, then explicitly rolls back. The plan qualification script asserts the ledger/catalog remain unchanged on its local disposable fixture. This is source inspection only; no qualification script or PostgreSQL migration test was run in this pass.
+- The branch's CI workflow creates a disposable PostgreSQL 18 service and has a 25-minute timeout. No workflow was triggered by this review. Respect the owner's instruction not to repeat long disposable-Postgres migration runs without a clear need.
+
+### Critical gap: reviewed batch does not pin migration checksums
+
+`MigrationBatchEntry` in `src/db/migration-batches.ts` contains only `version` and `name`. `selectProductionMigrationBatch()` validates uniqueness/order and compares selected entries with the live pending prefix using only the concatenated version/name identity. It does not compare a reviewed checksum, nor does the batch manifest contain one.
+
+The runner calculates each pending migration's checksum, but that checksum is only used when printing plan-only output or recording the migration after execution. For a pending migration, the selected batch check does not compare the current SQL checksum with a checksum committed at batch review time.
+
+**Consequence:** after a batch ID is reviewed/committed, the SQL body of a pending migration could change while retaining its filename/version/name; the same batch ID would still select it. The existing applied-history checksum checks do not protect not-yet-applied migration bodies. The current empty manifest prevents execution today, but this is a design defect to fix before any non-empty manifest is approved.
+
+Required correction: each batch entry must pin the canonical migration checksum (and selection must compare it with the current repository migration checksum), with tests for modified SQL under an unchanged version/name. Keep the manifest empty until this is implemented and exact-head qualified.
+
+### Plan-only qualification caveat
+
+The plan-only test script builds a local disposable database, seeds a synthetic 105-row ledger (95 repository migrations plus 10 retained historical rows), then runs the plan-only path and checks that no ledger/catalog mutation occurs. It does not prove that the synthetic 105-row ledger matches current production. It is a runner behavior test only. Do not describe it as a live production plan or ledger audit.
+
+### Integration disposition
+
+- The migration-batches branch is not ready to merge based on this review.
+- The empty manifest is the correct fail-closed state and must remain empty.
+- Before a non-empty batch is approved: pin checksums in batch entries; add unchanged-name/changed-SQL rejection tests; qualify the exact runner source without an unnecessary repeat of the long disposable migration workflow; reconcile all four behind-main commits and the 143-commit ahead delta; and obtain fresh administrator-authorized production ledger plus verified recovery-point evidence.
+- The search_path correction candidate in `20261117020000` remains branch-only and unqualified as documented above.
+- The three campaign/directory-review signed SQL wrappers remain absent as documented above.
+
+No code, SQL migration, batch manifest, test, CI workflow, PR state, production database, Render setting, credential, role, ACL, deployment, or paid resource was changed. Only this handover was updated.
