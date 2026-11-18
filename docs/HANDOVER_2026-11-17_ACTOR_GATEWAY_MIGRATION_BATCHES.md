@@ -2201,3 +2201,61 @@ Do not include public projection functions (`ghm.storage_get_public_business_log
 This list is not exhaustive for every legacy function in the entire database. It only consolidates the specific Gateway cutover families inspected in this handover. A complete function-level ACL matrix and exact live effective privileges remain prerequisites before producing any revocation migration or execution batch.
 
 No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
+
+
+## 19 November 2026 — supplier classification, Business profile and registration identity cutover recheck
+
+### Reconciliation performed
+
+Re-read the latest migration and hosting handovers, PR #298 metadata/comments, changed-file list and branch comparison before this pass. Reviewed current-main `src/http/app.ts`, `src/resources/business-identity/repository.ts`, `src/http/business-registration-identity-router.ts`, `src/resources/business-registration-identity/repository.ts`, and the PR-branch migrations:
+- `20261110010000_add_business_supplier_classification.sql`
+- `20261110260000_gateway_supplier_classification_cutover.sql`
+- `20261110265000_reconcile_business_profile_legacy_contract.sql`
+- `20261110270000_gateway_business_profile_update.sql`
+- `20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql`
+- `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql`
+- `20261108150000_reconcile_business_registration_identity_authorization.sql`
+- `20261117010000_revoke_runtime_business_registration_identity_write.sql`
+
+### Supplier classification — signed Gateway cutover is explicit
+
+- The Resource API route is `PATCH /api/v1/businesses/:businessId` with an `isSupplier`-only patch. It calls `supplierClassificationGatewayClient.update(...)`; it does not use the repository's direct write method.
+- Production app construction supplies the client from the Actor Gateway URL; absence returns 503. The route reads the Business again through `service.getManagedBusiness` after the Gateway mutation to form its response.
+- The original migration `20261110010000` grants `ghm_runtime` EXECUTE on `ghm.update_business_supplier_classification(bigint,bigint,boolean)`.
+- `20261110260000` revokes PUBLIC and `ghm_runtime` from that legacy function and grants the initial Gateway wrapper only to `ghm_actor_gateway`.
+- `20261111030000` replaces that wrapper with the short-lived, one-use HMAC assertion contract bound to `supplier.classification.update`; wrapper EXECUTE is revoked from PUBLIC/`ghm_runtime`/`ghm_migrator` and granted to `ghm_actor_gateway`.
+
+**Disposition:** no residual direct runtime EXECUTE gap was found in the reviewed supplier-classification function chain. Preserve the narrow Business SELECT required for post-mutation response hydration; do not misclassify it as a supplier write bypass. Add/retain tests that runtime direct EXECUTE is denied, signed Gateway execution succeeds, invalid/replayed assertions fail, and non-`isSupplier` fields cannot enter this operation.
+
+### Business profile — signed Gateway cutover is explicit; readback remains direct
+
+- The Resource API route is `PATCH /api/v1/businesses/:businessId` for non-`isSupplier` profile fields. It calls `businessProfileGatewayClient.update(...)`, then calls `service.getManagedBusiness` to return the updated representation.
+- The repository's `updateBusiness` deliberately throws and states that Business profile must be updated through the authenticated Actor Gateway.
+- `20260916250000` originally grants runtime EXECUTE on `ghm.update_business_profile(bigint,bigint,jsonb)`; `20261110270000` revokes PUBLIC and `ghm_runtime` from that legacy function and grants only the Gateway wrapper to `ghm_actor_gateway`.
+- `20261111040000` replaces the wrapper with the short-lived, one-use HMAC assertion contract bound to `business.profile.update`, again granting the wrapper only to `ghm_actor_gateway`.
+- `20260916251000` narrows direct `ghm.business` UPDATE to the review aggregate columns (`rating`, `review_count`, `updated_at`) and retains SELECT. This is consistent with the Gateway write plus Resource API readback split.
+
+**Disposition:** no residual direct runtime EXECUTE or broad profile UPDATE grant was identified in the reviewed migration chain. Preserve the narrowly scoped review aggregate UPDATE and Business SELECT privileges; do not revoke them as part of the profile write cutover. The later profile legacy-contract reconciliation (`20261110265000`) uses CREATE OR REPLACE on the underlying function; its ACL does not become a new runtime grant merely by replacing the function body, but exact production ACL still requires live reconciliation before cutover approval.
+
+### Business registration identity — read and write must remain separate
+
+- `GET /api/v1/businesses/:businessId/registration-identity` uses the signed Gateway read client in production; the Resource API fails closed when Gateway is required and no client exists.
+- `PUT /api/v1/businesses/:businessId/registration-identity` likewise uses the signed Gateway write client in production.
+- The original registration migration grants `ghm_runtime` EXECUTE on both `ghm.read_business_registration_identity` and `ghm.update_business_registration_identity`.
+- The guarded candidate migration `20261117010000` checks the dedicated Gateway role and the signed replacement function before revoking runtime EXECUTE on the legacy update function. It does not revoke the read function.
+
+**Disposition:** retain legacy read EXECUTE only until production route/version and the Gateway read path are proven; the current guarded candidate targets the write function only. Do not widen the candidate to revoke the read function without a separate read-path/ACL review.
+
+### Connect provisioning scope boundary
+
+The signed database operation `ghm.gateway_provision_connect_business` is added by `20261112080000_signed_connect_business_provisioning_gateway.sql`; it verifies the version-2 signed assertion and grants the wrapper only to `ghm_actor_gateway`, while revoking direct runtime and other service-role access to the legacy mapping helper. The Resource API app/router files inspected in this pass do not mount a matching `/v1/connect/businesses/provision-or-resolve` route; the HTTP client exists as an integration adapter. Treat the gateway-side operation as a separate Connect integration boundary, not as proof that the Resource API currently exposes or exercises that endpoint. Its actual caller/deployment and end-to-end route contract remain to be traced before including it in the Resource API cutover sequence.
+
+### Updated disposition
+
+- Confirmed post-deployment revocation candidates remain the storage metadata legacy functions and `ghm.set_business_logo_object(bigint,bigint,bigint)`.
+- Supplier classification and Business profile legacy runtime function grants are already revoked by their reviewed migrations; do not add them to a new revocation migration without finding a distinct surviving grant.
+- Registration identity legacy write is covered by its guarded candidate; keep the read side separate.
+- Preserve Business SELECT and review-aggregate UPDATE used for safe Resource API readback and review workflows.
+- Connect provisioning requires caller/deployment tracing, not an assumption based solely on the database wrapper or client adapter.
+
+This is repository source/migration review only. It does not establish installed production migrations or effective inherited privileges in `ghm_db`. No production query, SQL/ACL change, migration, Render action, deployment, credential change, or payment action was performed.
