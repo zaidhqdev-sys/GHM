@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
@@ -20,6 +21,19 @@ if (new Set([runtimeUrl, gatewayUrl, migratorUrl]).size !== 3) throw new Error('
 const runtime = new Pool({ connectionString: runtimeUrl, ssl: false });
 const gateway = new Pool({ connectionString: gatewayUrl, ssl: false });
 const migrator = new Pool({ connectionString: migratorUrl, ssl: false });
+const readSqlBody = relativePath => {
+  const path = new URL(relativePath, import.meta.url);
+  const sql = readFileSync(path, 'utf8');
+  const withoutHeaderComments = sql.replace(/^\s*(?:--[^\n]*\n\s*)*/i, '');
+  if (!/^BEGIN;\s*/i.test(withoutHeaderComments) || !/\s*COMMIT;\s*$/.test(withoutHeaderComments)) {
+    throw new Error(`Expected one outer BEGIN/COMMIT in ${path.pathname}`);
+  }
+  const body = withoutHeaderComments.replace(/^BEGIN;\s*/i, '').replace(/\s*COMMIT;\s*$/, '');
+  if (/^\s*(?:BEGIN|COMMIT);/im.test(body)) throw new Error(`Nested transaction boundary in ${path.pathname}`);
+  return body;
+};
+const cutoverSql = readSqlBody('../database/cutovers/20261116010000_revoke_legacy_storage_metadata_runtime.sql');
+const rollbackSql = readSqlBody('../database/cutovers/20261116010000_restore_legacy_storage_metadata_runtime.sql');
 const names = [
   'storage_create_pending',
   'storage_get_object',
@@ -56,14 +70,7 @@ const withSchemaOwner = async (work) => {
 };
 const restoreOriginalAcl = async () => {
   if (!cutoverApplied || snapshots.length === 0) return;
-  await withSchemaOwner(async client => {
-    for (const item of snapshots) {
-      if (item.public_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO PUBLIC`);
-      if (item.runtime_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_runtime`);
-      if (item.migrator_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_migrator`);
-      if (item.gateway_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_actor_gateway`);
-    }
-  });
+  await withSchemaOwner(async client => client.query(rollbackSql));
   cutoverApplied = false;
 };
 
@@ -76,6 +83,9 @@ try {
     SELECT
       p.oid::regprocedure::text AS signature,
       p.proname,
+      pg_get_userbyid(p.proowner) AS owner,
+      p.prosecdef AS security_definer,
+      p.proconfig AS function_settings,
       COALESCE(bool_or(a.grantee = 0 AND a.privilege_type = 'EXECUTE'), false) AS public_execute,
       COALESCE(bool_or(a.grantee = runtime_role.oid AND a.privilege_type = 'EXECUTE'), false) AS runtime_direct_execute,
       COALESCE(bool_or(a.grantee = migrator_role.oid AND a.privilege_type = 'EXECUTE'), false) AS migrator_direct_execute,
@@ -102,16 +112,15 @@ try {
   if (snapshots.length !== names.length || names.some(name => snapshots.filter(row => row.proname === name).length !== 1)) {
     throw new Error(`Expected exactly five unambiguous legacy storage functions; found ${JSON.stringify(snapshots.map(x => x.signature))}`);
   }
-  if (snapshots.some(row => !row.runtime_execute)) {
-    throw new Error('Expected every legacy storage function to be executable by ghm_runtime before the disposable cutover');
+  if (snapshots.some(row => row.owner !== 'ghm_schema_owner' || row.security_definer !== true
+    || !row.function_settings?.some(setting => setting === 'search_path=pg_catalog, ghm' || setting === 'search_path=pg_catalog, ghm, pg_temp')
+    || row.public_execute || !row.runtime_execute || row.migrator_execute || row.gateway_execute
+    || !row.runtime_direct_execute || row.migrator_direct_execute || row.gateway_direct_execute)) {
+    throw new Error(`Legacy storage ACL does not match the reviewed pre-cutover baseline: ${JSON.stringify(snapshots)}`);
   }
   console.log('FIVE LEGACY STORAGE FUNCTION SIGNATURES + ACL SNAPSHOT: PASS');
 
-  await withSchemaOwner(async client => {
-    for (const item of snapshots) {
-      await client.query(`REVOKE ALL ON FUNCTION ${item.signature} FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway`);
-    }
-  });
+  await withSchemaOwner(async client => client.query(cutoverSql));
   cutoverApplied = true;
   console.log('DISPOSABLE LEGACY STORAGE FUNCTION GRANT REVOCATION: APPLIED');
 
@@ -135,13 +144,66 @@ try {
 
   for (const item of snapshots) {
     for (const [role, pool] of [['ghm_runtime', runtime], ['ghm_migrator', migrator], ['ghm_actor_gateway', gateway]]) {
-      let denied = false;
-      try { await pool.query(`SELECT ghm.${item.proname}(${item.null_arguments})`); }
-      catch (error) { denied = error && typeof error === 'object' && 'code' in error && error.code === '42501'; }
-      if (!denied) throw new Error(`${role} direct call was not denied for ${item.signature}`);
+      let probeError = null;
+      const probeClient = await pool.connect();
+      try {
+        await probeClient.query('BEGIN');
+        try {
+          await probeClient.query(`SELECT ghm.${item.proname}(${item.null_arguments})`);
+        } catch (error) {
+          probeError = error;
+        } finally {
+          await probeClient.query('ROLLBACK');
+        }
+      } finally {
+        probeClient.release();
+      }
+      const denialMessage = probeError && typeof probeError === 'object'
+        ? String(probeError.message)
+        : '';
+      // PostgreSQL may reject the qualified call at schema USAGE before it
+      // reaches the function EXECUTE check. The independent effective-ACL
+      // assertions above must still prove function EXECUTE is absent.
+      const denied = probeError && typeof probeError === 'object'
+        && probeError.code === '42501'
+        && (
+          denialMessage.includes(`permission denied for function ${item.proname}`)
+          || denialMessage === 'permission denied for schema ghm'
+        );
+      if (!denied) {
+        const diagnostic = await migrator.query(`
+          SELECT
+            $1::text AS tested_role,
+            $2::text AS function_signature,
+            has_function_privilege($1, p.oid, 'EXECUTE') AS effective_execute,
+            owner_role.rolname AS function_owner,
+            COALESCE((
+              SELECT json_agg(json_build_object(
+                'grant_to', CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE grantee_role.rolname END,
+                'privilege', a.privilege_type,
+                'grantable', a.is_grantable,
+                'inherited_by_tested_role', CASE WHEN a.grantee = 0 THEN true
+                  ELSE pg_has_role($1, a.grantee, 'USAGE') END
+              ))
+              FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+              LEFT JOIN pg_roles grantee_role ON grantee_role.oid = a.grantee
+              WHERE a.privilege_type = 'EXECUTE'
+                AND (a.grantee = 0 OR pg_has_role($1, a.grantee, 'USAGE'))
+            ), '[]'::json) AS effective_acl_sources,
+            COALESCE((
+              SELECT json_agg(json_build_object('role', inherited.rolname, 'rolinherit', inherited.rolinherit))
+              FROM pg_roles inherited
+              WHERE pg_has_role($1, inherited.oid, 'USAGE')
+            ), '[]'::json) AS inherited_roles
+          FROM pg_proc p
+          JOIN pg_roles owner_role ON owner_role.oid = p.proowner
+          WHERE p.oid = to_regprocedure($2)
+        `, [role, item.signature]);
+        throw new Error(`${role} direct function execution was not denied for ${item.signature}; probe_error: ${JSON.stringify(probeError ? { code: probeError.code, message: probeError.message } : null)}; privilege diagnostics: ${JSON.stringify(diagnostic.rows[0] ?? null)}`);
+      }
     }
   }
-  console.log('RUNTIME, MIGRATOR AND ACTOR GATEWAY DIRECT CALLS DENIED FOR ALL FIVE LEGACY FUNCTIONS: PASS');
+  console.log('RUNTIME, MIGRATOR AND ACTOR GATEWAY ACTUAL FUNCTION EXECUTION DENIED FOR ALL FIVE LEGACY FUNCTIONS: PASS');
 
   const wrapperAcl = await gateway.query(`
     SELECT

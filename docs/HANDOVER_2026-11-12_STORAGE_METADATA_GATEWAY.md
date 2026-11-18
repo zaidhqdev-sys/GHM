@@ -413,3 +413,35 @@ The broader whole-database audit discovered a separate runtime function allow-li
 - The latest documentation head at the time of this entry is `4d9a75b52a41f218fc117064dc8db403c3539e5d`; it also requires exact-head CI confirmation.
 
 No storage production grants, roles, secrets, provider credentials, buckets, objects, deployments, traffic or data were changed. No PR was merged.
+
+
+
+---
+
+## Guarded legacy storage metadata grant cutover and rollback artifacts — 2026-11-16
+
+PR #286 now contains a manual, transactional five-function cutover and rollback pair under `database/cutovers/` (not migrations). Both require the migrator/schema-owner identity, verify the five legacy functions' owner/SECURITY DEFINER/pinned search_path, reject PUBLIC EXECUTE, and require all five Actor Gateway wrappers to exist with Actor Gateway EXECUTE.
+
+The cutover removes PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` EXECUTE on the five legacy metadata functions. The rollback restores only the reviewed `ghm_runtime` grant and keeps PUBLIC/migrator/Actor Gateway denied. The distinct `storage_get_public_business_logo(bigint)` lookup is intentionally not revoked.
+
+The disposable qualification now executes the exact SQL artifacts under the schema-owner role using three distinct localhost disposable-role URLs and explicit mutation opt-in. It verifies the exact before/after/rollback ACL state and uses PREPARE to test direct-call permission denial before function execution.
+
+These artifacts are not production-authorized. The live production wrappers are absent and their migrations are pending; no production grants, migrations, secrets or deployments were changed. Keep the production cutover blocked pending deployed gateway/Resource API proof, isolated DB principal, approved migration sequence, provider E2E, Amanda/Render role escalation and fresh verified backup.
+
+
+## 2026-11-16 — exact-head storage ACL cutover and rollback qualification passed
+
+PR #286 exact head `d8d6640fd48dfc03cbc4dbf65ed2968acabb1704` passed exact-head CI run [#5104](https://github.com/zaidhqdev-sys/GHM/actions/runs/43806583544). The disposable PostgreSQL qualification applied the exact manual cutover SQL, verified PUBLIC and runtime EXECUTE revocation, verified actual direct-call denial for `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` across all five legacy functions, confirmed Actor Gateway wrappers retain EXECUTE, and passed exact rollback ACL restoration.
+
+Correction to the preceding qualification note: the test uses actual function invocations inside rollback transactions, not PREPARE. The preceding failure returned `permission denied for schema ghm`; PostgreSQL rejected the qualified reference at schema USAGE before function EXECUTE. The assertion now accepts either schema-level or function-level permission denial, while separate effective-ACL checks still assert no effective EXECUTE privilege on the legacy functions. The test output confirms both direct-call denial and rollback passed.
+
+This result is not production authorization. Production wrappers remain absent and their migrations pending. Do not run either SQL artifact against `ghm_db`; the existing production blockers remain deployed gateway/Resource API and isolated-principal proof, reviewed wrapper migration sequence, provider lifecycle E2E, Amanda/Render role escalation, and fresh verified backup. PR #286 remains draft/open/unmerged; no production grant, role, migration, secret or deployment changed.
+
+
+## 2026-11-16 — exact storageMetadata stage assertion restored; exact-head CI PASS
+
+A review found the intended exact five-signature assertion in the runtime ACL stage test had been swallowed by a literal escaped newline inside a line comment. The test was corrected in PR #286 commit `8660a91e9523a3729ceecac0797cdb0f0c5bb516`, restoring an executable deep equality check against the exact reviewed five-function `storageMetadata` group.
+
+Exact-head CI run [#5109](https://github.com/zaidhqdev-sys/GHM/actions/runs/43850805507) passed both `quality` and `web-quality`. The Cloudflare Pages integration check passed as well; no Cloudflare hosting option was reconsidered or changed.
+
+This remains code/test qualification, not production authorization. PR #286 stays draft/open/unmerged. The production Actor Gateway hosting/network blocker and all previously recorded production cutover gates remain. No production SQL, grants, roles, secrets, migrations, Render settings or deployments changed.

@@ -111,9 +111,17 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
 ] as const;
 
-// Every independently qualified manual runtime cutover is represented here.
-// These are exact legacy signatures revoked by the corresponding SQL files in
-// database/cutovers/. No unrelated function is accepted as a stage transition.
+const STORAGE_METADATA_LEGACY_FUNCTIONS = [
+  'ghm.storage_create_pending(bigint, text, bigint, text, text, text, bigint, text, text)',
+  'ghm.storage_get_object(bigint, bigint)',
+  'ghm.storage_mark_available(bigint, text)',
+  'ghm.storage_mark_deleted(bigint)',
+  'ghm.storage_mark_deletion_pending(bigint)',
+] as const;
+
+// Each reviewed or planned manual runtime cutover is represented by its exact
+// legacy signature set. Modeling a stage does not authorize its execution or
+// prove an operational cutover artifact exists; each group retains its own gates.
 export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
   authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
@@ -124,6 +132,7 @@ export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   businessHours: BUSINESS_HOURS_LEGACY_FUNCTIONS,
   trustScore: TRUST_SCORE_LEGACY_FUNCTIONS,
   businessLogo: BUSINESS_LOGO_LEGACY_FUNCTIONS,
+  storageMetadata: STORAGE_METADATA_LEGACY_FUNCTIONS,
 } as const;
 
 const normalizeSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
@@ -164,7 +173,7 @@ if (duplicateCutoverSignatures.length > 0 || cutoverSignaturesOutsideBaseline.le
   throw new Error('Runtime manual cutover groups overlap or contain signatures outside the reviewed baseline');
 }
 
-// There are 2^9 independently qualified manual cutover combinations. The
+// There are 2^10 independently qualified manual cutover combinations. The
 // guard accepts only an exact combination of these reviewed revocations.
 const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
   { length: 2 ** cutoverGroups.length },
@@ -198,8 +207,8 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
     stage.map(normalizeSignature).sort(),
   );
   if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
-      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
-      || stages.length !== 512) {
+      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 8
+      || stages.length !== 1024) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
