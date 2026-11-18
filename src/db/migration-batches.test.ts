@@ -56,13 +56,13 @@ test('production pending inventory rejects omitted pending migrations', () => {
 test('production pending inventory rejects already-applied stale entries', () => {
   assert.throws(
     () => assertProductionPendingMigrationAllowlist(migrations, new Set([migrations[0].version]), migrations),
-    /stale\\/already-applied/,
+    /stale[/]already-applied/,
   );
 });
 test('production pending inventory rejects reordered or renamed entries', () => {
   assert.throws(
     () => assertProductionPendingMigrationAllowlist(migrations, new Set(), [migrations[1], migrations[0], migrations[2]]),
-    /exact repository order\\/name/,
+    /exact repository order[/]name/,
   );
   assert.throws(
     () => assertProductionPendingMigrationAllowlist(migrations, new Set(), [{ ...migrations[0], name: 'renamed' }, ...migrations.slice(1)]),
