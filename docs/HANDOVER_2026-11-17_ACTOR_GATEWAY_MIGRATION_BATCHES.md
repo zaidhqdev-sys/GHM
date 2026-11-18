@@ -599,3 +599,14 @@ No production database, Render service, deployment, credentials, payment activat
 - Live role catalogue confirms `ghm_db_user` still has CREATEROLE/CREATEDB and ADMIN OPTION over multiple protected roles, while `ghm_app_user` can SET ROLE `ghm_db_user`. Catalog search returned zero `ghm.gateway_%` and zero `ghm.assert_actor_gateway%` functions in schema `ghm`.
 - Do not grant ledger access to the application login or alter production roles as an audit workaround. Resolve the existing Render role-separation support escalation and use the intended dedicated `ghm_migrator` identity with verified TLS and its documented schema-owner SET path. Obtain a fresh verified backup before any production change.
 - No production ledger rows/checksums were read, no production migration was run, and no role/ACL/credential/secret/Render/deployment state was changed. No CI was run. The execution manifest remains empty and PR #298 remains draft.
+
+
+## Exact production migrator contract failure — 18 November 2026
+
+- Re-read this handover, the current role-separation and production reconciliation handovers, PR #298 and the exact source contract before the live read-only checks.
+- The production `ghm_migrator` role exists and has safe basic role flags; its only direct membership is `ghm_schema_owner` with ADMIN=false / INHERIT=false / SET=true.
+- The exact runner contract still fails because `ghm_db_user` is an ADMIN OPTION member of `ghm_migrator` (one member where zero is expected) and also an ADMIN OPTION member of `ghm_schema_owner` (two owner members where one is expected).
+- The exact runner privilege predicate reports migrator relation/sequence privileges. ACL expansion confirms explicit grants by `ghm_schema_owner` on 16 relations (SELECT/INSERT/UPDATE/DELETE) and 23 sequences (SELECT/USAGE); no migrator-specific default ACL entries were found. The source migration/operation responsible has not yet been identified. Do not revoke or mutate these ACLs based on inference.
+- The ledger ACL grants SELECT to `ghm_auditor`, not directly to `ghm_migrator`. The approved audit obtains ledger access only after the intended `SET ROLE ghm_schema_owner`, but the available Render query connection is `ghm_app_user` / `ghm_db_user` and cannot SET to the migrator or owner. Therefore the exact production ledger audit remains blocked.
+- PR #298's 50-migration candidate and plan-only qualification do not establish production state. Keep its execution manifest empty and PR draft. Do not run production migrations, alter roles/grants, or use the app/admin connector as a substitute for the dedicated migrator login.
+- No production mutation, deployment, paid service or CI run occurred during this inspection.
