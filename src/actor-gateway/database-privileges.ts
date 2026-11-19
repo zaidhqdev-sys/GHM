@@ -39,9 +39,21 @@ export const assertActorGatewayDatabasePrivileges = (
     'ghm.gateway_archive_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
     'ghm.gateway_delete_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
   ].map(normalizeSignature));
-  const withoutTender = (list: string[]): string[] => list.filter(signature => !tenderTrackingFunctions.has(signature));
-  const acceptable = [expected, preCampaignReviewExpected, withoutTender(expected), withoutTender(preCampaignReviewExpected)]
-    .map(list => JSON.stringify(list));
+  // Saved analyses ship in a later feature-branch migration and depend on tracking (foreign key),
+  // so the accepted states are: neither, tracking only, or both. Anything else is a mismatch.
+  const tenderAnalysisFunctions = new Set([
+    'ghm.gateway_create_tender_analysis(bigint, bigint, uuid, text, text, bigint, bigint, text, text, text, jsonb, uuid, uuid)',
+    'ghm.gateway_list_tender_analysis(bigint, bigint, uuid, text, text, bigint, integer, bigint)',
+    'ghm.gateway_get_tender_analysis(bigint, bigint, uuid, text, text, bigint, bigint)',
+    'ghm.gateway_delete_tender_analysis(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
+  ].map(normalizeSignature));
+  const without = (list: string[], ...groups: Set<string>[]): string[] =>
+    list.filter(signature => !groups.some(group => group.has(signature)));
+  const acceptable = [expected, preCampaignReviewExpected].flatMap(base => [
+    base,
+    without(base, tenderAnalysisFunctions),
+    without(base, tenderAnalysisFunctions, tenderTrackingFunctions),
+  ]).map(list => JSON.stringify(list));
   const publicFunctions = [...privileges.public_executable_functions].sort();
   const runtimeFunctions = [...privileges.runtime_executable_functions].sort();
   const failures: string[] = [];
@@ -80,6 +92,10 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       'ghm.gateway_update_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, jsonb, uuid, uuid)',
       'ghm.gateway_archive_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
       'ghm.gateway_delete_tender_tracking(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
+      'ghm.gateway_create_tender_analysis(bigint, bigint, uuid, text, text, bigint, bigint, text, text, text, jsonb, uuid, uuid)',
+      'ghm.gateway_list_tender_analysis(bigint, bigint, uuid, text, text, bigint, integer, bigint)',
+      'ghm.gateway_get_tender_analysis(bigint, bigint, uuid, text, text, bigint, bigint)',
+      'ghm.gateway_delete_tender_analysis(bigint, bigint, uuid, text, text, bigint, bigint, uuid, uuid)',
       'ghm.gateway_calculate_business_trust_score(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_create_capability_draft(bigint, bigint, uuid, text, text, text, text, text, uuid, integer, text, integer)',
       'ghm.gateway_create_saved_business(bigint, bigint, uuid, text, text, bigint)',

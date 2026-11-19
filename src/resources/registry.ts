@@ -57,6 +57,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'business_relationship', operations: ['read'] },
   { resource: 'outcome', operations: ['read'] },
   { resource: 'tender_tracking', operations: ['read', 'create', 'update', 'archive', 'delete'] },
+  { resource: 'tender_analysis', operations: ['read', 'create', 'delete'] },
   { resource: 'capability_catalogue', operations: ['read', 'create', 'update', 'transition'] },
 ];
 

@@ -52,6 +52,8 @@ import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
 import { registerTenderTrackingRoutes } from './tender-tracking-router';
+import { registerTenderAnalysisRoutes } from './tender-analysis-router';
+import { HttpTenderAnalysisGatewayClient, type TenderAnalysisGatewayClient } from './tender-analysis-gateway-client';
 import { HttpTenderTrackingGatewayClient, type TenderTrackingGatewayClient } from './tender-tracking-gateway-client';
 import { HttpSavedBusinessGatewayClient, type SavedBusinessGatewayClient } from './saved-business-gateway-client';
 import { PostgresOnboardingProgressRepository } from '../resources/onboarding/repository';
@@ -192,6 +194,7 @@ export interface AppDependencies {
   readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
   readonly savedBusinessGatewayRequired?: boolean;
   readonly tenderTrackingGatewayClient?: TenderTrackingGatewayClient;
+  readonly tenderAnalysisGatewayClient?: TenderAnalysisGatewayClient;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
   readonly businessRegistrationIdentityGatewayRequired?: boolean;
   readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
@@ -1104,6 +1107,12 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     app,
     dependencies.tenderTrackingGatewayClient
       ?? (config.actorGatewayUrl ? new HttpTenderTrackingGatewayClient(config.actorGatewayUrl) : undefined),
+    resourceAuthMiddleware,
+  );
+  registerTenderAnalysisRoutes(
+    app,
+    dependencies.tenderAnalysisGatewayClient
+      ?? (config.actorGatewayUrl ? new HttpTenderAnalysisGatewayClient(config.actorGatewayUrl) : undefined),
     resourceAuthMiddleware,
   );
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);

@@ -20,6 +20,8 @@ import type { CommercialDocumentApprovalAuthorityReader } from './commercial-doc
 import type { CommercialDocumentApprovalReader } from './commercial-document-approval-reader';
 import type { CommercialConsentPaymentPreparationReader } from './commercial-consent-payment-preparation-reader';
 import type { TenderTrackingGatewayReader } from './tender-tracking-reader';
+import type { TenderAnalysisGatewayReader } from './tender-analysis-reader';
+import { parseAnalysisListQuery, parseCreateAnalysis } from '../tender/analysis-contract';
 import { createTenderRequestContext, TenderOperationLogger, type TenderLogFields } from './tender-request-context';
 import { parseCreateTracking, parseListQuery, parsePathId, parseUpdateTracking } from '../tender/tracking-contract';
 
@@ -49,6 +51,7 @@ export interface ActorGatewayDependencies {
   commercialDocumentApprovalReader?: CommercialDocumentApprovalReader;
   commercialConsentPaymentPreparationReader?: CommercialConsentPaymentPreparationReader;
   tenderTrackingReader?: TenderTrackingGatewayReader;
+  tenderAnalysisReader?: TenderAnalysisGatewayReader;
   tenderLogger?: TenderOperationLogger;
   commercialPaymentPreparationEnabled?: boolean;
   commercialLaunchAuthorized?: boolean;
@@ -1286,21 +1289,25 @@ export const createActorGatewayApp = (
   // and is signed into the assertion; authorization happens inside the SQL function.
   const tenderLogger = dependencies.tenderLogger ?? new TenderOperationLogger();
   type TenderOp = 'create' | 'list' | 'get' | 'update' | 'archive' | 'delete';
-  const tenderRoute = (
+  type TenderRefusal = { refusal: 'invalid' | 'too_large' | 'unsupported' };
+  type TenderDone = { status: number; body: unknown; resourceId: number | null };
+  const tenderRoute = <R>(
+    family: 'tracking' | 'analysis',
     op: TenderOp,
+    pickReader: () => R | undefined,
     handler: (
-      reader: TenderTrackingGatewayReader,
+      reader: R,
       args: { actor: number; businessId: number; req: Request; ids: { requestId: string; clientCorrelationId: string | null } },
-    ) => Promise<{ status: number; body: unknown; resourceId: number | null }>,
+    ) => Promise<TenderDone | TenderRefusal>,
   ): RequestHandler => async (req: Request, res: Response) => {
     const ids = createTenderRequestContext(req, res);
     const actor = res.locals.actorAccountId as number;
     const businessId = parsePathId(req.params.businessId);
-    const operation = `tender.tracking.${op}`;
+    const operation = `tender.${family}.${op}`;
     const log = (outcome: TenderLogFields['outcome'], resourceId: number | null): void => tenderLogger.log({
       ...ids, actorAccountId: actor, businessId, operation, resourceId, outcome,
     });
-    const reader = dependencies.tenderTrackingReader;
+    const reader = pickReader();
     if (!reader) {
       log('unavailable', null);
       res.status(503).json({ error: 'service_unavailable' });
@@ -1313,6 +1320,14 @@ export const createActorGatewayApp = (
     }
     try {
       const out = await handler(reader, { actor, businessId, req, ids });
+      if ('refusal' in out) {
+        // Refusals are decided before any database call. Nothing was written.
+        log('invalid', null);
+        if (out.refusal === 'too_large') res.status(413).json({ error: 'payload_too_large' });
+        else if (out.refusal === 'unsupported') res.status(422).json({ error: 'unsupported' });
+        else res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
       if (out.status === 400) {
         log('invalid', null);
         res.status(400).json({ error: 'invalid_request' });
@@ -1335,43 +1350,74 @@ export const createActorGatewayApp = (
       res.status(503).json({ error: 'service_unavailable' });
     }
   };
+  const trackingReader = (): TenderTrackingGatewayReader | undefined => dependencies.tenderTrackingReader;
+  const analysisReader = (): TenderAnalysisGatewayReader | undefined => dependencies.tenderAnalysisReader;
   const BAD = { status: 400, body: null, resourceId: null } as const;
 
-  app.post('/v1/businesses/:businessId/tenders/tracking', tenderRoute('create', async (reader, { actor, businessId, req, ids }) => {
+  app.post('/v1/businesses/:businessId/tenders/tracking', tenderRoute('tracking', 'create', trackingReader, async (reader, { actor, businessId, req, ids }) => {
     const input = parseCreateTracking(req.body);
     if (!input.ok) return BAD;
     const tracking = await reader.create(actor, businessId, input.value, ids);
     return { status: 201, body: { tracking }, resourceId: tracking.id };
   }));
-  app.get('/v1/businesses/:businessId/tenders/tracking', tenderRoute('list', async (reader, { actor, businessId, req }) => {
+  app.get('/v1/businesses/:businessId/tenders/tracking', tenderRoute('tracking', 'list', trackingReader, async (reader, { actor, businessId, req }) => {
     const q = parseListQuery(req.query);
     if (!q.ok) return BAD;
     const page = await reader.list(actor, businessId, q.value);
     return { status: 200, body: page, resourceId: null };
   }));
-  app.get('/v1/businesses/:businessId/tenders/tracking/:id', tenderRoute('get', async (reader, { actor, businessId, req }) => {
+  app.get('/v1/businesses/:businessId/tenders/tracking/:id', tenderRoute('tracking', 'get', trackingReader, async (reader, { actor, businessId, req }) => {
     const id = parsePathId(req.params.id);
     if (id === null) return BAD;
     const tracking = await reader.get(actor, businessId, id);
     return { status: 200, body: { tracking }, resourceId: tracking.id };
   }));
-  app.patch('/v1/businesses/:businessId/tenders/tracking/:id', tenderRoute('update', async (reader, { actor, businessId, req, ids }) => {
+  app.patch('/v1/businesses/:businessId/tenders/tracking/:id', tenderRoute('tracking', 'update', trackingReader, async (reader, { actor, businessId, req, ids }) => {
     const id = parsePathId(req.params.id);
     const patch = parseUpdateTracking(req.body);
     if (id === null || !patch.ok) return BAD;
     const tracking = await reader.update(actor, businessId, id, patch.value, ids);
     return { status: 200, body: { tracking }, resourceId: tracking.id };
   }));
-  app.post('/v1/businesses/:businessId/tenders/tracking/:id/archive', tenderRoute('archive', async (reader, { actor, businessId, req, ids }) => {
+  app.post('/v1/businesses/:businessId/tenders/tracking/:id/archive', tenderRoute('tracking', 'archive', trackingReader, async (reader, { actor, businessId, req, ids }) => {
     const id = parsePathId(req.params.id);
     const emptyBody = req.body === undefined || (typeof req.body === 'object' && req.body !== null && Object.keys(req.body).length === 0);
     if (id === null || !emptyBody) return BAD;
     const tracking = await reader.archive(actor, businessId, id, ids);
     return { status: 200, body: { tracking }, resourceId: tracking.id };
   }));
-  app.delete('/v1/businesses/:businessId/tenders/tracking/:id', tenderRoute('delete', async (reader, { actor, businessId, req, ids }) => {
+  app.delete('/v1/businesses/:businessId/tenders/tracking/:id', tenderRoute('tracking', 'delete', trackingReader, async (reader, { actor, businessId, req, ids }) => {
     const id = parsePathId(req.params.id);
     if (id === null) return BAD;
+    const deleted = await reader.remove(actor, businessId, id, ids);
+    return { status: 200, body: { deleted }, resourceId: deleted.id };
+  }));
+
+
+  // ---- ZAID Tender AI: saved analyses (Phase 1, batch 3) ------------------------------
+  // Writes are validated with the version-2 contract BEFORE any database call; unsupported
+  // analyses are refused (422); nothing is repaired. Reads are validated again by the reader.
+  const A = '/v1/businesses/:businessId/tenders/analyses';
+  app.post(A, tenderRoute('analysis', 'create', analysisReader, async (reader, { actor, businessId, req, ids }) => {
+    const input = parseCreateAnalysis(req.body);
+    if (!input.ok) return { refusal: input.reason };
+    const analysis = await reader.create(actor, businessId, input.value, ids);
+    return { status: 201, body: { analysis }, resourceId: analysis.id };
+  }));
+  app.get(A, tenderRoute('analysis', 'list', analysisReader, async (reader, { actor, businessId, req }) => {
+    const q = parseAnalysisListQuery(req.query);
+    if (!q.ok) return { refusal: 'invalid' };
+    return { status: 200, body: await reader.list(actor, businessId, q.value), resourceId: null };
+  }));
+  app.get(`${A}/:id`, tenderRoute('analysis', 'get', analysisReader, async (reader, { actor, businessId, req }) => {
+    const id = parsePathId(req.params.id);
+    if (id === null) return { refusal: 'invalid' };
+    const analysis = await reader.get(actor, businessId, id);
+    return { status: 200, body: { analysis }, resourceId: analysis.id };
+  }));
+  app.delete(`${A}/:id`, tenderRoute('analysis', 'delete', analysisReader, async (reader, { actor, businessId, req, ids }) => {
+    const id = parsePathId(req.params.id);
+    if (id === null) return { refusal: 'invalid' };
     const deleted = await reader.remove(actor, businessId, id, ids);
     return { status: 200, body: { deleted }, resourceId: deleted.id };
   }));
