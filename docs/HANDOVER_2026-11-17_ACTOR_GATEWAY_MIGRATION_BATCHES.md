@@ -3314,3 +3314,17 @@ Re-fetched the existing PR/branch state before continuing:
 - QuoteFlow Android run #138 built the APK and verified `com.zaidtechnologies.quoteflow.preview`, but artifact upload was rejected by the Actions storage quota. No downloadable artifact was created. No artifact deletion or billing/storage change was performed.
 
 The earlier branch-count note in this handover is historical; use these refreshed values for the next checkpoint.
+
+
+### QuoteFlow Android delivery correction — use established local Windows release workflow (19 November 2026)
+
+The GitHub Actions Android run #138 was a side-by-side **debug preview** with package ID `com.zaidtechnologies.quoteflow.preview`, not the production website APK. Its artifact storage quota failure is not a blocker to the established local release process.
+
+The established Windows paths are:
+- Source: `C:\QuoteFlow`.
+- Release APK: `C:\QuoteFlow\android\app\build\outputs\apk\release\app-release.apk`.
+- Website destination: `C:\zaid-technologies-website\public\downloads\quoteflow.apk`, served at `/downloads/quoteflow.apk`.
+
+Build the exact current PR #25 branch locally, inspect local Git status before switching/updating, run typecheck/Jest and `android\gradlew.bat assembleRelease`, verify the APK package is production `com.zaidtechnologies.quoteflow`, then verify size/SHA-256 before copying. Never publish the preview/debug APK as the production release.
+
+Important gate: the current split-origin client intentionally has no default Auth Issuer origin. `EXPO_PUBLIC_GHM_AUTH_ISSUER_BASE_URL` is blank in `.env.example`; missing issuer config disables GHM auth. Do not upload a website release that would silently disable intended GHM authentication. First confirm the real approved issuer URL and end-to-end auth readiness. No Render, production database, website files or local machine changes are performed by this handover update.
