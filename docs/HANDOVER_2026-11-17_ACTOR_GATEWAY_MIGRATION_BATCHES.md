@@ -3328,3 +3328,15 @@ The established Windows paths are:
 Build the exact current PR #25 branch locally, inspect local Git status before switching/updating, run typecheck/Jest and `android\gradlew.bat assembleRelease`, verify the APK package is production `com.zaidtechnologies.quoteflow`, then verify size/SHA-256 before copying. Never publish the preview/debug APK as the production release.
 
 Important gate: the current split-origin client intentionally has no default Auth Issuer origin. `EXPO_PUBLIC_GHM_AUTH_ISSUER_BASE_URL` is blank in `.env.example`; missing issuer config disables GHM auth. Do not upload a website release that would silently disable intended GHM authentication. First confirm the real approved issuer URL and end-to-end auth readiness. No Render, production database, website files or local machine changes are performed by this handover update.
+
+
+## 20 November 2026 — applied migration ledger-name integrity guard
+
+A focused review of the current production migration runner found that its ledger query selected only `version, checksum`, while the read-only forensic reconciliation compares `version, name, checksum`. The runner therefore did not independently reject a same-version/same-checksum ledger row whose recorded migration name differed from the repository filename. This was a real consistency gap in the preflight contract.
+
+Corrected on the existing PR #298 branch (no new branch or PR):
+- `src/db/migration-order.ts` adds `assertAppliedMigrationNames`, comparing each applied ledger row to the repository migration name for the same version.
+- `src/db/migrate.ts` now selects `version, name, checksum` and performs this name check before checksum, pending-inventory and execution-batch selection.
+- `src/db/migration-checksum.test.ts` adds positive, mismatched-name rejection and retained-historical-row cases. Ledger rows whose versions are absent from the repository remain governed by the existing retained-history/provenance audit; this guard does not incorrectly reject legitimate retained history.
+
+Source head after these sequential GitHub contents commits: `29e6b912327b4160b811ec882ded6abbc366611a`. Exact-head CI has not yet been observed for this change; do not call it validated until the new run completes. No migration SQL, production ledger, database, role/ACL, secret, Render service, deployment, payment state or local machine was changed. The production batch manifest remains empty.
