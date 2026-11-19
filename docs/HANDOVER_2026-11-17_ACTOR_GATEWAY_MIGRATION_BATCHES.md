@@ -3386,3 +3386,33 @@ Follow-up inspection compared the CI workflow on the PR head with the workflow o
 - The available GitHub connector's commit-run lookup returned no PR-triggered workflow runs for the tested source commit, the local-test commit, or the then-current PR head. This lookup is not sufficient to conclude that GitHub Actions is disabled or that no run exists in the repository's full Actions history.
 
 Conclusion: the workflow's declared PR trigger should cover this PR, so the earlier suggestion that the source branch is omitted from the workflow filter is not a valid explanation. Root cause of missing run evidence remains undetermined. Before changing workflow configuration or dispatching a new run, inspect the repository's actual Actions run history for PR #298 (workflow `CI`, event `pull_request`) and any skipped/cancelled run annotations. No workflow file or repository Actions setting was changed, and no run was dispatched.
+
+
+
+## 20 November 2026 — repository-wide Actions history and PR #298 failure diagnosis
+
+Inspected the repository-wide GitHub Actions run collection (rather than only commit-associated runs), PR #298's commit history, the exact workflow jobs and logs, current PR metadata, and the current base-to-head comparison.
+
+### Confirmed CI history
+
+- Repository Actions history contains **5,395 workflow runs**. PR #298 has multiple actual `pull_request` CI runs; the prior statement that no PR runs existed was too broad because the commit-run lookup did not surface the older PR run history.
+- Latest PR #298 run returned in the repository's first Actions page: run **5396**, ID `44230605506`, event `pull_request`, head `6eb0ec8222336819984cb624e26dd840aa555251`, completed **failure**.
+- That run's `quality` job **passed**. It completed build, disposable PostgreSQL migration/qualification steps and the repository test suite, among other isolated qualification steps.
+- Its `web-quality` job failed only at `npm audit --audit-level=moderate`. The web build and all 26 web tests passed. Audit failed on five high-severity paths resolving to picomatch advisory `GHSA-fc5q-39xc-vjpf`; npm proposed `npm audit fix --force`, which would install Vitest 3.1.4 as a breaking change. Do not apply that force upgrade.
+- An earlier PR run **5395**, ID `44229443518`, completed successfully for head `8e2e2799c84bb599aa53aee031513b851f5f9b6b`. Both `quality` and `web-quality` passed; its web audit used the then-present step named `Audit web dependency tree with verified picomatch mitigation`. This is historical CI evidence for that earlier tree, not for the later ledger-name guard.
+- The exact source commits for the ledger-name guard (`90d0608...`, `cf8e3a6...`, `29e6b91...`) and the locally tested source head `5d090283...` have **no matching PR-triggered workflow runs** returned by commit-run lookup. The later commits are documentation-only. Thus the new ledger-name change has local build + 17/17 focused tests, but no CI validation yet.
+- The PR workflow's declared trigger on base `main` and path filters are compatible with source changes in this PR. The specific reason later source commits have no associated workflow run is **not established** by available evidence. Do not guess or alter workflow configuration to mask it.
+
+### Corrected branch / PR state
+
+- Current PR #298 head: `7d502c4a97323b19c0b2700f84b32d05d68c7a5a`; branch `feat/actor-gateway-production-migration-batches`.
+- Current base `main`: `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- Exact base-to-head comparison reports **207 commits ahead / 0 behind** (not the earlier approximate 205 ahead / 4 behind; that earlier count was incorrect).
+- PR remains **open, draft, unmerged, mergeable=false**, 31 changed files, no approval/review threads returned in prior inspection.
+- The PR body still states CI must verify TypeScript compilation and batch-selector tests. The local ledger-name tests add further validation not yet evidenced in CI.
+
+No CI was dispatched or rerun, no workflow file or dependency was changed, and no production DB, migration, role/ACL, secret, Render service, deployment, or paid resource was touched. The production execution-batch manifest remains empty and production migration execution remains fail-closed.
+
+### Next bounded action
+
+Determine why the existing workflow is not producing a new PR run for the recent source commits, using the PR event/timeline and repository Actions metadata. Do not rerun the known failing historical run: its failure is the web dependency audit, not the migration code. Once trigger cause is known, obtain exact-head CI for the current PR source tree without weakening or bypassing the dependency audit.
