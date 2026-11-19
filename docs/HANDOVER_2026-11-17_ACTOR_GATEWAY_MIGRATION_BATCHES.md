@@ -3373,3 +3373,16 @@ Resumed from the existing migration-batches handover and inspected PR #298, its 
 - The PR currently changes 31 files. The execution-batch manifest remains empty; production migration execution remains fail-closed.
 
 No source, workflow, PR metadata, branch ref, production database, migration ledger, role/ACL, secret, Render setting, deployment or local checkout was changed during this inspection. No CI run was triggered. Next work should address why the existing PR CI is not surfacing for the non-document source changes, then qualify the current PR head without repeating the already-passed local build and 17 tests unless source changes.
+
+
+
+## 20 November 2026 — CI trigger configuration narrowed; run-history evidence still required
+
+Follow-up inspection compared the CI workflow on the PR head with the workflow on the PR base (`main`), rather than inferring trigger eligibility from the feature-branch copy alone.
+
+- The base-branch `.github/workflows/ci.yml` already has a `pull_request` trigger targeting base branch `main`; the feature branch name itself does not need to appear in that list.
+- Its `paths-ignore` excludes Markdown/docs-only changes, but PR #298's changed-file set includes runtime TypeScript, tests, configuration, SQL and workflow files. The PR is therefore not obviously excluded by the declared branch/path filters.
+- The PR head advanced during this inspection: current head is now `563c54b217266100d20fd3c83bbf41973d9eab17` (the handover-only commit just recorded). Prior local test evidence remains tied to source commit `5d090283...`; the later PR commits are documentation-only.
+- The available GitHub connector's commit-run lookup returned no PR-triggered workflow runs for the tested source commit, the local-test commit, or the then-current PR head. This lookup is not sufficient to conclude that GitHub Actions is disabled or that no run exists in the repository's full Actions history.
+
+Conclusion: the workflow's declared PR trigger should cover this PR, so the earlier suggestion that the source branch is omitted from the workflow filter is not a valid explanation. Root cause of missing run evidence remains undetermined. Before changing workflow configuration or dispatching a new run, inspect the repository's actual Actions run history for PR #298 (workflow `CI`, event `pull_request`) and any skipped/cancelled run annotations. No workflow file or repository Actions setting was changed, and no run was dispatched.
