@@ -3340,3 +3340,20 @@ Corrected on the existing PR #298 branch (no new branch or PR):
 - `src/db/migration-checksum.test.ts` adds positive, mismatched-name rejection and retained-historical-row cases. Ledger rows whose versions are absent from the repository remain governed by the existing retained-history/provenance audit; this guard does not incorrectly reject legitimate retained history.
 
 Source head after these sequential GitHub contents commits: `29e6b912327b4160b811ec882ded6abbc366611a`. Exact-head CI has not yet been observed for this change; do not call it validated until the new run completes. No migration SQL, production ledger, database, role/ACL, secret, Render service, deployment, payment state or local machine was changed. The production batch manifest remains empty.
+
+
+## 20 November 2026 — exact-head local validation of migration ledger-name guard
+
+The user checked out the fetched PR #298 branch head directly in the existing local validation checkout `C:\GHM-pr298-validation` (detached at the exact remote commit; no branch was created):
+
+- Exact tested commit: `5d09028368438502a3fc2ef4b12e79350caaf699` (`docs: record migration ledger name integrity guard`).
+- `npm run build`: passed (TypeScript compilation).
+- `node --require ./scripts/test-env.cjs --test dist/db/migration-checksum.test.js`: **17/17 passed**.
+- The two newly added assertions passed: matching applied-ledger names are accepted and mismatched names are rejected; absent historical ledger versions remain governed by the retained-history audit.
+- The preceding 15 migration checksum/inventory/allowlist tests also passed.
+
+This is local build/unit-test evidence for the exact PR head, not a GitHub Actions exact-head CI result and not a production database qualification. The checkout was detached intentionally at the remote PR head; a plain `git pull` from that state is not applicable until a branch/upstream is selected. The user was correctly directed to this existing PR #298 checkout, and the exact remote commit was then tested.
+
+PR #298 remains draft/open/unmerged on `feat/actor-gateway-production-migration-batches`. The production batch manifest remains empty; do not execute migrations or change production database state. No source change, migration execution, production SQL, role/ACL, secret, Render setting, deployment, or new branch/PR was made for this validation checkpoint.
+
+**Next validation:** inspect the latest exact-head GitHub Actions status for `5d09028368438502a3fc2ef4b12e79350caaf699`; do not repeat these successful local build and 17 unit tests unless the source head changes.
