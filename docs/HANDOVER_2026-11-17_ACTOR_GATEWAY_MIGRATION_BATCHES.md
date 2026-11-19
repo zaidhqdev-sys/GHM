@@ -3294,3 +3294,12 @@ QuoteFlow CI #251 (`44425183267`) has now passed both TypeScript typecheck and t
 The side-by-side Android preview run #137 (`44425183459`) has passed dependency installation, Android project generation and package-ID isolation; Gradle APK assembly remains in progress, with package verification and artifact upload pending at last poll. Keep Android qualification open until its final result and artifact are checked.
 
 QuoteFlow's own `HANDOVER.md` records the detailed CI history and exact corrections. No issuer endpoint has been provisioned; no Render, production database, secret, user data or production deployment was changed.
+
+
+### QuoteFlow Android preview result — build passed; artifact quota blocked delivery (19 November 2026)
+
+QuoteFlow PR #25 Android preview workflow run ID `44425183459` (workflow run number 138) completed its Gradle build successfully and verified the APK package identity as `com.zaidtechnologies.quoteflow.preview`. The final GitHub Actions artifact upload failed because the repository's Actions artifact storage quota was reached; GitHub says quota usage is recalculated every 6–12 hours. No APK artifact was produced for download.
+
+QuoteFlow CI run ID `44425183267` (workflow run number 252) passed TypeScript and the full Jest suite. Therefore code CI, Android compilation and preview package-ID verification are successful, while APK artifact distribution remains blocked. Do not report an APK as delivered. No existing artifacts were deleted and no billing/storage settings were changed.
+
+At the latest comparison, QuoteFlow PR #25 branch was 201 ahead / 0 behind its `main`; the GHM migration branch was 197 ahead / 4 behind GHM `main`. PR #25 remains open/unmerged. This does not clear the separate GHM production migration, Auth Issuer hosting, database authority, backup/recovery or Render prerequisites.
