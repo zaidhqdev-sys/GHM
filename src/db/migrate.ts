@@ -7,7 +7,7 @@ import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSq
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
-import { findOutOfOrderPendingMigration } from './migration-order';
+import { assertAppliedMigrationNames, findOutOfOrderPendingMigration } from './migration-order';
 import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 import productionMigrationBatches from '../../config/production-migration-batches.json';
@@ -196,8 +196,9 @@ const migrate = async (): Promise<void> => {
     }
 
     const applied = ledgerTable
-      ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
-      : { rows: [] as Array<{ version: string; checksum: string }> };
+      ? await client.query<{ version: string; name: string; checksum: string }>(`SELECT version, name, checksum FROM ${ledgerTable}`)
+      : { rows: [] as Array<{ version: string; name: string; checksum: string }> };
+    assertAppliedMigrationNames(migrations, applied.rows);
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
     if (approvedTarget.databaseName === 'ghm_db') {
       assertProductionPendingMigrationAllowlist(
