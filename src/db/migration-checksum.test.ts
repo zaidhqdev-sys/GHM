@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
-import { findOutOfOrderPendingMigration } from './migration-order';
+import { assertAppliedMigrationNames, findOutOfOrderPendingMigration } from './migration-order';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 import {
   migrationSqlChecksum,
@@ -157,4 +157,28 @@ test('production migration allowlist rejects duplicate versions', () => {
     ),
     /contains duplicate version/,
   );
+});
+
+
+test('applied migration ledger names must match the repository migration for that version', () => {
+  const migrations = [
+    { version: '20261110210000', name: 'actor_gateway_guard' },
+    { version: '20261110220000', name: 'actor_gateway_identity_read' },
+  ];
+  assert.doesNotThrow(() => assertAppliedMigrationNames(migrations, [
+    { version: '20261110210000', name: 'actor_gateway_guard' },
+  ]));
+  assert.throws(
+    () => assertAppliedMigrationNames(migrations, [
+      { version: '20261110210000', name: 'different_migration_name' },
+    ]),
+    /Migration ledger name mismatch for 20261110210000: database=different_migration_name, repository=actor_gateway_guard/,
+  );
+});
+
+test('applied historical ledger rows absent from the repository remain governed by retained-history audit', () => {
+  assert.doesNotThrow(() => assertAppliedMigrationNames(
+    [{ version: '20261110210000', name: 'current_migration' }],
+    [{ version: '20260901000000', name: 'retained_historical_migration' }],
+  ));
 });
