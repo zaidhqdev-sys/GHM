@@ -3285,3 +3285,12 @@ The first QuoteFlow CI #244 run (`44422791748`) failed during TypeScript typeche
 The origin normalizer was also corrected and the source re-fetched. Latest corrected QuoteFlow source commit is `8fc34181356c5684eb1f009abf8b27e69b00052f`; latest QuoteFlow branch handover commit at the time of recording is `8fbdf4b0c4148514f884f6bab94fa1b9c4c40d27`.
 
 The failing run #244 was on the earlier merge head and is not a validation pass. The Android preview #130 was still assembling for an earlier source head at last poll. No successful exact-head typecheck/Jest/Android preview result has been observed after corrections. Keep this work in pending qualification status.
+
+
+### QuoteFlow PR #25 validation checkpoint — 19 November 2026
+
+QuoteFlow CI #251 (`44425183267`) has now passed both TypeScript typecheck and the full Jest suite after the split Authentication Issuer / Resource API routing corrections. This is the first complete CI pass for the corrected implementation.
+
+The side-by-side Android preview run #137 (`44425183459`) has passed dependency installation, Android project generation and package-ID isolation; Gradle APK assembly remains in progress, with package verification and artifact upload pending at last poll. Keep Android qualification open until its final result and artifact are checked.
+
+QuoteFlow's own `HANDOVER.md` records the detailed CI history and exact corrections. No issuer endpoint has been provisioned; no Render, production database, secret, user data or production deployment was changed.
