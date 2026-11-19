@@ -3357,3 +3357,19 @@ This is local build/unit-test evidence for the exact PR head, not a GitHub Actio
 PR #298 remains draft/open/unmerged on `feat/actor-gateway-production-migration-batches`. The production batch manifest remains empty; do not execute migrations or change production database state. No source change, migration execution, production SQL, role/ACL, secret, Render setting, deployment, or new branch/PR was made for this validation checkpoint.
 
 **Next validation:** inspect the latest exact-head GitHub Actions status for `5d09028368438502a3fc2ef4b12e79350caaf699`; do not repeat these successful local build and 17 unit tests unless the source head changes.
+
+
+
+## 20 November 2026 — PR #298 exact-head CI and branch-state inspection
+
+Resumed from the existing migration-batches handover and inspected PR #298, its current head branch, changed-file inventory, review state, workflow configuration and commit checks before taking further action.
+
+- PR #298 remains **open, draft and unmerged**; head branch `feat/actor-gateway-production-migration-batches`; current PR head `aa23651df84b39cd8db196ef907ce0d5ef8ec05b`.
+- The exact local build/unit-test commit remains `5d09028368438502a3fc2ef4b12e79350caaf699`. The ledger-name source change itself is at `29e6b912327b4160b811ec882ded6abbc366611a`; subsequent commits through the current PR head are handover/documentation updates.
+- Read-only inspection confirms the current branch still contains the ledger-name guard: `src/db/migrate.ts` selects `version, name, checksum`, and `src/db/migration-checksum.test.ts` contains the new applied-ledger name assertions.
+- No PR-triggered GitHub Actions workflow runs or commit status checks were returned for the source commit `29e6b912...`, the locally tested commit `5d090283...`, or current PR head `aa23651...`. Therefore **exact-head GitHub Actions CI is not evidenced**; the successful local build and 17/17 unit tests remain the only validation evidence for this change. Do not describe CI as passed.
+- The existing `.github/workflows/ci.yml` targets pull requests into `main` and ignores documentation-only changes. The branch includes runtime source changes as well as docs, but the connector returned no matching PR workflow run/status for the inspected commits. No workflow was dispatched or re-run during this inspection.
+- Current branch comparison: **205 commits ahead / 4 behind** `main` (diverged). PR metadata reports `mergeable: false`; no reviews and no inline review threads were returned. This is not a merge-readiness signal; preserve draft/unmerged state.
+- The PR currently changes 31 files. The execution-batch manifest remains empty; production migration execution remains fail-closed.
+
+No source, workflow, PR metadata, branch ref, production database, migration ledger, role/ACL, secret, Render setting, deployment or local checkout was changed during this inspection. No CI run was triggered. Next work should address why the existing PR CI is not surfacing for the non-document source changes, then qualify the current PR head without repeating the already-passed local build and 17 tests unless source changes.
