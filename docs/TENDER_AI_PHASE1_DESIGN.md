@@ -1,7 +1,7 @@
 # ZAID Tender AI — GHM Phase 1 design (tracking, saved summaries, audit)
 
 **Branch:** `feat/tender-ai-phase1`, created from GHM `main` at `b73839b2` (2026-11-18).
-**Batch 2 (tracking read/write) is implemented on this branch: see §8.**
+**Batch 2 (tracking) and batch 3 (saved analyses) are implemented on this branch: see §8 and §9.**
 **Status:** development approved by the owner for this branch only (2026-11-18). **Nothing here is merged, applied to any database, deployed, or authorized for production.** Migration reconciliation (42+ pending production migrations) remains unresolved; the tender migrations must not enter `main` until it is.
 **Tender AI side:** repo `zaidhqdev-sys/zaid-tenderai`, branch `feat/tender-web-app`, head `d0c7bf5` (version-2 projection contract, read and write validators).
 
@@ -112,3 +112,52 @@ SQL executes at all; plpgsql semantics (composite-type handling in `tender_track
 `hmac` availability, `jsonb` context equality with real parameter binding); RLS/privilege effects; the triggers actually
 rejecting UPDATE/DELETE/TRUNCATE; `ON DELETE RESTRICT`; check constraints; real nonce replay; concurrency on the caps.
 The replay and tamper tests in `tender-tracking-reader.test.ts` exercise a *model* of the verifier, not the SQL.
+
+## 9. Batch 3 outcome (saved analyses)
+
+Implemented: migration `20261119100000_create_tender_analysis_and_extend_audit.sql`; hand-written version-2 validator
+`src/tender/analysis-contract.ts`; reader `tender-analysis-reader.ts`; four Gateway routes under
+`/v1/businesses/:businessId/tenders/analyses`; Resource API client, router and `tender_analysis` registry entry; privilege
+checker update; parity fixtures; tests. **None of the SQL has run on any PostgreSQL database.**
+
+* **Operations:** `tender.analysis.create|list|get|delete`. Create/list/get: any active member. Delete: owner or
+  administrator, permanent (there is no archive and no update for analyses). Authorization is repeated inside each SQL
+  function; a non-member or nonexistent Business is `42501` -> 403 for every operation.
+* **Contract:** exact version 2. Strict keys everywhere; nothing is defaulted, converted or repaired. Contradictory
+  coverage, evidence outside read text, a truncation flag that contradicts the counts, and any unknown key are refused
+  (`400`). `unsupported` is refused with its own status (`422`) and has no representation in the schema (CHECKs allow only
+  `complete`/`incomplete`). Over 12 KiB (projection) or 16 KiB (request) is `413`. All of this is decided in the Gateway
+  **before** any database call.
+* **Writes validated, reads validated:** the reader validates every result against version 2 **before COMMIT**, so a database
+  that returns anything outside the contract (or a payload different from the one sent) rolls back rather than persisting.
+  The Resource API client validates responses again. Stored columns must equal what the payload says.
+* **Preserved semantics:** `coverageStatus`, `chunksTotal`, `chunksProcessed` and `truncatedForStorage` are *derived in SQL
+  from the payload* (never taken as separate inputs) and pinned by CHECKs; complete <=> all parts processed. The row is
+  immutable (trigger, `55000`); the only permitted change is the foreign-key action that unlinks the tracking record when
+  that record is deleted. A saved incomplete analysis therefore cannot become complete.
+* **Second line in SQL:** `ghm.tender_analysis_result_problem` (IMMUTABLE, used by a CHECK and by the create function)
+  refuses unexpected keys, wrong version/source, bad counts, a chunk list that disagrees with the totals, a processed count
+  that disagrees with the outcomes, status/count contradictions and a lying truncation flag. It does not replace the
+  Gateway validator (evidence offsets, quote rules and dates are validated only there).
+* **Size note:** `jsonb::text` has spaces after separators, so the SQL ceiling is a sanity limit (20,000 bytes); the compact
+  12 KiB limit is enforced by the Gateway validator.
+* **Linking:** an optional tracking id must belong to the same Business; one that belongs to another Business is
+  indistinguishable from a missing one (`404` after authorization). Deleting a tracking record keeps the analysis, unlinked.
+* **Caps:** 100 per Business under a per-Business advisory lock.
+* **List:** metadata only (no payload), bounded to 50; the payload is returned by the single-record read.
+* **Audit (Q12/Q13):** `tender.analysis.create` and `tender.analysis.delete` are separate event types written by the same
+  internal helper in the same transaction as the change. Metadata is allow-listed: coverage status, chunk counts, truncation
+  flag, document hash, linked flag; never summary text, quotes or requirements. The audit table has no foreign key to the
+  analysis, so deleting an analysis leaves its history intact; nothing cascades. Denials are logs only. The audit table's
+  triggers (UPDATE/DELETE/TRUNCATE rejected) are unchanged; only its two CHECK lists were extended.
+* **Assertion verifier:** widened to exactly the four analysis operations (same signature, so owner and ACL are kept).
+* **Privilege checker:** accepts neither / tracking only / tracking plus analysis; refuses analysis without tracking, any
+  partial set, extras and internal helpers.
+
+### Not yet proven (needs a disposable PostgreSQL run, B5)
+
+The same list as batch 2, plus: that `tender_analysis_result_problem` behaves as written on real jsonb (including its use in
+a CHECK), that the CHECK on denormalised columns holds for every fixture's valid body, that the immutability trigger lets the
+`ON DELETE SET NULL` action through, that a CHECK-constraint replacement on a populated audit table works, that a
+12 KiB-compact payload fits the 20,000-byte jsonb ceiling in practice, real nonce replay and concurrency on the cap.
+Static contract tests, fake-pool tests and a syntax-only parse are **not** qualification.

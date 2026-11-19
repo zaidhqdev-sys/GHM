@@ -109,6 +109,9 @@ test('a database result that differs from what was sent rolls back BEFORE commit
   const bad: Record<string, unknown>[] = [
     recordFor(input, { result: flipped, coverageStatus: 'complete' }),
     recordFor(input, { coverageStatus: 'complete' }),
+    // A perfectly valid payload that is simply not the one that was sent.
+    recordFor(input, { result: { ...input.result, summary: 'A different but valid summary.' } }),
+    recordFor(input, { result: { ...input.result, omitted: { ...input.result.omitted, requirements: 0 }, requirements: input.result.requirements.slice(1) } }),
     recordFor(input, { chunksProcessed: input.result.coverage.chunksTotal }),
     recordFor(input, { truncatedForStorage: !input.result.truncatedForStorage }),
     recordFor(input, { businessId: 99 }),
