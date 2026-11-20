@@ -3705,3 +3705,59 @@ Re-read the migration-prefix handover and current branch source before tracing t
 The inspected current Auth routes do not call the broad account-ID revoke/change/disable functions removed by the revocation migrations. Token-bound recovery/reset and conditional rehash map to the intended narrow SQL functions. External identity lookup remains supported through a narrow function after table access revocation. Do not weaken these revocations.
 
 Keep the remaining function-definition/grant review and production composition verification as explicit qualification tasks. No production DB, role/ACL, SQL migration, secret, Render service/configuration/deployment, PR, branch ancestry or payment state was changed. Only this handover record was updated.
+
+
+## 20 November 2026 — canonical Auth SQL grants and Authentication Issuer composition: critical direct-call findings
+
+Re-read the latest Auth route/persistence reconciliation and inspected the canonical SQL definitions in `20260921130000_create_auth_runtime_functions.sql`, subsequent refresh/replay and logout migrations, the QuoteFlow reset migrations, `src/auth/foundation/persistence.ts`, `src/auth/password-recovery.ts`, `src/auth-issuer/server.ts`, `src/auth-issuer/app.ts`, and the Auth HTTP router. This is a source/privilege-contract review; no production ACL was queried or changed.
+
+### Confirmed SQL definitions and effective grants in repository migrations
+
+The original Auth foundation migration explicitly grants `ghm_runtime` EXECUTE on the following SECURITY DEFINER functions:
+
+- `auth_lookup_password_by_normalized_email(text)`
+- `auth_create_session_with_refresh(bigint,bytea)`
+- `auth_set_password(bigint,text,text,text,integer,integer,integer)`
+- `auth_issue_recovery(bigint,bytea,timestamptz)`
+- `auth_rotate_refresh(bytea,bytea)`
+- `auth_revoke_by_refresh_hash(bytea,text)`
+- `auth_lookup_external_identity(text,text)`
+- `auth_revoke_all_sessions_for_account(bigint,text)`
+- `auth_lookup_quoteflow_migration_reset_enrollment(text)`
+- `auth_complete_quoteflow_migration_reset(bytea,text,integer,integer,integer)`
+
+Later migrations explicitly revoke runtime execution from the broad account-ID `auth_revoke_session`, `auth_change_password`, and `auth_disable_account` functions; remove runtime table/sequence access to `account_external_identity`; and revoke external identity link/bootstrap. They do **not** revoke the original direct grants on `auth_set_password`, `auth_create_session_with_refresh`, or `auth_issue_recovery` in the inspected branch history.
+
+### Critical security finding: shared runtime can call account-ID Auth primitives directly
+
+Three retained SECURITY DEFINER functions accept caller-controlled account IDs or caller-selected token hashes without independently proving the authentication event:
+
+1. `auth_set_password(account_id,...,password_hash,...)` writes/activates a password credential for any existing account ID. It has no actor/session/token proof in its SQL body. A caller with EXECUTE can set a chosen password hash directly, bypassing the HTTP password-reset flow and its token/email checks.
+2. `auth_create_session_with_refresh(account_id,refresh_hash)` creates a new session for any active account ID and accepts the caller's refresh-token hash. The SQL checks only that the account exists and is active; it does not prove the caller authenticated as that account. A caller can choose a token/hash pair it knows and create an authenticated session for another account.
+3. `auth_issue_recovery(account_id,token_hash,expires_at)` inserts a recovery credential for any existing account ID. It does not check active account/credential state, normalized email, or an authorization proof, and the caller chooses the token hash. A caller can choose a token whose raw value it knows and then attempt the reset path.
+
+These are direct database API authority gaps, not merely an application-level anti-enumeration concern. The application currently calls them only after its own login/registration/recovery checks, but a compromised or otherwise untrusted shared `ghm_runtime` database principal can invoke granted SECURITY DEFINER functions without going through those services. The earlier observation about recovery issuance was therefore understated: the issue is broader and includes password-setting and session creation.
+
+### Required security design direction (not implemented here)
+
+- Revoke direct `ghm_runtime` EXECUTE on these account-ID primitives; do not leave the shared Resource API database principal with direct credential/session authority.
+- Provide the narrow Auth Issuer principal with only the exact operations it needs, after separately qualifying the issuer role's LOGIN/NOINHERIT/membership/SET/INHERIT constraints and DB function allowlist. Do not assume the intended `ghm_auth_issuer` principal currently has grants; its live production ACL remains unverified.
+- Where internal SQL functions are called from higher-level SECURITY DEFINER functions (for example QuoteFlow reset completion calling `auth_set_password`), preserve owner-controlled internal composition while removing direct application-role EXECUTE. Verify ownership and PostgreSQL function EXECUTE semantics in disposable qualification tests before finalizing grant changes.
+- Prefer high-level functions that bind account identity to a verified credential/session/recovery token inside SQL, rather than granting a collection of low-level account-ID primitives to the shared runtime.
+- Add direct-call adversarial tests using the shared runtime principal: attempt password replacement, session creation and recovery issuance for a different account without a valid authentication/recovery ceremony; each must be denied. Also test intended Auth Issuer and QuoteFlow reset paths continue to work.
+- Reconcile the exact function allowlists in `src/db/runtime-database-privileges.ts` and `src/auth-issuer/database-privileges.ts` with the revised grants. A source migration grant alone is not enough to establish effective production permissions.
+
+### Authentication Issuer composition finding
+
+- `src/auth-issuer/server.ts` constructs `PostgresAuthPersistence`, the GHM Auth service, password-reset service and QuoteFlow migration-reset completion service.
+- It does **not** construct or inject `PasswordRecoveryService` or `QuoteFlowMigrationResetRecoveryService`; both are optional in `AuthIssuerAppDependencies`. The issuer app passes the optional dependencies through to `registerAuthRoutes`.
+- `src/auth/password-recovery.ts` exists, but no delivery adapter/service composition was found in the inspected issuer server. Consequently the password recovery request route and QuoteFlow migration reset request route cannot be assumed operational from the current issuer composition. Verify whether this is intentionally disabled pending delivery/provider integration or an incomplete wiring task; do not invent or enable a mail provider as part of this review.
+- The ordinary Resource API `src/server.ts` explicitly calls `createApp({ authRoutesEnabled: false })`, matching the decision that Auth lifecycle routes belong to the isolated Authentication Issuer. This is correct isolation direction, but it does not cure the underlying SQL EXECUTE grants.
+
+### Qualification disposition
+
+This is a **critical pre-deployment security qualification finding**. The original Auth SQL grants are too broad for a shared runtime principal. Do not mark the Auth database privilege map complete, do not proceed to production deployment, and do not weaken the direct-call tests. Next task: inspect both runtime and Auth Issuer function allowlist implementations and the exact current migrations/PR history for any intended later grant correction, then prepare a narrowly scoped migration + adversarial disposable-PostgreSQL tests on the existing PR branch. Do not alter production ACLs.
+
+The Auth recovery/issuer composition gap should be recorded separately from SQL authority: even after grants are corrected, the two recovery-delivery services need an explicit, reviewed composition decision.
+
+No source code, SQL migration, test, manifest, PR state, branch ancestry, production DB/ACL, credential, secret, Render service/form/deployment, or paid resource was changed. Only this handover record was updated.
