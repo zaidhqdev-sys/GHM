@@ -873,3 +873,29 @@ Downloaded and inspected the `ghm-test-suite-diagnostics` artifact. The sole fai
 Corrected the regex to match the exact SQL signature. No SQL, ACL, migration, production DB, secret, deployment, paid resource or PR #298 change. PR #300 remains draft/unmerged.
 
 Next CI must pass the complete test suite and then run the dedicated signed Business Capability PostgreSQL qualification. The matcher correction is not yet CI-validated.
+
+
+## CI #5419 — all 1,081 unit tests pass; Business Capability lifecycle qualification passes; unrelated catalogue qualification blocks signed-create cutover test — 2026-11-20
+
+Re-read this handover, PR #300, PR #298 and the feature branch before inspecting run #5419 (ID `44679651001`, commit `9d7985944aba0f811accb616769211c131db8dd2`).
+
+Confirmed:
+- `web-quality`: PASS.
+- Build, all migrations on disposable PostgreSQL 18, isolated Auth Issuer and Actor Gateway principals, Actor Gateway worker smoke, Argon2 compatibility and storage provider qualification: PASS.
+- Node test suite: `1,081 passed, 0 failed`. This includes the corrected signed Business Capability allowlist matcher and the complete 28-operation assertion allowlist static contract.
+- Campaign/directory-review signed Actor Gateway PostgreSQL qualification: PASS.
+- Business Capability lifecycle and two-session assertion replacement qualification: PASS. The log explicitly reports `GHM BUSINESS CAPABILITY LIFECYCLE RUNTIME QUALIFICATION: PASS`, including runtime INSERT/UPDATE/DELETE denial checks and assertion replacement serialization.
+- The next existing step, `qualify:capability-catalogue-governance`, failed and caused later cutover steps to be skipped, including `Qualify Business Capability signed gateway cutover on disposable PostgreSQL`.
+
+Exact unrelated failure: the existing capability catalogue governance script successfully passed Gateway admin list, signed assertion anti-forgery/replay/context binding, admin draft creation and role separation. It then attempted `CapabilityServiceImpl.createDraft(admin, ...)` using the runtime repository pool; PostgreSQL rejected `ghm.create_capability_draft` with SQLSTATE 42501 (`permission denied for function create_capability_draft`) at script line 148. This is the pre-existing system-admin Capability catalogue governance qualification, not the new Business Capability signed-create function. Do not weaken runtime ACLs or change the new Business Capability grants to work around it.
+
+Current scope status:
+- The new migration and wrapper have been applied successfully in CI's disposable PostgreSQL database (all migrations step passed).
+- Static contract and all 1,081 tests pass.
+- Business Capability lifecycle and two-session assertion replacement tests pass.
+- The dedicated signed Business Capability Gateway cutover qualification has NOT run; its workflow step was skipped due to the preceding unrelated catalogue-governance failure.
+- No full signed-create SQL/HMAC/ACL qualification pass is claimed.
+
+No production or local DB changes, no deployment, no paid resources, no secret changes and no PR #298 modifications. PR #300 remains draft/unmerged.
+
+Next task: inspect the provenance and intended DB principal for the capability catalogue governance script and its migrations/PRs. Determine whether the script's use of the runtime pool is stale relative to the current Gateway-only draft-create contract. Correct only that qualification setup if supported by the repository history and migration ACLs; never grant runtime EXECUTE or weaken least privilege merely to make CI green. Then rerun CI and reach the dedicated Business Capability signed Gateway cutover test.
