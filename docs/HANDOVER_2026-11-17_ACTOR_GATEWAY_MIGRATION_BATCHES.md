@@ -5136,3 +5136,36 @@ Next task: add a focused migration contract test, then extend the existing `qual
 ### Cost / production boundary
 
 No database was created, no migration was applied, no production execution or deployment occurred, no CI was dispatched, and no paid/recurring resource was added. PR #298 remains untouched and separate.
+
+## Signed Business Capability create — contract and disposable harness extended — 2026-11-20
+
+Continued implementation on `feat/signed-business-capability-create`; PR #298 remains untouched.
+
+### Changes committed on feature branch
+
+- Added `src/db/actor-gateway-business-capability-create-migration-contract.test.ts` to verify canonical identity/unique constraint assumptions, append-only plain INSERT, exact signed context, active Business and owner/admin checks, selectable catalogue checks, server-derived lifecycle/provenance, and least-privilege EXECUTE grants.
+- Registered the new compiled contract test in the package test command.
+- Extended `scripts/qualify-business-capability-gateway-cutover-postgres.mjs` to apply the new migration only to its already enforced disposable localhost PostgreSQL target and qualify:
+  - signed create and actor attribution;
+  - normalized description/source reference;
+  - initial active/self-declared/unverified state;
+  - active duplicate rejection;
+  - withdrawn duplicate rejection without reactivation;
+  - non-management member denial;
+  - signed-context payload tampering denial;
+  - forged HMAC denial;
+  - Resource API runtime denial from executing the new signed wrapper.
+- Corrected Business ID validation to preserve the full positive JavaScript safe-integer range (up to 9007199254740991), rather than an unnecessarily restrictive 15-digit ceiling.
+
+### Review notes
+
+- Harness deliberately does NOT assert direct Resource API INSERT or identity-sequence denial yet. Those legacy grants are still in place and must remain until Gateway HTTP + Resource API wiring is complete and a separate cutover is qualified.
+- The SQL migration has not been run against any PostgreSQL instance in this environment. The harness extension is authored but not executed. No test/CI result is claimed.
+- Additional runtime cases still to add/verify in disposable PostgreSQL: expired assertion, replay nonce, invalid payload/date bounds, inactive Business, inactive/non-selectable Capability, rollback/no partial write, and exact runtime INSERT/sequence privilege matrix after the later separate cutover.
+- Review of the current source indicates the new function uses the canonical table, existing HMAC v2 verifier, actor-gateway session principal, owner/admin membership and selectable catalogue checks. Do not treat static contract tests as proof of PostgreSQL behavior.
+
+### Next task
+
+Review the extended harness and SQL carefully, add the remaining adversarial cases, then execute only on the existing `ghm_disposable_test` localhost harness if its already-provisioned credentials and instance are available. Do not create or relaunch a database. If the disposable instance is unavailable, stop and record the qualification as blocked rather than substituting production or a paid database. After SQL qualification, add Gateway reader/HTTP/Resource API forwarding and fail-closed tests.
+
+No production migration, production database access, deployment, Render modification, secret change, paid service, new database, recurring process or CI dispatch occurred.
