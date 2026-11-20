@@ -234,3 +234,12 @@ Compared exact main script (blob b53ddc1875186202307bfe5c96d233de665db906) with 
 Prepared resolution: restore the conflicted script worktree from the current feature HEAD (not the index), then insert main's missing Gateway non-admin draft-create denial immediately after the feature's service-layer non-admin draft-create denial. Keep helper-mapped camelCase values in helper-based calls and raw snake_case values only for raw gatewayCall result rows. Then syntax-check and verify no conflict markers. This avoids manually stitching dozens of repeated lifecycle call blocks.
 
 Do not stage the script until the local insertion, syntax check, conflict-marker check, and diff review pass. No merge commit, push, tests, production operation, or deployment performed in this task.
+## 21 November 2026 — catalogue script insertion guard correctly stopped; pattern corrected
+
+The user attempted the prior PowerShell insertion after restoring the script from origin/feat/signed-business-capability-create. The script restore succeeded, but the exact-text guard found zero matches and threw before writing. Therefore no catalogue script edit occurred. This is a safe no-change outcome.
+
+Re-inspected exact feature-branch script blob d90148189ae683ef1ec1605cd9b4f1733f433ab3. The service denial block is formatted as a four-line expectReject call (not the five-line shape used by the previous needle). Immediately afterward, the script begins the runtime direct legacy-create denial. The Gateway non-admin list denial exists earlier, but a direct Gateway non-admin draft-create denial is absent.
+
+PR #300 remains open/not draft at head 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700 and GitHub still reports mergeable=false. Runtime implementation and test are staged as resolved mainline files; catalogue script remains the sole unresolved path. Do not stage the script or create a merge commit until corrected insertion, node --check, conflict-marker scan, and diff review pass.
+
+Next local command should use a whitespace-tolerant regex anchored to the literal service.createDraft call and exact service denial marker, require exactly one match, then insert a gatewayCall(businessId, 'capability.create', 'SELECT * FROM ghm.gateway_create_capability_draft($1,...,$11)', [marker-derived values]) expectReject with marker GATEWAY NON-ADMIN DRAFT DENIAL PASS and expected 'System administrator permission required'. No edits made by assistant.
