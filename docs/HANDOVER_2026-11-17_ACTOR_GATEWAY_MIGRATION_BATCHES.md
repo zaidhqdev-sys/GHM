@@ -4013,3 +4013,48 @@ The owner's current decision remains one dedicated Render Free Actor Gateway Web
 - The first safe production prefix is not selected. The existing migration dependency, route readiness, migrator authority, live-ledger and recovery evidence gates remain in force.
 - CI #5397 remains the latest exact-branch source/qualification evidence for its tested code SHA; the later handover-only commits do not require another CI run.
 - No production SQL, database/ledger/role/ACL, credential/secret, Render service/configuration/deployment, payment state, migration, inventory, manifest, PR state or branch ancestry was changed. Only this handover record was extended.
+
+
+## 20 November 2026 — Business Identity INSERT ACL PR #296 cross-qualification
+
+Before this task, re-read the current PR #298 migration handover and refreshed PR #298, #296, #297, #299 plus the live compare against `main`. Then inspected PR #296's exact patch, its migration, migration-contract test, Business Identity repository/service code and architecture grant contract. No source or ACL changes were made.
+
+### Refreshed branch/PR state
+
+- PR #298: open, draft, unmerged; head `1c83ebcff5080a2baddb42da098ce3f4e6500735`; compare to `main` is diverged, 225 ahead / 4 behind, GitHub `mergeable=false`.
+- PR #296: open, draft, unmerged; head `5fa018304970c0e84c56b22111a7255b80fd7c60`; migration remains on its separate branch and is absent from PR #298's repository tree/inventory.
+- PR #297: open, draft, unmerged; head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; remains an overlapping alternative batch-runner implementation, not a companion merge.
+- PR #299: open, draft, unmerged; head `94a9d58894d11f0f886203af37cbd096619d447b`. Its metadata includes a populated `merge_commit_sha`, but `state=open` and `merged=false`; do not infer that it has merged. It adds authenticated Project detail/update HTTP endpoints, not a migration change.
+- No branch ancestry or PR state was changed.
+
+### PR #296 exact ACL contract — confirmed
+
+The migration `20261116200000_narrow_business_identity_runtime_insert.sql` does exactly four operations:
+1. Revoke table-level INSERT on `ghm.business` from `ghm_runtime`.
+2. Grant INSERT only on `name, slug, verification_status, is_active`.
+3. Revoke table-level INSERT on `ghm.business_membership` from `ghm_runtime`.
+4. Grant INSERT only on `business_id, account_id, membership_role, membership_status, created_by`.
+
+The current repository SQL uses exactly those columns, with fixed initial values `unverified/true` and `owner/active`; generated identity IDs and timestamp/default columns are omitted. The migration leaves SELECT, sequence, UPDATE and DELETE privileges unchanged. This matches the stated intent of the ACL change and does not accidentally broaden other privileges.
+
+### New qualification gap — contract test is static, not an effective-ACL integration test
+
+The PR #296 added test reads the migration and repository source and uses regular-expression assertions. It proves the SQL text and repository INSERT column lists agree. It does **not** execute the migration on PostgreSQL and does not prove effective ACL behavior for `ghm_runtime` (e.g. allowed inserts into the exact columns, denied inserts into omitted columns, denied table-level INSERT, and preservation of SELECT/sequence privileges).
+
+This is not a defect in the migration text and not grounds to reject the design. It is a test-evidence boundary. Before production-prefix qualification, either existing disposable-PostgreSQL ACL qualification must explicitly cover these effective grants or a focused PostgreSQL migration qualification should be added to PR #296. Avoid duplicating it if an existing qualification script already covers the same catalog and attempted-insert cases; inspect the existing database qualification suite first.
+
+### Security boundary that must not be overstated
+
+The migration header explicitly says caller authorization remains in the Business Identity repository until a separately qualified actor-bound database operation exists. The column grants narrow *which fields* the shared runtime can insert; they do not bind `account_id` or `created_by` to the authenticated actor at the database boundary. A compromised/shared `ghm_runtime` connection with direct SQL access could still attempt an INSERT using another account ID, subject to foreign keys and other constraints. Therefore:
+- Treat this PR as column-level least-privilege hardening / defense in depth.
+- Do not describe it as closing the shared-runtime actor-impersonation boundary.
+- The separate Actor Gateway / signed-assertion work remains responsible for actor-bound privileged writes.
+- Do not convert this narrow ACL PR into a broad redesign or block the migration for an actor-bound feature it explicitly does not claim to implement.
+
+### Inventory and disposition
+
+- The migration file exists only on PR #296's branch, not PR #298's branch. It is absent from the current 50-entry candidate inventory.
+- If PR #296 is merged, regenerate the entire migration inventory and reconcile all exact version/name/checksum/provenance rows against a fresh authoritative production ledger export; do not insert one entry manually.
+- The current 50-entry inventory is dated candidate evidence, not the live production queue. The execution manifest remains empty.
+- PR #296's earlier exact-head CI pass recorded in its handover applies to an earlier code SHA, not automatically to current head `5fa0183...`; current exact-head CI must be checked before calling its latest code green.
+- No production SQL/ACL/role/database/ledger, migration inventory/manifest, credentials/secrets, Render service/configuration/deployment, payment state, PR status, branch ancestry or application source was changed. Only this handover was extended.
