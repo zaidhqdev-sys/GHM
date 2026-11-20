@@ -53,7 +53,8 @@ test('Actor Gateway default ACL verifier rejects EXECUTE granted to any non-owne
 
 test('disposable qualification proves Actor Gateway rejects unexpected schema-scoped default grants', () => {
   assert.ok(qualificationSource.includes('actorWithUnexpectedDefault.unsafe_function_defaults'));
-  assert.ok(qualificationSource.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO postgres'));
+  assert.ok(qualificationSource.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner GRANT EXECUTE ON FUNCTIONS TO ghm_runtime'));
+  assert.ok(qualificationSource.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO ghm_runtime'));
 });
 
 test('Actor Gateway verifier checks every SECURITY DEFINER owner and pinned temporary-safe search_path', () => {
