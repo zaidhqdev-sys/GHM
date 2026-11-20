@@ -5743,3 +5743,23 @@ Reviewed the current pending migration dependency matrix and found the previousl
 Created docs/security/ACTOR_GATEWAY_PRODUCTION_PRIVILEGE_REMEDIATION_PLAN_2026-11-20.md on this branch. It records live evidence, distinguishes Gateway ACL, function default/path hardening, migrator bootstrap authority, ledger/recovery and application readiness blockers, and defines ordered Gates A-F. It explicitly keeps production migration manifest empty, calls for a fresh backup/current ledger, provider/bootstrap resolution of migrator membership/ACLs, safe contiguous migration sequence, schema-specific runtime default ACL disposition, exact Gateway signed wrapper grants, and route-level cutover qualification. It is design-only; no production writes, migrations, roles/ACLs, secrets, Render settings/deployments, or payment state changed.
 
 New plan commit: e6a4f467bcd2ed64ac5a661b1568ecbff432e8e2. Next implementation task is Gate C/D source correction on PR #298 with disposable PostgreSQL qualification and exact-head CI, keeping manifest [] and no production execution. Re-inspect PRs/branches/handover before next task and append a handover update afterward.
+
+
+## 20 November 2026 — Gate C source correction: supplier/profile cutovers deferred
+
+Before editing, re-read this handover, PR #298 metadata and changed-file inventory, PRs #297/#300/#301/#302, the remediation plan, dependency matrix, production pending inventory, batch manifest, the two affected migrations, signed assertion migrations, and their contract tests. PRs #301/#302 remain merged; PR #298 remains draft/open. PR #297 and #300 remain separate draft/open.
+
+Corrected the two premature automatic revocations:
+- `20261110260000_gateway_supplier_classification_cutover` now retains the legacy runtime supplier RPC grant while the additive Gateway wrapper is prepared; PUBLIC is still revoked.
+- `20261110270000_gateway_business_profile_update` now retains the legacy runtime profile RPC grant while the additive Gateway wrapper is prepared; PUBLIC is still revoked.
+- Removed the initial Gateway EXECUTE grants on the unsigned ID-only wrappers in both migrations. The later signed assertion migrations `20261111030000` and `20261111040000` create/replace the signed signatures and grant only those signatures to `ghm_actor_gateway`.
+
+Added two separately gated manual-only cutover files (outside automatic migration inventory):
+- `database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime.sql`
+- `database/cutovers/20261120020000_revoke_legacy_business_profile_runtime.sql`
+
+Each revokes PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway` on the legacy signature, and explicitly requires deployed, end-to-end verified signed Gateway route plus rehearsed rollback before application. Added source contract tests asserting that automatic migrations preserve runtime compatibility and manual cutovers contain the eventual explicit revocations. Updated `docs/security/PRODUCTION_MIGRATION_DEPENDENCY_MATRIX_2026-11-20.md` with the correction.
+
+This change is intentionally narrow and does not yet resolve all migration-chain hazards, SECURITY DEFINER path/default ACL remediation, migration bootstrap authority, or route readiness. Exact-head disposable PostgreSQL and CI qualification are still required; do not merge PR #298 or select a production batch on this evidence alone.
+
+Current production execution manifest verified as `[]`. No production migration/SQL/DDL/ACL/role changes, secrets, Render settings/deployments, paid services, or payment state changed. Next: inspect exact diffs, run relevant local/static contract checks if available, trigger/inspect exact-head CI and disposable PostgreSQL; update handover after each task.
