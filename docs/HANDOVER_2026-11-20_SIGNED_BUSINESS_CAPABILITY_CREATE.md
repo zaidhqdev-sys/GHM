@@ -479,3 +479,24 @@ node --require ./scripts/test-env.cjs --test dist/db/actor-gateway-business-capa
 This focused test is a source/migration contract test only; it does not execute SQL against PostgreSQL. If it passes, report its actual summary. Then inspect local `.env` variable presence without printing values, and only run the PostgreSQL qualification if all three distinct localhost disposable URLs, the signing key, and the exact database name/host guards are already configured.
 
 Do not alter the package-wide test script as part of this checkpoint; first establish whether this is only a Windows invocation issue and preserve the canonical test coverage. No PostgreSQL migration, disposable DB test, CI run, deployment, production operation, or paid resource occurred.
+
+
+## Focused Windows test result and contract-test repair — 2026-11-20 03:06 UTC
+
+User ran `npm run build`: TypeScript compilation succeeded.
+
+User then ran the focused compiled test:
+`node --require ./scripts/test-env.cjs --test dist/db/actor-gateway-business-capability-create-migration-contract.test.js`
+
+Result: 3 passed, 2 failed. These failures were in the newly authored static contract test matchers, not SQL execution:
+1. The operation-allowlist matcher incorrectly expected an escaped-dot string; the migration correctly contains the literal operation name.
+2. The function ownership/GRANT matcher assumed the signature formatting as one exact substring, while the SQL formats the signature across lines. While repairing, the matcher was changed to whitespace-tolerant patterns and an exact verifier GRANT assertion.
+
+Three follow-up test-source commits were made:
+- `b3b62a23151d080cf01d02c87018977062e25445`
+- `ff462eec94f033887295c7c8e6460520a825e562`
+- `c20df9f8193ba8b192a4a8fa5218e58e326d7283`
+
+Important: the focused test has **not yet been rerun** after these edits. Do not call it passing. Re-run `npm run build` and the focused test command from the user's local checkout to compile and execute the corrected assertions. The PostgreSQL harness remains unexecuted; no SQL has been applied.
+
+No production access/change, database migration, deployment, CI dispatch, paid resource, or new database occurred.
