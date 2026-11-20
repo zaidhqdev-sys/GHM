@@ -4971,3 +4971,45 @@ The table's original CREATE TABLE migration and exact constraints/defaults/index
 ### Scope
 
 Keep this as a separate Resource API / Actor Gateway feature branch and PR, based on current main. It is not part of PR #298's production migration inventory. No migration batch, production execution, deployment, Render change, secret change, new database/service, paid resource, or recurring process is authorized. Preserve the existing runtime INSERT/sequence grants until the new signed route and later manual cutover are separately qualified.
+
+## Business Capability create contract — repository/service validation inspected — 2026-11-20
+
+Inspected current-main `src/resources/business-capability/repository.ts` and `service.ts`. No implementation code or SQL was changed in this pass.
+
+### Exact service validation to preserve
+
+- Authenticated context required.
+- `businessId`: positive safe integer.
+- `capabilityId`: UUID matching the existing version/variant regex.
+- `proficiencyLevel`: null/omitted or one of `foundational`, `proficient`, `advanced`, `expert`.
+- `description`: null/omitted or trimmed length 1–1000.
+- `sourceReference`: null/omitted or trimmed length 1–500.
+- `effectiveFrom`: omitted or a valid Date.
+- `effectiveUntil`: omitted/null or a valid Date.
+- When both are Dates, `effectiveUntil` must be later than `effectiveFrom`.
+
+### Exact repository behavior
+
+- Opens `withTenantTransaction(context, businessId, ...)`.
+- Requires resolved tenant membership role `owner` or `administrator`.
+- Requires catalogue row with matching UUID, `lifecycle_status='active'` and `is_selectable=true`.
+- Inserts only `business_id`, `capability_id`, `proficiency_level`, `description`, `effective_from`, `effective_until`, `source_reference`, `created_by`.
+- Normalizes blank description/source reference using `NULLIF(btrim(value),'')`.
+- Defaults effective_from using `COALESCE(input, now())`.
+- Sets created_by from authenticated `context.userId`.
+- Returns the canonical full BusinessCapability projection including lifecycle, verification and audit fields. Those fields are not caller inputs.
+
+### Implementation implications
+
+- Validate and normalize payload before signing; the Gateway must sign the exact canonical normalized values the SQL function consumes.
+- SQL must derive actor from verified signed assertion, not accept a caller-supplied actor ID.
+- Preserve the tenant and role checks inside the database function; HTTP/service checks are not a replacement.
+- Preserve the effective-date ordering check in SQL as defense in depth.
+- Plain INSERT must retain existing uniqueness rejection for both active and withdrawn rows; do not invoke replacement/upsert.
+- Do not grant Resource API direct INSERT/sequence access after cutover; only the Gateway SQL function's owner-controlled execution should consume the identity sequence.
+
+### Still outstanding before implementation
+
+The exact original CREATE TABLE migration filename and complete DDL/default/check/index definitions have not yet been located in the current-main file inspection. The initial guessed paths were not found; do not treat that as evidence that constraints are absent. Search the migration history/PR #272 patches for the original table creation before authoring SQL. Also inspect the existing disposable `qualify-business-capability-gateway-cutover-postgres.mjs` fixture and tests to reuse its setup/assertion helpers.
+
+No feature branch implementation or migration was created in this pass. Keep this feature separate from PR #298. No production execution, deployment, paid infrastructure, new database/service, or recurring process.
