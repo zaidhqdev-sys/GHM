@@ -6035,3 +6035,30 @@ The previous full-database audit recorded 112/112 SECURITY DEFINER routines owne
 This qualifies the current source and disposable PostgreSQL sequence, not production. PR #298 remains draft/open and GitHub reports mergeable=false; do not merge based only on CI. The production batch manifest remains []. Separate production blockers and cutover approvals in this handover remain in force: exact production ledger/checksum reconciliation, recoverable backup evidence, provider-authorized role/ACL remediation, production service principal/schema/function grants and live Gateway startup/route qualification. Do not populate the manifest or execute production migrations from this result.
 
 No production SQL/DDL/ACL/role changes, production migration execution, secrets, Render settings/deployments, paid resources or payment state changed.
+
+
+## 20 November 2026 — merge latest main commits into PR #298 branch
+
+Mandatory pre-task review completed: re-read this handover, PRs #298/#297/#300/#301/#302, actor-gateway branch list, main-vs-branch comparison, both main-only commits, exact changed-file diffs, runtime privilege arrays/groups, capability cutover migration/qualifier, Actor Gateway server source, package test wiring and empty production manifest.
+
+The branch was 355 commits ahead / 2 behind main. The two missing main commits were both relevant:
+- 025c42c65930cc354076cf1c1e90c78488600848: capability cutover search_path/owner validation, signed Gateway capability qualification, automatic registration write-only stage and runtime privilege tests.
+- 0dc1b27c2b7de71c77d071966a9f374e13075e2b: safe Actor Gateway startup stage/category diagnostics.
+
+Merged both main commits into the PR branch using a two-parent merge commit, preserving branch history and without force-pushing:
+- Merge commit: 56b31a836b9ac12480e21ba6334597683b1ad5b0
+- First parent: previous PR #298 head 61a0872f8fb86aef954abacce845be73015298ce
+- Second parent: main head 0dc1b27c2b7de71c77d071966a9f374e13075e2b
+
+Resolved the runtime privilege model as the union of both lines of work:
+- 45 pre-manual-cutover function signatures.
+- 12 independently reviewed manual cutover groups: campaign review, Auth Issuer, registration write, registration read, capability governance, Business Capability mutations, saved Business, Business Hours, trust score, Business Logo, supplier classification and Business profile.
+- 4,096 explicitly enumerated stage combinations.
+- The fully cut-over state remains 13 reviewed runtime functions.
+- Added the main capability cutover contract test to the branch and wired it into npm test.
+
+Also incorporated the main capability cutover migration's pg_temp-last owner/path guard, signed Gateway capability qualification script and Actor Gateway startup-stage diagnostics. No main-only files were dropped.
+
+Post-merge comparison: PR #298 is now 356 commits ahead / 0 behind main; GitHub reports mergeable=true. It remains draft/open. Exact-head CI runs 44826457016 and 44826449207 were in progress for merge commit 56b31a836b9ac12480e21ba6334597683b1ad5b0; require their final quality/web-quality/Cloudflare and disposable PostgreSQL results before claiming the merged branch qualified.
+
+Production migration manifest remains []. This branch integration does not authorize production migration execution or cutover. Existing production blockers remain: exact production ledger/checksum reconciliation, recoverable backup evidence, provider-authorized role/ACL remediation, production Gateway principal/schema/function grants, and live Gateway startup/route qualification. No production SQL/DDL/ACL/role changes, production migrations, secrets, Render settings/deployments, paid resources or payment state changed.
