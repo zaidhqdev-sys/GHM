@@ -12,7 +12,8 @@ const searchPathPin = readFileSync(
 );
 
 test('capability cutover guard matches the repository-wide pinned SECURITY DEFINER search_path', () => {
-  assert.match(searchPathPin, /ALTER FUNCTION %s SET search_path = pg_catalog, ghm, pg_temp/);
+  assert.match(searchPathPin, /ALTER %s %I\.%I\(%s\) SET search_path = pg_catalog, ghm, pg_temp/);
+  assert.match(searchPathPin, /CASE routine_record\.prokind WHEN 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END/);
   assert.match(cutover, /p\.proconfig\s*@>\s*ARRAY\['search_path=pg_catalog, ghm, pg_temp'\]/);
   assert.doesNotMatch(cutover, /search_path=pg_catalog, ghm'\]/);
 });
@@ -20,6 +21,6 @@ test('capability cutover guard matches the repository-wide pinned SECURITY DEFIN
 test('capability cutover continues to require schema-owner SECURITY DEFINER functions', () => {
   assert.match(cutover, /p\.prosecdef\s*=\s*true/);
   assert.match(cutover, /p\.proowner\s*=\s*v_schema_owner/);
-  assert.match(cutover, /has_function_privilege\(v_gateway_role, v_function, 'EXECUTE'\)/);
-  assert.match(cutover, /has_function_privilege\(v_runtime_role, v_function, 'EXECUTE'\)/);
+  assert.match(cutover, /has_function_privilege\(v_gateway_role\s*,\s*v_function\s*,\s*'EXECUTE'\)/);
+  assert.match(cutover, /has_function_privilege\(v_runtime_role\s*,\s*v_function\s*,\s*'EXECUTE'\)/);
 });
