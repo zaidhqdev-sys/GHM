@@ -4723,3 +4723,46 @@ Search all call sites of `createBusinessCapability` and all production compositi
 PR #298 remains open/draft/unmerged at `7b13ece5ac420aae99b8971ff719089e41b563a3`, 240 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left unchanged. No CI run was triggered.
 
 Production batch manifest remains `[]`. No source, test, SQL, migration, ACL, role, production data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — correction: Business Capability POST is registered and bypasses mutation Gateway
+
+This task re-read the handover, refreshed PR #298 and its compare against `main`, inspected existing Actor Gateway branches, then traced the complete Business Capability route, application composition, service and repository, plus route tests. This explicitly corrects the immediately preceding handover addition, which mistakenly stated that the POST route was not registered.
+
+### Verified route and production composition
+
+- `src/http/business-capability-router.ts` registers **both**:
+  - `PUT /api/v1/business-capabilities`: assertion replacement; it uses the Gateway client when configured/required and returns 503 when Gateway is required but unavailable.
+  - `POST /api/v1/business-capabilities`: new assertion creation; it calls `service.createBusinessCapability(context, input)` directly. This POST handler does not inspect `gatewayClient` or `gatewayRequired`.
+- `src/http/app.ts` constructs `PostgresBusinessCapabilityRepository` and registers the router with `capabilityMutationGatewayClient` and `capabilityMutationGatewayRequired`; the latter is `config.isProduction || dependencies.capabilityMutationGatewayRequired === true`.
+- Therefore production configuration marks the mutation Gateway as required for this router, but the POST create route ignores that requirement and still invokes the direct Resource API service/repository.
+- `src/resources/business-capability/service.ts` forwards POST to `repository.createBusinessCapability`.
+- `src/resources/business-capability/repository.ts` directly INSERTs into `ghm.business_capability` with columns `business_id, capability_id, proficiency_level, description, effective_from, effective_until, source_reference, created_by`; it checks active/selectable capability and owner/administrator membership inside `withTenantTransaction`.
+- `src/http/business-capability-router.test.ts` contains POST input/context tests, but the inspected tests do not exercise POST with `gatewayRequired=true` or assert fail-closed behavior when the Gateway is missing. The existing PUT tests do test Gateway forwarding and fail-closed behavior.
+
+### Security / ACL implication
+
+- The earlier correction claiming no registered POST route and withdrawing the direct INSERT concern was incorrect; this entry supersedes it.
+- There is a real production-mode Gateway bypass on the POST route. It does not prove the database INSERT is unauthorized: the repository performs authenticated tenant and owner/administrator checks. However, it means the route's create operation is not mediated by the signed Actor Gateway despite the production-required configuration.
+- Do not revoke runtime INSERT on `ghm.business_capability` until the POST route is migrated to a signed Gateway create operation (or intentionally removed) and positive/negative route plus disposable PostgreSQL privilege tests pass.
+- This is distinct from the Evidence table INSERT cutover. Do not confuse the two table names or infer that Evidence INSERT denial proves Business Capability INSERT denial.
+- The exact POST handler currently performs a legacy direct INSERT; the exact PUT handler is Gateway-backed. Future cutover must cover both create and replacement semantics without losing the existing business owner/admin authorization, selectable catalogue check, input validation, audit attribution and tenant boundary.
+
+### Required next implementation/qualification scope
+
+1. Add a signed Actor Gateway create operation for Business Capability assertions, or explicitly deprecate/remove POST if product/API contract confirms it is unused. Do not assume removal is acceptable without route/consumer review.
+2. Make POST use the same fail-closed Gateway-required semantics as PUT in production.
+3. Add route tests for Gateway forwarding, missing Gateway => 503, no direct service call in required mode, and legacy behavior only when Gateway is not required.
+4. Add disposable PostgreSQL tests proving runtime direct INSERT/column INSERT and sequence use are denied only after the Gateway create operation is qualified, and Gateway can perform the intended create with signed actor binding.
+5. Reconcile exact underlying table sequence/identity behavior before selecting grants; do not infer sequence requirements from another table.
+6. Re-run focused route, build, PostgreSQL qualification and exact-head CI on the final PR source after implementation. Keep production manifest empty until all release gates are separately approved.
+
+No source or test code was changed in this task. This is a confirmed gap to address, not a claim that a fix has already been implemented.
+
+### Refreshed PR / branch state
+
+PR #298 remains open/draft/unmerged at `3bcb4762ee01d899bbc81cf6a0364ce9f8c80b3d`, 241 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left unchanged. No CI run was triggered.
+
+### Safety and cost
+
+Production batch manifest remains `[]`. No production SQL, role, membership, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
