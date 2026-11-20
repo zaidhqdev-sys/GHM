@@ -3562,3 +3562,27 @@ Do not populate `config/production-migration-batches.json`, run plan-only agains
 Next useful evidence step is to isolate the exact four behind-main commits from the commit graph (not infer their file set from the aggregate compare), then continue the source trace through the rest of the 50-entry prefix and its active route consumers. A future production batch can only be derived after an authoritative ledger export, backup/recovery proof, approved hosting/credential path and reviewed contiguous-prefix dependency map are all available.
 
 No production SQL, role/ACL, migration, secret, Render setting/service/deployment, payment state, PR state, branch ancestry, manifest, or paid resource was changed in this review.
+
+
+## 20 November 2026 — owner correction: Actor Gateway deployment is sequenced after qualification, not a cost/approval blocker
+
+The owner corrected the prior migration-prefix note, which incorrectly described the Actor Gateway production service as unapproved under a standing no-additional-paid-service constraint. Re-read the latest sections of `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md` before recording this correction.
+
+The controlling owner decisions are:
+
+- On 19 November, the owner selected **one** dedicated Node Render Web Service named `ghm-actor-gateway` on the **Free** plan for the initial free-directory/early-access stage.
+- This is the same continuous service for early access and the later paid/upgrade instance. When revenue and operational needs justify paid compute, upgrade this same service in place; do not create a second service.
+- The owner clarified the Render service form is already filled and deliberately remains **unsubmitted / undeployed while qualification is completed**. The owner controls when it is submitted/deployed.
+- The reason the service is not yet deployed is the agreed sequencing: first qualify the database connection, exact service principal and ACL contract, signed-assertion secret/verifier, migration ordering, application routes, health/restart behaviour and safe early-access handling of Free cold starts. Deployment follows those qualification steps.
+- Free-plan cold-start versus the Resource API's five-second timeout is a known operational behaviour to qualify and address with bounded secure retry/recovery or explicit user retry. It is not a reason to misstate the owner's selected hosting plan or imply a second paid service is required.
+- Paid always-on hosting/provider requirements are a later paid-live review, not a current approval gate for the selected Free early-access service.
+
+Therefore remove the inaccurate framing in the immediately preceding section that the gateway service is "not approved/hosted under the standing no-additional-paid-service constraint" or that the "service/cost gate remains unresolved." The accurate current status is **hosting choice made; one Free service form staged by owner; deployment intentionally deferred until qualification passes**.
+
+This correction does not assert that production qualification has passed. The independently outstanding technical evidence remains: exact production migration ledger/checksum reconciliation, recoverable backup proof, provider-authorized migrator/role/ACL remediation, exact gateway schema/function grants, assertion-secret provisioning and verification, and end-to-end gateway startup/route qualification. These are qualification work items in the agreed pre-deployment sequence, not a reason to re-open the hosting decision.
+
+### Work sequencing
+
+Continue qualifying the implementation and its prerequisites from source, tests, existing handovers and controlled read-only evidence. Do not submit/deploy the already staged Render form as part of this review, and do not weaken fail-closed checks. Once the defined qualification evidence is complete, the owner can proceed with the already selected single-service deployment.
+
+No Render form/service/configuration, deployment, database, migration, role/ACL, credential, secret, payment state, PR state or paid resource was changed by this correction.
