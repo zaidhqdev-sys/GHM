@@ -6007,3 +6007,31 @@ Corrected the canary to:
 Expanded the contract test to assert the temporary grant and rollback-only cleanup. Script correction commit: 966bcf9e3d840da91edc1254e83d349ff2afb126. Contract test commit: 653ae34cddc43eb8b88835921ad596dca33888ce.
 
 The next exact-head CI must show the canary passing, then all downstream PostgreSQL qualifications and whole-database authority comparison must remain green. No production schema/privilege changes were made. Production manifest remains []; PR #298 remains draft/open.
+
+
+## 20 November 2026 — SECURITY DEFINER temp-object shadowing and full CI passed
+
+Re-read the handover, PR #298/#297/#300/#301/#302, current branch/head, production manifest, exact CI run 44824733722, quality/web-quality jobs, all final workflow steps, and test-suite diagnostics.
+
+The disposable temp-shadowing canary passed after the test harness was corrected. It:
+- Confirmed ghm_migrator starts without GHM schema USAGE.
+- Granted temporary schema USAGE and canary function EXECUTE only inside a rollback-only transaction on localhost ghm_disposable_test.
+- Created a caller-controlled pg_temp table with the same unqualified name as a GHM table.
+- Invoked a SECURITY DEFINER function pinned to pg_catalog, ghm, pg_temp and verified it resolved the GHM object, not the temporary shadow.
+- Rolled back the transaction, removing the temporary grants, canary function and tables.
+
+Exact code-head CI run 44824733722 for commit 653ae34cddc43eb8b88835921ad596dca33888ce completed successfully:
+- quality: success
+- web-quality: success
+- Cloudflare Pages: success
+- test suite: 1,107 passed, 0 failed
+- all 145 migrations applied to disposable PostgreSQL 18.7
+- temp-object shadowing canary passed
+- production migration plan-only, Auth Issuer/Actor Gateway principal checks, founder/commercial approval/payment-consent, Worker smoke, Connect provisioning, storage, Opportunity, all signed Gateway cutovers, supplier/profile manual cutover and rollback, commercial payment identities, migration audit policy, runtime boundary, pre/post Auth Issuer authority inventories and structural comparison all passed.
+- All 73 workflow steps completed successfully; final pre/post authority comparison and evidence preservation passed.
+
+The previous full-database audit recorded 112/112 SECURITY DEFINER routines owned by ghm_schema_owner and pinned to search_path=pg_catalog, ghm, pg_temp, with unchanged routine identity set, 14 expected Auth Issuer ACL changes, and zero unexplained non-issuer changes. The latest run repeated the full inventory and pre/post comparison successfully.
+
+This qualifies the current source and disposable PostgreSQL sequence, not production. PR #298 remains draft/open and GitHub reports mergeable=false; do not merge based only on CI. The production batch manifest remains []. Separate production blockers and cutover approvals in this handover remain in force: exact production ledger/checksum reconciliation, recoverable backup evidence, provider-authorized role/ACL remediation, production service principal/schema/function grants and live Gateway startup/route qualification. Do not populate the manifest or execute production migrations from this result.
+
+No production SQL/DDL/ACL/role changes, production migration execution, secrets, Render settings/deployments, paid resources or payment state changed.
