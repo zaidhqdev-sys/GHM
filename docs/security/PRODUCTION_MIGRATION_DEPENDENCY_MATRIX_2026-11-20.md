@@ -155,3 +155,12 @@ No production batch can be safely derived from source order alone. Production ba
 - do not deploy Resource API or Actor Gateway as a substitute for database readiness;
 - keep PR #298 draft/unmerged;
 - no production SQL, service setting, secret, credential, payment state, or paid resource is changed by this analysis.
+
+
+## 21 November 2026 — correction from complete live SECURITY DEFINER catalogue
+
+The earlier statements in this matrix that the live database had routines outside the `ghm_schema_owner` ownership contract are superseded by the complete 21 November catalogue reconciliation at `docs/security/PRODUCTION_SECURITY_DEFINER_CATALOGUE_RECONCILIATION_2026-11-21.md`.
+
+The complete live query found 63/63 SECURITY DEFINER functions owned by `ghm_schema_owner`; no procedures and no ownership exceptions. The known issue is path normalization: only 5/63 currently have exact `pg_catalog, ghm, pg_temp`; 58 require the migration's path update. No direct PUBLIC EXECUTE or grantable EXECUTE entries were found. ACLs and ownership are to remain unchanged.
+
+The existing migration `20261112090000_pin_security_definer_search_path.sql` has a satisfied ownership preflight in this snapshot and applies the exact path to all SECURITY DEFINER functions/procedures. This does not authorize applying it: fresh live ledger/checksum, contiguous pending prefix, migrator authority, backup/rollback, and coordinated service readiness remain prerequisites. The dependency analysis in this matrix should be read with this correction.
