@@ -65,3 +65,9 @@ Current pin: SHA-256 `c9a87404506c234ddca067eeeb21217892eeb9e397a188f2e1b4beb7c3
 
 No reviewed difference remains for summaries. Trimming is the only normalisation, exactly as the Zod schemas do it
 (`model`, `promptVersion` and province names); nothing else is converted, defaulted or repaired.
+
+## Reviewed difference: GHM is stricter about text PostgreSQL cannot store (2026-11-20)
+
+GHM refuses U+0000 and unpaired UTF-16 surrogates in any free-text field (`src/tender/storable-text.ts`), for both tracking
+and saved analyses, as `invalid`. The Tender AI schemas accept them. No committed fixture contains such text, so the parity
+tests are unaffected; the difference is covered by `src/tender/storable-text.test.ts`. Tender AI should adopt the rule.

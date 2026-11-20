@@ -4,6 +4,8 @@
  * (`src/domain/tender/*` in zaidhqdev-sys/zaid-tenderai) through committed
  * fixtures; see docs/TENDER_AI_CONTRACT_PARITY.md. Pure: no I/O.
  */
+import { isStorableText } from './storable-text';
+
 export const TRACKING_STAGES = ['saved', 'evaluating', 'preparing', 'submitted', 'archived'] as const;
 export type TrackingStage = (typeof TRACKING_STAGES)[number];
 export const EDITABLE_STAGES = ['saved', 'evaluating', 'preparing', 'submitted'] as const;
@@ -20,13 +22,13 @@ const isPlainObject = (v: unknown): v is Record<string, unknown> =>
 const text = (v: unknown, min: number, max: number): string | null => {
   if (typeof v !== 'string') return null;
   const t = v.trim();
-  return t.length >= min && t.length <= max ? t : null;
+  return t.length >= min && t.length <= max && isStorableText(t) ? t : null;
 };
 
 export const parseHttpsUrl = (v: unknown): string | null => {
   if (typeof v !== 'string') return null;
   const t = v.trim();
-  if (t.length < 8 || t.length > 500 || !/^https:\/\//i.test(t) || /\s/.test(t)) return null;
+  if (t.length < 8 || t.length > 500 || !/^https:\/\//i.test(t) || /\s/.test(t) || !isStorableText(t)) return null;
   try {
     const u = new URL(t);
     if (u.protocol !== 'https:' || u.username || u.password) return null;

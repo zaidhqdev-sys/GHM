@@ -161,3 +161,58 @@ a CHECK), that the CHECK on denormalised columns holds for every fixture's valid
 `ON DELETE SET NULL` action through, that a CHECK-constraint replacement on a populated audit table works, that a
 12 KiB-compact payload fits the 20,000-byte jsonb ceiling in practice, real nonce replay and concurrency on the cap.
 Static contract tests, fake-pool tests and a syntax-only parse are **not** qualification.
+
+## 10. B5 qualification preparation and the audit foreign-key review (2026-11-20)
+
+**Result: the PostgreSQL run itself did NOT happen.** No existing disposable qualification database could be reached and
+confirmed safe (see the handover). What follows is the static review and the prepared run.
+
+### 10.1 The audit foreign keys match Q12
+`ghm.tender_audit_event.actor_account_id -> ghm.account_identity(id)` and `business_id -> ghm.business(id)` are both
+`ON DELETE RESTRICT` (batch 2 migration, lines 61-62). `resource_id` has deliberately **no** foreign key. Nothing in batch 3
+changed them (it only replaces the two CHECK lists). The qualification script asserts this from `pg_constraint`.
+
+### 10.2 What `ON DELETE SET NULL` refers to
+Exactly one relationship: `tender_analysis.tender_tracking_id -> tender_tracking(id) ON DELETE SET NULL`. It is the optional
+link from a saved analysis to a tracking record. It never touches the audit table, an actor, a Business, or analysis content.
+Behaviour to prove on PostgreSQL: the cascade is an UPDATE of `tender_analysis`, so it runs the immutability trigger
+(`guard_tender_analysis_update`), which allows exactly the change `tender_tracking_id -> NULL` and nothing else.
+**Properties and consequences, not assumed harmless:**
+* the unlink is a change to a saved analysis that has **no audit event of its own**; the only record is the
+  `tender.tracking.delete` event written in the same transaction. That event does not say how many analyses were unlinked.
+  This is a decision for the owner (see 10.5), not changed here.
+* because audit events are immutable and their foreign keys are RESTRICT, **an account or a Business that has ever written a
+  tender record can never be hard-deleted** while its audit history exists. That is what Q12 asks for, but it constrains any
+  future account-erasure or Business-closure feature (POPIA). The qualification script asserts the refusal (23503).
+
+### 10.3 12 KiB projection versus the 20,000-byte limit
+The Gateway measures compact JSON; PostgreSQL stores `jsonb` whose text form adds one space after each `:` and `,`. Using the
+real validator and an independent jsonb-style serializer, the densest accepted payload (119 requirements, 10 dates, 8
+missing items, 16 chunks) is 12,208 compact bytes and about 13,900 jsonb-text bytes (x1.14). The schema's structure bounds the
+inflation to roughly x1.14, so the real maximum is about 14,000 bytes: it fits with about 6 KB of margin. Pinned by
+`src/tender/analysis-storage-size.test.ts`. **This is a computation; the first PostgreSQL run must confirm it.**
+
+### 10.4 Gap found and corrected: text PostgreSQL cannot store
+The Tender AI contract (Zod) accepts any JavaScript string. PostgreSQL cannot store U+0000 in `text` or `jsonb`, and a lone
+UTF-16 surrogate is invalid UTF-8. The Gateway validators accepted such strings, so they would have passed validation and
+then failed inside the database as an error mapped to 503 instead of a clean 400. Corrected on the feature branch:
+`src/tender/storable-text.ts` is applied to every free-text field of the analysis projection (and its read side), to `model`
+and `promptVersion`, and to the tracking title, reference, issuer and source URL. Nothing is stripped or replaced. This is
+**stricter than the Tender AI contract**, recorded as a reviewed difference in `TENDER_AI_CONTRACT_PARITY.md`. Tender AI
+should adopt the same rule so that it refuses before it calls.
+
+### 10.5 Migration review: CHECK replacement and trigger ordering
+* The audit CHECK replacement (DROP then ADD, same transaction) does not fire the row triggers (ALTER TABLE is not a row
+  operation), and ADD validates every existing row; existing tracking events satisfy the wider list, and a violation would
+  abort the whole migration. Atomic, no window without a constraint.
+* The immutability trigger on `tender_audit_event` is `BEFORE UPDATE OR DELETE` plus a statement-level `BEFORE TRUNCATE`.
+  The analysis immutability trigger is `BEFORE UPDATE`; the SET NULL cascade passes it by design (to be proven).
+* Open decision for the owner: should `tender.tracking.delete` audit metadata record the number of analyses it unlinked?
+  Recommended: yes (`unlinkedAnalyses`), as a one-line addition to the batch 2 delete function. Not changed, because it
+  alters the batch 2 audit contract.
+
+### 10.6 Prepared qualification
+`scripts/qualify-tender-gateway-postgres.mjs` (called from `scripts/qualify-actor-gateway-principal.mjs`, which already forces
+the database to be `ghm_disposable_test` and checks the three role identities). It covers items 1-14 of the request. **It has
+never been executed.** It uses its own fixtures, which cannot be deleted afterwards (RESTRICT + append-only), so it must only
+ever run against a throw-away database. The existing cleanup and all existing checks are unchanged.

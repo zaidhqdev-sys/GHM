@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from '../dist/actor-gateway/database-privileges.js';
 import { assertRuntimeDatabaseFunctionPrivileges, readRuntimeDatabaseFunctionPrivileges } from '../dist/db/runtime-database-privileges.js';
 import 'dotenv/config';
+import { qualifyTenderGateway, tenderMigrationsPresent } from './qualify-tender-gateway-postgres.mjs';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
@@ -1011,6 +1012,19 @@ try {
     '42501',
     'GATEWAY CANNOT READ ACCOUNT TABLE DIRECTLY',
   );
+
+  // ZAID Tender AI Phase 1 (feature-branch migrations). Runs only when BOTH tender migrations are present;
+  // otherwise it is reported as skipped, never silently passed. Uses its own fixtures (the append-only
+  // audit table makes them undeletable by design), so the cleanup below is unchanged.
+  const tenderPresent = await tenderMigrationsPresent(cleanupPool);
+  if (tenderPresent.tracking && tenderPresent.analysis) {
+    await qualifyTenderGateway({ gatewayPool, runtimePool, migratorPool: cleanupPool, signAssertion, expectSqlState });
+    console.log('ZAID TENDER AI GATEWAY QUALIFICATION: PASS');
+  } else if (tenderPresent.tracking !== tenderPresent.analysis) {
+    throw new Error(`Partial tender migration state: ${JSON.stringify(tenderPresent)}`);
+  } else {
+    console.log('ZAID TENDER AI GATEWAY QUALIFICATION: SKIPPED (tender migrations not applied to this database)');
+  }
 
   console.log('GHM ACTOR GATEWAY DATABASE PRINCIPAL QUALIFICATION: PASS');
 } finally {

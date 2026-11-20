@@ -13,6 +13,8 @@
  *  - the same validator guards writes (before the database) and reads (before the caller).
  * Pure: no I/O.
  */
+import { isStorableText } from './storable-text';
+
 export const PROJECTION_VERSION = 2;
 export const MAX_COVERAGE_CHUNKS = 16;
 export const MAX_COVERAGE_CHARS = 120_000;
@@ -69,11 +71,11 @@ const int = (v: unknown, min: number, max: number): v is number =>
   typeof v === 'number' && Number.isSafeInteger(v) && v >= min && v <= max;
 /** Raw string with a length range in UTF-16 code units (as Zod counts). */
 const str = (v: unknown, min: number, max: number): v is string =>
-  typeof v === 'string' && v.length >= min && v.length <= max;
+  typeof v === 'string' && v.length >= min && v.length <= max && isStorableText(v);
 const trimmed = (v: unknown, min: number, max: number): string | null => {
   if (typeof v !== 'string') return null;
   const t = v.trim();
-  return t.length >= min && t.length <= max ? t : null;
+  return t.length >= min && t.length <= max && isStorableText(t) ? t : null;
 };
 
 const HIDDEN_OR_CONTROL = /[\u0000-\u0008\u000B-\u001F\u007F​-‏‪-‮⁠-⁩﻿]/;
