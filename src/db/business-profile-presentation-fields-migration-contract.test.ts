@@ -11,6 +11,8 @@ const gatewayCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/mig
 const legacyCompatibility = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110265000_reconcile_business_profile_legacy_contract.sql'), 'utf8');
 const signedGatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql'), 'utf8');
 const legacyRuntimeCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120020000_revoke_legacy_business_profile_runtime.sql'), 'utf8');
+const legacyRuntimeRollback = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120020000_revoke_legacy_business_profile_runtime_rollback.sql'), 'utf8');
+const qualification = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-business-profile-contract-postgres.mjs'), 'utf8');
 
 test('owner-editable avatar and business tenure fields are stored in canonical GHM Business', () => {
   for (const field of ['avatar_letter', 'avatar_color', 'years_in_business']) {
@@ -63,6 +65,18 @@ test('Business profile writes use signed Gateway authority and retain legacy run
   assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
   assert.doesNotMatch(repository, /ghm\.update_business_profile/);
   assert.match(repository, /must be updated through the authenticated actor gateway/);
+});
+
+test('Business profile legacy runtime cutover has a narrow manual rollback and disposable rehearsal', () => {
+  assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
+  assert.match(legacyRuntimeRollback, /MANUAL ROLLBACK ONLY/);
+  assert.match(legacyRuntimeRollback, /GRANT EXECUTE ON FUNCTION ghm\.update_business_profile\(bigint,bigint,jsonb\)\s+TO ghm_runtime/);
+  assert.doesNotMatch(legacyRuntimeRollback, /TO PUBLIC|TO ghm_actor_gateway|TO ghm_migrator/);
+  assert.match(qualification, /ghm_disposable_test/);
+  assert.match(qualification, /profileCutoverSql/);
+  assert.match(qualification, /profileRollbackSql/);
+  assert.match(qualification, /BUSINESS PROFILE LEGACY RUNTIME ROLLBACK REHEARSAL PASS/);
+  assert.match(qualification, /BUSINESS PROFILE LEGACY RUNTIME RECUTOVER PASS/);
 });
 
 test('Business profile forward reconciliation preserves legacy API fields and snake/camel aliases', () => {
