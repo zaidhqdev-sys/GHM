@@ -29,7 +29,7 @@ const postgresSignature = (signature: string): string => signature.replace(/,\s+
 
 test('runtime startup accepts all 1024 reviewed combinations of the ten independently qualified privilege transitions', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
-  assert.equal(CUTOVER_GROUPS.length, 9);
+  assert.equal(CUTOVER_GROUPS.length, 10);
   assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 1, 3, 3, 2, 1, 1, 1]);
   assert.equal(ALL_STAGES.length, 1024);
   assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
