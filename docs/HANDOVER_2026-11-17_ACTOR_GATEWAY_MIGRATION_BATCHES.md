@@ -5610,3 +5610,24 @@ Fetched the failed quality job logs and step summaries. The failing step is `App
 Do not mislabel the PR as passing CI or deploy it under the stated exact-head CI gate. Do not fix or bypass this migration guard inside PR #301: its scope is one-file startup diagnostics only. The failure requires a separate root-cause review of the migration that installs `ghm.assert_actor_gateway_capability(...)`, the function owner/search_path/security-definer attributes in disposable PostgreSQL, and the migration execution role. Do not weaken the guard or alter production roles/ACLs. Keep production database and migration manifest untouched.
 
 PR #301 remains not deployable under the current validation gate. Next action: investigate the disposable migration owner mismatch on a separate narrowly-scoped fix branch/PR after inspecting the exact migration and schema-owner execution path; update the relevant handover. Once that issue is corrected and exact-head CI passes, re-evaluate PR #301 deployment. No Render deploy, production SQL, database/role/ACL change, migration, secret/environment change, payment-state change, or paid resource change occurred.
+## 20 November 2026 — root cause isolated for disposable PostgreSQL capability cutover failure; PR #302 opened
+
+Re-inspected current PRs #301, #298, #300 and #297, actor-gateway branches, and this handover before investigating the failed quality job. PR #301 remains isolated at bb05a23524689070ded3b633d6d46da310bda001; PR #298 remains open/draft; PR #300 remains separate/open/draft; PR #297 remains open/draft.
+
+### Confirmed migration mismatch
+
+Exact failed guard is in database/migrations/20261117020000_revoke_runtime_capability_governance.sql. Its loop requires the signed capability verifier and four gateway functions to be owned by ghm_schema_owner, SECURITY DEFINER, and have proconfig containing `search_path=pg_catalog, ghm`.
+
+Earlier migration database/migrations/20261112090000_pin_security_definer_search_path.sql explicitly rewrites every SECURITY DEFINER function in schema ghm to `search_path = pg_catalog, ghm, pg_temp`, with pg_temp last to prevent temporary-schema object shadowing. The failing verifier is recreated in 20261112080000_signed_connect_business_provisioning_gateway.sql before that global pin migration, so it is also normalized to the three-entry path. The later cutover guard therefore rejects the intended, safer, already-established configuration because its expected value is stale. The SQL failure text says owner, SECURITY DEFINER or search_path generically; source comparison isolates the mismatch to search_path, not a proven owner/security-definer defect.
+
+### Isolated correction
+
+Created branch fix/actor-gateway-capability-cutover-search-path-20261120 from main and draft PR #302: https://github.com/zaidhqdev-sys/GHM/pull/302
+
+PR #302 changes only the guard's expected path to `search_path=pg_catalog, ghm, pg_temp`, retaining the schema-owner requirement, SECURITY DEFINER requirement, Gateway EXECUTE requirement, and runtime non-EXECUTE requirement. It adds src/db/revoke-runtime-capability-governance-migration-contract.test.ts to lock the cutover guard to the repository-wide pinned path and preserve those authorization assertions.
+
+Exact PR #302 head: e4d9e1f215e91f7bab3a97256560f1d7c076a679. Compare against main confirms exactly two commits ahead, zero behind, and only the intended migration plus new contract test changed. PR #302 is draft/open/unmerged; exact-head CI lookup currently returns no workflow runs or commit statuses, so validation is pending. Do not merge or deploy based on source inspection alone.
+
+### Safety / next action
+
+No production ledger refresh, SQL, migrations, role/ACL changes, Render environment changes, service deploy, secrets, payment state, or paid resources were touched. PR #298's production batch manifest remains empty. This is a repository qualification correction only; it does not authorize running 20261117020000 or any other migration in production. Await exact-head CI for PR #302. If it passes, re-run PR #301 exact-head quality CI against the corrected migration before considering any diagnostic deploy; PR #301 remains unvalidated while this shared migration failure persists.
