@@ -5663,3 +5663,14 @@ Confirmed exact-head CI run 44810525158 is completed/successful. Job inspection 
 Cleaned PR #302 metadata: removed stale statements claiming it was draft and exact-head CI was still required, replaced with a concise scope/root-cause/validation/safety summary, and retained ready-for-review state. No source changes, merges, rebases or deploys occurred.
 
 PR #301 remains blocked on its old main base (ddb31ff59ab470973edf60a5078a75e5f962f803); its prior quality failure has not been invalidated by PR #302 passing. Do not deploy #301. Next step: obtain/complete normal review and integrate PR #302 only through the repository's normal merge controls; then update PR #301 against new main and run exact-head CI. No production SQL/migration/role/ACL changes, Render settings/secrets/deployments, or payment-state changes. PR #298 production batch manifest remains empty.
+
+
+## 20 November 2026 — PR #302 merged after user authorization
+
+User explicitly authorized merging PR #302 after qualification and review-readiness. Immediately before merge, re-inspected PRs #302, #301, #298, #300 and #297; verified PR #302 open, ready-for-review, mergeable, exact head 67859370910984799b12df802e53bf891da1d668; checked its exact-head workflow run 44810525158 was successful, including disposable PostgreSQL migrations and Actor Gateway principal/cutover qualification. PR #302 had no submitted review records or inline review threads. User then expressly directed merge, so it was squash-merged with expected-head SHA protection.
+
+Merge confirmed by GitHub: PR #302 closed/merged at 2026-11-20 20:39:30Z. Merge commit: 025c42c65930cc354076cf1c1e90c78488600848. No other PR was merged.
+
+Post-merge inspection: PR #301 remains draft/open at head bb05a23524689070ded3b633d6d46da310bda001 and is not mergeable against its stale base; its recorded base SHA remains ddb31ff59ab470973edf60a5078a75e5f962f803. Main's Actor Gateway server source still has SHA 2ed8e9ffa36ead9eeb9a091f4b7061ae78ee6ceb (diagnostic source is not yet on main). PR #298 remains draft/open/unmerged at c07cf2597c416284578f898cae0d5d342c565685; PR #300 remains draft/open/unmerged; PR #297 remains draft/open/unmerged. The PR #298 branch is this handover branch; its commit records the merge and post-merge state.
+
+Next: update PR #301's branch to include the new main merge commit, resolve any conflicts without altering diagnostic safety behavior, then run exact-head CI. Do not loop on PR #302 qualification; it is merged and its successful evidence is recorded. Do not deploy the diagnostic change until its refreshed exact-head CI passes. No production migrations, SQL, roles, ACLs, Render environment/secrets/deployment, or payment-state changes occurred. PR #298's production migration batch manifest remains empty.
