@@ -55,10 +55,12 @@ test('directory migration reuses pre-existing canonical Business constraints and
   assert.match(migration, /CREATE INDEX IF NOT EXISTS business_public_directory_geo_idx/);
 });
 
-test('Business profile writes are restricted to the isolated actor gateway', () => {
-  assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) FROM ghm_runtime/);
-  assert.match(gatewayCutover, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, jsonb\) TO ghm_actor_gateway/);
+test('Business profile writes use signed Gateway authority and retain legacy runtime until manual cutover', () => {
   assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, jsonb\) FROM ghm_runtime/);
+  assert.match(signedGatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, uuid, text, bigint, jsonb\) TO ghm_actor_gateway/);
+  assert.match(signedGatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, uuid, text, bigint, jsonb\) FROM PUBLIC,ghm_runtime,ghm_migrator/);
+  assert.match(legacyRuntimeCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_profile\(bigint,bigint,jsonb\)\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
+  assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
   assert.doesNotMatch(repository, /ghm\.update_business_profile/);
   assert.match(repository, /must be updated through the authenticated actor gateway/);
 });
