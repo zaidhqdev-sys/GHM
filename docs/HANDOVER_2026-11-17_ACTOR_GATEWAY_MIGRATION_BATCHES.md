@@ -3488,3 +3488,33 @@ CI #5397 remains green for both `quality` and `web-quality` at the exact pre-han
 
 The production execution-batch manifest remains empty. Production ledger refresh, first-batch derivation, migrator authority/ACL remediation, recoverable backup proof, Actor Gateway production API/schema prerequisites, and hosting/credential readiness remain separate gates. No production migration, database/role/ACL change, Render service/configuration/deployment, secret access, or paid resource was performed.
 
+
+
+
+## 20 November 2026 — cross-PR migration inventory coordination check
+
+Re-read this PR handover, the Actor Gateway hosting/credentials handover, PR #298 metadata and changed-file list, then checked the related open migration/ACL PRs and their exact changed-file inventories before continuing production migration readiness work.
+
+### PR #296 — separate Business Identity ACL migration remains outside this inventory
+
+- PR #296 remains open, draft and non-mergeable at head `5fa018304970c0e84c56b22111a7255b80fd7c60`.
+- Its additional migration is `database/migrations/20261116200000_narrow_business_identity_runtime_insert.sql`.
+- That migration is not present in PR #298's current 50-entry `config/pending-migrations.production.json` inventory. It is also not in the current `main` migration tree because PR #296 is unmerged.
+- Its version sorts **after** the existing 20261112170000 entry and **before** the PR #298 inventory's 20261116140000–20261117020000 tail. If PR #296 is merged, PR #298's inventory will no longer describe the complete repository pending queue; it must be regenerated/reconciled from the then-current repository and exact refreshed production ledger before any plan/batch is considered.
+- Keep PR #296 separate. Do not cherry-pick its migration into this branch or silently append it to the inventory. Its earlier exact-head CI pass is only code validation, not production authorization.
+
+### PR #297 — overlapping older migration-runner alternative
+
+- PR #297 remains open, draft and non-mergeable at head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; its base is stale.
+- Its changed-file set overlaps PR #298 in eight paths: `.github/workflows/ci.yml`, `config/production-migration-batches.json`, `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`, the production reconciliation and hosting handovers, `package.json`, `scripts/migration-audit-checksum.test.mjs`, and `src/db/migrate.ts`.
+- PR #297 uses a different pending-inventory path and an earlier batch-runner implementation. It is not an independent prerequisite to merge alongside PR #298. Merging both without a deliberate consolidation would create overlapping runner/configuration/workflow changes.
+- Preserve PR #298 as the active reviewed branch for this task; do not merge PR #297 or copy its older implementation into PR #298. No PR was closed or modified.
+
+### Current integration implication
+
+PR #298 remains open/draft/non-mergeable at head `e40df8b6fa0c153b91ec81f05a3c13b0434992cd`; current `main` remains `ddb31ff59ab470973edf60a5078a75e5f962f803`. The branch comparison is 212 ahead / 4 behind. The four behind-main changes remain documentation-only and their substantive handover text is already present on this branch; this does not reconcile commit ancestry or resolve GitHub's `mergeable=false` state.
+
+The 50-entry inventory remains a dated candidate list, not a live ledger. The batch manifest remains empty. If either PR #296 or any other migration-bearing PR is merged into `main`, stop and regenerate the inventory from exact current source plus a fresh authoritative ledger export; do not patch counts or infer a batch from timestamps.
+
+No PR state, source, migration, inventory, manifest, production database, role/ACL, credential, backup, Render service/configuration/deployment, payment state or paid resource was changed in this review. No production migration was executed.
+
