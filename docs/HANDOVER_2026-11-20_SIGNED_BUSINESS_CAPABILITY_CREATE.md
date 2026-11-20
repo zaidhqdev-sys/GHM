@@ -149,3 +149,21 @@ Corrective commit `a08187c4eb46b98998dca3c6aa495b6bddf1af10` removes the duplica
 No SQL migration, function body, ACL, runtime grant, production DB, secret, deployment, paid resource or PR #298 change. The signed-create HMAC, replay, expiry, business membership, selectable catalogue, duplicate/withdrawn, actor provenance and direct-write-denial assertions remain unqualified pending CI run after this fix.
 
 Next inspect the normal PR-triggered CI run for commit `a08187c4eb46b98998dca3c6aa495b6bddf1af10`. Verify it passes the existing migration phase and then executes the dedicated Business Capability qualification through its final `GHM BUSINESS CAPABILITY SIGNED GATEWAY CUTOVER QUALIFICATION: PASS` marker. If it fails again, diagnose exact logs before changing code. Do not manually dispatch CI or modify PR #298.
+
+
+## CI #5430 — signed Business Capability PostgreSQL cutover qualification passed — 2026-11-20
+
+Before this task, re-read this feature handover and checked PR #300, PR #298, PR #272, the feature branch and workflow runs associated with the current PR head. PR #300 remains open/draft/unmerged; PR #298 remains separate and untouched; branch `feat/signed-business-capability-create` remains the working branch.
+
+CI run #5430 (ID `44775863369`, commit `18e1e137362352ea1164ecfb4a6f38c6661435b1`) progressed as follows:
+- `web-quality`: PASS.
+- `quality` step 51, system-admin Capability catalogue governance: PASS (workflow advanced beyond it).
+- Step 52, Capability legacy RPC cutover and Gateway-only access: PASS (workflow advanced beyond it).
+- Step 53, `Qualify Business Capability signed gateway cutover on disposable PostgreSQL`: PASS (workflow advanced to step 54, Saved Business signed Gateway cutover).
+- The subsequent existing signed Gateway qualification steps continued through Saved Business, Business Hours, Trust Score, Business Logo, Business profile compatibility, and commercial settlement identity qualification; at the latest inspection step 60 was in progress. Overall `quality` job/run had not yet completed, so do not mark the entire CI run green until final status is checked.
+
+This is the first successful execution of the dedicated Business Capability signed Gateway PostgreSQL qualification after the fixture and duplicate-migration harness corrections. The successful step progression establishes that the script completed and exited successfully; the previous skipped/failing state is resolved. Do not overstate this as a production deployment or production database qualification: it ran against CI's disposable PostgreSQL instance only.
+
+The prior corrective commits in this sequence were `123d90752d5fde9171f34e03a21eace6afb2db0a` (valid deprecated/non-selectable catalogue fixture) and `a08187c4eb46b98998dca3c6aa495b6bddf1af10` (stop reapplying migrations already applied by CI). No production SQL, runtime ACL, production database, secrets, deployment, paid service or PR #298 changes were made in this task.
+
+Next: inspect the final conclusion of CI #5430. If all jobs pass, record the full CI pass and proceed to review the PR diff/checks for merge readiness, but keep PR #300 draft/unmerged until all required evidence and owner-directed steps are complete. If any later CI step fails, isolate it from the already-passed Business Capability qualification and diagnose only that failure.
