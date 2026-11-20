@@ -788,3 +788,22 @@ Re-read the current feature handover and branch validator/tests, then inspected 
 No source validator, test, migration, or PR was modified. The current safe decision is to keep the exact allow-list strict and not encode a guessed optional state. PR #300 remains draft/unmerged; PR #298 remains untouched. No database, secret, production setting, deployment or paid resource changed.
 
 Next evidence needed: inspect the migration(s) that originally granted the three exact `gateway_*` wrappers and all later forward migrations that revoke or replace them. Compare those exact signatures against the live migration chain and PR #272 gateway integration source. Once proven, encode the single canonical post-migration allow-list (or narrowly documented explicitly safe migration stages) and regression tests; then rerun normal PR CI to reach the signed Business Capability qualification.
+
+
+## PR #272 exact-commit comparison — qualification harness confirmed; wrapper grant provenance still unresolved — 2026-11-20
+
+Re-read this feature handover, PR #300's current branch validator and tests, and PR #298's separate draft scope before comparing PR #272's merge commit `4463bbb989f9d1173596f5371663b3e9e7afc0a9` (https://github.com/zaidhqdev-sys/GHM/commit/4463bbb989f9d1173596f5371663b3e9e7afc0a9).
+
+Confirmed from PR #272's exact commit:
+- CI provisions ephemeral PostgreSQL 18 `ghm_disposable_test`, runtime/migrator/Actor Gateway principals and a test-only base64 32-byte capability assertion secret.
+- CI runs `npm run qualify:business-capability-gateway-cutover` after migration application and the Actor Gateway principal qualification.
+- This establishes the intended automated qualification harness and does not require a deployed production Actor Gateway.
+- The PR #272 resource registry changes `directory_review` to read-only (`operations: ['read']`), consistent with the earlier Founder review retirement.
+
+However, the PR #272 merge commit's available diff does not contain grant/revoke migration changes for the exact signatures `ghm.gateway_create_campaign(...)`, `ghm.gateway_update_campaign(...)`, or `ghm.gateway_get_business_directory_review_presentation(...)`. It therefore does not establish their SQL ACL provenance or prove the two Campaign wrappers were retired. The exact directory-review Actor Gateway wrapper remains distinct from the underlying Founder review SQL functions explicitly revoked in `20261109140000_close_evidence_and_founder_review_authority.sql`.
+
+Decision: do not modify the validator or tests yet. The current test calls the three wrappers an exact optional Campaign group, but the run #5410 diagnostic shows that group absent and the new Business Capability create wrapper present. We still need the migration(s) that create/grant those wrappers and any later migration that revokes/replaces them. The CI workflow and resource registry are not sufficient proof of the SQL execution set.
+
+No source/migration/PR change was made. PR #300 remains draft/unmerged; PR #298 remains untouched. No database, secret, deployment, paid resource or production setting changed.
+
+Next: use the PR #300 head's migration file inventory/ledger and commit ancestry to identify exact CREATE/GRANT/REVOKE statements for these signatures. Once the canonical end-state is proven, add `gateway_create_business_capability(...)` to the expected set, remove only wrappers demonstrably revoked, and add focused tests proving exact expected signatures and rejection of arbitrary extra/missing functions. Then trigger ordinary PR CI and verify the signed-create PostgreSQL test actually runs.
