@@ -4,7 +4,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION ghm.assert_actor_gateway_capability(
  p_actor bigint,p_operation text,p_issued bigint,p_nonce uuid,p_context text,p_signature text
-) RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm,pg_temp AS $
+) RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm,pg_temp AS $$
 DECLARE v_secret bytea;v_expected bytea;v_provided bytea;v_payload text;v_diff integer:=0;v_i integer;
 BEGIN
  IF session_user<>'ghm_actor_gateway' OR p_actor IS NULL OR p_actor<=0 OR p_issued IS NULL OR p_nonce IS NULL
