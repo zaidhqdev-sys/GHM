@@ -4243,3 +4243,46 @@ Current main instead requires `p.proconfig @> ARRAY['search_path=pg_catalog, ghm
 - The remaining work is to verify exact-head qualification evidence and reconcile the four mainline-only commits carefully, preserving PR #298's stronger migration guard and gateway path.
 - The PR's production execution manifest remains empty. The two November 17 revocations remain post-deployment cutovers, not pre-deployment batch candidates.
 - No source, migration, test, CI workflow, production inventory/manifest, database/ledger/role/ACL, credential/secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover was extended.
+
+
+## 20 November 2026 — exact four-commit mainline delta reconciled without paid work or history rewrite
+
+Re-read this migration handover, refreshed PR #298–#299 and related PRs #296/#297, re-enumerated Actor Gateway branches, compared both directions between PR #298 and `main`, and inspected the four exact mainline-only commit diffs plus the corresponding hosting/credentials handover on both refs.
+
+### Exact branch comparison
+
+- PR #298 head before this documentation update: `cf4ea6b9d240a7a93081a2fe89163ba3698155eb`.
+- Current `main`: `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Merge base: `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- PR #298 is 230 commits ahead and 4 behind; status `diverged`; GitHub says `mergeable=false`.
+- Reverse comparison (`PR #298 branch...main`) confirms the four mainline-only commits touch exactly one path: `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md`. There are no mainline-only source, SQL migration, runner, test, package, CI workflow, production inventory or execution-manifest changes in those four commits.
+- The 31-file compare in the opposite direction is the PR branch's overall delta against main; it must not be misread as the four behind commits' file list.
+
+### Four exact mainline-only commits and content verification
+
+1. `dc4cbd011ab75a8630e4ab8b111dd2c99c9969ef` — production DB connection checkpoint.
+2. `f52ec0a9fa199ca3855aa39e911b732e0f520ef0` — Amanda / Render Support authority handover.
+3. `aa3842ddb67ec44f1e6fcdeb328cb2e77ddaade2` — latest gateway connection and migrator evidence.
+4. `ddb31ff59ab470973edf60a5078a75e5f962f803` — corrected staged Actor Gateway database URL status.
+
+Fetched each exact commit diff and checked every nonblank added line against the PR #298 branch's current hosting/credentials handover. All 143 added nonblank lines are already present (0 missing across all four commits). Sections 37–40 are therefore content-reconciled in the PR branch even though the branch has not incorporated those four commit objects into its ancestry. The PR branch also retains additional November 18/19 context and the owner's later Free/one-service hosting clarification.
+
+### Decision
+
+- No rebase, merge, cherry-pick, force-push or ancestry rewrite is needed merely to recover the four behind commits' documentation; their content is already present.
+- Do not repeat/copy those sections or create duplicate handover entries.
+- The branch remains four commits behind in Git history and GitHub still reports it non-mergeable. Content reconciliation does not make the branch ancestry current-main-equivalent and does not clear the mergeability status.
+- The earlier claim that mainline-only commits changed CI, migration inventory or the capability revocation SQL is withdrawn. Those are part of the PR branch's ahead-side delta, not the four behind commits.
+- The PR branch's stronger capability migration metadata guard and signed gateway qualification path remain intact; no source reconciliation is needed for the four behind commits.
+- User reported CI run #5397 passed. The connector's commit-run lookup does not expose workflow_dispatch runs, so this task does not independently assert its exact tested SHA. No additional Actions run was triggered.
+- Cost boundary: no paid infrastructure, database, Render resource, service, subscription, tunnel, worker, schedule, monitoring or other recurring-cost dependency was created or proposed. No GitHub Actions run was started by this task.
+
+### Current related PR status
+
+- #298 remains open/draft/unmerged at `cf4ea6b9d240a7a93081a2fe89163ba3698155eb` before this handover-only commit.
+- #296 remains open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`.
+- #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- #299 remains open/draft/unmerged at `94a9d58894d11f0f886203af37cbd096619d447b`; its populated merge_commit_sha is not proof of merge (`merged=false`).
+- No branch was created/deleted, and no PR state or code was changed.
+
+No production database, migration ledger, role, membership, ACL, secret, credential, Render form/configuration/deployment, payment state, CI workflow, inventory or execution manifest was changed. Only this handover was extended.
