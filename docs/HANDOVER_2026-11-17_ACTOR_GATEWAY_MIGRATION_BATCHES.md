@@ -4962,3 +4962,31 @@ This was a source-level review only. No local database was created, no script or
 5. Do not populate a production batch until exact ledger/checksum reconciliation, route readiness, migrator role/ACL authority remediation, provider-confirmed administration, and verified recovery are complete.
 
 No production SQL, migration, role, membership, grant, ACL, ledger, data, credential, secret, Render service/configuration/deployment, payment state, branch ancestry, or paid resource was changed. PR #300 and PR #298 remain separate. PayFast remains paused.
+
+
+## 20 November 2026 — hosting handover append-order conflict hypothesis tested
+
+Re-read the migration-batches handover and refreshed PR #298, current `main`, the feature branch, and the shared hosting/credentials handover at the common merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+
+### Finding
+
+The shared hosting handover had a common 1,646-line prefix at the merge base. Both `main` and the migration-batches branch independently appended content after that prefix. The 218-line mainline addition (sections 37–40, latest production role/migrator evidence and the staged Gateway URL correction) was present on the feature branch but interleaved with 100 branch-specific lines/sections added by the migration-batches work. This creates a plausible same-file end-of-file merge conflict despite the mainline content having been copied into the branch.
+
+### Documentation-only correction
+
+Commit `132d813583a798a401a861576b350a5abe51c8fc` reorders only `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md` on `feat/actor-gateway-production-migration-batches` into this deterministic order:
+1. the exact 1,646-line merge-base content;
+2. the complete 218-line mainline addition, unchanged and in its original order;
+3. all 100 branch-specific lines/sections, preserved after the shared mainline addition.
+
+Post-write verification fetched both versions again and confirmed all 1,864 current-main lines occur in order in the branch file; the branch file remains 1,964 lines. No source, SQL, migration inventory, manifest, CI workflow, PR base, or branch ancestry was changed.
+
+### Mergeability result — hypothesis not yet confirmed
+
+After the ordering correction, GitHub still reports PR #298 as open/draft/unmerged and `mergeable=false`. The branch is 256 commits ahead and 4 behind `main`, with the same merge base. Therefore this documentation ordering issue was a plausible conflict source, but it is **not yet proven to be the sole cause** of GitHub's non-mergeable result. Do not claim the PR is now mergeable. No merge, rebase, cherry-pick, force-push, or ancestry rewrite was performed.
+
+The connector does not expose GitHub's detailed conflict-file list or a test-merge result. Continue by inspecting the four behind-main commits and the PR's current mergeability/check state through a supported GitHub interface. If the hosting handover reorder is not sufficient, identify the exact conflicting paths before making any further changes. Preserve the current branch and keep PR #298 draft.
+
+### Change boundary
+
+This task changed one documentation file only. The migration execution manifest remains empty. No production database, SQL, role, grant, credential, secret, Render service, environment, deployment, CI dispatch, payment state, paid resource, or branch ancestry was changed. PR #300 remains separate and untouched; PayFast remains paused.
