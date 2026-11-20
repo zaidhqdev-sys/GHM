@@ -5763,3 +5763,18 @@ Each revokes PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway` on t
 This change is intentionally narrow and does not yet resolve all migration-chain hazards, SECURITY DEFINER path/default ACL remediation, migration bootstrap authority, or route readiness. Exact-head disposable PostgreSQL and CI qualification are still required; do not merge PR #298 or select a production batch on this evidence alone.
 
 Current production execution manifest verified as `[]`. No production migration/SQL/DDL/ACL/role changes, secrets, Render settings/deployments, paid services, or payment state changed. Next: inspect exact diffs, run relevant local/static contract checks if available, trigger/inspect exact-head CI and disposable PostgreSQL; update handover after each task.
+
+
+## 20 November 2026 — Gate C follow-up review and validation status
+
+Re-read this handover, PR #298 current metadata/head, changed-file inventory, CI workflow, migration dependency plan, pending inventory and empty execution manifest before continuing. PR #298 is still draft/open and not mergeable; its production execution manifest remains `[]`. PR #297 and #300 remain separate. PR #301 and #302 remain merged.
+
+Reviewed the adjacent signed Gateway migrations after the supplier/profile correction:
+- `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor` creates signed assertion-bound overloads for identity and registration operations and grants the signed signatures to `ghm_actor_gateway`.
+- `20261111100000`, `20261111130000`, `20261111150000`, and `20261111160000` explicitly document that legacy runtime grants remain until separate manual cutovers; their signed Gateway operations are additive.
+- `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads` revokes the obsolete ID-only assertion helper after signed wrappers have been introduced; this is not the same as prematurely revoking the still-used Resource API legacy function signatures.
+- The broad SECURITY DEFINER search_path remediation remains outstanding across the catalogue and must be handled as a separate qualified migration. Do not treat this review as having fixed it.
+
+Validation status for current PR head `c7d780f3a79e10f00ee2481784183037b3bb7a02`: the Cloudflare Pages check completed successfully. No GitHub Actions CI run is associated with this exact head yet; the latest visible CI success is for the earlier head `c07cf2597c416284578f898cae0d5d342c565685`, so it does not qualify these latest source edits. The workflow file supports pull_request to main, but no exact-head quality/Disposable PostgreSQL evidence has been observed. Do not claim CI passed. A workflow dispatch endpoint is not available through the connected GitHub actions; next obtain a new pull_request-triggering source commit or have the owner dispatch the existing workflow, then inspect exact-head quality job and logs.
+
+No further source edits in this follow-up review. No production SQL/DDL/ACL/role changes, migrations, secrets, Render settings/deployments, paid resources, or payment state changed. Keep PR #298 draft and manifest empty until exact-head qualification and remaining Gate C/D blockers are resolved.
