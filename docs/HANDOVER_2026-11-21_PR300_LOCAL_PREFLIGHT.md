@@ -154,3 +154,37 @@ git diff --cc -- "scripts/qualify-capability-catalogue-governance.mjs"
 Return the complete output. Then reconcile semantics using the actual stage definitions and qualification checks. Preserve mainline's 43-function baseline and 1,024-stage state model; do not choose either side wholesale. Ensure the merged script retains signed Gateway catalogue route checks and legacy EXECUTE denial assertions. Verify the auto-merged migration and mainline migration contract test before staging.
 
 No conflict resolution, staging, merge commit, push, CI rerun, PR merge, production operation, or deployment was performed in this task.
+
+
+## 21 November 2026 — PR #300 conflict evidence reviewed against both remote source branches
+
+The user supplied the complete read-only local conflict report. Confirmed:
+- Three unresolved files only: catalogue qualification script, runtime privilege implementation, runtime privilege tests.
+- The mainline governance migration is staged as modified, Actor Gateway server is staged as modified, and the mainline governance migration contract test is staged as added.
+- The contract test exists locally (`Test-Path=True`).
+- Both known untracked files remain present.
+- No conflict markers were reported outside the three expected files.
+
+Remote source review confirmed:
+- Main's `src/db/runtime-database-privileges.ts` defines a 43-function baseline and ten independent cutover groups, yielding 1,024 reviewed states. It explicitly separates registration read, registration write, and capability governance groups. Its complete implementation also keeps the thirteen-function fully cut-over state.
+- Feature branch implementation defines a 39-function baseline and eight groups / 256 states. It combines registration read/write into one group and lacks the three-function capability-governance group. It must not replace main's ten-group/1,024-state model.
+- Main's runtime privilege test has the ten-group expectations and asserts that registration write is removed by the automatic migration while registration read is removed by the separate manual cutover. This test expectation is the authoritative mainline direction to preserve; review the merged migration content against it before claiming consistency.
+- Feature branch's added manual cutover SQL `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql` revokes direct INSERT and sequence privileges on `ghm.business_capability`; it is not a SECURITY DEFINER function EXECUTE cutover and does not add an eleventh runtime function group.
+- Feature branch's signed Business Capability SQL function is `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)`, with SECURITY DEFINER search_path `pg_catalog, ghm, pg_temp`, signed actor assertion, active business/membership/capability checks, and append-only insert. This feature is distinct from the Capability Catalogue governance functions `create_capability_draft`, `update_capability_draft`, and `transition_capability_lifecycle`.
+- The feature's catalogue qualification script contains both the signed Gateway catalogue route checks and legacy EXECUTE denial/version-probe checks. Main's version contains the current Gateway route checks and direct gateway SQL calls. Reconcile without losing either the current route coverage or the legacy denial assertions; do not copy older helper/API-shape code over main wholesale.
+- The feature's registration group conflation and reduced inventory are stale relative to main. The feature's capability-create table/sequence cutover is a separate permission dimension and must remain covered by its own cutover qualification, not misrepresented as a SECURITY DEFINER EXECUTE stage.
+
+### Next resolution preparation
+
+Before editing local conflict files, inspect the merged governance migration and contract test together, and capture the exact current mainline migration content. Also inspect the full catalogue script on both sides around setup helpers, Gateway create/update/transition calls, legacy denial assertions, and cleanup. No blind `ours/theirs` resolution.
+
+Local commands to collect exact merge-stage content without changing the index:
+```powershell
+Write-Host "=== Governance migration in merge worktree ===" -ForegroundColor Cyan
+Get-Content "database\migrations\20261117020000_revoke_runtime_capability_governance.sql"
+Write-Host "=== Migration contract test ===" -ForegroundColor Cyan
+Get-Content "src\db\revoke-runtime-capability-governance-migration-contract.test.ts"
+Write-Host "=== Catalogue qualification script, current conflict worktree ===" -ForegroundColor Cyan
+Get-Content "scripts\qualify-capability-catalogue-governance.mjs"
+```
+Do not stage, commit, abort, push, or alter production. After this inspection, prepare precise merged file contents that preserve main's 43/10/1,024 runtime function state model, signed Business Capability route coverage, and the feature's legacy denial/version-probe assertions.
