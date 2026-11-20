@@ -3628,3 +3628,41 @@ Continued source inspection from the seventh through twenty-sixth inventory entr
 Continue through the next inventory segment (20261111210000 onward), focusing on the runtime revocation migrations and token-bound recovery/QuoteFlow-related entry points. Cross-reference each affected function with current Resource API/Auth routes and current handover decisions. Keep the manifest empty until the exact current production ledger, recoverable backup, provider-authorized migrator authority and complete route/API qualification are established.
 
 No source, migration, manifest, PR, branch ancestry, production database, role/ACL, secret, Render form/service/configuration/deployment, payment state or paid resource was changed. The only change in this task is this handover record.
+
+
+## 20 November 2026 — runtime revocation, Auth recovery and storage-provider qualification trace
+
+Re-read the corrected hosting/qualification decision and the PR #298 migration handover before continuing. Hosting remains settled: one Free Render Actor Gateway service is staged and deployment is intentionally deferred until qualification completes. Do not re-label this sequencing as a cost or approval blocker.
+
+Inspected migrations 20261111210000–20261111260000, 20261112020000–20261112090000, 20261112140000–20261112150000 and 20261112170000, then cross-checked the current Auth HTTP router/services, QuoteFlow reset enrollment contract tests, storage metadata gateway client/provider attestation implementation, and the storage provider migration contract tests.
+
+### Runtime privilege revocation and Auth route implications
+
+- `20261111210000` removes direct `ghm_runtime` table and sequence access to `account_external_identity`, retaining only narrow SECURITY DEFINER operations. Later migrations separately revoke runtime EXECUTE on external identity linking and bootstrap; the current policy is that runtime can resolve an existing mapping but cannot create/reassign provider-subject mappings or bootstrap an active account.
+- `20261111220000` revokes three broad account/session-ID administration functions that the migration comments state have no active HTTP/service callers: direct session revocation, account-ID password change, and account disable.
+- `20261111230000` exposes recovery redemption and session-revocation count through a token-hash-bound function. It revokes the broad caller-supplied account-ID session-revocation function from `ghm_runtime`.
+- `20261112020000` implements token-bound password reset: locks and validates a live, unused, unrevoked recovery token; checks the normalized login email belongs to the same active account/credential; consumes the token; changes only the password hash; and revokes sessions atomically. It preserves the existing login email.
+- `20261112030000` adds conditional Argon2 rehash: update succeeds only if the stored hash still equals the exact hash verified by login, preventing a stale login from overwriting a concurrent password reset.
+- `20261111240000` and `20261112040000` revoke ordinary runtime execution of QuoteFlow migration account provisioning and reset-enrollment registration. Those are controlled migration/schema-owner operations; issuer cutover separately denies issuer registration authority.
+- `20261112050000` removes PostgreSQL's global default PUBLIC EXECUTE for functions created by `ghm_schema_owner`; intended application functions must receive explicit per-role grants.
+- `20261112070000` revokes the legacy unsigned `assert_actor_gateway(bigint)` from PUBLIC and all application logins. The typed signed gateway assertion path is the only intended application gateway boundary.
+- `20261112170000` removes a redundant migrator grant on external Business mapping lookup; its comment says the commercial payment-preparation route uses the lookup as `ghm_runtime` and migrator schema-owner SET ROLE is the migration authority.
+
+### Route and contract cross-checks
+
+- The current Auth HTTP router exposes distinct normal password recovery request/reset routes and separate QuoteFlow migration-reset request/complete routes. QuoteFlow migration completion issues a normal GHM session only after the reset completion service returns successfully. Normal recovery and reset are injected services; exact persistence-to-SQL call mapping still needs a focused read of `src/auth/foundation/persistence.ts` before treating every route-to-function link as fully proven.
+- The QuoteFlow reset-enrollment migration contract test explicitly checks that registration is denied to `ghm_runtime` and `ghm_auth_issuer`, while the controlled schema-owner SET ROLE remains the qualification path. This matches the migration/operator-only boundary; it is not a general runtime registration endpoint.
+- The Auth recovery migrations deliberately retain narrowly scoped token-bound runtime functions. Do not interpret the revocations as removing password recovery/reset from the Resource API.
+- The storage metadata gateway client calls the Actor Gateway for create/read/deletion-pending/available/deleted operations and separately creates a provider attestation for provider-confirmed availability/deletion. Its signer uses canonical base64 for exactly 32 secret bytes, JSON context bytes, a distinct `ghm-storage-provider:v1` domain, timestamp and nonce.
+- Migration `20261112150000` requires BOTH a user Actor Gateway assertion and a distinct provider workflow attestation for `mark_available` and `mark_deleted`. The provider verifier secret and nonce table are inaccessible to PUBLIC, runtime, Actor Gateway and migrator roles; verifier execution is not granted to application roles. Provider-confirmed state transitions cannot be authorized by the Actor Gateway's user assertion alone.
+- Existing storage contract tests assert the separate secret/domain, replay protection, metadata-context binding, owner/administrator authorization and status preconditions. This is useful static contract evidence, not proof of an end-to-end live provider callback or deployed secret.
+
+### Qualification risks / follow-up evidence
+
+1. The production migration prefix includes deliberate privilege removals. Before deriving a batch, enumerate every current Resource API call site and verify it uses the surviving narrow function or the appropriate gateway/issuer boundary. In particular, verify Auth persistence SQL against the token-bound recovery/reset/rehash functions and verify no active path still calls the revoked account-ID or identity-link/bootstrap operations.
+2. For QuoteFlow migration flows, keep operator enrollment/provisioning distinct from user reset completion and normal GHM login. Qualify the signed QuoteFlow identity-link attestation separately from the Auth Issuer's enrollment lookup/completion privileges.
+3. For storage, qualify the full order: provider upload/delete evidence -> separate provider attestation -> Actor Gateway actor assertion -> database transition. Verify secret custody and exact context construction at the Resource API and SQL boundary. The Actor Gateway must not be able to mint provider proof.
+4. `20261112090000` pins all GHM SECURITY DEFINER search paths to `pg_catalog, ghm, pg_temp` after requiring every such function to be owned by `ghm_schema_owner`. Qualification must include the preflight against the actual existing function ownership inventory and temporary-schema shadowing tests.
+5. These source and contract inspections do not prove current production ACLs, migration ledger state, secret provisioning, or deployed service behaviour. Those remain evidence to obtain during the agreed pre-deployment qualification sequence, not hosting approval blockers.
+
+The production batch manifest remains empty. No plan was run against production and no production SQL, ACL, secret, migration, Render service/form/deployment, payment state, PR or branch ancestry was changed. Only this handover record was updated.
