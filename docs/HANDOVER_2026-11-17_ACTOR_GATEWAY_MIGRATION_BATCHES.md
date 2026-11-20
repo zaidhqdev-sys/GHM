@@ -6298,3 +6298,36 @@ Batch decision:
 - The production manifest remains `[]`; PR #298 remains draft/unmerged.
 
 No production SQL/DDL, migration, role/membership/ACL, credential, secret, Render setting/deployment, payment state, backup or paid resource was changed. No batch or production readiness is claimed.
+
+
+## 21 November 2026 — complete live SECURITY DEFINER catalogue reconciliation
+
+Pre-task review completed: reviewed this handover, PR #298 state/head and changed-file list, PRs #297/#300/#301/#302, branch/main heads, production migration manifest, dependency matrix, existing security-definer audit/compare scripts, exact hardening migration and disposable qualification script.
+
+PR #298 remains open/draft/unmerged. Branch head before this task was `3170e2c21585c533b06ed9b73b9e01956a6e5ddd`; main remains `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. Production manifest remains exactly `[]`.
+
+A read-only query against Render production `ghm-db` / `ghm_db` inspected all 63 SECURITY DEFINER routines in schema `ghm` and captured owner, routine-level search_path, direct ACL and effective EXECUTE for `ghm_runtime`, `ghm_migrator`, and `ghm_payment_provider`.
+
+Verified results:
+- 63 routines total; all 63 are functions, zero procedures.
+- All 63/63 are owned by `ghm_schema_owner`; zero owner exceptions. This corrects the earlier handover/matrix implication that the owner preflight fails.
+- 5/63 already have exact `search_path=pg_catalog, ghm, pg_temp`; 58/63 require path normalization: 54 have `pg_catalog, ghm`, three have `ghm, pg_temp`, one has `ghm, pg_catalog`.
+- No direct PUBLIC EXECUTE and no grantable EXECUTE entries were found.
+- Effective/direct routine counts: `ghm_runtime` 46, `ghm_migrator` 2, `ghm_payment_provider` 2; `ghm_schema_owner` can execute all 63.
+- No global or schema-specific default function ACL rows for `ghm_schema_owner` were present in this catalogue snapshot.
+- The SECURITY DEFINER routines have 131 pg_depend catalogue rows (63 namespace, 55 language, 13 return-type dependencies). This is not a complete operational call graph: PL/pgSQL bodies, dynamic SQL and external application callers are not fully represented.
+
+The exact 58 nonconforming signatures and five already compliant signatures, path groupings, ACL summary, dependency limitations and correction plan are recorded in `docs/security/PRODUCTION_SECURITY_DEFINER_CATALOGUE_RECONCILIATION_2026-11-21.md` (created in commit `4f063a7947201e4d2b4a36be902cc90060f8c8f8`).
+
+The current migration `20261112090000_pin_security_definer_search_path.sql` is correctly scoped for the observed discrepancy: owner preflight across all GHM SECURITY DEFINER functions/procedures, then catalogue-wide `ALTER FUNCTION/PROCEDURE ... SET search_path = pg_catalog, ghm, pg_temp`. It does not change ownership, function definitions, ACLs or default privileges. Existing disposable qualification specifically tests temporary-object shadowing and rollback. Do not add ad hoc ownership changes or individual routine patches.
+
+Important qualification:
+- The complete catalogue result establishes that the migration's owner preflight is satisfied at this point in time; it does not establish that the migration is next in the live pending queue.
+- The exact live migration ledger/checksum audit remains unresolved; current source inventory is not the live queue.
+- The existing disposable qualification script has been inspected, but was not executed during this task; no fresh disposable PASS is claimed.
+- The existing before/after authority inventory and comparison scripts were inspected. They should be used to demonstrate only the intended path changes and no ACL/ownership/role-membership/schema/database/column privilege drift when qualification is run.
+- No source SQL migration was changed in this task; the new catalogue report and documentation corrections are the only repository changes.
+
+Corrective documentation: prior statements that production has SECURITY DEFINER functions owned by roles other than `ghm_schema_owner` are superseded. The actual current discrepancy is path normalization (58 routines), not ownership reassignment. The production dependency matrix was updated with this correction.
+
+No production SQL/DDL, routine path, ACL, role membership, migration, credential, secret, Render setting/deployment, payment state, backup or paid resource was changed. PR #298 remains draft/unmerged; production manifest remains `[]`.
