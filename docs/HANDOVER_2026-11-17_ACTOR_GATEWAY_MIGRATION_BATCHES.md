@@ -4865,3 +4865,60 @@ Before implementing, inspect table uniqueness/history constraints and the existi
 No source implementation was made in this task. The verifier's existing `capability.create` allowlist is reusable, but the end-to-end create capability does not yet exist. PR #298 remains open/draft/unmerged at `f4957a56c1c533fc814cdf561bc004090c19b413`, 243 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left unchanged. No CI run was triggered.
 
 Production migration batch manifest remains `[]`. No production SQL, role, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — Business Capability uniqueness and historical-row semantics resolved
+
+Re-read the handover, refreshed PR #298 and branch comparison, and inspected the existing migration history and current repository implementation. This resolves the outstanding question about uniqueness and withdrawn rows before designing the signed create function.
+
+### Database uniqueness is unconditional
+
+- `ghm.business_capability` has primary key identity `id` and an unconditional unique constraint `business_capability_unique UNIQUE (business_id, capability_id)`.
+- The uniqueness constraint is not partial on `assertion_status`; withdrawn rows continue to occupy the business/capability pair.
+- The table supports only `assertion_status IN ('active','withdrawn')`; there is no partial unique index or separate assertion-history relation.
+- The legacy `createBusinessCapability` repository method performs a plain INSERT and has no ON CONFLICT handling. A second create for the same business/capability pair, including after withdrawal, fails with PostgreSQL unique violation. This is the existing behavior to preserve unless a separate product/data-model decision explicitly changes it.
+
+### Replacement semantics are intentionally different
+
+- `ghm.replace_business_capability_assertions` serializes on the business row, validates owner/administrator membership and selectable capabilities, withdraws active assertions omitted from the replacement set, then inserts/upserts each requested business/capability pair.
+- The conflict handler reactivates an existing withdrawn row in place; it does not append a second historical row. It preserves verification state only when relevant assertion fields remain unchanged; otherwise resets verification to unverified.
+- The November 9 correction also serializes concurrent replacements and considers `effective_until` when deciding whether verification remains valid.
+- This bulk replacement contract must not be copied into single-create. Single-create must remain one INSERT and must not update/reactivate the unique existing row, since that would silently change legacy POST behavior.
+
+### Signed create SQL design now bounded
+
+Implement `ghm.gateway_create_business_capability_assertion` as a SECURITY DEFINER wrapper with:
+- exact JSON signed context containing all create fields and canonical date serialization;
+- verifier operation `business.capability.create`;
+- active business row lock and active owner/administrator membership validation for the signed actor;
+- active/selectable catalogue check;
+- one plain INSERT using the existing legacy columns and server defaults for status/basis/verification/submitted timestamp;
+- caller-provided `effectiveFrom` preserved, defaulting to `now()` exactly as the repository currently does;
+- no ON CONFLICT clause, no UPDATE/DELETE, no withdrawal/reactivation, and no sibling assertion mutation;
+- schema-owner ownership, exact `search_path=pg_catalog,ghm`, EXECUTE for `ghm_actor_gateway` only, and revocation from PUBLIC/runtime/migrator.
+
+The existing identity sequence is consumed inside the SECURITY DEFINER function as schema owner. Once route cutover is complete, Resource API runtime no longer needs direct INSERT or sequence USAGE on `ghm.business_capability`; revoke these only in a separately reviewed migration after the full path is tested.
+
+### Exact compatibility boundary
+
+- First create for a pair succeeds.
+- Duplicate create for the same pair fails (same unique-constraint behavior as today).
+- Create after withdrawal also fails (same unconditional unique constraint and plain INSERT behavior).
+- Re-add/reactivation remains the existing bulk PUT replacement operation's responsibility.
+- No changes to schema uniqueness, history model or API semantics are included in this create cutover.
+
+### Implementation order
+
+1. Add SQL wrapper and disposable PostgreSQL positive/negative tests.
+2. Add Gateway reader create operation and HTTP POST endpoint.
+3. Add Resource API Gateway client create operation and route fail-closed behavior.
+4. Test first create, duplicate and withdrawn-row conflict, wrong actor/business, non-selectable capability, forged assertion, replay, context mismatch, exact effectiveFrom preservation, no sibling mutation, and runtime direct INSERT/sequence denial after the dedicated revocation migration.
+5. Only then propose a separate runtime ACL revocation migration. Do not put production execution into the batch manifest.
+
+No source or test implementation was made in this task. This is a resolved compatibility design, not a completed feature.
+
+### Refreshed state and safety
+
+PR #298 remains open/draft/unmerged at `8cea0220b693302e28b1f9dba91ae4c137a7cd25`, 244 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left untouched. No CI run was triggered.
+
+Production migration batch manifest remains `[]`. No production SQL, role, membership, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
