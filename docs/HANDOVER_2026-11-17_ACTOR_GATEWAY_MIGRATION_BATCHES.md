@@ -4813,3 +4813,55 @@ Inspect the existing `gateway_replace_business_capability_assertions` SQL and mi
 PR #298 remains open/draft/unmerged at `679e8b10d462d2364e04114fedc0cc1dd08c8673`, 242 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left unchanged. No CI run was triggered.
 
 Production migration batch manifest remains `[]`. No source, test, SQL, migration, ACL, role, production data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — signed create SQL contract inspection; latent operation allowlist found
+
+Re-read the migration handover, refreshed PR #298 and its main comparison, and checked the existing Actor Gateway branch set. Inspected the complete signed mutation migration, signed assertion verifier, replacement function, Business Capability table/grants, Resource API mutation client and Gateway mutation reader. This task narrows the next implementation design.
+
+### Critical finding: verifier already allowlists `capability.create`
+
+Migration `20261111070000_add_signed_business_capability_mutations.sql` updates `ghm.assert_actor_gateway_capability` and its operation allowlist already includes `'capability.create'`. However:
+- the same migration defines signed `business.capability.replace`, `business.capability.verify`, `business.capability.evidence.review` and `business.capability.evidence.submit` SQL entry points;
+- it does not define a `gateway_create_business_capability_assertion` SQL function;
+- `GatewayCapabilityMutationReader`'s operation union contains only replace/verify/evidence review/evidence submit;
+- its `PostgresGatewayCapabilityMutationReader` has no `create` method;
+- the HTTP Gateway app exposes PUT bulk replacement, not a single-assertion create route;
+- Resource API `HttpCapabilityMutationGatewayClient` exposes replace/verify/evidence methods, no create method.
+
+Therefore `capability.create` is a latent allowlisted operation, not an implemented signed create flow. Do not treat its presence in the verifier as proof that creation is already Gateway-backed. It may be retained for compatibility/history; inspect commit/migration history before relying on intent.
+
+### Existing signed assertion protections reusable
+
+The current v2 verifier in migration `20261111070000...`:
+- requires `session_user='ghm_actor_gateway'`;
+- accepts only positive actor ID, operation, issued timestamp, UUID nonce, bounded context (max 32 KiB), and a lowercase 64-hex HMAC;
+- limits assertion age to 60 seconds;
+- reads the 32-byte verifier secret from a protected table;
+- signs the canonical payload `ghm-actor-gateway:v2|actor|operation|issued|nonce|hex(UTF8(context))`;
+- compares all 32 HMAC bytes before branching;
+- requires an active `ghm.account_identity`;
+- records nonce in the protected replay table and rejects duplicate nonce.
+
+The replacement SQL wrapper validates that signed context exactly equals JSON `{businessId,assertions}`, verifies operation `business.capability.replace`, then delegates to `ghm.replace_business_capability_assertions`. The delegated replacement function serializes by locking the active business row, checks active owner/administrator membership, limits payload to 50, rejects unknown keys/duplicates, validates active/selectable catalogue entries, updates/removes the existing active assertion set, and inserts/upserts assertions. This is intentionally replace-all semantics and cannot safely implement POST create.
+
+### Existing create data contract and direct grant
+
+- Legacy POST accepts `businessId, capabilityId, proficiencyLevel, description, effectiveFrom, effectiveUntil, sourceReference`.
+- `ghm.business_capability` has an identity-generated `id`; the existing runtime INSERT grant is column-limited and includes `business_id, capability_id, proficiency_level, description, assertion_status, assertion_basis, verification_status, effective_from, effective_until, source_reference, submitted_at, created_by`. It does not grant arbitrary table INSERT/UPDATE/DELETE.
+- The signed mutation migration's assertion verifier already has the `capability.create` operation name available, but no corresponding Gateway SQL function is defined.
+- The correct create function should be an append-only one-row operation: lock/check the active business tenant; require active owner/administrator membership for signed actor; validate active/selectable capability and input bounds; insert one row with server-owned status/basis/verification/audit fields; preserve caller-supplied `effectiveFrom` rather than replacing it with clock time; return inserted row; do not withdraw/upsert/delete any sibling assertions.
+- Need verify whether unique constraint `(business_id, capability_id)` prevents multiple historical rows and how re-adding a withdrawn assertion is meant to behave before finalizing SQL. This affects append-only semantics and conflict handling.
+- Keep sequence behavior explicit: the identity sequence is accessed inside the SECURITY DEFINER function under schema-owner ownership, so Resource API runtime should not need direct sequence privileges after cutover. Confirm in disposable PostgreSQL after implementing.
+
+### Recommended implementation shape
+
+Add a distinct `ghm.gateway_create_business_capability_assertion` SECURITY DEFINER SQL wrapper with exact signed context `{businessId,capabilityId,proficiencyLevel,description,effectiveFrom,effectiveUntil,sourceReference}`, call `assert_actor_gateway_capability(actor,'capability.create',...)`, then delegate to a narrowly scoped append/create SQL function that enforces owner/admin and selectable catalogue rules. Give EXECUTE only to `ghm_actor_gateway`, revoke from PUBLIC/runtime/migrator. Add the corresponding Gateway reader method, operation union entry, HTTP POST route and Resource API client method; change Resource API POST to use it whenever Gateway is required, fail closed if missing, and preserve legacy fallback only outside production-required mode. Keep API response shape and validation compatibility.
+
+Before implementing, inspect table uniqueness/history constraints and the existing create function's full behavior, then add positive/negative disposable PostgreSQL qualification (valid actor, unauthorized member, inactive/non-selectable capability, duplicate/current-vs-withdrawn assertion, forged signature, replay, wrong context, runtime direct INSERT denial, and no sibling assertion deletion). Add HTTP route tests for Gateway forwarding and required-but-missing 503. Do not run production SQL or change grants until this full path passes.
+
+### Disposition and branch state
+
+No source implementation was made in this task. The verifier's existing `capability.create` allowlist is reusable, but the end-to-end create capability does not yet exist. PR #298 remains open/draft/unmerged at `f4957a56c1c533fc814cdf561bc004090c19b413`, 243 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left unchanged. No CI run was triggered.
+
+Production migration batch manifest remains `[]`. No production SQL, role, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
