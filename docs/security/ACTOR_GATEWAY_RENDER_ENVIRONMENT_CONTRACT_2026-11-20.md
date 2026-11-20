@@ -127,3 +127,18 @@ No step below is authorized for execution by this document.
 The required environment variable **names and code contracts are now enumerated**, but their secret values and production database prerequisites are not verified. The owner-confirmed DB URL is staged in the unsubmitted form only; it is not a proven working credential. No Gateway URL exists because no Gateway service exists.
 
 Therefore no deployment-ready configuration can be certified yet. Keep the form unsubmitted, keep auto-deploy OFF, do not change Render, do not change production SQL/roles/ACLs, keep the production migration batch manifest `[]`, keep PR #298 and #300 draft/unmerged, and keep PayFast paused. No additional paid resource is required or authorized.
+
+
+## Owner correction — masked Render secrets are populated (20 November 2026)
+
+The owner clarified after sharing the unsubmitted Render service-creation form that the masked values are deliberately populated; they are not empty.
+
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` is populated and intentionally concealed in the Render UI.
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM` is populated; the owner copied it from the existing GHM-Internal-Runtime environment.
+- `GHM_JWT_ES256_KID` is populated; the owner copied it from the existing GHM-Internal-Runtime environment.
+- The owner intentionally keeps secret values masked. Never ask them to disclose these values in chat, Git, logs, or handovers.
+- The service remains uncreated and undeployed; the form remains unsubmitted and auto-deploy remains OFF.
+
+This corrects the earlier wording in this document that treated masked values as potentially empty or described their presence as unknown. Presence and owner-reported provenance are established. Cryptographic validity, exact byte/PEM formatting, KID-to-key correspondence, assertion-secret encoding/length, and successful runtime verification have not been independently tested; do not describe those as verified.
+
+The owner has already completed the environment-variable entry step. Do not repeat that task or ask them to re-enter/copy the same values. Continue with the next genuinely unfinished implementation/qualification item using existing evidence. No secret was read, revealed, changed, regenerated, or copied by the assistant.
