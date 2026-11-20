@@ -6075,3 +6075,29 @@ Optimized the verifier to precompute the canonical JSON keys for all reviewed st
 Commit: 8c6771e81eec821f3cda03f227571ddd07d8fef2.
 
 PR #298 remains draft/open and mergeable=true, 357 commits ahead / 0 behind main. Exact-head CI for the optimized code must complete before claiming the merged branch qualified. Production manifest remains []. No production database/ACL/role changes, migration execution, secrets, Render changes/deployments, paid resources or payment state changed.
+
+
+## 21 November 2026 — PR #298 exact-head CI diagnosis and contract correction
+
+Mandatory pre-task review completed before editing: reviewed this handover, PRs #298/#297/#300/#301/#302, current main and PR branch refs, all changed PR #298 paths, runtime privilege model/tests, default-ACL migration, Auth Issuer disposable qualification script, production execution manifest, and exact-head workflow run 44826952704.
+
+Current GitHub state at review:
+- PR #298 is open/draft/unmerged, head `ffe3a9599543be1af4b48732e09d3d7f67d619f5`, branch `feat/actor-gateway-production-migration-batches`, base main `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- Main includes merged PR #301 at `0dc1b27c2b7de71c77d071966a9f374e13075e2b`; PR #302 is merged at `025c42c65930cc354076cf1c1e90c78488600848`.
+- PR #297 and #300 remain separate open/draft PRs.
+- PR #298 branch head is `ffe3a9599543be1af4b48732e09d3d7f67d619f5`; its prior latest recorded 4,096-stage validator optimization is included.
+- Exact-head CI run `44826952704`: Cloudflare Pages passed; web-quality passed; quality failed in the Test suite. The uploaded diagnostic artifact was downloaded and inspected.
+
+The 2 failing tests were both stale static contract assertions in `src/db/revoke-runtime-capability-governance-migration-contract.test.ts`:
+1. The test expected literal `ALTER FUNCTION %s SET search_path...`, but the migration correctly uses dynamic `ALTER %s %I.%I(%s)` to pin both SECURITY DEFINER functions and procedures.
+2. The test expected whitespace after SQL argument commas in `has_function_privilege`, while the migration's compact SQL correctly uses no spaces.
+
+This was a test-contract formatting mismatch, not a disposable PostgreSQL runtime failure. Updated the test to assert the actual dynamic function/procedure formatter, explicitly check the function/procedure branch, and tolerate SQL whitespace around privilege-check commas while retaining owner, SECURITY DEFINER, Gateway EXECUTE and runtime non-EXECUTE assertions.
+
+Correction commit: `5131e32011d39cbd90dbdaa01a301ed2dfccdb79`.
+
+Exact-head CI for this correction is pending; do not claim qualification until it completes. The previous run had 1,106 passing and 2 failing tests (1,108 total). The disposable database qualification itself reached the later test suite; the failed tests were the two contract checks above. The earlier full disposable qualification pass remains evidence for its own exact commit only.
+
+The Auth Issuer default-function-privilege qualification was reviewed: it injects global and schema-scoped `ghm_runtime` defaults, verifies both Auth Issuer and Actor Gateway reject the unsafe state, then removes test privileges. Migration `20261112050000_revoke_public_default_function_execution.sql` revokes future function EXECUTE defaults for PUBLIC and `ghm_runtime` at global and `ghm` schema scopes without changing existing per-function grants. Existing explicit runtime function grants and the exact allow-list remain the compatibility boundary.
+
+No production migration, SQL/DDL/ACL/role change, Render setting/deployment, secret, payment state or paid resource was changed. The production migration batch manifest remains `[]`. PR #298 remains draft/unmerged; do not merge or deploy based on this correction until exact-head quality, web-quality, Cloudflare and all downstream disposable PostgreSQL/authority checks pass.
