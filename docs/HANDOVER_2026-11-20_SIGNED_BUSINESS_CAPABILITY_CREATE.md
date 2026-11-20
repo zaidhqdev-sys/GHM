@@ -167,3 +167,28 @@ This is the first successful execution of the dedicated Business Capability sign
 The prior corrective commits in this sequence were `123d90752d5fde9171f34e03a21eace6afb2db0a` (valid deprecated/non-selectable catalogue fixture) and `a08187c4eb46b98998dca3c6aa495b6bddf1af10` (stop reapplying migrations already applied by CI). No production SQL, runtime ACL, production database, secrets, deployment, paid service or PR #298 changes were made in this task.
 
 Next: inspect the final conclusion of CI #5430. If all jobs pass, record the full CI pass and proceed to review the PR diff/checks for merge readiness, but keep PR #300 draft/unmerged until all required evidence and owner-directed steps are complete. If any later CI step fails, isolate it from the already-passed Business Capability qualification and diagnose only that failure.
+
+
+## Signed create application integration added after green SQL qualification — CI pending — 2026-11-20
+
+Before this task, re-read this handover, checked PR #300, PR #298 and PR #272, verified `feat/signed-business-capability-create`, compared the feature branch against `main`, and inspected full CI run #5431 and the exact SQL/API/service files.
+
+CI #5431 (run ID `44776342145`) completed successfully: both `web-quality` and `quality` passed. The dedicated signed Business Capability PostgreSQL qualification (step 53) passed, as did the following Saved Business, Business Hours, Trust Score, Business Logo, supplier classification, Business profile, commercial settlement identity, migration audit, runtime boundary, and isolated auth issuer cutover/inventory/evidence steps through step 69. This is CI disposable PostgreSQL evidence only.
+
+The review identified an application integration gap: the SQL function was qualified but `POST /api/v1/business-capabilities` still called the Resource API repository's direct runtime INSERT; the Actor Gateway had no create method/route, and the signed-create migration deliberately did not revoke legacy runtime table/sequence grants. The route therefore was not yet using the new signed operation. PR #300's original body still says “adds signed Actor Gateway create” and “Gateway-only execute authority”, but the actual scope before this task did not wire that operation to the HTTP path.
+
+Added the first application integration slice:
+- `src/actor-gateway/business-capability-mutation-reader.ts`: added `create` to the reader contract and Postgres implementation, signs the `business.capability.create` context using the existing assertion secret, calls `ghm.gateway_create_business_capability`, and maps the returned row.
+- `src/actor-gateway/app.ts`: added authenticated `POST /v1/business-capabilities`, strict payload allowlist/shape checks, verified actor ID from JWT locals, and fail-closed reader behavior.
+- `src/http/capability-mutation-gateway-client.ts`: added the HTTP client create operation.
+- `src/http/business-capability-router.ts`: when the Actor Gateway is configured or required, create now forwards the verified bearer token to Gateway and does not fall back to Resource API if Gateway is unavailable; non-production legacy behavior remains available only when Gateway is not configured/required.
+- `src/actor-gateway/app.test.ts`: added Gateway endpoint tests for verified actor binding and invalid payload rejection.
+- `src/http/business-capability-router.test.ts`: added route tests for forwarding bearer/input and fail-closed behavior when Gateway is required but unavailable.
+
+Commits: `21bcfc108c403cc883ec7258b9e27c5b44fdcec1` (reader create), `d746ac74cc138cad4adc43280ca289a7b23971fd` (Gateway HTTP endpoint), `5ba95fb20e2eb72e2462dafa56d4264dcafe1544` (Resource API HTTP client), `6e35ca2f2990fe672f01b1d920e62ca019c2cb47` (Resource API create routing), `959fc83792df58860611f2fbd19cb7011330443a` (Resource API route tests), `b135bfa2792ca979fec907c3f06274e1580d8d13` (Gateway route tests).
+
+CI runs #5432 and #5433 were cancelled due to newer commits arriving; they are not test failures and provide no validation. Normal CI run #5437 (ID `44777635823`) is currently in progress. No manual dispatch, production migration, production database change, ACL revocation, deployment, new paid service, or PR #298 modification.
+
+Important remaining work: inspect CI #5437 through full completion. Review/extend the Gateway reader tests and SQL qualification for withdrawn duplicate, owner/admin positive authorization, explicit administrator membership positive path, and direct runtime INSERT/sequence denial for `ghm.business_capability` (the current dedicated script tests active/withdrawn duplicate and runtime denial for evidence, but does not assert the Business Capability table's legacy direct INSERT/sequence grants are revoked). The new migration currently leaves those runtime grants intact, and the separate evidence/replacement cutover does not revoke them. Do not claim Gateway-only create enforcement until a safe forward-only manual cutover migration revokes legacy runtime INSERT/sequence privileges and a separate qualification verifies runtime denial and Gateway create success. Keep any such cutover isolated and clearly guarded; do not apply to production. Preserve an intentional compatibility path only if the product owner explicitly decides not to cut over.
+
+PR #300 remains draft/open/unmerged; PR #298 remains separate and untouched. Do not deploy or merge. No paid resources or production changes.
