@@ -501,7 +501,8 @@ export const createActorGatewayApp = (
       || (body.proficiencyLevel !== undefined && body.proficiencyLevel !== null && !['foundational','proficient','advanced','expert'].includes(String(body.proficiencyLevel)))
       || (body.description !== undefined && body.description !== null && typeof body.description !== 'string')
       || (body.sourceReference !== undefined && body.sourceReference !== null && typeof body.sourceReference !== 'string')
-      || effectiveFrom === null || effectiveUntil === null
+      || (body.effectiveFrom !== undefined && body.effectiveFrom !== null && !(effectiveFrom instanceof Date))
+      || (body.effectiveUntil !== undefined && body.effectiveUntil !== null && !(effectiveUntil instanceof Date))
       || (effectiveFrom instanceof Date && effectiveUntil instanceof Date && effectiveUntil <= effectiveFrom)) {
       res.status(400).json({ error: 'invalid_request' }); return;
     }
