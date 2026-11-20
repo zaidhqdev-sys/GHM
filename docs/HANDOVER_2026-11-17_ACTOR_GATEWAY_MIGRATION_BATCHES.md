@@ -3855,3 +3855,32 @@ Cross-checked the active Resource API consumers:
 - PR #296's unmerged Business Identity ACL migration would insert a new pending version between the existing 20261112170000 and 20261116140000 tail. If it merges, regenerate the inventory from the exact repository and fresh authoritative production ledger; do not patch this branch's count or add that migration manually.
 
 No source, SQL migration, test, batch manifest, production ledger, production database/role/ACL, credential/secret, Render service/form/configuration/deployment, payment state, PR state, or branch ancestry was changed. Only this handover record was updated.
+
+
+## 20 November 2026 — commercial provider-code migration contract reviewed
+
+Re-read the migration-batch handover and production reconciliation, refreshed PR #298 and branch/main state, and traced the next not-yet-described migration immediately preceding the commercial consent/approval chain: `20261116140000_generalize_commercial_payment_provider_code.sql`.
+
+### Migration purpose and dependency
+
+- Earlier migration `20261104120000_bind_commercial_payment_attempt_provider.sql` added nullable `commercial_payment_attempt.provider_code` with a check that allowed only `payfast`.
+- That same migration's provider-result function already validates provider codes using the general lower-case identifier pattern `^[a-z][a-z0-9_]{1,49}$`, and provider events use the same generalized identifier contract.
+- The November 16 migration drops only the restrictive payment-attempt provider-code check and replaces it with the same normalized identifier pattern used by provider events and the existing payment-result function.
+- `src/resources/commercial/contracts.ts` models `CommercialProviderCode` as `string`, and `PostgresCommercialProviderBoundary` passes the provider code to the database result boundary without hardcoding PayFast. The migration therefore aligns the attempt-table constraint with the already-generalized provider-event/result API.
+- This is a schema-constraint compatibility migration. It does not create a provider, provision credentials, make an HTTP request, start checkout, accept a callback, settle a payment, or activate a subscription.
+- The migration is transaction-wrapped and narrowly changes one check constraint. No direct runtime or provider grants are changed by this migration.
+
+### Sequencing and disposition
+
+- It is the first entry in the current commercial migration tail, immediately before immutable consent evidence, document approval authority, founder-only authority/approval gateway operations and consent-bound payment preparation.
+- The generalized provider-code schema is a prerequisite for a provider-neutral payment preparation design; it is not authorization to activate any provider.
+- PayFast remains paused by owner instruction. This review does not qualify or resume PayFast.
+- No separate migration-contract test file names this exact migration in the tree. The existing commercial workflow/provider tests and CI migration application cover adjacent contracts, but do not claim a dedicated isolated assertion for this one-line constraint change without a test result demonstrating it.
+- No dependency or source conflict was found that requires changing the migration. Keep it in the repository's existing ordered pending inventory; do not split, renumber, edit or execute it.
+- The production ledger remains inaccessible through the approved read path, and the pending inventory is still a dated candidate rather than a live exact queue. This review cannot prove whether this version is already applied in production or its exact live predecessor/successor position. The PR #298 execution manifest remains empty.
+
+### Branch/PR state checked
+
+At the start of this task, PR #298 was open/draft/unmerged, current branch head was `42687624ed73c34266ffbcb518228109a0a7dc0a`, and `main` was `ddb31ff59ab470973edf60a5078a75e5f962f803`. The branch remained 221 commits ahead / 4 behind with merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`; GitHub continued to report it non-mergeable. No branch ancestry or related PR was changed.
+
+No source, SQL, test, inventory, manifest, production ledger/database/role/ACL, credential/secret, Render service/configuration/deployment, payment state, PR or branch ancestry was changed. Only this handover record was updated.
