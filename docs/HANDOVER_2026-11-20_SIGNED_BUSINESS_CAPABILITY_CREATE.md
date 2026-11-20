@@ -557,3 +557,26 @@ Conclusion: dotenv is loading at least two existing values, but the full three-p
 Next safe action is inspect local file/configuration inventory without printing contents or secrets: identify whether `.env`, `.env.local`, `.env.test`, or documented local qualification setup files exist, and inspect repository handovers/branch notes for an already-established Actor Gateway principal and disposable DB setup. The user has previously said there is an existing local qualification environment, so reconcile that prior setup before concluding it is absent. If no existing configuration/DB/principals can be located, stop and report this as an environment provisioning gap rather than introducing paid infrastructure or new DBs.
 
 Static checks remain: TypeScript build succeeded and focused migration contract test passed 5/5. PostgreSQL qualification remains NOT RUN. No production access/change, SQL migration, deployment, CI dispatch, paid resource, new database or secret generation occurred.
+
+
+## Local inventory result — existing PostgreSQL installations found, qualification setup unresolved — 2026-11-20 03:13 UTC
+
+User's inventory from C:\GHM-main reported:
+- Root files matching environment/qualification/handover patterns: .env.example, docker-compose.payfast-qualification.yml, and payfast-qualification.env.example; no visible .env, .env.local, or qualification-specific env file in that root-file listing.
+- PostgreSQL client: psql (PostgreSQL) 18.6.
+- Windows services listed: postgresql-x64-17 and postgresql-x64-18. The pasted output does not clearly establish their Running/Stopped status.
+- No database inventory or listening-port check was run.
+
+This is not enough to conclude that the pre-existing disposable database/principals are absent. The dotenv check earlier resolved runtime and migrator URL values while the environment inventory did not show a root .env file; determine whether .env is a directory, whether dotenv is resolving a parent path, or whether those values are injected through another existing local mechanism. Do not print env file contents or secret values.
+
+### Next safe local inspection
+
+Ask for metadata-only inspection of:
+1. Get-Item -Force .env and Get-ChildItem -Force (including directories) in C:\GHM-main;
+2. metadata-only check for .env in parent C:\ and sibling checkout C:\GHM (do not recursively search the whole drive);
+3. service Name/Status for PostgreSQL 17 and 18;
+4. local PostgreSQL readiness/port and database-name inventory using local service connections only, with no connection strings or passwords printed.
+
+Use existing installed PostgreSQL services and previously provisioned local DBs only. Do not start/stop services, create roles/databases, generate secrets, modify env files, or use production credentials without establishing the existing setup. The earlier remembered local PayFast qualification DB on PG18 port 5433 is a separate database and is not automatically the required ghm_disposable_test.
+
+Static TypeScript build and focused migration contract test are confirmed passed (5/5). PostgreSQL qualification is still NOT RUN. No SQL migration, database creation, role creation, secret generation, deployment, CI dispatch, paid resource or production operation occurred.
