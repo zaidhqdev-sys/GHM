@@ -841,3 +841,17 @@ Root cause: the new forward migration `20261120011000_allow_signed_business_capa
 Correction: rebuilt the forward migration's allowlist from the latest canonical verifier state, preserving all 27 pre-existing operations and adding only `business.capability.create` (28 total). Added a static migration contract test asserting all 28 operation strings remain present. HMAC v2, 60-second expiry, constant-time signature comparison, active actor, nonce replay protection, session-user restriction, ownership/search_path and grants remain unchanged.
 
 No production or local DB, secrets, deployment, paid resource, or PR #298 changes. PR #300 remains draft/unmerged. No SQL qualification pass is claimed; next CI must pass storage provider qualification and continue to the dedicated signed Business Capability test.
+
+
+## CI #5417 started for corrected assertion allowlist — 2026-11-20
+
+Before this task, re-read this feature handover, checked PR #300 and PR #298 metadata, and confirmed the feature branch head. PR #300 remains open/draft at `8f32fedb1fe03f07bdf5baddf5258daa5e41936b`; PR #298 remains open/draft at `f2f3cbb9588dad8ac0fdd8477e7434f6fc3d4b60`.
+
+Normal PR CI run #5417 (ID `44679136123`) was automatically triggered for the corrected assertion operation allowlist commit. At inspection:
+- `web-quality`: passed.
+- `quality`: still in progress.
+- The quality job log artifact was not yet available for retrieval (GitHub API returned BlobNotFound), so no claim is made yet about storage-provider qualification or signed Business Capability PostgreSQL execution.
+
+No code, migration, database, secret, deployment, paid resource, PR #298 or branch configuration was changed in this task. This is an observation-only checkpoint; the previous task's code and handover commit remain the latest changes.
+
+Next: inspect run #5417 after its quality job completes; verify the Actor Gateway principal, storage-provider qualification, and then whether `qualify:business-capability-gateway-cutover` executes. Diagnose only the first real failure and preserve all security controls.
