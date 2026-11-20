@@ -6385,3 +6385,73 @@ The new disposable comparison passed. It checks the exact migration, owner stabi
 PR #298 remains draft/unmerged pending final exact-head CI, fresh production ledger/checksum reconciliation, migration authority, backup/rollback proof and coordinated Gateway/Resource API readiness. Production batch manifest remains `[]`.
 
 No production SQL/DDL, routine path, ACL, role membership, credential, secret, Render setting/deployment, payment state, backup, or paid resource was changed. No production readiness or merge approval is claimed.
+
+
+## 21 November 2026 — exact-head CI closure and fresh production access/authority recheck
+
+Mandatory pre-task review completed before this follow-up: reviewed this handover, PR #298 state/head and changed files, PRs #297/#300/#301/#302, feature/main branch heads, production migration manifest, production SECURITY DEFINER catalogue report, migration dependency matrix, exact migration ledger/audit source and prior production access/role findings.
+
+### Repository and PR state
+
+- PR #298 remains open, draft and unmerged.
+- Feature branch `feat/actor-gateway-production-migration-batches` is at `c7c7e6c194fe633b8200ddc854f4b610af44cc4e`.
+- Main remains `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- PR #297 and #300 remain open/draft; #301 and #302 remain closed/merged.
+- Production migration manifest is still exactly `[]`.
+
+### Exact-head CI — now fully closed
+
+Rechecked GitHub Actions run `44834170595` for exact head `c7c7e6c194fe633b8200ddc854f4b610af44cc4e`.
+
+- Overall workflow: completed / success.
+- `quality`: completed / success.
+- `web-quality`: completed / success.
+- No failed steps.
+- The complete test suite, migration audit policy tests, runtime boundary verification, SECURITY DEFINER temporary-object shadowing qualification, migration authority pre/post comparison, pre-cutover and post-disposable-cutover SECURITY DEFINER inventories, and their comparison all completed successfully.
+
+This closes the exact-head CI prerequisite for this commit. It remains disposable/CI evidence and is not production migration authorization.
+
+### Fresh read-only production principal and ledger-access check
+
+Queried Render `ghm-db` / `ghm_db` using the existing read-only Render query connector. It reports:
+- `session_user=ghm_app_user`
+- `current_user=ghm_db_user`
+- Database `ghm_db`
+- All expected named roles present.
+- `ghm_db_user` does **not** have SELECT on `ghm.ghm_schema_migrations`; the connector principal also has no INSERT privilege.
+- `ghm` schema USAGE is true.
+- PostgreSQL statistics report `n_live_tup=105`, but this is only an approximate/stale statistic and is not an exact ledger count. No ledger rows, checksums, names or ordered versions were read.
+
+The current connector cannot refresh the exact production ledger/checksum audit. No SET ROLE attempt, ACL bypass, privilege escalation, or alternate credential was attempted. The exact pending queue and checksums therefore remain unverified from this session.
+
+### Fresh production role attributes and membership graph
+
+Read-only catalogue inspection returned these role attributes:
+- `ghm_db_user`: LOGIN, INHERIT, CREATEDB=true, CREATEROLE=true; other high-risk flags (SUPERUSER, REPLICATION, BYPASSRLS) false.
+- `ghm_app_user`: LOGIN/INHERIT; no elevated create/replication/bypass flags.
+- `ghm_migrator`: LOGIN, NOINHERIT, no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_actor_gateway`: LOGIN, NOINHERIT, no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_schema_owner`: NOLOGIN, NOINHERIT, no elevated flags.
+- `ghm_auditor`: NOLOGIN, INHERIT, no elevated flags.
+- `ghm_payment_provider` and `ghm_runtime`: LOGIN, NOINHERIT, no elevated flags.
+
+The live membership query showed:
+- `ghm_app_user` is a member of `ghm_db_user` (SET=true, INHERIT=true, ADMIN=false).
+- `ghm_db_user` has ADMIN OPTION memberships over `ghm_actor_gateway`, `ghm_auditor`, `ghm_migrator`, `ghm_payment_provider`, and `ghm_schema_owner` (each INHERIT=false, SET=false).
+- `ghm_db_user` has two membership records to `ghm_runtime`: one granted by itself with INHERIT=true/SET=true/ADMIN=false, and one granted by postgres with INHERIT=false/SET=false/ADMIN=true.
+- `ghm_migrator` is a member of `ghm_schema_owner` with SET=true, INHERIT=false, ADMIN=false.
+- `ghm_app_user` and `ghm_db_user` also have ordinary PostgreSQL monitoring memberships.
+
+This reconfirms the existing production role-authority blocker: the application login can SET ROLE to `ghm_db_user`, while that role has CREATEROLE/CREATEDB and ADMIN OPTION over protected GHM roles. No role or membership change was attempted. The Render support/admin remediation and a dedicated, correctly isolated migration principal remain necessary before production migration execution.
+
+### Current decision
+
+PR #298's exact-head CI is green. Production execution remains blocked independently by:
+1. Exact live ledger/checksum/order audit cannot be performed using the current Render connector identity.
+2. Render database role separation remains unresolved.
+3. Fresh verified production backup/recovery point and rollback evidence remain unconfirmed.
+4. The staged migration plan and coordinated service/cutover readiness still need production-specific review.
+
+Do not infer an exact production ledger count of 105 from `pg_stat_user_tables`. Do not run the production migration runner, change ACLs/roles, provision secrets, deploy services, or alter the empty production manifest as a workaround.
+
+No production SQL/DDL, migration, role attribute, role membership, ACL, credential, secret, Render setting/deployment, payment state, backup, or paid resource was changed during this task. PR #298 remains draft/unmerged; production manifest remains `[]`.
