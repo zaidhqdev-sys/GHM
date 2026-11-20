@@ -5778,3 +5778,20 @@ Reviewed the adjacent signed Gateway migrations after the supplier/profile corre
 Validation status for current PR head `c7d780f3a79e10f00ee2481784183037b3bb7a02`: the Cloudflare Pages check completed successfully. No GitHub Actions CI run is associated with this exact head yet; the latest visible CI success is for the earlier head `c07cf2597c416284578f898cae0d5d342c565685`, so it does not qualify these latest source edits. The workflow file supports pull_request to main, but no exact-head quality/Disposable PostgreSQL evidence has been observed. Do not claim CI passed. A workflow dispatch endpoint is not available through the connected GitHub actions; next obtain a new pull_request-triggering source commit or have the owner dispatch the existing workflow, then inspect exact-head quality job and logs.
 
 No further source edits in this follow-up review. No production SQL/DDL/ACL/role changes, migrations, secrets, Render settings/deployments, paid resources, or payment state changed. Keep PR #298 draft and manifest empty until exact-head qualification and remaining Gate C/D blockers are resolved.
+
+
+## 20 November 2026 — Gate D search_path contract coverage
+
+Re-read the current handover, PR #298 state/head, remediation plan, dependency matrix, exact migration and production manifest before editing. PR #298 remains draft/open, non-mergeable; production execution manifest remains `[]`. PRs #301/#302 remain merged; PRs #297/#300 remain separate.
+
+Inspected `20261112090000_pin_security_definer_search_path.sql`. Its implementation:
+- Preflights every `ghm` SECURITY DEFINER function and fails if owner is not `ghm_schema_owner`.
+- Enumerates every `ghm` SECURITY DEFINER function and applies exact `search_path = pg_catalog, ghm, pg_temp`.
+- Uses deterministic signature ordering.
+This addresses the recorded 63-function catalogue requirement in the migration implementation, but production execution is still blocked pending live preflight/backup and disposable PostgreSQL qualification. Do not claim the production catalogue is corrected.
+
+Added `src/db/actor-gateway-security-definer-search-path-migration-contract.test.ts` to assert owner preflight, schema/prosecdef scope, pinned temp-safe path and separation from default ACL logic. Commit: `138f45623d3ebf0fa368f67dc401868322eda1ff`.
+
+The schema-specific `ghm_runtime=EXECUTE` default ACL remains unresolved. Do not revoke it until every existing runtime function consumer and explicit grant path has been inventoried and disposable PostgreSQL proves no future migration/function creation loses required runtime EXECUTE. The current `20261112050000` migration only revokes PUBLIC EXECUTE globally; it does not resolve the schema-scoped runtime default ACL.
+
+No production SQL/DDL/ACL/role changes, migration execution, secrets, Render changes/deployments, paid resources or payment state changed. Next: add disposable PostgreSQL assertions for all SECURITY DEFINER owners/path, temporary-object shadowing and schema-specific default ACL before changing any ACL migration; then obtain exact-head CI.
