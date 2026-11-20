@@ -5486,3 +5486,35 @@ The rule does not authorize a production batch or change the pending inventory. 
 ### Next task
 
 Check exact-head CI for `296df2b3...`. If it fails, inspect the failing job and fix only the demonstrated defect. If it passes, continue to the next source-level production migration safety gap identified by the dependency review; do not return to repeated environment-variable or database-readiness checklists absent new evidence.
+
+
+## 20 November 2026 — first Actor Gateway Render deployment: startup rejected PORT
+
+The owner created and manually deployed the Free `ghm-actor-gateway` Render Web Service from `main` at commit `ddb31ff59ab470973edf60a5078a75e5f962f803`. Render completed dependency installation and `npm run build` successfully, then ran `npm run start:actor-gateway`. The process exited with status 1 before listening; Render restarted the instance and reported:
+
+`Error: PORT must be a valid TCP port`
+
+at `dist/actor-gateway/server.js:41`. The build itself passed and the failure is specifically in startup port parsing.
+
+### Source-level diagnosis
+
+At the deployed commit, `src/actor-gateway/server.ts` computes:
+
+```ts
+const port = Number.parseInt(process.env.PORT ?? '10000', 10);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error('PORT must be a valid TCP port');
+}
+```
+
+Therefore an absent `PORT` would use the valid fallback `10000`; the observed exception means the process received a non-empty/unusable value (or a value outside the valid TCP port range), rather than simply having no PORT variable. The Render service form described PORT as Render-managed. The immediate low-risk corrective action is to remove any manually-created `PORT` environment-variable override, if one exists, and allow Render to inject its runtime port. Do not enter the literal text `Render-managed` as a PORT value. If there is no custom override, obtain the actual non-secret PORT value from the service environment/runtime and diagnose that value; do not change database credentials or other secrets.
+
+### Deployment and safety boundary
+
+- Build: successful.
+- Startup: failed on PORT validation; no healthy Gateway listener was established.
+- No evidence from this failure establishes whether database authentication or the subsequent Gateway database identity/ACL assertions pass; execution stopped before those checks.
+- No production migration, SQL, role/ACL, secret, existing Resource API configuration, payment state or paid resource was changed by this diagnosis.
+- Auto-deploy remains OFF. The owner initiated the deployment manually.
+- PR #298 remains open/draft/unmerged; PR #300 remains a separate open/draft/unmerged branch; PR #297 remains separate/open/draft. No PR was merged or rebased.
+- This incident review was based on the Render logs supplied by the owner and the exact deployed `main` source. The next action is to correct only the PORT override (if present) and manually redeploy the same service, then diagnose the next actual startup result. Do not restart the pre-deployment qualification checklist or repeat environment-secret entry.
