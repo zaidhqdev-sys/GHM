@@ -45,7 +45,8 @@ BEGIN
 
   IF jsonb_typeof(p_payload->'businessId') <> 'number'
      OR p_payload->>'businessId' !~ '^[1-9][0-9]*$'
-     OR length(p_payload->>'businessId') > 15
+     OR length(p_payload->>'businessId') > 16
+     OR (p_payload->>'businessId')::numeric > 9007199254740991
      OR jsonb_typeof(p_payload->'capabilityId') <> 'string'
      OR p_payload->>'capabilityId' !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
     RAISE EXCEPTION 'Invalid Business or Capability identifier' USING ERRCODE='22023';
