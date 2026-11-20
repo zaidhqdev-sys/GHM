@@ -131,3 +131,21 @@ Corrective code commit: `123d90752d5fde9171f34e03a21eace6afb2db0a` changes only 
 Validation pending: the fix has not yet run in CI/PostgreSQL. Next inspect the normal PR-triggered CI run for this commit. If fixture setup proceeds, inspect every signed-create assertion and final privilege matrix, including cleanup. Do not claim signed-create qualification passed until the script prints `GHM BUSINESS CAPABILITY SIGNED GATEWAY CUTOVER QUALIFICATION: PASS` and the CI step itself succeeds.
 
 PR #300 remains open/draft/unmerged. PR #298 remains separate and untouched. No production/local database changes, deployments, paid services, or new secrets.
+
+
+## CI #5428 signed Business Capability cutover qualification diagnosis and harness correction — 2026-11-20
+
+Before this task, re-read the feature handover and checked PR #300, PR #298, PR #272, the feature branch, and the latest PR CI run #5428 (ID `44775200388`). PR #300 remains draft/open/unmerged; PR #298 remains separate and untouched.
+
+CI #5428:
+- `web-quality`: PASS.
+- Build, migrations, full test suite, other Actor Gateway qualifications, Business Capability lifecycle/two-session qualification, signed catalogue governance, and capability legacy RPC cutover: PASS.
+- Dedicated `Qualify Business Capability signed gateway cutover on disposable PostgreSQL`: FAIL.
+
+Inspected the exact qualification script and PostgreSQL logs. The script itself applies the two new append-only migrations (`20261120011000_allow_signed_business_capability_create_assertion.sql` and `20261120010000_add_signed_business_capability_create.sql`) even though the CI workflow has already applied every migration in the repository before any qualification steps. PostgreSQL log proves the failure: `function "gateway_create_business_capability" already exists with same argument types` during the second application. This is a qualification harness defect, not a failure of the signed-create SQL or authorization logic. The CI run did not reach the dedicated harness assertions because migration reapplication aborted the script.
+
+Corrective commit `a08187c4eb46b98998dca3c6aa495b6bddf1af10` removes the duplicate migration application from the qualification script and replaces it with an explicit assertion log stating that the CI migration phase supplied the migrations. The script still applies the separate forward-only `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` because CI does not apply the cutovers directory as part of its migration loop; this is the intended isolated qualification of the cutover.
+
+No SQL migration, function body, ACL, runtime grant, production DB, secret, deployment, paid resource or PR #298 change. The signed-create HMAC, replay, expiry, business membership, selectable catalogue, duplicate/withdrawn, actor provenance and direct-write-denial assertions remain unqualified pending CI run after this fix.
+
+Next inspect the normal PR-triggered CI run for commit `a08187c4eb46b98998dca3c6aa495b6bddf1af10`. Verify it passes the existing migration phase and then executes the dedicated Business Capability qualification through its final `GHM BUSINESS CAPABILITY SIGNED GATEWAY CUTOVER QUALIFICATION: PASS` marker. If it fails again, diagnose exact logs before changing code. Do not manually dispatch CI or modify PR #298.
