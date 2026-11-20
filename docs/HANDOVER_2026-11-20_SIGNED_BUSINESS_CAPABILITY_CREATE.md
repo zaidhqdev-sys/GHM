@@ -618,3 +618,26 @@ The feature's new `qualify-business-capability-gateway-cutover-postgres.mjs` scr
 - PR #298 remains a separate open draft and is not modified by this feature.
 
 Next, inspect the existing local PostgreSQL instances read-only for whether `ghm_disposable_test` and the required roles already exist. If they do not, do not create them under this task's no-new-database/no-new-resource constraint. The existing CI workflow's ephemeral PostgreSQL service is the established alternative qualification environment; use it only through the normal feature-branch PR validation path, not a manual workflow dispatch. Keep the signed-create SQL unqualified until a real disposable PostgreSQL run passes.
+
+
+## Draft PR opened for existing PostgreSQL CI qualification — 2026-11-20
+
+Created draft PR #300: https://github.com/zaidhqdev-sys/GHM/pull/300
+- Title: `feat(actor-gateway): add signed Business Capability create`
+- Base: `main`
+- Head: `feat/signed-business-capability-create`
+- Head SHA at creation: `d361cf36228bb00a8121e5f1af473a8d536bb5e8`
+- State: open, draft, unmerged.
+- Scope: six changed files, 929 additions, one deletion at PR creation.
+
+### Why draft PR #300 is the qualification trigger
+
+The current CI workflow's `pull_request` trigger includes `main` as a target branch. The feature branch is not listed under the workflow's direct `push.branches`, and the workflow ignores documentation-only changes; therefore a docs-only handover commit does not trigger CI on this branch. Opening PR #300 against `main` causes the existing pull-request CI path to evaluate the feature head. No workflow file changes or manual workflow dispatch are needed.
+
+The workflow's `quality` job provisions its own ephemeral PostgreSQL 18 service and isolated principals, sets the localhost/disposable-database guards and test-only HMAC key, applies all migrations, and then runs the registered command `npm run qualify:business-capability-gateway-cutover`. This is a disposable CI database, not Render and not a newly purchased resource.
+
+### PR #300 boundaries and status
+
+PR #300 was intentionally created as draft. It must remain unmerged until the actual PostgreSQL qualification and all relevant CI checks pass and the feature is reviewed. PR #298 remains separate and untouched. No production DB, Render service, local database, role, env file, secret, or CI workflow was changed. No paid resource was added. PayFast remains out of scope.
+
+At PR creation the connector returned `mergeable: false`; treat that as GitHub's current mergeability calculation, not as evidence of a conflict or permission to merge. Recheck PR status and CI checks before taking further action.
