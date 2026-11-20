@@ -4148,3 +4148,54 @@ The PR branch's old exact-array check is incompatible with the hardened `pg_cata
 5. Keep the production batch manifest empty pending full prefix and live-ledger evidence.
 
 No source, migration, CI workflow, inventory, manifest, production DB/ledger/ACL, role, secret, credential, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover was extended.
+
+
+## 20 November 2026 — complete capability governance qualification diff and cutover-path review
+
+Re-read the migration handover and refreshed PR #298–#299 plus the live main comparison and related branch list before tracing the complete `scripts/qualify-capability-catalogue-governance.mjs` diff and the current migration, capability repository/service and gateway reader. This resolves the previously open question about the qualification script delta.
+
+### Exact current branch state
+
+- PR #298 remains open/draft/unmerged at `6ef23968a8085b671f2fa1f4bc372d566a9a4f9c`; current `main` is `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Compare remains diverged, 228 ahead / 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`; GitHub reports `mergeable=false`.
+- PR #296 is open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`; PR #297 is open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; PR #299 is open/draft/unmerged at `94a9d58894d11f0f886203af37cbd096619d447b`. #299's non-null `merge_commit_sha` remains misleading metadata; `merged=false` and `state=open` govern.
+- PR #297's own body documents its different 48-entry inventory/105-row snapshot and successful disposable PostgreSQL qualification on its exact implementation SHA. That is historical evidence for #297's implementation and ledger snapshot, not authorization or a substitute for PR #298's current 50-entry inventory/live ledger refresh.
+
+### Complete capability qualification script delta
+
+The complete line-level comparison of `scripts/qualify-capability-catalogue-governance.mjs` shows the PR #298 branch has the gateway-correct post-cutover qualification path, while current `main` has regressed to the legacy runtime service path in several operations:
+
+- PR #298 imports and constructs `PostgresCapabilityGovernanceReader(gatewayPool, assertionSecret)`; current main removed that import/construction.
+- The branch uses `gatewayReader.createDraft/updateDraft/transition` for the post-cutover lifecycle operations; current main uses `CapabilityServiceImpl`/the runtime repository, whose methods call legacy `ghm.create_capability_draft`, `ghm.update_capability_draft`, and `ghm.transition_capability_lifecycle`.
+- Current main's hardened post-deployment migration explicitly revokes those legacy functions from PUBLIC, runtime and gateway. Therefore the mainline qualification script's legacy runtime calls are not compatible with the post-cutover state and would fail if reached after that migration.
+- PR #298 branch adds explicit gateway principal privilege assertions (legacy functions denied to gateway, all four signed gateway functions allowed) and strengthens runtime assertions so runtime cannot execute the legacy capability functions either. Current main's corresponding qualification only checks the runtime privilege result and omits the explicit gateway privilege assertion.
+- The branch continues to test assertion payload substitution, invalid signature, replay, operation binding, role denial, CRUD lifecycle and direct-SQL invariants using the signed gateway reader. Preserve this post-cutover path.
+
+**Important correction to the previous task's proposed direction:** do NOT port the mainline qualification script wholesale into PR #298. The gateway-reader removal on main is not a security improvement in this post-cutover qualification; it reintroduces calls to functions that the migration revokes. The PR branch's gateway-reader path is the compatible test design. The correct reconciliation is to retain that gateway path while porting only the independently valuable hardening from main (e.g. additional privilege assertions), after verifying every assertion against the post-cutover grants.
+
+### Migration hardening still required
+
+The current main copy of `20261117020000_revoke_runtime_capability_governance.sql` has the stronger metadata validation missing from PR #298:
+- actual owner must be `ghm_schema_owner`;
+- `prosecdef` must be true;
+- parsed `search_path` must equal `pg_catalog,ghm,pg_temp`, with `pg_temp` last;
+- gateway EXECUTE must be present and runtime EXECUTE absent.
+
+The PR branch currently requires the older exact `proconfig @> ARRAY['search_path=pg_catalog, ghm']` and therefore does not match the deployed gateway function configuration. Port the mainline metadata-validation block into the PR branch migration without changing its remaining revoke behavior, then qualify it against the disposable PostgreSQL migration chain and exact function definitions. Do not remove `pg_temp` or weaken owner/SECURITY DEFINER validation.
+
+### Separate migration/qualification boundaries
+
+- `20261117020000` is post-deployment only. Its migration header requires Actor Gateway startup identity/ACL and authenticated list/create/update/transition end-to-end tests before execution. Do not include it in a pre-deployment migration batch.
+- The branch's `qualify-capability-catalogue-governance.mjs` is a pre/post cutover broad governance test using the signed gateway path, but it does not by itself replace the dedicated `qualify-capability-governance-cutover-postgres.mjs`, which verifies legacy RPC denial and signed gateway operations after applying its manual cutover SQL to an explicitly guarded disposable local database. Both have distinct purposes; preserve both.
+- The mainline dedicated cutover script explicitly restricts itself to `ghm_disposable_test` on `localhost`; retain that safety check.
+- No CI result on PR #298's latest head has yet been inspected in this task. Do not claim the corrected migration or test path has passed CI.
+
+### Disposition
+
+1. Keep the PR #298 gateway-reader qualification path; do not copy main's legacy runtime service calls into it.
+2. Reconcile the stronger mainline migration metadata guard into PR #298.
+3. Add only missing, valid privilege assertions from main after checking them against the actual post-cutover role model.
+4. Run the disposable PostgreSQL migration chain, capability governance qualification, and dedicated post-cutover qualification on the exact resulting source SHA; inspect exact-head CI.
+5. Keep the two November 17 revocations out of the pre-deployment manifest. The manifest remains empty.
+
+No source, SQL migration, test, CI workflow, production inventory/manifest, database/ledger/role/ACL, credential/secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover was extended.
