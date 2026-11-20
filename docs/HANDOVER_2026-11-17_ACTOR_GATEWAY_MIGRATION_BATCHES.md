@@ -5859,3 +5859,14 @@ Commits:
 Validation limitation: source files and final probe structure were re-read. No disposable PostgreSQL execution or exact-head GitHub Actions CI result was obtained in this task. Therefore this is not yet qualified; verify exact-head test run, the full migration chain, runtime's 39-function allow-list through all eight cutover groups, and both service startup verifiers on disposable PostgreSQL. Do not merge PR #298 or populate the production batch manifest based on source review alone.
 
 Current status rechecked: PR #298 remains draft/open and not mergeable; PR #297 and #300 remain separate draft/open; PR #301 and #302 are merged; PR #302 exact-head CI #44810525158 passed its own change only. Production execution manifest remains `[]`. No production SQL/DDL/ACL/role changes, migrations, secrets, Render settings/deployments, paid resources, or payment state changed.
+
+
+## 20 November 2026 — exact-branch PostgreSQL CI trigger repaired
+
+Mandatory pre-task review completed before editing: reviewed this handover, PRs #298/#297/#300/#301/#302, actor-gateway branch, current CI workflow, package test wiring, migration manifest and current workflow run history. PR #298 was open/draft at head 5c09d9e; the GitHub Actions workflow's push branch allow-list did not include this PR branch, and PR-triggered runs were not available for the current PR head. The CI workflow already provisions an isolated PostgreSQL 18 service and runs the full npm suite plus auth issuer cutover qualification.
+
+Updated `.github/workflows/ci.yml` to include `feat/actor-gateway-production-migration-batches` in the push branch allow-list. Commit: `690af68d1d0e67d95b178c90ee65b3748d45d723`. This is intended to trigger the existing full CI job against this exact branch, without adding new infrastructure or altering production resources.
+
+At handover write time, the new workflow run had not yet been observed. Check the run's exact head SHA, quality job, PostgreSQL migration execution, npm test output, and `qualify-auth-issuer-cutover` result before claiming qualification. If CI reveals failures, fix those failures and repeat the mandatory handover/PR/branch review before each task.
+
+PR #298 remains draft/open. PR #297 and #300 remain separate draft/open; PR #301 and #302 remain closed/merged. Production batch manifest remains `[]`. No production database, permissions, secrets, Render settings/deployments, paid resources, or payment state changed.
