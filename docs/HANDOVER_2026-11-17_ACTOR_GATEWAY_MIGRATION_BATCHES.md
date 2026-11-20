@@ -4420,3 +4420,47 @@ The existing route matrix also retains important exceptions that must not be era
 - Do not revoke the remaining Business Capability INSERT, Evidence SELECT or Campaign read privileges as part of the current Gateway governance revocation candidate.
 - Keep the production batch manifest empty; do not select a prefix until exact production ledger, dependency order, deployed route versions, Gateway credential/ACL, signed assertion, migrator preflight and recovery evidence are current.
 - No source, test, SQL, migration manifest, inventory, CI workflow, credential, database/role/ACL, Render form/service/deployment, PR state or branch ancestry changed. No Actions run was triggered and no paid resource or recurring cost was introduced. Only this handover was extended.
+
+
+## 20 November 2026 — exact Resource API route and repository confirmation for retained legacy ACLs
+
+Re-read this migration handover and refreshed PR #298, related PRs #296/#297/#299, Actor Gateway branches, PR review submissions/threads and the live main-versus-PR #298 comparison. Then inspected the exact current Resource API routers, repository SQL and application composition for Business Capability, Business Capability Evidence and Campaign. No source, SQL, test, manifest, deployment or production permission changes were needed.
+
+### Refreshed GitHub state
+
+- PR #298 remains open/draft/unmerged at `2cabe3daee0c431e65c06cd66afc9a610832dd4f`; GitHub reports 235 commits ahead / 4 behind `main`, diverged, `mergeable=false`. The compare reports 31 changed files.
+- PR #296 remains open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`; PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; PR #299 remains open/draft/unmerged at `94a9d58894d11f0f886203af37cbd096619d447b` (GitHub reports mergeable=true, which is not equivalent to merged).
+- Actor Gateway branch search still shows the existing integration/security branches; no branch was created, deleted, rebased or rewritten.
+- PR #298 still has no submitted reviews or inline review threads in the refreshed review query. User-reported CI #5397 remains the latest accepted CI evidence; no run was triggered.
+
+### Exact route-to-database findings
+
+1. **Business Capability creation remains a direct runtime INSERT.**
+   - `src/http/business-capability-router.ts`: `POST /api/v1/business-capabilities` calls `service.createBusinessCapability`.
+   - `src/resources/business-capability/repository.ts`: `createBusinessCapability` uses `withTenantTransaction`, verifies active/selectable capability and owner/administrator membership, then directly INSERTs into `ghm.business_capability`, setting `created_by=context.userId`.
+   - The same router's `PUT /api/v1/business-capabilities` is a separate replacement operation; when the Gateway client is configured or required it calls the signed Gateway `replace` operation, and required-but-missing Gateway returns 503. The PATCH verification route similarly uses the Gateway in the required path.
+   - Consequence: the existing runtime INSERT privilege remains necessary for the POST route until a dedicated signed Gateway create operation replaces it and route/negative tests qualify that transition. Do not revoke this INSERT grant as part of the capability-governance revocation.
+
+2. **Business Capability Evidence has two distinct direct read paths.**
+   - `src/http/business-capability-evidence-router.ts`: `GET /api/v1/business-capability-evidence` branches by authenticated role. Administrators use `listForVerification`; business users must provide `businessId` and use `listForBusiness`.
+   - `src/resources/business-capability-evidence/repository.ts`: both methods execute direct SELECTs joining evidence, business capability, business and capability. Business list is tenant-scoped through `withTenantTransaction`; administrator queue is a separate authorized transaction with a bounded limit.
+   - Evidence POST submission and PATCH review use the capability mutation Gateway when configured/required; the read endpoint does not. The production app composition marks the capability mutation Gateway as required, but does not inject a Gateway read client for these two list operations.
+   - Consequence: preserve the direct read privileges until a Gateway read contract implements both tenant-scoped business history and administrator verification-queue semantics, or until a separately reviewed narrow direct-read policy is explicitly retained.
+
+3. **Campaign reads remain direct, membership-scoped SQL while writes are Gateway-backed in production.**
+   - `src/http/campaign-router.ts`: `GET /api/v1/campaigns` and `GET /api/v1/campaigns/:campaignId` call list/detail service methods; the route requires registered read access.
+   - `src/resources/campaign/repository.ts`: list first checks active membership with roles owner/administrator/member, then selects only that Business's campaigns. Detail SELECT includes the `READ_MEMBERSHIP` predicate.
+   - The same repository sends create/update through `CampaignDirectoryReviewGatewayClient` when configured and throws when Gateway is required but unavailable. `src/http/app.ts` constructs this repository with `campaignDirectoryReviewGatewayRequired = config.isProduction || ...`, so production writes fail closed without the Gateway while reads intentionally remain direct.
+   - Consequence: preserve the read-side grants and tenant predicates. Do not interpret Gateway-backed campaign writes as proof that campaign list/detail have moved behind the Gateway.
+
+### Migration / ACL disposition
+
+- The previous route matrix's three retained boundaries are confirmed by current source, not merely historical documentation.
+- No broad runtime revocation is safe for these surfaces. The exact replacement work, if chosen later, must be separately scoped: signed capability create; two evidence read operations; campaign list/detail read contract or explicitly retained narrow read ACL.
+- These are not newly introduced defects and do not require reopening already-qualified migration work. They are explicit constraints on any future ACL cutover.
+- The November 17 capability-governance revocation must remain limited to its own legacy governance functions; it must not be used to revoke the unrelated Business Capability INSERT or Evidence/Campaign read privileges.
+- PR #296's separate Business Identity column-level INSERT migration remains unmerged and absent from PR #298's candidate inventory; if it merges, rebuild the complete inventory and reconcile against a fresh authoritative production ledger rather than patching one row.
+
+### Safety and cost
+
+The production batch manifest remains `[]`. No first production prefix is selected. The live production ledger remains unrefreshed and the dated production role/ACL catalogue remains historical evidence, not a fresh current-state claim. No production SQL, role, grant, ledger, data, credential, secret, Render service/configuration/deployment, payment state, CI run, PR state or branch ancestry was changed. No paid resource, recurring process or additional cost was introduced. Only this existing handover was extended.
