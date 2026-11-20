@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { readFile } from 'node:fs/promises';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Supplier classification qualification is restricted to NODE_ENV=test');
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
@@ -9,10 +10,30 @@ const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
 const assertionSecret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
 if (!assertionSecret || Buffer.from(assertionSecret, 'base64').length !== 32) throw new Error('A 32-byte gateway assertion test key is required');
 if (!runtimeUrl || !migratorUrl || !gatewayUrl || new Set([runtimeUrl, migratorUrl, gatewayUrl]).size !== 3) throw new Error('Distinct runtime, migrator and actor gateway database URLs are required');
+const expectedDatabase = 'ghm_disposable_test';
+if (process.env.GHM_QUALIFICATION_DATABASE_NAME !== expectedDatabase) throw new Error('Supplier classification cutover rehearsal is restricted to ghm_disposable_test');
+for (const [label, value] of [['runtime', runtimeUrl], ['migrator', migratorUrl], ['Actor Gateway', gatewayUrl]]) {
+  const parsed = new URL(value);
+  if (!['localhost', '127.0.0.1'].includes(parsed.hostname) || parsed.pathname !== `/${expectedDatabase}`) {
+    throw new Error(`Supplier classification qualification ${label} URL must target local ${expectedDatabase}`);
+  }
+}
 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
 const migratorPool = new Pool({ connectionString: migratorUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
+const supplierCutoverSql = await readFile(new URL('../database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime.sql', import.meta.url), 'utf8');
+const supplierRollbackSql = await readFile(new URL('../database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime_rollback.sql', import.meta.url), 'utf8');
+const applySchemaOwnerSql = async (sql) => {
+  const client = await migratorPool.connect();
+  try {
+    await client.query('SET ROLE ghm_schema_owner');
+    await client.query(sql);
+    await client.query('RESET ROLE');
+  } finally {
+    client.release();
+  }
+};
 const marker = `supplier-classification-${randomUUID()}`;
 let accountId;
 let memberAccountId;
@@ -67,15 +88,6 @@ try {
     migrator.release();
   }
   console.log('SUPPLIER CLASSIFICATION FIXTURE CREATED');
-
-  await assert.rejects(
-    () => runtimePool.query(
-      'SELECT * FROM ghm.update_business_supplier_classification($1, $2, $3)',
-      [accountId, businessId, true],
-    ),
-    /permission denied/,
-  );
-  console.log('RUNTIME DIRECT SUPPLIER RPC DENIAL PASS');
 
   await assert.rejects(
     () => runtimePool.query(
@@ -146,6 +158,34 @@ try {
 
   await assert.rejects(() => gatewayCall(accountId,null), /Supplier classification must be true or false/);
   console.log('NULL CLASSIFICATION REJECTION PASS');
+
+  const preCutoverAcl = await runtimePool.query(
+    "SELECT has_function_privilege(session_user, 'ghm.update_business_supplier_classification(bigint,bigint,boolean)', 'EXECUTE') AS can_execute",
+  );
+  assert.equal(preCutoverAcl.rows[0].can_execute, true, 'legacy runtime grant must remain before the separately gated manual cutover');
+
+  await applySchemaOwnerSql(supplierCutoverSql);
+  await assert.rejects(
+    () => runtimePool.query('SELECT * FROM ghm.update_business_supplier_classification($1,$2,$3)', [accountId,businessId,true]),
+    /permission denied/,
+  );
+  console.log('SUPPLIER LEGACY RUNTIME MANUAL CUTOVER DENIAL PASS');
+
+  await applySchemaOwnerSql(supplierRollbackSql);
+  const rollbackCall = await runtimePool.query(
+    'SELECT * FROM ghm.update_business_supplier_classification($1,$2,$3)',
+    [accountId,businessId,false],
+  );
+  assert.equal(rollbackCall.rowCount, 1);
+  assert.equal(rollbackCall.rows[0].is_supplier, false);
+  console.log('SUPPLIER LEGACY RUNTIME ROLLBACK REHEARSAL PASS');
+
+  await applySchemaOwnerSql(supplierCutoverSql);
+  await assert.rejects(
+    () => runtimePool.query('SELECT * FROM ghm.update_business_supplier_classification($1,$2,$3)', [accountId,businessId,true]),
+    /permission denied/,
+  );
+  console.log('SUPPLIER LEGACY RUNTIME RECUTOVER PASS');
   console.log('GHM SUPPLIER CLASSIFICATION POSTGRES QUALIFICATION: PASS');
 } finally {
   if (accountId && memberAccountId && businessId) {
