@@ -4099,3 +4099,52 @@ Keep the existing static migration contract test as a cheap source-shape check. 
 ### Disposition
 
 The question from the prior task is resolved: existing qualification does not already cover the effective Business Identity column INSERT ACL. A focused PostgreSQL test is warranted on PR #296, but this assistant task only records the gap and test contract; it does not edit PR #296 or #298 source. The PR #298 inventory remains unchanged and its execution manifest remains empty. No production SQL, database, role/ACL, ledger, migration, manifest, credentials, secrets, Render service/configuration/deployment, payment state, PR status or branch ancestry was changed. Only this handover was extended.
+
+
+## 20 November 2026 — critical mainline-only capability revocation delta
+
+Re-read the handover, refreshed PR #298 and related PRs #296–#299, enumerated repository branches, and inspected the exact current-main versus PR-branch copies of the two November 17 post-deployment revocation migrations, capability qualification script, CI workflow and production pending inventory. This task corrects an inaccurate earlier handover statement: the four commits behind PR #298 are NOT documentation-only.
+
+### Exact branch state at this check
+
+- PR #298 is open/draft/unmerged at `ce59ee2bf1ac2740292b923b5207a5dc5664ba93`.
+- Current `main` is `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Compare: diverged, 227 commits ahead / 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`; GitHub reports `mergeable=false`.
+- PR #296 remains open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`; PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; PR #299 remains open/draft/unmerged at `94a9d58894d11f0f886203af37cbd096619d447b`. For #299, `state=open` and `merged=false` are authoritative even though a populated `merge_commit_sha` field is present.
+- The earlier note saying all four mainline-only commits were handover documentation was incorrect. The compare shows mainline-only changes include CI workflow, production pending inventory, and a materially hardened capability revocation migration, alongside documentation and other files. Do not rely on the earlier docs-only characterization.
+
+### Critical exact SQL delta: `20261117020000_revoke_runtime_capability_governance.sql`
+
+The PR #298 branch version checks each signed gateway SECURITY DEFINER function using:
+`p.proconfig @> ARRAY['search_path=pg_catalog, ghm']`.
+
+Current `main` has a materially stronger/corrected check:
+- Reads actual function owner with `pg_get_userbyid(p.proowner)`.
+- Reads `prosecdef`.
+- Reads full `proconfig` and parses the configured search_path via `pg_options_to_table`.
+- Requires owner exactly `ghm_schema_owner`.
+- Requires `SECURITY DEFINER = true`.
+- Normalizes whitespace and requires exact `pg_catalog,ghm,pg_temp` ordering, with `pg_temp` last.
+- Continues to require gateway EXECUTE and deny runtime EXECUTE.
+
+The PR branch's old exact-array check is incompatible with the hardened `pg_catalog, ghm, pg_temp` setting and does not emit the useful owner/SECURITY DEFINER/search_path diagnostic. It is therefore stale relative to main and must not be treated as already reconciled. This is a concrete security-sensitive mainline delta, not documentation drift.
+
+**Required disposition:** before PR #298 can be considered merge-ready, port/reconcile the mainline hardened validation into the PR branch migration without weakening it, then run the exact disposable PostgreSQL migration/Actor Gateway qualification against the resulting source. Preserve `pg_temp` as the final search_path item; do not remove it to satisfy the old check. Keep this revocation migration classified as a post-deployment cutover: it must not enter the pre-deployment production batch.
+
+### Other exact comparison observations
+
+- `20261117010000_revoke_runtime_business_registration_identity_write.sql` is byte-identical on main and PR #298 branch at SHA `a1ea36628177a2a3ba560612087295412ac9bad7`; no port is needed for that file.
+- `scripts/qualify-capability-catalogue-governance.mjs` differs: main no longer imports/constructs the gateway reader in the portion inspected, while PR branch still does. Do not cherry-pick this independently without tracing the remainder and its corresponding qualification changes; record it as a separate source-level delta for the later exact-mainline reconciliation.
+- Main's `config/pending-migrations.production.json` is a seven-entry historical allowlist. PR #298's `config/pending-migrations.production.json` is a 50-entry candidate pending inventory with a separate empty batch manifest. These files have different semantics and must not be copied over each other or conflated. The 50-entry candidate is still not an authoritative live queue; the dated production ledger evidence remains stale.
+- PR #296's new Business Identity ACL migration remains on its own unmerged branch and is absent from the PR #298 inventory. If #296 is merged, rebuild the repository pending list and reconcile against a fresh authoritative production ledger export.
+- PR #297 remains an alternative batch-runner implementation, not a companion merge. PR #299 is unrelated Project HTTP API work and remains open/unmerged.
+
+### Actions
+
+1. Treat the mainline hardened `20261117020000` check as a required reconciliation item on PR #298.
+2. Inspect the full main-vs-branch capability qualification script diff before deciding whether it belongs in the same reconciliation.
+3. Re-run exact disposable PostgreSQL and Actor Gateway qualification after any source reconciliation; do not infer that prior CI #5397 covers a source change.
+4. Keep the two November 17 revocations out of the pre-deployment batch; they require the post-deployment gateway smoke tests stated in their SQL comments.
+5. Keep the production batch manifest empty pending full prefix and live-ledger evidence.
+
+No source, migration, CI workflow, inventory, manifest, production DB/ledger/ACL, role, secret, credential, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover was extended.
