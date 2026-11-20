@@ -5899,3 +5899,24 @@ Commits:
 New CI run `44821835864` was queued for exact code commit `bf033f98ec6e4153fbdf2fcc30e6d4184dfc167d` when this note was written. Await its full quality job; specifically confirm migration chain, runtime verifier, Actor Gateway principal qualification, npm test, all downstream disposable cutovers and final SECURITY DEFINER comparison. A prior failed run is not qualification. The docs-only handover commit should not trigger/cancel CI due workflow paths-ignore.
 
 PR #298 remains draft/open. PR #297/#300 remain separate draft/open; #301/#302 remain closed/merged. Production execution manifest remains `[]`. No production SQL/DDL/ACL/role changes, migrations, secrets, Render settings/deployments, paid resources or payment state changed.
+
+
+## 20 November 2026 — CI test-suite contract failures corrected
+
+Reviewed the prior handover, PR/branch state, exact CI run 44821835864, downloaded ghm-test-suite-diagnostics artifact, and inspected all three failing assertions plus the corresponding migrations/manual cutover files before editing.
+
+The second run passed migration application, migration plan-only, commercial schema, Auth Issuer principal, Actor Gateway principal, founder/commercial approval/payment-consent end-to-end, Worker runtime smoke, Connect provisioning, Business registration forward migration, storage, and Opportunity marketplace checks. Actor Gateway principal qualification now passed with the 41-function / 10-group / 1,024-stage baseline.
+
+The full suite reported 1,101 passed / 3 failed (1,104 total). All three failures were stale contract tests, not runtime/SQL qualification failures:
+1. Actor Gateway default ACL test still expected the old disposable probe role postgres; updated it to assert both global and ghm-schema ghm_runtime probes, matching the actual disposable script and migration.
+2. Business profile test expected the additive migration to revoke the legacy runtime function immediately. Updated it to verify signed Gateway grant, signed assertion-bound function, and the separate manual-only legacy runtime cutover.
+3. Supplier classification test had the same premature-revocation assumption. Updated it to verify the signed assertion-bound Gateway function and the separate manual-only legacy runtime cutover.
+
+Commits:
+- Actor Gateway default ACL test: 4035696830f9d0b80ffd279b0eeffe5ebf6d4c3b
+- Profile contract correction: 60f7b9c2d2e99e65e1c5d03c6fb5c6bca2c0a7b4
+- Supplier contract correction: c0acdbe9007783139b3f98583c20ea9ade4b9dd8
+
+The failure artifact was inspected directly; the three assertions and stack traces identify the stale assumptions. New branch CI is expected from the latest test corrections. Re-run must show all 1,104 tests passing, then continue to remaining downstream disposable cutover and whole-database SECURITY DEFINER pre/post comparison steps. Do not claim the failed full suite as qualification.
+
+No production changes, migration execution against production, ACL/role changes, secrets, Render settings/deployments, paid resources, or payment state changed. Production execution manifest remains []; PR #298 remains draft/open.
