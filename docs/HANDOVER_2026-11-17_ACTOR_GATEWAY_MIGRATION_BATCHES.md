@@ -3666,3 +3666,42 @@ Inspected migrations 20261111210000–20261111260000, 20261112020000–202611120
 5. These source and contract inspections do not prove current production ACLs, migration ledger state, secret provisioning, or deployed service behaviour. Those remain evidence to obtain during the agreed pre-deployment qualification sequence, not hosting approval blockers.
 
 The production batch manifest remains empty. No plan was run against production and no production SQL, ACL, secret, migration, Render service/form/deployment, payment state, PR or branch ancestry was changed. Only this handover record was updated.
+
+
+## 20 November 2026 — Auth persistence SQL-to-route reconciliation
+
+Re-read the migration-prefix handover and current branch source before tracing the Auth persistence implementation against the current HTTP router and SQL migrations. This section records exact source call mappings; it does not assert production migration application or live ACL state.
+
+### Confirmed route-to-persistence mappings
+
+| Active route / operation | Application path | SQL function(s) | Privilege implication |
+|---|---|---|---|
+| `POST /api/v1/auth/password-recovery/request` | `createPasswordRecoveryService.request` -> lookup active password credential -> issue token -> delivery port | `auth_lookup_password_by_normalized_email`, `auth_issue_recovery` | Both lookup and issue must remain intentionally callable by `ghm_runtime`; recovery request deliberately avoids disclosing unknown/inactive accounts at HTTP. |
+| `POST /api/v1/auth/password-recovery/reset` | `createPasswordResetService.reset` -> `PostgresAuthPersistence.resetPasswordWithRecovery` | `auth_reset_password_with_recovery(bytea,text,text,integer,integer,integer)` | Exact match for migration 20261112020000; runtime EXECUTE is explicitly granted. Token hash and normalized email are passed; account ID is not caller-supplied. |
+| Login with stale Argon2 parameters | `createGhmAuthService.login` -> conditional persistence rehash | `auth_rehash_password_if_unchanged(bigint,text,text,integer,integer,integer)` | Exact match for migration 20261112030000; runtime EXECUTE is explicitly granted and update is conditional on the hash verified by login. |
+| QuoteFlow migration reset request | `createQuoteFlowMigrationResetRecoveryService.request` -> approved enrollment lookup -> issue token -> delivery | `auth_lookup_quoteflow_migration_reset_enrollment`, `auth_issue_recovery` | Enrollment lookup is a narrow tokenless eligibility read; enrollment creation/provisioning remains operator-controlled. |
+| QuoteFlow migration reset completion | `createQuoteFlowMigrationResetCompletionService.complete` -> atomic reset -> normal login | `auth_complete_quoteflow_migration_reset`, then normal login/session SQL | Reset completion is distinct from enrollment registration. HTTP issues a normal GHM session only after reset transaction succeeds. |
+| External identity login/authorization resolution | `PostgresAuthPersistence.lookupExternalIdentity` | `auth_lookup_external_identity(text,text)` | Narrow lookup remains granted to runtime after direct table/sequence access is revoked. No active application caller to link or bootstrap an identity was found in the inspected Auth/Connect adapters. |
+| Refresh/logout | Auth service -> persistence | `auth_rotate_refresh`, `auth_revoke_by_refresh_hash` | Token-hash-bound operations remain the supported runtime path; no caller-supplied account/session ID revocation required. |
+
+### Confirmed safety properties
+
+- Normal password recovery has anti-enumeration behavior at the application/HTTP layer: invalid email normalization returns without delivery; unknown, inactive or missing password credentials also return without delivery; the route responds 202 on a validly shaped request.
+- Reset SQL locks a live unused recovery token, excludes QuoteFlow accounts still marked `reset_required`, checks the normalized email belongs to the same active account and active credential, consumes the token, updates the password hash without changing email, and revokes sessions in the same transaction.
+- Conditional rehash only updates a still-active credential when its stored hash still exactly matches the hash verified by the login attempt.
+- QuoteFlow migration reset request resolves a pre-existing approved enrollment and delivers to its approved email. Completion uses the distinct reset function and only then obtains a normal GHM session.
+- The runtime direct-table revocation for `account_external_identity` is compatible with the current persistence implementation because it uses the retained `auth_lookup_external_identity` SECURITY DEFINER function. The link and bootstrap functions are not needed by the inspected current Auth/Connect identity adapters and are revoked by later migrations.
+- The legacy account-ID session revoke, account-ID password change and account-disable functions have no active HTTP/service callers in the inspected current source and are explicitly revoked from runtime by 20261111220000.
+
+### Qualification items still to prove
+
+1. The persistence method `issueRecovery(accountId)` calls `auth_issue_recovery(accountId, tokenHash, expiresAt)`. Its SQL definition and grants predate the inspected 20261111230000–20261112030000 files. Before marking the Auth privilege map complete, locate and inspect the canonical function definition and prove that its runtime grant is deliberate and constrained as intended. The service first resolves an active credential/enrollment, but a compromised shared runtime principal can call a granted SECURITY DEFINER function directly; application-level lookup is not itself a database authorization boundary.
+2. Likewise inspect exact SQL definitions/grants for `auth_lookup_password_by_normalized_email`, `auth_lookup_quoteflow_migration_reset_enrollment`, `auth_issue_recovery`, `auth_complete_quoteflow_migration_reset`, `auth_lookup_external_identity`, `auth_rotate_refresh` and `auth_revoke_by_refresh_hash`, including default PUBLIC EXECUTE revocation from 20261112050000. The current TypeScript call mapping is confirmed; the full effective production privilege map is not.
+3. Database-backed Auth persistence tests are conditional and skip when runtime/migrator URLs or the migrated schema are unavailable. The repository test's presence is not proof that the current production database passed those integration tests. Record actual qualification output when run against the intended disposable qualification target.
+4. The Auth router is dependency-injected. Confirm production application composition actually supplies the recovery and QuoteFlow reset services and delivery adapter, rather than inferring wiring from route registration alone.
+
+### Decision
+
+The inspected current Auth routes do not call the broad account-ID revoke/change/disable functions removed by the revocation migrations. Token-bound recovery/reset and conditional rehash map to the intended narrow SQL functions. External identity lookup remains supported through a narrow function after table access revocation. Do not weaken these revocations.
+
+Keep the remaining function-definition/grant review and production composition verification as explicit qualification tasks. No production DB, role/ACL, SQL migration, secret, Render service/configuration/deployment, PR, branch ancestry or payment state was changed. Only this handover record was updated.
