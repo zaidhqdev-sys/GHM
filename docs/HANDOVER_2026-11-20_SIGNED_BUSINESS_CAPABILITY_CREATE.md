@@ -751,3 +751,21 @@ The helper currently permits only two exact Campaign states (the full three-func
 No SQL Business Capability operation tests ran in #5410. The prior static migration contract test (5/5) and build pass remain valid but do not replace this missing runtime qualification. No local database, production database, Render service, secret, paid resource, deployment, or PR #298 content was changed in this task.
 
 Next: trace the three Campaign/directory-review signatures through migration files, PR #298 and other relevant PRs/handovers to establish the canonical post-migration Gateway allow-list state. Then update the validator and focused tests narrowly, run normal PR CI, and only proceed once the shared principal check passes to the dedicated signed-create PostgreSQL qualification.
+
+
+## Follow-up investigation — Campaign/directory-review ACL provenance not yet established — 2026-11-20
+
+Before this task, re-read the signed Business Capability handover, inspected the current Actor Gateway privilege validator and its focused tests on `feat/signed-business-capability-create`, and searched the repository's indexed code, PR history and commit history for:
+- `gateway_create_campaign`
+- `gateway_update_campaign`
+- `gateway_get_business_directory_review_presentation`
+- `gateway_create_business_capability`
+- Campaign Gateway revoke/grant migration references.
+
+The repository code search (which indexes the default branch rather than arbitrary feature refs) returned no matching indexed files, and PR/commit search returned no matching results. This does not prove the migration history is absent; it means the current available search results are insufficient to attribute the three absent functions to a specific migration/PR or establish the intended permission state.
+
+The current source validator is still unchanged: it expects the three Campaign/directory-review functions as one exact optional group, while run #5410's actual database diagnostic showed all three absent and the new Business Capability create wrapper present. The safe correction is not yet established. Do not remove the Campaign group, do not merely add the Business Capability function, and do not change expected function counts based on the diagnostic alone. Preserve all existing least-privilege checks.
+
+No source code, migration, PR, branch configuration, database, secret, deployment or paid resource was changed in this task. PR #300 remains draft/unmerged; PR #298 remains untouched. The handover is updated with the incomplete provenance investigation so the same searches are not repeated blindly.
+
+Next required evidence: inspect the exact migration tree/files at the PR #300 head (including grant/revoke history for the three Campaign functions and the Business Capability wrapper), and compare against the mainline migration ledger and PR #298's relevant source diff. Once the intended post-migration Gateway signature set is established, update the exact allow-list and add regression coverage for both accepted migration states and rejection of arbitrary extra/missing signatures. Then trigger normal PR CI and verify that the dedicated signed-create PostgreSQL qualification runs.
