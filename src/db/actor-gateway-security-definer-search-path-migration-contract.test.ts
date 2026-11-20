@@ -47,7 +47,7 @@ test('full disposable migration qualification compares authority and rolls back 
   );
   assert.match(source, /NODE_ENV !== 'test'/);
   assert.match(source, /GHM_MIGRATOR_DATABASE_URL/);
-  assert.match(source, /localhost.*127\\.0\\.0\\.1/);
+  assert.match(source, /localhost.*127\.0\.0\.1/);
   assert.match(source, /ghm_disposable_test/);
   assert.match(source, /BEGIN/);
   assert.match(source, /SET LOCAL ROLE ghm_schema_owner/);
@@ -63,5 +63,5 @@ test('full disposable migration qualification compares authority and rolls back 
   assert.match(source, /all exact search_path=pg_catalog, ghm, pg_temp/);
   assert.match(source, /ROLLBACK/);
   assert.match(packageJson, /qualify:security-definer-search-path-migration/);
-  assert.match(workflow, /Compare SECURITY DEFINER migration authority before and after on disposable PostgreSQL[\\s\\S]*npm run qualify:security-definer-search-path-migration/);
+  assert.match(workflow, /Compare SECURITY DEFINER migration authority before and after on disposable PostgreSQL[\s\S]*npm run qualify:security-definer-search-path-migration/);
 });
