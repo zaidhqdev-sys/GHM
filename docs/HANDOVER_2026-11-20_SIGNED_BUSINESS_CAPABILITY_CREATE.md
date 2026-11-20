@@ -94,3 +94,18 @@ Re-read this handover, fetched PR #300 and PR #298, verified the feature branch,
 Next: wait for or inspect a normal PR-triggered CI run on the current feature head. Do not treat cancelled run #5422 as a test failure or pass. If no run appears, inspect the PR check state and use only an ordinary source change that is genuinely needed; do not dispatch a workflow manually. Continue through the catalogue qualification, legacy capability cutover and dedicated Business Capability signed Gateway cutover in workflow order.
 
 No production/local DB changes, deployment, paid resources, database grants, secrets, or PR #298 modifications.
+
+
+## CI #5424 diagnosis and qualification harness helper-shadowing fix — 2026-11-20
+
+Before this task, re-read the feature handover and re-fetched PR #300, PR #298, PR #272, the feature branch and CI run associated with the current PR head. PR #300 is still open/draft/unmerged; PR #298 remains separate/untouched; the feature branch is `feat/signed-business-capability-create`.
+
+Inspected CI run #5424 (ID `44680844246`) and its `quality` job logs/artifacts. `web-quality` passed. Build, migrations on ephemeral PostgreSQL 18, principal qualification, all 1,081 tests, Campaign/directory-review signed Gateway qualification, and Business Capability lifecycle/two-session assertion replacement qualification passed. The catalogue qualification reached the signed Gateway create/update/transition success checks and the legacy runtime permission-denial probes. It then failed at `scripts/qualify-capability-catalogue-governance.mjs:298` with `TypeError: gatewayTransition is not a function`.
+
+Exact cause: the helper function `gatewayTransition` declared near line 77 was shadowed later in the same outer scope by `const gatewayTransition = await gatewayCall(...)` in the earlier single-transition positive test. Subsequent lifecycle cases then attempted to call the query result object as a function. This is a JavaScript qualification-script naming defect, not an SQL/ACL failure. The script had already logged `GATEWAY ADMIN DRAFT UPDATE POSITIVE PASS`, `GATEWAY ADMIN LIFECYCLE TRANSITION POSITIVE PASS`, `ADMIN DRAFT CREATE + SERVER AUTHORITY PASS`, `SERVICE NON-ADMIN DRAFT DENIAL PASS`, and both legacy runtime create denial probes as passing before the exception.
+
+Fix committed: `263dc10d6f28fbaf760df2aef7605b08148ea17b` renames the local query result to `gatewayTransitionResult`, preserving the reusable helper name and behavior. No migration, SQL function, production ACL, service implementation, secret, database, deployment or paid resource changed.
+
+This commit is code-only; the handover update is being recorded separately. No CI result exists yet for this fix. Next inspect the normal PR-triggered run for commit `263dc10d6f28fbaf760df2aef7605b08148ea17b`. If the catalogue qualification now passes, continue to steps 52–53, specifically the legacy capability RPC cutover and dedicated Business Capability signed Gateway cutover. Do not treat #5424 as a signed-create pass: steps 52 and 53 were skipped.
+
+No production or local database changes, no deployment, no paid resources, no new secrets, and no PR #298 modifications.
