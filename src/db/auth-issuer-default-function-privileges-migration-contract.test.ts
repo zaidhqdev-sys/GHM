@@ -32,10 +32,12 @@ const ciWorkflow = fs.readFileSync(path.resolve(process.cwd(), '.github/workflow
 test('future GHM functions created by the schema owner do not inherit PUBLIC EXECUTE', () => {
   assert.ok(migration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner'));
   assert.ok(migration.includes('REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC'));
-  assert.doesNotMatch(migration, /IN SCHEMA ghm/);
+  assert.ok(migration.includes('IN SCHEMA ghm'));
+  assert.ok(migration.includes('REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime'));
+  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner\\s+REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime/);
 });
 
-test('issuer allow-list is applied after clearing current function grants', () => {
+test('legacy runtime function defaults are revoked globally and in the GHM schema without changing current function grants', () => {\n  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner\\s+REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime/);\n  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm\\s+REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime/);\n  assert.doesNotMatch(migration, /REVOKE ALL PRIVILEGES ON ALL FUNCTIONS/);\n});\n\ntest('issuer allow-list is applied after clearing current function grants', () => {
   assert.ok(issuerCutover.includes('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ghm FROM ghm_auth_issuer'));
   assert.ok(issuerCutover.includes('GRANT EXECUTE ON FUNCTION ghm.auth_create_account'));
 });
