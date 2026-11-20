@@ -109,3 +109,25 @@ Fix committed: `263dc10d6f28fbaf760df2aef7605b08148ea17b` renames the local quer
 This commit is code-only; the handover update is being recorded separately. No CI result exists yet for this fix. Next inspect the normal PR-triggered run for commit `263dc10d6f28fbaf760df2aef7605b08148ea17b`. If the catalogue qualification now passes, continue to steps 52–53, specifically the legacy capability RPC cutover and dedicated Business Capability signed Gateway cutover. Do not treat #5424 as a signed-create pass: steps 52 and 53 were skipped.
 
 No production or local database changes, no deployment, no paid resources, no new secrets, and no PR #298 modifications.
+
+
+## CI #5426 reaches signed Business Capability qualification; fixture lifecycle corrected — 2026-11-20
+
+Before this task, re-read the signed Business Capability handover, fetched PR #300, PR #298 and PR #272, verified `feat/signed-business-capability-create`, and inspected CI #5426 (run ID `44773030571`) and its full quality job logs.
+
+CI #5426 results:
+- `web-quality`: PASS.
+- Build, PostgreSQL 18 migration application, isolated principals, full 1,081-test suite: PASS.
+- Campaign/directory-review signed Gateway qualification: PASS.
+- Business Capability lifecycle/two-session assertion replacement: PASS.
+- Capability catalogue governance: PASS after signed Gateway refactor and helper-shadowing correction.
+- Capability legacy RPC cutover/Gateway-only access: PASS.
+- Dedicated Business Capability signed Gateway cutover was reached but failed during fixture setup, before any signed-create assertion ran.
+
+Exact failure: `scripts/qualify-business-capability-gateway-cutover-postgres.mjs` inserted a catalogue fixture with `lifecycle_status='inactive'` and `is_selectable=true`. PostgreSQL rejected it with SQLSTATE 23514, constraint `capability_lifecycle_valid`. This is invalid fixture data; it is not a failure of the new signed create function. The qualification has not yet executed its HMAC, replay, expiry, business membership, selectable catalogue, duplicate, payload, or wrapper ACL assertions.
+
+Corrective code commit: `123d90752d5fde9171f34e03a21eace6afb2db0a` changes only that fixture to a valid `deprecated` and `is_selectable=false` capability row. The fixture is intended to exercise the unavailable/non-selectable catalogue path; the function rejects both because it requires `lifecycle_status='active' AND is_selectable=true`. No production migration, ACL, business function, runtime role, production database, or paid resource changed.
+
+Validation pending: the fix has not yet run in CI/PostgreSQL. Next inspect the normal PR-triggered CI run for this commit. If fixture setup proceeds, inspect every signed-create assertion and final privilege matrix, including cleanup. Do not claim signed-create qualification passed until the script prints `GHM BUSINESS CAPABILITY SIGNED GATEWAY CUTOVER QUALIFICATION: PASS` and the CI step itself succeeds.
+
+PR #300 remains open/draft/unmerged. PR #298 remains separate and untouched. No production/local database changes, deployments, paid services, or new secrets.
