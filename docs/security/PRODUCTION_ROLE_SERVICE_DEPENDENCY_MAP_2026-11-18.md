@@ -87,10 +87,11 @@ The six bootstrap edges are not a blanket revoke list. Each must be mapped to a 
 ### `ghm_actor_gateway` — dedicated authorization boundary
 
 - **Intended consumer:** a dedicated Render Web Service named `ghm-actor-gateway`, Frankfurt, using `npm run start:actor-gateway` and `GHM_ACTOR_GATEWAY_DATABASE_URL`. It must be isolated from the Resource API.
-- **Hosting decision:** no such production service exists. The 16 November hosting handover explicitly rejects using `GHM-Internal-Runtime`, `zaid-ai-workforce`, or sandbox/qualification services as substitutes. A dedicated always-on service would add recurring cost and is not approved under the user's current no-additional-paid-service limit.
-- **Live DB evidence:** role exists, LOGIN/NOINHERIT, CONNECT true, schema USAGE/CREATE false. No gateway/assertion functions were found in schema `ghm`; no gateway EXECUTE grants are available. The role is not provisioned for production use.
-- **Credential:** `GHM_ACTOR_GATEWAY_DATABASE_URL` belongs only on the future dedicated service; never add it to Resource API configuration. `GHM_ACTOR_GATEWAY_URL` is the Resource API's HTTPS client origin, not a database credential.
-- **Disposition:** do not set a gateway password, provision grants, deploy a free/sleeping substitute, or change the hosting decision. Wait for the separately approved cost and production migration gates.
+- **Hosting decision (owner clarification, 19 November):** one dedicated Render Node Web Service named `ghm-actor-gateway` on the Free plan is selected for initial free-directory/early access. The owner has filled the service form, but it remains unsubmitted and no service is deployed. The same service is intended to be upgraded in place if/when paid compute is justified; do not create a second service. Free sleep/cold-start against the existing five-second Resource API timeout is a reliability qualification item, not a reason to weaken authentication or fail-closed behavior.
+- **Isolation rule:** do not use `GHM-Internal-Runtime`, `zaid-ai-workforce`, or sandbox/qualification services as substitutes; the Gateway remains a separate service and database identity.
+- **Live DB evidence (last recorded catalogue snapshot):** role exists, LOGIN/NOINHERIT, CONNECT true, schema USAGE/CREATE false. No gateway/assertion functions were found in schema `ghm`; no gateway EXECUTE grants are available. The role is not yet provisioned for production use.
+- **Credential:** `GHM_ACTOR_GATEWAY_DATABASE_URL` belongs only on the dedicated Gateway service; never add it to Resource API configuration. `GHM_ACTOR_GATEWAY_URL` is the Resource API's HTTPS client origin, not a database credential. The owner reports the internal DB URL is staged in the unsubmitted service form; successful authentication as `ghm_actor_gateway` is not yet proven.
+- **Disposition:** preserve the staged form and the one-service Free-to-in-place-upgrade lifecycle. Do not submit/deploy it before the agreed database connection, principal, ACL, signed-assertion, migration and route qualification is complete. No paid service or additional recurring spend is required for the current qualification stage.
 
 ### `ghm_auditor` — non-login audit privilege role
 
@@ -126,7 +127,7 @@ No Render environment variable values, connection strings, passwords, private ke
 2. Keep `ghm_db_user -> ghm_runtime` non-admin SET path until the Resource API's direct `ghm_runtime` credential is independently confirmed and the old connection path is proven unused.
 3. Keep `ghm_migrator -> ghm_schema_owner` exactly as specified. Resolve the explicit migrator object ACLs only through the reviewed provider/bootstrap authority and narrowly scoped ACL plan.
 4. Keep `ghm_payment_provider` function execution separate from `ghm_runtime`; PayFast remains paused and no production callback host is available.
-5. Do not add Render services, databases, schedules, or recurring spend. The Actor Gateway always-on service is explicitly cost-blocked.
+5. Do not add Render services, databases, schedules, or recurring spend. The owner selected one dedicated Free Actor Gateway service for early access; its existing form remains unsubmitted until qualification is complete. Any later paid compute is an in-place upgrade of that same service, not a second service.
 6. Obtain the exact production ledger and recoverable backup evidence through the approved provider/admin route before any production mutation or migration.
 7. Treat the absence of a production Auth Issuer role/service as a distinct architecture blocker, not as a reason to add issuer credentials to the Resource API.
 
