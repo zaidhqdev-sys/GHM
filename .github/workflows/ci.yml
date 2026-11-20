@@ -247,6 +247,9 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Qualify SECURITY DEFINER temporary-object shadowing on disposable PostgreSQL
+        run: npm run qualify:security-definer-search-path
+
       - name: Qualify production migration plan-only mode on isolated ghm_db fixture
         env:
           PGPASSWORD: postgres
