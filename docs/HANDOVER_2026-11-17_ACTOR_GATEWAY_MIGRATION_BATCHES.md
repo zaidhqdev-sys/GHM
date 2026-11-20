@@ -4199,3 +4199,47 @@ The PR branch currently requires the older exact `proconfig @> ARRAY['search_pat
 5. Keep the two November 17 revocations out of the pre-deployment manifest. The manifest remains empty.
 
 No source, SQL migration, test, CI workflow, production inventory/manifest, database/ledger/role/ACL, credential/secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover was extended.
+
+
+## 20 November 2026 — correction: capability migration hardening is already present on PR #298
+
+The previous section incorrectly described the migration metadata guard as still needing to be ported from `main`. Re-fetched both exact branch copies and compared their complete contents. The actual current state is the reverse: PR #298 already contains the stronger guard; current `main` retains the older exact-array check. This correction is important and supersedes the earlier proposed action to port main into the PR.
+
+### Refreshed PR/branch state
+
+- PR #298: open, draft, unmerged; head `61e9f27abb557bf021553d104949195f14fc29ec`; current `main` `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Compare: diverged, 229 ahead / 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`; GitHub reports `mergeable=false`.
+- PR #296 remains open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`; #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; #299 remains open/draft/unmerged at `94a9d58894d11f0f886203af37cbd096619d447b` (its `merged=false` state is authoritative).
+- No PR or branch state was changed.
+
+### Exact migration comparison
+
+- PR #298 branch file: `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`, blob `9083f813c999f6054b8066d12ffafd4f9a8e1a5e`, 5,536 characters.
+- Current main file: same path, blob `84c61e9c2c06f53a86b7a63b26e9329a609c5741`, 4,847 characters.
+- Files are not identical. PR #298 has the additional metadata query and explicit diagnostics.
+
+PR #298's current guard:
+1. Reads the actual owner with `pg_get_userbyid(p.proowner)`.
+2. Reads `prosecdef`.
+3. Retains `proconfig` for diagnostic output.
+4. Parses the actual `search_path` setting with `pg_options_to_table`.
+5. Normalizes whitespace and requires exactly `pg_catalog,ghm,pg_temp` (therefore `pg_temp` is last).
+6. Requires the owner to be `ghm_schema_owner` and `SECURITY DEFINER=true`.
+7. Independently requires gateway EXECUTE and denies runtime EXECUTE.
+
+Current main instead requires `p.proconfig @> ARRAY['search_path=pg_catalog, ghm']`, which is incompatible with the required `pg_catalog, ghm, pg_temp` setting. The stronger PR #298 implementation is already present and must be preserved; do not overwrite it with main's weaker guard.
+
+### Qualification path reconfirmed
+
+- PR #298 `scripts/qualify-capability-catalogue-governance.mjs` is blob `a264506760250250b37fd9b95654ac0eedffd057`, 393 lines, imports/uses `PostgresCapabilityGovernanceReader`, and retains the signed gateway lifecycle path.
+- PR #298 `scripts/qualify-capability-governance-cutover-postgres.mjs` is blob `9bae34844b04a1098fe5d0e2c40ca06b0bf75d51`, 200 lines. It requires distinct runtime/gateway/migrator URLs and hard-restricts the target to `ghm_disposable_test` on `localhost`; retain these safety guards.
+- Current PR #298 CI workflow runs the full migration chain, the capability governance qualification, and the dedicated cutover qualification against a disposable PostgreSQL 18 service. The workflow's `workflow_dispatch` event is available, but no workflow was dispatched in this task and no new CI result is claimed.
+- The CI workflow contains GitHub-hosted jobs and dependency installs. Although no new paid service is created by this work, do not dispatch additional runs unnecessarily or add any paid infrastructure, hosted worker, database, subscription, or monitoring. Wait for the user's explicit request before triggering a run if it could consume metered Actions minutes beyond the included allowance.
+
+### Disposition
+
+- The migration metadata guard and gateway-reader test path are already corrected on PR #298; no source edit is required for this item.
+- The previous recommendation to port the mainline guard into PR #298 is withdrawn.
+- The remaining work is to verify exact-head qualification evidence and reconcile the four mainline-only commits carefully, preserving PR #298's stronger migration guard and gateway path.
+- The PR's production execution manifest remains empty. The two November 17 revocations remain post-deployment cutovers, not pre-deployment batch candidates.
+- No source, migration, test, CI workflow, production inventory/manifest, database/ledger/role/ACL, credential/secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover was extended.
