@@ -49,6 +49,35 @@ test('rejects changed SQL checksum under an unchanged version and name', () => {
     /checksum mismatch.*20261110010000_first/,
   );
 });
+test('rejects a supplier runtime revocation without its signed replacement', () => {
+  const cutover = { version: '20261110260000', name: 'gateway_supplier_classification_cutover', checksum: 'a'.repeat(64) };
+  assert.throws(
+    () => selectProductionMigrationBatch([cutover], new Set(), batch([cutover]), 'gateway-foundation-01'),
+    /without signed replacement 20261111030000_bind_supplier_gateway_actor_to_signed_assertion/,
+  );
+});
+
+test('rejects a Business Profile runtime revocation without its signed replacement', () => {
+  const cutover = { version: '20261110270000', name: 'gateway_business_profile_update', checksum: 'b'.repeat(64) };
+  assert.throws(
+    () => selectProductionMigrationBatch([cutover], new Set(), batch([cutover]), 'gateway-foundation-01'),
+    /without signed replacement 20261111040000_bind_business_profile_gateway_actor_to_signed_assertion/,
+  );
+});
+
+test('allows a completed signed cutover and blocks an already-applied incomplete cutover', () => {
+  const cutover = { version: '20261110260000', name: 'gateway_supplier_classification_cutover', checksum: 'a'.repeat(64) };
+  const replacement = { version: '20261111030000', name: 'bind_supplier_gateway_actor_to_signed_assertion', checksum: 'b'.repeat(64) };
+  assert.deepEqual(
+    selectProductionMigrationBatch([replacement], new Set([cutover.version]), batch([replacement]), 'gateway-foundation-01'),
+    [replacement],
+  );
+  assert.throws(
+    () => selectProductionMigrationBatch([replacement], new Set([cutover.version]), batch([replacement]), 'gateway-foundation-01'),
+    /without signed replacement/,
+  );
+});
+
 test('rejects malformed reviewed migration checksums', () => {
   const malformed = [{ ...migrations[0], checksum: 'not-a-sha256' }];
   assert.throws(
