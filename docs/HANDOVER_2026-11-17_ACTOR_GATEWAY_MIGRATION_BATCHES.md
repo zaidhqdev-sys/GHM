@@ -3448,3 +3448,19 @@ Continued the CI-trigger investigation from the handover and inspected the lates
 - The existing workflow supports manual `workflow_dispatch`. A manual dispatch against the current branch is therefore the remaining route to exact-current-branch CI, but it must be initiated by an account with Actions write permission in GitHub's Actions UI (Actions → CI → Run workflow → branch `feat/actor-gateway-production-migration-batches` → Run workflow). Preserve both existing jobs and all audit gates.
 
 No source, workflow, branch, dependency, Actions setting, PR state, production DB, Render service, secret or deployment was changed. No historical run was rerun. The source-level local evidence remains build passed and 17/17 focused migration tests passed at `5d090283...`; it is not a substitute for current-head CI.
+
+
+
+## 20 November 2026 — manually dispatched exact-branch CI run #5397 passed
+
+The user manually dispatched the existing `CI` workflow from GitHub Actions using branch `feat/actor-gateway-production-migration-batches`. Inspected the repository-wide Actions run record, PR #298 metadata, and both workflow jobs.
+
+- Run **#5397**, run ID `44647318812`, event `workflow_dispatch`, completed **success** at 2026-11-20 00:40:11 UTC.
+- The run is associated with PR **#298** and its selected head is exactly `b25a176ee38ec0e9a1871854421646d9defc2f09`, matching the current PR branch head at inspection. Base is `main` at `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- Both workflow jobs passed:
+  - `quality` — success. Build, Actor Gateway Worker bundle, all migrations on disposable PostgreSQL, isolated production migration plan-only fixture, database principal qualifications, commercial authority/payment-consent qualification, Worker smoke, storage and gateway cutover qualifications, main test suite, migration audit policy tests, and runtime boundary verification all completed successfully.
+  - `web-quality` — success. Web build, web tests, `npm audit`, and resolved security-sensitive toolchain verification all completed successfully.
+- This is the first fresh manual CI evidence for the ledger-name guard after the focused local build and 17/17 migration checksum tests. The exact current PR tree now has both GitHub Actions jobs green; do not confuse this with historical run #5396, which failed on the older tree.
+- CI ran the workflow's disposable/isolated qualification environments only. No production migration, production DB change, Render deployment, service/secret change, or paid resource was involved.
+- PR #298 remains **open, draft and unmerged**. The production batch manifest remains empty and production migration execution remains fail-closed. CI success does not authorize a production migration or deployment.
+
