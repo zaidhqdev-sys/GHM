@@ -5631,3 +5631,15 @@ Exact PR #302 head: e4d9e1f215e91f7bab3a97256560f1d7c076a679. Compare against ma
 ### Safety / next action
 
 No production ledger refresh, SQL, migrations, role/ACL changes, Render environment changes, service deploy, secrets, payment state, or paid resources were touched. PR #298's production batch manifest remains empty. This is a repository qualification correction only; it does not authorize running 20261117020000 or any other migration in production. Await exact-head CI for PR #302. If it passes, re-run PR #301 exact-head quality CI against the corrected migration before considering any diagnostic deploy; PR #301 remains unvalidated while this shared migration failure persists.
+
+## 20 November 2026 — PR #302 exact-head CI passed; PR #301 remains blocked by base migration chain
+
+Re-inspected PRs #301, #302 and #298 and the current migration-batches handover before proceeding. PR #302 remains open/draft/unmerged at exact head 67859370910984799b12df802e53bf891da1d668; PR #301 remains open/draft/unmerged at bb05a23524689070ded3b633d6d46da310bda001; PR #298 remains open/draft/unmerged at 480dbb82e6bd615eff3299afef17614fcd6da409. PR #300 and #297 remain separate; no branch was merged or rebased.
+
+Fetched exact-head GitHub check-runs for PR #302: quality, web-quality and Cloudflare Pages all completed successfully. Exact-head workflow run: https://github.com/zaidhqdev-sys/GHM/actions/runs/44810525158. This validates PR #302's proposed migration guard and qualification-harness correction on its own branch; it does not apply that correction to main or production.
+
+Fetched exact-head check-runs for PR #301: web-quality and Cloudflare Pages succeeded, but quality failed on workflow run https://github.com/zaidhqdev-sys/GHM/actions/runs/44804463550. PR #301 is based directly on main at ddb31ff59ab470973edf60a5078a75e5f962f803. PR #302 is a separate draft branch also based on main, so PR #302 passing does not change PR #301's migration chain. Do not claim PR #301 has been revalidated against PR #302, and do not deploy PR #301 while its exact-head quality check is failing.
+
+PR #301 source review confirms its only changed file is src/actor-gateway/server.ts; the diagnostic addition assigns safe startup stages and stable categories for database identity query/assertion, privilege query/assertion, and HTTP listen. It continues to emit only error name, stage and category, not raw error messages or secrets. No source changes were made during this status review.
+
+Next safe sequence: keep both PRs draft and separate; do not merge PR #302 without the user's explicit direction. After the migration correction is integrated into main through the normal reviewed PR process, rerun exact-head CI for PR #301 against the updated base. Only if all required checks pass should a manual deploy of the diagnostic commit to the existing ghm-actor-gateway service be considered. Render auto-deploy remains OFF. No Render deployment, environment/secret changes, production SQL/migration/role/ACL changes, or payment-state changes occurred. PR #298 production migration batch manifest remains empty.
