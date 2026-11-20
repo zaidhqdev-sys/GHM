@@ -57,8 +57,8 @@ test('directory migration reuses pre-existing canonical Business constraints and
 
 test('Business profile writes use signed Gateway authority and retain legacy runtime until manual cutover', () => {
   assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, jsonb\) FROM ghm_runtime/);
-  assert.match(signedGatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, uuid, text, bigint, jsonb\) TO ghm_actor_gateway/);
-  assert.match(signedGatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, uuid, text, bigint, jsonb\) FROM PUBLIC,ghm_runtime,ghm_migrator/);
+  assert.match(signedGatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_profile\(bigint,bigint,uuid,text,bigint,jsonb\) TO ghm_actor_gateway/);
+  assert.match(signedGatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint,bigint,uuid,text,bigint,jsonb\) FROM PUBLIC,ghm_runtime,ghm_migrator/);
   assert.match(legacyRuntimeCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_profile\(bigint,bigint,jsonb\)\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
   assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
   assert.doesNotMatch(repository, /ghm\.update_business_profile/);
