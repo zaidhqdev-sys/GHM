@@ -380,7 +380,7 @@ try {
             has_function_privilege(current_user, 'ghm.gateway_transition_capability_lifecycle(bigint,bigint,uuid,text,text,uuid,text,uuid,integer)', 'EXECUTE') AS can_gateway_transition`,
   );
   const p = privilege.rows[0];
-  if (p.can_insert || p.can_update || p.can_delete || !p.can_create || !p.can_update_draft || !p.can_transition || p.can_gateway_list || p.can_gateway_create || p.can_gateway_update || p.can_gateway_transition) {
+  if (p.can_insert || p.can_update || p.can_delete || p.can_create || p.can_update_draft || p.can_transition || p.can_gateway_list || p.can_gateway_create || p.can_gateway_update || p.can_gateway_transition) {
     throw new Error(`Unexpected capability catalogue runtime privileges: ${JSON.stringify(p)}`);
   }
   console.log('RUNTIME CAPABILITY GOVERNANCE PRIVILEGE BOUNDARY PASS');
