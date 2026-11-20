@@ -3761,3 +3761,46 @@ This is a **critical pre-deployment security qualification finding**. The origin
 The Auth recovery/issuer composition gap should be recorded separately from SQL authority: even after grants are corrected, the two recovery-delivery services need an explicit, reviewed composition decision.
 
 No source code, SQL migration, test, manifest, PR state, branch ancestry, production DB/ACL, credential, secret, Render service/form/deployment, or paid resource was changed. Only this handover record was updated.
+
+
+## 20 November 2026 — correction: Auth runtime grants are an intentional pre-cutover state; existing issuer cutover already implements the boundary
+
+Re-read this handover, PR #298 live metadata, PRs #296/#297/#299, the runtime and issuer database privilege verifiers, the manual Authentication Issuer cutover/rollback SQL, the issuer cutover runbook, and its disposable qualification script. This corrects the previous section's characterization of the three Auth functions as an unaddressed critical defect.
+
+### PR/branch state
+
+- PR #298 is still open, draft and unmerged; live head at this review is `683dd413d065fdf5f0570f429fce777f01a2d4e0`; GitHub reports `mergeable=false`.
+- PR #296 remains open/draft and carries a separate Business Identity column-level INSERT ACL migration; it is not an Auth cutover correction.
+- PR #297 remains open/draft and is the earlier overlapping migration-batch implementation; its handover records exact disposable qualification and a validated November 14 logical restore. Do not repeat those tests or reinterpret its historical 105-row ledger as current production state.
+- PR #299 is reported open/draft by current PR metadata despite a populated merge SHA. Do not infer merged state from the SHA; verify its timeline/base branch if it becomes relevant to a migration dependency.
+
+### Existing intended Auth privilege transition (already implemented)
+
+The previously flagged functions are indeed broad when directly executable by `ghm_runtime`, but their grants are explicitly the **pre-Authentication-Issuer-cutover** contract. The repository already contains the reviewed transition:
+
+- `src/db/runtime-database-privileges.ts` defines the pre-campaign baseline and an explicit `authenticationIssuer` manual-cutover group. The pre-cutover baseline intentionally includes account/session lifecycle functions, including `auth_set_password`, `auth_create_session_with_refresh`, and `auth_issue_recovery`.
+- `src/auth-issuer/database-privileges.ts` defines the exact ten-function `ghm_auth_issuer` allow-list and independently requires the post-cutover Resource API runtime auth allow-list to contain exactly two functions: external person identity lookup and external Business mapping lookup.
+- `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql` is the existing manual-only transition. It validates the restricted `ghm_migrator` -> `ghm_schema_owner` operator identity and the `ghm_auth_issuer` role attributes/membership; removes issuer direct relation/function grants; revokes the complete Auth lifecycle function set from `PUBLIC, ghm_runtime`; grants the exact issuer allow-list; and leaves QuoteFlow enrollment registration operator-only.
+- `database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql` restores the documented pre-issuer runtime allow-list and removes issuer access. It deliberately does not restore unrelated migration/operator privileges revoked by prior migrations.
+- The runbook explicitly says keep Resource API auth privileges in place while first qualifying the isolated issuer and client routes; only after issuer smoke tests, client routing and separate approval is the manual cutover applied. Thus the broad functions are not an overlooked final-state design; they are an intentionally retained compatibility state until the isolated issuer is qualified and ready for cutover.
+- The issuer cutover qualification script checks that runtime is denied every issuer lifecycle function after cutover, verifies exactly two runtime identity lookups remain, tests normal registration/login/password rehash/refresh/logout/recovery reset/QuoteFlow reset through the issuer, and qualifies database-only rollback. It uses only local `ghm_disposable_test` URLs and fails closed for any other target.
+
+### Existing qualification evidence (do not repeat)
+
+The runbook records exact-head disposable PostgreSQL CI for:
+- Migration and principal matrix, issuer and Actor Gateway cutover/lifecycle/runtime denial, full suite and DB-only rollback at run `43161326835`.
+- Manual operator identity guard and cutover/rollback qualification at run `43178029417`.
+- Complete function grantee adversarial tests at run `43179755317`.
+- Pre-cutover 16-function runtime grant snapshot and rollback baseline at run `43181545588`.
+
+These are historical exact-head disposable results, not current production ACL evidence and not a substitute for the user's newly confirmed current PR #298 CI #5397 pass. Do not rerun them without a new code change or a concrete failing signal.
+
+### Corrected disposition
+
+- Withdraw the previous claim that these three direct runtime grants constitute an unaddressed missing migration/remediation. The intended Auth Issuer cutover and rollback artifacts, runtime/issuer allow-lists, and disposable adversarial qualification already exist.
+- Retain the security observation as a **known pre-cutover exposure boundary**: while the existing Resource API runtime remains the active authentication path, it necessarily retains the documented 16-function pre-cutover auth allow-list. The final two-function runtime allow-list applies only after the isolated issuer is qualified, client routing is moved, and the separately controlled manual cutover is performed.
+- Do not create another migration, duplicate the manual cutover, alter the existing allow-lists, or change production grants.
+- The missing recovery-delivery adapters are also not an accidental wiring omission: the runbook explicitly documents that both recovery request routes return 503 intentionally until an approved delivery adapter is configured. QuoteFlow migration-reset completion is wired and separately tested. Keep recovery delivery as a known go-live product capability gap, not a code defect to solve by introducing a provider during this qualification task.
+- Continue the PR #298 migration dependency/route qualification. Auth issuer deployment remains sequenced after qualification as the owner already decided; no hosting decision is reopened here.
+
+No source, migration, manual cutover, rollback, privilege allow-list, tests, production database/ACL, Render form/service/deployment, credentials/secrets, PR state, branch ancestry or payment state was changed. Only this handover correction was committed.
