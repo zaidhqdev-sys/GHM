@@ -5565,3 +5565,16 @@ The latest recorded production catalogue evidence in the existing Render environ
 - Render service details confirm auto-deploy remains OFF, plan Free, Frankfurt, one instance, branch main.
 - No production DB, migration ledger, SQL, role/ACL, secret, payment state, or paid resource was changed during this diagnosis.
 - Next diagnostic should be a narrowly-scoped source change on the appropriate review branch that reports a safe startup stage and stable error classification (and only non-secret assertion failure identifiers), rather than logging raw connection details or environment values. Qualify exact-head CI, then deploy only through the existing manual-deploy process once the source change is deliberately integrated. Alternatively, resolve the already-known DB prerequisites through the reviewed migration path; do not bypass the production migration/backup gates.
+## 20 November 2026 — safe Actor Gateway startup-stage diagnostics proposed in separate PR #301
+
+After the owner removed the manually-created Render PORT override, the Actor Gateway build succeeded but the process still exited with a generic startup error containing only the JavaScript error name. Re-inspected PRs #298, #300 and #297, the actor-gateway branches, exact main server source, and this handover before making the diagnostic change.
+
+Created isolated branch fix/actor-gateway-startup-diagnostics-20261120 from main and draft PR #301: https://github.com/zaidhqdev-sys/GHM/pull/301
+
+Exact source change at fdde8587160c388ce27b1a00133eb3b5acc6d3df modifies only src/actor-gateway/server.ts. It tracks startup stage and logs a stable category for database identity query/connection, identity assertion, privilege query, privilege assertion, or HTTP listener failure. It retains error-name-only reporting and does not log raw error messages, SQL, connection strings, environment values, or secrets.
+
+PR #301 is draft and unmerged. No source change has been deployed to Render. Exact-head workflow-run lookup and combined commit-status lookup returned no runs/statuses at the time of this handover update; validation is therefore pending, not passed. Do not manually deploy until exact-head CI is observed and passes.
+
+PR #298 remains draft/unmerged at 85f9fd3716cfac9ee643901bc5181c69cf7aeb8e. PR #300 remains separate/draft at 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700. PR #297 remains separate/draft at 304da520c5cfe1e77b479a97dfdd9d951fa6e245. PR #301 does not merge or modify any of them.
+
+No production database, migration, SQL, role, ACL, credential, secret, Render environment variable, service configuration, payment state, or paid resource was changed. The manually-created PORT override remains removed; Render auto-deploy remains OFF.
