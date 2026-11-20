@@ -118,12 +118,14 @@ BEGIN
     RAISE EXCEPTION 'Business management permission required' USING ERRCODE='42501';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM ghm.capability c
-     WHERE c.id = v_capability
-       AND c.lifecycle_status = 'active'
-       AND c.is_selectable = true
-  ) THEN
+  -- Hold the selected catalogue row stable through the insert so a concurrent
+  -- deactivation/unselectable transition cannot race the authorization check.
+  PERFORM 1 FROM ghm.capability c
+   WHERE c.id = v_capability
+     AND c.lifecycle_status = 'active'
+     AND c.is_selectable = true
+   FOR SHARE;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'Capability not found or not selectable' USING ERRCODE='42501';
   END IF;
 
