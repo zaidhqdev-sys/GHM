@@ -4573,3 +4573,46 @@ PR #298 remains open/draft/unmerged; latest observed head before this handover-o
 ### Safety and cost
 
 Production batch manifest remains `[]`. No production SQL, role membership, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, branch ancestry, PR state or CI run was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — migration grant definitions and historical live direct-ACL evidence
+
+Re-read the migration handover and refreshed PRs #296–#299, current branch comparison and Actor Gateway branch set before inspecting grant definitions. Compared the actual PR #298 capability-governance revocation migration with the production legacy-role/ACL evidence reports. This review did not mutate any ACL or run production SQL.
+
+### Migration source confirmation
+
+- The PR #298 migration `20261117020000_revoke_runtime_capability_governance.sql` is narrowly scoped to three legacy SECURITY DEFINER functions: `create_capability_draft`, `update_capability_draft`, and `transition_capability_lifecycle`.
+- Before revocation it requires the signed verifier plus Gateway list/create/update/transition functions, verifies owner `ghm_schema_owner`, `SECURITY DEFINER`, exact parsed `search_path=pg_catalog,ghm,pg_temp`, Gateway EXECUTE and runtime EXECUTE denial.
+- It revokes only EXECUTE on those three legacy functions from PUBLIC, `ghm_runtime`, and `ghm_actor_gateway`, then checks no remaining runtime/Gateway/PUBLIC non-owner EXECUTE grant.
+- This migration does not revoke Business Capability table INSERT, Capability Evidence table SELECT, Campaign table SELECT, any sequence privilege, schema privilege, default ACL or role membership. Do not attribute table-level effects to this function-only migration.
+- Attempted direct fetches for the Business Identity and Registration Identity migration filenames as previously written in handover returned 404 on this branch; therefore their exact SQL grant definitions were not reasserted in this task. The PR #296 handover still documents its separate column-level Business Identity INSERT proposal, but it remains an unmerged PR.
+
+### Historical production direct-ACL evidence — precise scope
+
+The existing read-only production reports dated 18 November record a different, legacy public-schema permission picture:
+
+- `ghm_app_user` can SET/INHERIT `ghm_db_user`; effective checks showed SELECT/INSERT/UPDATE/DELETE on five legacy `public` tables and public-schema USAGE/CREATE.
+- `ghm_runtime` had no direct SELECT/INSERT/UPDATE/DELETE on those five legacy `public` tables, and no public-schema CREATE; public-schema USAGE was true.
+- `ghm_migrator` likewise had no direct DML on those five legacy tables and no public-schema CREATE.
+- `ghm_db_user` owned the five legacy public tables and their five sequences, the public schema, and associated indexes. The reports found no default ACL rows owned by either legacy role at that point in time.
+- These observations concern only the five legacy `public` tables and their related objects. They do not establish current `ghm` schema ACLs for Business Capability, Evidence or Campaign tables, nor do they constitute a fresh 20 November production snapshot.
+
+The reports also establish that the deployed Resource API source at the last inspected live commit used generic `DATABASE_URL` and did not assert `ghm_runtime` identity. The merged dedicated-runtime source contract had not yet been deployed in that historical snapshot. Thus, a historical absence of direct `ghm_runtime` grants on legacy `public` tables does not prove the live application was using that role.
+
+### Direct ACL audit disposition
+
+- No authoritative current effective ACL inventory for the specific `ghm` Business Capability, Evidence, Campaign, Business Identity tables and their sequences was retrieved in this task.
+- Existing runtime function allowlist tests are not a substitute for that inventory.
+- Existing historical public-schema checks cannot be extrapolated to `ghm` objects.
+- Next qualification should use the existing approved disposable PostgreSQL harness and catalog queries for `information_schema.table_privileges`, `column_privileges`, `pg_class.relacl`, `pg_sequences`/sequence ACLs, `pg_default_acl`, `pg_namespace.nspacl`, role memberships, and effective `has_table_privilege`/`has_column_privilege`/`has_sequence_privilege` checks. First inspect existing harness coverage to avoid duplicate tests. Do not connect to or mutate production as part of that local qualification.
+- The three route-confirmed direct Resource API paths remain active source constraints; their exact live `ghm` ACL status is still unproven by the dated production reports.
+
+### Refreshed PR state
+
+- PR #298 remains open/draft/unmerged, head `b81246f5aaa190a686e764986da5fe8e6d5fb933`, 238 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files.
+- PRs #296, #297 and #299 remain open/draft/unmerged. Their current heads are respectively `5fa018304970c0e84c56b22111a7255b80fd7c60`, `304da520c5cfe1e77b479a97dfdd9d951fa6e245`, and `94a9d58894d11f0f886203af37cbd096619d447b`.
+- Existing Actor Gateway branches were inspected; none changed. No PR review or CI action was initiated.
+
+### Safety and cost
+
+Production batch manifest remains `[]`. No production SQL, role, membership, table/column/sequence ACL, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state, branch ancestry or CI run was changed. No paid resource or recurring cost was introduced. Only this existing handover was extended.
