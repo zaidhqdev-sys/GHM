@@ -1645,54 +1645,6 @@ PR #296 remains a separate draft hardening candidate on `hardening/business-iden
 This was source and handover review only. No production ledger query, migration execution, DDL, role/grant/ACL, RLS, credential, secret, Render configuration, deployment, payment, consent, or legal-document state was changed.
 
 
-## 18 November 2026 — exact Render deployment blockers established
-
-Added `docs/security/PRODUCTION_RUNTIME_DEPLOYMENT_BLOCKERS_2026-11-18.md` (commit `ddfebdf6fbe90b4d893690254ce6335b0ad09419`). This review first re-read the runtime findings, role/service map, migrator plan, migration reconciliation, database authority, Actor Gateway hosting handover and PR #275/#298/#296/#299.
-
-Render event/log evidence now establishes both November 15 failures:
-1. Deploy `dep-dbsv8cuk1f9s73ada3ig`, commit `8f3ee574...`: build command was `npm ci && npm run build`; TypeScript failed TS7016 for `pg`, `express`, `jsonwebtoken`, plus TS7006 implicit-any errors caused by missing Express types. The exact repository manifest has `@types/pg`, `@types/express`, and `@types/jsonwebtoken` in devDependencies. Correct deployment build command is `npm ci --include=dev && npm run build`.
-2. Deploy `dep-dbsva6c9v7es73bordlg`, commit `fe5a82d8...`: build succeeded, then process exited with `GHM_ACTOR_GATEWAY_URL is required when production storage is enabled`. This is the intentional fail-closed application guard. No dedicated production Actor Gateway host exists, and the hosting handover blocks another paid always-on service. No placeholder, self-reference, sandbox URL, or bypass is acceptable.
-
-Therefore the build fix alone cannot make PR #275 deployable. Keep auto-deploy OFF; wait for an affordable/approved genuine gateway host, qualify its identity/credential/ACL/signed assertion contract, then prepare the runtime cutover. Do not deploy, edit environment variables, change roles/ACLs, or incur cost.
-
-No Render configuration, secrets, deployment, database, CI, payment state or hosting resource was changed.
-
-## 18 November 2026 — owner-shared Render creation-form review (not submitted)
-
-The owner shared the Render New Web Service form for ghm-actor-gateway. This is a configuration review only; the form was not submitted and no Render service was created.
-
-### Form values checked against current main source and architecture
-
-- Repository: zaidhqdev-sys/GHM; branch: main — correct.
-- Runtime: Node — correct.
-- Region: Frankfurt — correct; same region as ghm-db.
-- Root directory: blank — correct for repository-root package.json.
-- Build command: npm ci --include=dev && npm run build — correct and fixes the previously observed missing development type declarations.
-- Start command: npm run start:actor-gateway — exists in current main package.json and launches dist/actor-gateway/server.js.
-- Required variable names shown: NODE_ENV, DATABASE_SSL_MODE, GHM_ACTOR_GATEWAY_DATABASE_URL, GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET, GHM_JWT_ES256_PUBLIC_KEY_PEM, GHM_JWT_ES256_KID. These names match the Node gateway source's configuration contract. NODE_ENV must be production; DATABASE_SSL_MODE must be internal for the same-region Render internal DB URL. The screenshot masks values, so their correctness, provenance and validity are not verified. Never copy secret values into Git, chat or handovers.
-- Server binds Render's PORT and exposes /healthz; set the service health-check path to /healthz in Advanced settings before a future deployment.
-- Keep auto-deploy OFF for initial controlled deployment.
-
-### Plan decision
-
-The form's selected $7/month paid Web Service is the previously documented always-on HTTP gateway architecture. The displayed Free plan is not acceptable: Render Free Web Services spin down after 15 minutes idle, may restart, and can wake too slowly for the Resource API's five-second gateway timeout. Do not select Free as a production workaround.
-
-The $7/month recurring cost remains outside the user's standing approved budget unless the owner explicitly changes that decision. Merely opening or filling the form does not authorize the recurring charge. Do not submit it on the basis of this review.
-
-### Independent production readiness blockers — service must not be submitted/deployed yet
-
-Even if the owner later approves the $7/month charge, this form is not deployment-ready:
-1. Production ghm_actor_gateway has not been provisioned with schema ghm USAGE or its exact gateway function EXECUTE allowlist; the last verified catalogue review found no gateway functions installed.
-2. The latest supplied production migration reconciliation recorded 42 pending migrations and an allowlist mismatch; the ordered gateway migration chain and safe staged runner boundary are not qualified.
-3. A fresh verified production backup/recovery point remains outstanding.
-4. The production role-administration/Render support remediation remains open.
-5. The masked GHM_ACTOR_GATEWAY_DATABASE_URL and capability assertion secret cannot be assumed valid or provisioned merely because fields are populated in the UI. They must be established through the approved administrator/secret workflow, with no values disclosed.
-6. After those gates pass, qualify session_user=current_user=ghm_actor_gateway, the exact database privilege allowlist, /healthz, authenticated positive/negative routes, restart behavior and API timeout behavior before configuring GHM_ACTOR_GATEWAY_URL on the Resource API.
-
-**Disposition:** configuration values are mostly aligned with source, but do not submit, deploy, select Free, or incur cost now. Keep the form unsubmitted, keep existing production untouched, and preserve the current architecture/cost decision.
-
-No Render service, plan, environment variable, secret, deployment, database role/grant/migration, backup, payment state, CI or schedule was changed. No cost incurred.
-
 ## 37. 2026-11-18 — Actor Gateway production DB connection checkpoint (read-only)
 
 ### Objective reaffirmed
@@ -1909,6 +1861,54 @@ Amanda's guidance remains controlling: the SQL-created service login must use it
 ### Change boundary
 
 This is a documentation correction based on the owner's clarification. No Render form was read or changed by the assistant; no environment variable was created, read or modified; no password or secret was accessed; no production SQL, role, membership, grant, migration, deployment or service creation occurred; and no additional paid infrastructure or cost was introduced.
+
+## 18 November 2026 — exact Render deployment blockers established
+
+Added `docs/security/PRODUCTION_RUNTIME_DEPLOYMENT_BLOCKERS_2026-11-18.md` (commit `ddfebdf6fbe90b4d893690254ce6335b0ad09419`). This review first re-read the runtime findings, role/service map, migrator plan, migration reconciliation, database authority, Actor Gateway hosting handover and PR #275/#298/#296/#299.
+
+Render event/log evidence now establishes both November 15 failures:
+1. Deploy `dep-dbsv8cuk1f9s73ada3ig`, commit `8f3ee574...`: build command was `npm ci && npm run build`; TypeScript failed TS7016 for `pg`, `express`, `jsonwebtoken`, plus TS7006 implicit-any errors caused by missing Express types. The exact repository manifest has `@types/pg`, `@types/express`, and `@types/jsonwebtoken` in devDependencies. Correct deployment build command is `npm ci --include=dev && npm run build`.
+2. Deploy `dep-dbsva6c9v7es73bordlg`, commit `fe5a82d8...`: build succeeded, then process exited with `GHM_ACTOR_GATEWAY_URL is required when production storage is enabled`. This is the intentional fail-closed application guard. No dedicated production Actor Gateway host exists, and the hosting handover blocks another paid always-on service. No placeholder, self-reference, sandbox URL, or bypass is acceptable.
+
+Therefore the build fix alone cannot make PR #275 deployable. Keep auto-deploy OFF; wait for an affordable/approved genuine gateway host, qualify its identity/credential/ACL/signed assertion contract, then prepare the runtime cutover. Do not deploy, edit environment variables, change roles/ACLs, or incur cost.
+
+No Render configuration, secrets, deployment, database, CI, payment state or hosting resource was changed.
+
+## 18 November 2026 — owner-shared Render creation-form review (not submitted)
+
+The owner shared the Render New Web Service form for ghm-actor-gateway. This is a configuration review only; the form was not submitted and no Render service was created.
+
+### Form values checked against current main source and architecture
+
+- Repository: zaidhqdev-sys/GHM; branch: main — correct.
+- Runtime: Node — correct.
+- Region: Frankfurt — correct; same region as ghm-db.
+- Root directory: blank — correct for repository-root package.json.
+- Build command: npm ci --include=dev && npm run build — correct and fixes the previously observed missing development type declarations.
+- Start command: npm run start:actor-gateway — exists in current main package.json and launches dist/actor-gateway/server.js.
+- Required variable names shown: NODE_ENV, DATABASE_SSL_MODE, GHM_ACTOR_GATEWAY_DATABASE_URL, GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET, GHM_JWT_ES256_PUBLIC_KEY_PEM, GHM_JWT_ES256_KID. These names match the Node gateway source's configuration contract. NODE_ENV must be production; DATABASE_SSL_MODE must be internal for the same-region Render internal DB URL. The screenshot masks values, so their correctness, provenance and validity are not verified. Never copy secret values into Git, chat or handovers.
+- Server binds Render's PORT and exposes /healthz; set the service health-check path to /healthz in Advanced settings before a future deployment.
+- Keep auto-deploy OFF for initial controlled deployment.
+
+### Plan decision
+
+The form's selected $7/month paid Web Service is the previously documented always-on HTTP gateway architecture. The displayed Free plan is not acceptable: Render Free Web Services spin down after 15 minutes idle, may restart, and can wake too slowly for the Resource API's five-second gateway timeout. Do not select Free as a production workaround.
+
+The $7/month recurring cost remains outside the user's standing approved budget unless the owner explicitly changes that decision. Merely opening or filling the form does not authorize the recurring charge. Do not submit it on the basis of this review.
+
+### Independent production readiness blockers — service must not be submitted/deployed yet
+
+Even if the owner later approves the $7/month charge, this form is not deployment-ready:
+1. Production ghm_actor_gateway has not been provisioned with schema ghm USAGE or its exact gateway function EXECUTE allowlist; the last verified catalogue review found no gateway functions installed.
+2. The latest supplied production migration reconciliation recorded 42 pending migrations and an allowlist mismatch; the ordered gateway migration chain and safe staged runner boundary are not qualified.
+3. A fresh verified production backup/recovery point remains outstanding.
+4. The production role-administration/Render support remediation remains open.
+5. The masked GHM_ACTOR_GATEWAY_DATABASE_URL and capability assertion secret cannot be assumed valid or provisioned merely because fields are populated in the UI. They must be established through the approved administrator/secret workflow, with no values disclosed.
+6. After those gates pass, qualify session_user=current_user=ghm_actor_gateway, the exact database privilege allowlist, /healthz, authenticated positive/negative routes, restart behavior and API timeout behavior before configuring GHM_ACTOR_GATEWAY_URL on the Resource API.
+
+**Disposition:** configuration values are mostly aligned with source, but do not submit, deploy, select Free, or incur cost now. Keep the form unsubmitted, keep existing production untouched, and preserve the current architecture/cost decision.
+
+No Render service, plan, environment variable, secret, deployment, database role/grant/migration, backup, payment state, CI or schedule was changed. No cost incurred.
 
 
 ---
