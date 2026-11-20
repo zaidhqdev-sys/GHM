@@ -4058,3 +4058,44 @@ The migration header explicitly says caller authorization remains in the Busines
 - The current 50-entry inventory is dated candidate evidence, not the live production queue. The execution manifest remains empty.
 - PR #296's earlier exact-head CI pass recorded in its handover applies to an earlier code SHA, not automatically to current head `5fa0183...`; current exact-head CI must be checked before calling its latest code green.
 - No production SQL/ACL/role/database/ledger, migration inventory/manifest, credentials/secrets, Render service/configuration/deployment, payment state, PR status, branch ancestry or application source was changed. Only this handover was extended.
+
+
+## 20 November 2026 — existing PostgreSQL qualification coverage checked for PR #296 ACL
+
+Re-read this handover and refreshed PR #298 plus related PRs #296–#299 and the live branch comparison before examining the qualification scripts and test registration. No source, migration or ACL changes were made.
+
+### Refreshed branch state
+
+- PR #298 remains open/draft/unmerged at `1e5a347e73b5da5608ccdf525876821b9b6f4d18`; live comparison against `main` (`ddb31ff59ab470973edf60a5078a75e5f962f803`) is diverged, 226 ahead / 4 behind, `mergeable=false`.
+- PR #296 remains open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`; its migration and test are still isolated on `hardening/business-identity-insert-column-acl`.
+- PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; PR #299 remains open/draft/unmerged at `94a9d58894d11f0f886203af37cbd096619d447b`. The populated `merge_commit_sha` metadata for #299 is not proof of merge; GitHub reports `merged=false`.
+- The live compare still shows four mainline-only changes: CI workflow, pending inventory, two governance/revocation-related SQL changes and associated documented files (see full compare list); no ancestry changes were made.
+
+### Existing PostgreSQL coverage — what it proves and what it does not
+
+Inspected the PR #298 `package.json`, `scripts/qualify-business-identity-runtime.mjs`, `scripts/qualify-actor-gateway-principal.mjs`, `src/db/runtime-database-privileges.test.ts`, and the production migration plan-only qualification script.
+
+1. `qualify:business-identity-runtime` connects with separately asserted `ghm_runtime` and `ghm_migrator` identities and exercises the normal service/repository flow: profile reads, business and owner-membership creation, managed reads/updates, role rejection, multi-business preservation, duplicate-slug rollback and concurrent creation. This proves the application path under the configured database grants, but it does not directly attempt the prohibited column/table INSERTs under the runtime principal.
+2. `qualify-actor-gateway-principal.mjs` verifies exact SECURITY DEFINER function EXECUTE allowlists for runtime and gateway, gateway relation/function privileges, principal identities, and extensive signed-assertion flows. It does not inspect the new table-level/column-level INSERT ACLs on `ghm.business` and `ghm.business_membership`.
+3. `runtime-database-privileges.test.ts` tests SECURITY DEFINER function EXECUTE stages only; it is not a table-column ACL integration test.
+4. `qualify-production-migration-plan-only.mjs` builds a disposable migration fixture and proves the plan-only runner does not mutate its ledger/catalog. It intentionally does not execute pending migrations, so it cannot prove the effective ACL created by PR #296's migration.
+5. The PR #298 `npm test` command does not include PR #296's `business-identity-runtime-insert-acl-migration-contract.test.ts`; that file is on PR #296's branch only. The PR #296 test is static source/SQL matching, not PostgreSQL effective-privilege execution.
+
+### Conclusion — focused PostgreSQL test is genuinely missing
+
+No inspected existing qualification script currently proves the four required runtime ACL behaviors for migration `20261116200000`. This is a precise evidence gap, not a defect in the proposed SQL or a reason to duplicate the existing Business Identity service qualification.
+
+A focused disposable-PostgreSQL test on PR #296 should:
+- create an isolated schema/table fixture with the same relevant identity/default constraints and role grants, or apply the actual migration to a disposable schema/database fixture with the prerequisite Business tables;
+- assert `has_table_privilege('ghm_runtime', ..., 'INSERT') = false` for both tables;
+- assert `has_column_privilege` is true for exactly the permitted column sets and false for omitted columns;
+- as `SET ROLE ghm_runtime`, prove the intended Business and owner-membership inserts succeed;
+- prove an insert that supplies a prohibited column (e.g. `id` or `created_at`) fails with insufficient privilege, and that the same result holds for each table;
+- verify SELECT and the existing identity-sequence usage/select privileges are preserved;
+- use transaction rollback and a dedicated disposable database; never connect to production or mutate the production inventory/manifest.
+
+Keep the existing static migration contract test as a cheap source-shape check. Add the effective ACL test as a separate PostgreSQL qualification, and wire it into the dedicated qualification workflow only when its disposable database setup is explicit. Do not silently add a production migration or change PR #298's candidate inventory for this PR #296-only migration.
+
+### Disposition
+
+The question from the prior task is resolved: existing qualification does not already cover the effective Business Identity column INSERT ACL. A focused PostgreSQL test is warranted on PR #296, but this assistant task only records the gap and test contract; it does not edit PR #296 or #298 source. The PR #298 inventory remains unchanged and its execution manifest remains empty. No production SQL, database, role/ACL, ledger, migration, manifest, credentials, secrets, Render service/configuration/deployment, payment state, PR status or branch ancestry was changed. Only this handover was extended.
