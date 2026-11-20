@@ -5989,3 +5989,21 @@ Additional hardening task started after that successful run: the audit proves th
 New CI run 44824481575 is pending for exact code commit 39bd8e54478d3bb56c03c97817fa468a9f5d60ff. Do not claim the temp-shadowing canary has passed until this run completes. The previous full qualification pass remains valid for commit be987a... but does not include this new canary.
 
 PR #298 remains draft/open. PR #297 and #300 remain separate draft/open; #301 and #302 remain closed/merged. Production execution manifest remains []. No production SQL/DDL/ACL/role changes, production migration execution, secrets, Render settings/deployments, paid resources, or payment state changed.
+
+
+## 20 November 2026 — temp-shadowing canary caller privilege corrected
+
+Reviewed the prior handover, PR #298 current head/state, production manifest, exact CI run 44824481575 and its failed quality-job logs, and the canary script before editing.
+
+The first canary attempt failed at the caller's SELECT of the qualified GHM function because ghm_migrator intentionally lacks ghm schema USAGE in this disposable baseline. The failure was in the test harness setup, before the SECURITY DEFINER function executed; it did not indicate a shadowing bypass.
+
+Corrected the canary to:
+- Assert ghm_migrator starts without ghm schema USAGE.
+- Temporarily grant ghm schema USAGE and function EXECUTE inside the disposable test transaction only.
+- Create a same-named pg_temp table and invoke the SECURITY DEFINER canary as ghm_migrator.
+- Assert the unqualified reference resolves to the ghm table, not the caller temp table.
+- Roll back the entire transaction, removing the temporary grants, table and function even on success.
+
+Expanded the contract test to assert the temporary grant and rollback-only cleanup. Script correction commit: 966bcf9e3d840da91edc1254e83d349ff2afb126. Contract test commit: 653ae34cddc43eb8b88835921ad596dca33888ce.
+
+The next exact-head CI must show the canary passing, then all downstream PostgreSQL qualifications and whole-database authority comparison must remain green. No production schema/privilege changes were made. Production manifest remains []; PR #298 remains draft/open.
