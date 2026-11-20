@@ -442,3 +442,20 @@ The connected GitHub workflow exposes repository source operations, not the user
 The immediate next step remains executing the registered migration contract test and guarded PostgreSQL qualification from the user's existing local checkout, if its already-existing disposable DB and all three principals are available. If unavailable, keep the feature SQL unqualified and request the local command output; do not create a database or use production. Only after a genuine SQL pass should Gateway reader/HTTP/Resource API integration begin.
 
 No production access/change, migration execution, deployment, CI dispatch, paid resource, new database/service, secret change or recurring process occurred.
+
+
+## Local qualification handoff — user's 2026-11-20 03:02 UTC output
+
+The user successfully fetched and checked out `feat/signed-business-capability-create`; `git pull --ff-only` reported already up to date. The two attempted environment lookups for `GHM_QUALIFICATION_DATABASE_NAME` and `GHM_QUALIFICATION_DATABASE_HOST` returned "path ... does not exist", so those variables are not currently defined in that PowerShell process. The transcript stops before `npm test`; no test result was supplied.
+
+Re-read the qualification script's configuration contract. It loads `dotenv/config` and requires all of the following before opening database pools:
+- `GHM_RUNTIME_DATABASE_URL`
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`
+- `GHM_MIGRATOR_DATABASE_URL` (all three URLs must be distinct)
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` (canonical base64-encoded 32-byte key)
+- `GHM_QUALIFICATION_DATABASE_NAME=ghm_disposable_test`
+- `GHM_QUALIFICATION_DATABASE_HOST=localhost`
+
+Do not print or request the URL or secret values in chat. The user should first run `npm test` independently; this package test is separate from the database qualification script and should not require those three database URLs. For the database qualification, inspect only variable presence and the two non-secret guard values, then use the existing local `.env` setup if it is already provisioned. Do not invent credentials, reuse production credentials, create a new database, or bypass the localhost/name guards.
+
+No test, SQL migration, PostgreSQL harness, deployment, production operation, CI dispatch, or paid resource was executed in this task.
