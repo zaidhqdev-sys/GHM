@@ -58,6 +58,7 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       'ghm.assert_actor_gateway_commercial_document_authority(bigint, bigint, uuid, text, text)',
       'ghm.assert_actor_gateway_commercial_document_approval(bigint, bigint, uuid, text, text)',
       'ghm.assert_actor_gateway_commercial_payment_prepare(bigint, bigint, uuid, text, text)',
+      'ghm.gateway_create_business_capability(bigint, bigint, uuid, text, text, jsonb)',
       'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
       'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
