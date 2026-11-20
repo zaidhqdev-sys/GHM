@@ -807,3 +807,24 @@ Decision: do not modify the validator or tests yet. The current test calls the t
 No source/migration/PR change was made. PR #300 remains draft/unmerged; PR #298 remains untouched. No database, secret, deployment, paid resource or production setting changed.
 
 Next: use the PR #300 head's migration file inventory/ledger and commit ancestry to identify exact CREATE/GRANT/REVOKE statements for these signatures. Once the canonical end-state is proven, add `gateway_create_business_capability(...)` to the expected set, remove only wrappers demonstrably revoked, and add focused tests proving exact expected signatures and rejection of arbitrary extra/missing functions. Then trigger ordinary PR CI and verify the signed-create PostgreSQL test actually runs.
+
+
+## Exact Campaign cutover provenance resolved; signed-create Gateway allow-list corrected — 2026-11-20
+
+Re-read this handover, PR #300 and PR #298 metadata, branch `feat/signed-business-capability-create`, validator/tests and PR #272 migration/cutover tree before changing code.
+
+Exact provenance established from `database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql`:
+- It is explicitly marked MANUAL CUTOVER ONLY and excluded from `database/migrations`.
+- It defines and grants the three exact wrappers `gateway_create_campaign`, `gateway_update_campaign`, and `gateway_get_business_directory_review_presentation` to `ghm_actor_gateway`.
+- The companion `20261112161000_campaign_directory_review_actor_gateway_rollback.sql` revokes those wrapper grants from `ghm_actor_gateway` and restores legacy Resource API runtime grants.
+- Therefore the three-wrapper group being absent in the automated migration-only CI database is the expected pre-manual-cutover state. The validator's existing exact two-state handling is justified; the wrappers must remain in the reviewed expected set and must not be globally deleted from the allowlist.
+- PR #272's patch includes these manual cutover files. The directory-review read-only Resource API registry does not itself revoke the wrappers; the manual cutover is the explicit ACL authority.
+
+Actual run #5410 mismatch is the newly auto-migrated `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)` absent from the exact expected signatures. Added this exact signature to `ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL` while preserving the Campaign manual-cutover state handling and all least-privilege checks.
+- Validator commit: `dc9cb024c85fa967a6ae78bab809553b82bb7de7`.
+- Added focused regression coverage: exact signature must be present, a missing expected create wrapper is rejected, and the exact present wrapper is accepted.
+- Test commit: `0dba9cd748b4e3de1989442d6d24c38ee0cfbc64`.
+
+No existing manual cutover or rollback SQL was modified. No privileges were granted/revoked, no production DB changed, no migration executed manually, and no Render/deployment/paid-resource/secret changes were made. PR #300 remains draft/unmerged; PR #298 remains separate and untouched.
+
+Validation still required: normal PR CI on the updated branch must prove the shared Actor Gateway principal check now passes and the dedicated signed Business Capability PostgreSQL qualification actually executes. No SQL qualification pass is claimed yet.
