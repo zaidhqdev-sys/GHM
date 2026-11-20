@@ -3464,3 +3464,27 @@ The user manually dispatched the existing `CI` workflow from GitHub Actions usin
 - CI ran the workflow's disposable/isolated qualification environments only. No production migration, production DB change, Render deployment, service/secret change, or paid resource was involved.
 - PR #298 remains **open, draft and unmerged**. The production batch manifest remains empty and production migration execution remains fail-closed. CI success does not authorize a production migration or deployment.
 
+
+
+
+## 20 November 2026 — post-CI PR and mainline reconciliation checkpoint
+
+After CI run #5397 passed, re-read this handover, PR #298 metadata/reviews, the current branch comparison, and the mainline Actor Gateway hosting/credentials handover before deciding the next integration step.
+
+### Current PR and branch state
+
+- PR #298 remains **open, draft, unmerged**; current PR head at this checkpoint is `eb30b79abc931e014d9856bd909460f6019d950b` (the CI-evidence handover commit).
+- Current `main` is `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Branch comparison: **211 commits ahead / 4 behind**; merge base remains `b73839b27ac90446650f921d3e8ce1b5de041f04`. GitHub PR metadata still reports `mergeable=false`.
+- No submitted PR reviews or review threads were returned.
+- The four commits on main since the merge base are `dc4cbd0`, `f52ec0a`, `aa3842d`, and `ddb31ff`. The compare endpoint identifies their only changed path as `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md`; no runtime source, migration, workflow, test, or configuration file is among those four mainline-only changes.
+- Compared the mainline and PR-branch copies of sections 37–40 in that hosting/credentials handover. The text of all four sections is present verbatim on the PR branch; the only trailing difference in the extracted range is the branch's separator line before its subsequent owner-specific updates. The branch therefore already contains the substance of these four mainline documentation commits, although it does not contain their commit ancestry. This is a content reconciliation, not a rebase/merge/cherry-pick.
+
+### Integration decision
+
+Do not merge or rebase solely to remove the four documentation-only behind commits. The branch includes subsequent owner-specific hosting decisions and a long-running PR-specific migration/security evidence trail. GitHub still reports the PR as non-mergeable, and this inspection did not establish whether that flag reflects an actual conflict or a stale/indeterminate mergeability calculation. No forced merge, base retarget, branch rewrite, or PR state change was attempted.
+
+CI #5397 remains green for both `quality` and `web-quality` at the exact pre-handover source tree `b25a176ee38ec0e9a1871854421646d9defc2f09`; the current head `eb30b79...` adds only this documentation record after that run. The source tree has not changed since the CI-tested commit.
+
+The production execution-batch manifest remains empty. Production ledger refresh, first-batch derivation, migrator authority/ACL remediation, recoverable backup proof, Actor Gateway production API/schema prerequisites, and hosting/credential readiness remain separate gates. No production migration, database/role/ACL change, Render service/configuration/deployment, secret access, or paid resource was performed.
+
