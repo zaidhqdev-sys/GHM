@@ -22,9 +22,16 @@ try{
  const owner=Number(accounts.rows[0].id),member=Number(accounts.rows[1].id),outsider=Number(accounts.rows[2].id),admin=Number(accounts.rows[3].id);ids.accounts.push(owner,member,outsider,admin);
  const b=await setup("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id",[marker,marker]);const business=Number(b.rows[0].id);ids.businesses.push(business);
  await setup("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($1,$3,'member','active',$2)",[business,owner,member]);
+ const inactiveBusinessResult=await setup("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,false) RETURNING id",[marker+' inactive',marker+'-inactive']);
+ const inactiveBusiness=Number(inactiveBusinessResult.rows[0].id);ids.businesses.push(inactiveBusiness);
+ await setup("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2)",[inactiveBusiness,owner]);
  const capId=randomUUID();ids.capabilities.push(capId);
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[capId,marker,marker]);
  const bc=await setup("INSERT INTO ghm.business_capability(business_id,capability_id,assertion_status,assertion_basis,verification_status,created_by) VALUES($1,$2,'active','self_declared','unverified',$3) RETURNING id",[business,capId,owner]);const bcId=Number(bc.rows[0].id);ids.assertions.push(bcId);
+ const inactiveCapId=randomUUID();ids.capabilities.push(inactiveCapId);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'inactive',1,'gateway qualification',true)",[inactiveCapId,marker+' inactive',marker+'-inactive-cap']);
+ const unselectableCapId=randomUUID();ids.capabilities.push(unselectableCapId);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',false)",[unselectableCapId,marker+' unselectable',marker+'-unselectable']);
  const createCapId=randomUUID();ids.capabilities.push(createCapId);
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[createCapId,marker+' create',marker+'-create']);
  const allowCreateMigration=await readFile(fileURLToPath(new URL('../database/migrations/20261120011000_allow_signed_business_capability_create_assertion.sql',import.meta.url)),'utf8');
@@ -48,6 +55,13 @@ try{
  assert.equal(created.rows[0].assertion_basis,'self_declared');
  assert.equal(created.rows[0].verification_status,'unverified');
  console.log('SIGNED APPEND-ONLY CAPABILITY CREATE AND ACTOR PROVENANCE: PASS');
+
+ const inactiveBusinessInput={...createInput,businessId:inactiveBusiness,capabilityId:randomUUID()};
+ const inactiveBusinessError=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(inactiveBusinessInput)],inactiveBusinessInput),'INACTIVE BUSINESS CAPABILITY CREATE DENIED');assert.equal(inactiveBusinessError.code,'42501');assert.match(inactiveBusinessError.message,/Business not found or inactive/);
+ const inactiveCapabilityInput={...createInput,capabilityId:inactiveCapId};
+ const inactiveCapabilityError=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(inactiveCapabilityInput)],inactiveCapabilityInput),'INACTIVE CATALOGUE CAPABILITY CREATE DENIED');assert.equal(inactiveCapabilityError.code,'42501');assert.match(inactiveCapabilityError.message,/Capability not found or not selectable/);
+ const unselectableCapabilityInput={...createInput,capabilityId:unselectableCapId};
+ const unselectableCapabilityError=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(unselectableCapabilityInput)],unselectableCapabilityInput),'NON-SELECTABLE CATALOGUE CAPABILITY CREATE DENIED');assert.equal(unselectableCapabilityError.code,'42501');assert.match(unselectableCapabilityError.message,/Capability not found or not selectable/);
  const activeDuplicate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput),'ACTIVE CAPABILITY DUPLICATE DENIED');assert.equal(activeDuplicate.code,'23505');
 
  const expiredIssued=Math.floor(Date.now()/1000)-120,expiredNonce=randomUUID(),expiredContext=JSON.stringify(createInput);
