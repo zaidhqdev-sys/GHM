@@ -253,3 +253,54 @@ The last full green run remains #5431 (`44776342145`) for the SQL-only qualifica
 Next: obtain/inspect normal PR CI for the current branch tip. Confirm TypeScript build, Worker bundle, full test suite (including new reader/app/router tests), and the entire disposable PostgreSQL workflow through step 53 and subsequent steps. Fix only failures supported by logs. Then review route error mapping and the PR summary. PR #300 stays draft/unmerged; PR #298 remains untouched.
 
 No production migration/cutover, deployment, production DB changes, paid resources, secrets, manual workflow dispatch or PayFast work.
+
+
+## CI #5449 — end-to-end signed Business Capability create and direct-write cutover qualification GREEN — 2026-11-20
+
+Before recording this result, re-read this handover, fetched PR #300 and PR #298, verified the feature branch, checked the latest compare against `main`, and inspected the full CI job/step results and the exact dedicated PostgreSQL qualification logs.
+
+### CI result
+CI run #5449 (ID `44778438338`) completed with both jobs successful:
+- `quality`: SUCCESS.
+- `web-quality`: SUCCESS.
+- Build: PASS.
+- Actor Gateway Cloudflare Worker bundle (build-only; no deployment): PASS.
+- All automatic migrations on disposable PostgreSQL 18: PASS.
+- Auth Issuer and Actor Gateway isolated principal qualification: PASS.
+- Actor Gateway local Workers runtime smoke: PASS.
+- Full repository test suite, including the newly added signed capability reader, Actor Gateway endpoint and Resource API routing tests: PASS.
+- Existing PostgreSQL gateway qualifications and all subsequent steps 49–69, including the full signed Business Capability cutover, other Gateway cutovers, runtime boundary, isolated Auth Issuer cutover, and pre/post SECURITY DEFINER authority inventory comparison: PASS.
+
+### Exact signed Business Capability PostgreSQL qualification evidence (step 53)
+The full job log contains the final marker `GHM BUSINESS CAPABILITY SIGNED GATEWAY CUTOVER QUALIFICATION: PASS` and these specific passes:
+- Manual Business Capability mutation and create cutovers applied to disposable PostgreSQL only.
+- Signed append-only create and actor provenance.
+- Inactive Business denial; inactive and non-selectable catalogue denial.
+- Active duplicate and withdrawn duplicate rejection.
+- Expired assertion, nonce replay, invalid effective period, payload tampering and forged HMAC rejection.
+- Non-admin member create denial.
+- Runtime cannot execute the signed create wrapper.
+- Runtime direct `ghm.business_capability` INSERT denied; runtime identity-sequence access denied; Gateway direct INSERT denied.
+- Existing runtime legacy replacement/verification/evidence mutation and direct evidence INSERT/sequence denials.
+- Final post-cutover privilege matrix passed.
+
+This verifies the new manual-only create cutover and signed wrapper together in CI's isolated `ghm_disposable_test`; it does not apply the cutover to production.
+
+### Application integration status
+The signed create path is now wired end-to-end in source:
+- Actor Gateway reader signs the exact canonical context and calls `ghm.gateway_create_business_capability`.
+- Authenticated Actor Gateway `POST /v1/business-capabilities` derives actor from the verified JWT.
+- Resource API `POST /api/v1/business-capabilities` uses the Gateway whenever configured/required and fails closed rather than falling back to runtime direct INSERT.
+- HTTP 409 duplicate conflicts are preserved; null effective dates from the client are accepted and passed as defaults/no bound.
+- New reader/app/router tests are included in the full suite.
+
+### PR / branch state
+- Updated PR #300 description to accurately document the end-to-end route, manual-only cutover, disposable PostgreSQL evidence and production boundary.
+- PR #300 remains open, draft, unmerged, and mergeable. Do not merge or mark ready without explicit owner direction.
+- PR #298 remains open/draft/unmerged and untouched.
+- Feature branch `feat/signed-business-capability-create` is 90 commits ahead of `main` and 0 commits behind at inspection; compare reports the intended 20 changed files.
+
+### Production boundary
+No production migration, manual cutover, Render database mutation, Gateway deployment, or paid service creation occurred. The separate manual cutover remains gated on deployed/qualified Gateway route, provisioned production Gateway principal, resolved Render role model, and a fresh verified production backup. The GitHub PR preview bot generated a Cloudflare Pages branch preview automatically; this was not a production deployment and no manual deployment was invoked.
+
+Next: keep PR #300 draft/unmerged. Do not deploy or apply the manual cutover. The feature is now CI-qualified end-to-end on disposable PostgreSQL; any production adoption remains a separately gated owner-directed operation. PR #298 stays separate and untouched.
