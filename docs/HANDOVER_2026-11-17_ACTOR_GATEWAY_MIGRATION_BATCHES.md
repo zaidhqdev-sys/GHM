@@ -6206,3 +6206,35 @@ This narrows the safe path: the ledger's intended audit grant exists on the NOLO
 No authorized read-only audit connection is currently exposed through the available Render connector. The forensic production audit remains blocked. The only safe next action is for the authorized owner/operator to run the repository's existing `npm run audit:migrations:predeploy` through an already-authorized read-only connection (or have the approved Render administrator provide the resulting report), with `DATABASE_SSL=true` and certificate verification. Do not paste credential values into chat.
 
 No production data, ledger, role, membership, ACL, secret, service, environment variable, deployment, migration, payment state, backup or paid resource was changed. No exact ledger rows/count/checksum result is claimed. Keep PR #298 draft/unmerged and the production batch manifest exactly `[]`.
+
+
+## 21 November 2026 — Render Actor Gateway deployment and live ACL preflight diagnosis (read-only)
+
+Mandatory pre-task review completed: re-read this handover, PR #298 state/head, PRs #297/#300/#301/#302 status context, the production dependency matrix, migration audit implementation, production pending inventory and exact empty production batch manifest before proceeding. PR #298 remains open/draft/unmerged; branch head before this task was `80de2fd16de01106068a5e8056fef5612084f387`; manifest remains `[]`.
+
+Render service inventory was inspected read-only. New factual correction to the 20 November dependency matrix:
+- A Free Render web service named `ghm-actor-gateway` DOES exist; service ID `srv-dc09scl9el5s73fdgj1g`, Frankfurt, URL `https://ghm-actor-gateway.onrender.com`, health path `/healthz`, branch `main`, auto-deploy OFF.
+- This is the owner-selected single Free-service form already submitted/created, not an unsubmitted form. No new service was created in this task.
+- The service's latest deployment `dep-dc0b5lbm8hqs73dh2ds0` built successfully but failed at runtime (exit 1) on commit `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. Previous deploy attempts also failed at runtime. No live successful Gateway deployment exists in the inspected deploy history.
+- Exact application log: `actor_gateway_startup_failed`, stage `database_privileges_assertion`, category `database_privileges_rejected`. The database identity assertion ran before this stage and did not fail; the Gateway then refused to open its HTTP listener. Render subsequently reported no open ports and restarted the instance. Do not infer a healthy /healthz endpoint.
+- The existing `GHM-Internal-Runtime` service is Free, auto-deploy OFF, latest live deploy still points to commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` from 10 November; later attempted deploys failed. It is not evidence that current PR #298 route flags or Gateway clients are deployed. No deploy was triggered.
+
+Read-only production ACL preflight was run against Render `ghm-db` / `ghm_db` to identify why the Gateway startup privilege assertion rejects. This query was wrapped in a read-only transaction and did not mutate anything. Results for principal `ghm_actor_gateway`:
+- CONNECT=true; database CREATE=false (expected).
+- `ghm` schema USAGE=false and CREATE=false; expected USAGE=true, CREATE=false.
+- Direct table/view and sequence privileges: none (expected).
+- Effective executable functions in schema `ghm`: 0; expected exact reviewed Gateway function allow-list (currently 38 signatures in the live source's expected_signatures CTE, with a documented optional three-function campaign/review pre/post set).
+- PUBLIC EXECUTE on those effective Gateway functions: none; runtime EXECUTE on Gateway operations: none; unsafe Gateway grantees: none.
+- Default function ACL rows for `ghm_schema_owner`: none. The Gateway verifier explicitly requires a global function default-ACL row; an absent global row is unsafe even if no schema-level row is present.
+- The live schema currently contains numerous SECURITY DEFINER functions that do not satisfy the required owner/search_path contract `ghm_schema_owner` + `pg_catalog, ghm, pg_temp`; exact names were returned by the catalog query, including legacy auth/business/storage/commercial functions. These must be reconciled by the approved catalogue-wide migration and postflight, not patched ad hoc.
+
+This explains the observed startup refusal: the existing production DB does not yet have the Gateway schema/function grants and default ACL baseline expected by the Gateway process. The live DB has not had the relevant migration/cutover sequence applied. This is a pre-deployment readiness blocker, not an application build failure. The Gateway was correctly fail-closed and did not listen.
+
+Production safety:
+- No production SQL/DDL, grants/revokes, role memberships, secrets, Render environment variables, service settings, deploys, route flags, payment state, backups or paid resources were changed.
+- No migration was executed. Production manifest remains exactly `[]`.
+- Do not grant schema USAGE/functions manually or change the startup assertion to accept zero functions. The exact intended grants must come from the reviewed migration sequence after fresh ledger reconciliation, deployed route readiness, approved backup and rollback plan.
+- PR #298 remains draft/unmerged. Actor Gateway remains not healthy / not production-ready; Resource API latest live deployment is stale relative to current branch.
+- The approved forensic ledger audit is still blocked by current connector role access; this task did not resolve that earlier blocker.
+
+Next valid action remains owner/operator-provided output from the approved read-only migration audit connection. In parallel, source/deployment readiness can be prepared without production mutation, but no production batch can be selected until exact live ledger/checksum reconciliation, deployed Resource API route/commit proof, recoverable backup, and the Gateway role/ACL authority prerequisites are evidenced.
