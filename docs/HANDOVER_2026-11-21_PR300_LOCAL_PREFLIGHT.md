@@ -188,3 +188,19 @@ Write-Host "=== Catalogue qualification script, current conflict worktree ===" -
 Get-Content "scripts\qualify-capability-catalogue-governance.mjs"
 ```
 Do not stage, commit, abort, push, or alter production. After this inspection, prepare precise merged file contents that preserve main's 43/10/1,024 runtime function state model, signed Business Capability route coverage, and the feature's legacy denial/version-probe assertions.
+
+## 21 November 2026 — user supplied full merged-file inspection output
+
+Read the user's uploaded 670-line PowerShell transcript. It confirms:
+- The merged governance migration content is complete and retains the required search_path=pg_catalog, ghm, pg_temp guard, schema-owner SECURITY DEFINER checks, Actor Gateway EXECUTE requirement, runtime EXECUTE denial, and revocation/verification of the three legacy capability-governance functions.
+- The mainline migration contract test is present and asserts the pg_temp-last pinned search_path plus schema-owner SECURITY DEFINER and privilege checks.
+- Merge worktree status at capture: staged/merged governance migration SQL, Actor Gateway server, migration contract test; unresolved catalogue qualification script, runtime privilege test, runtime privilege implementation; untracked preserved originals: storage metadata backup (881 bytes) and picomatch scan output (369 bytes).
+- The catalogue script conflict has multiple blocks, not just the first displayed conflict. The feature side has typed helper wrappers gatewayCreateDraft, gatewayUpdateDraft, and gatewayTransition that return normalized camelCase records; main side uses raw gatewayCall and PostgreSQL snake_case rows. A safe resolution must use one representation consistently in each block. The feature helper wrappers are assertion-bound and should be retained where used; raw gatewayCall calls also remain assertion-bound. Do not mix lifecycleStatus/isSelectable with lifecycle_status/is_selectable for the same returned object.
+- Preserve both runtime legacy create denial checks: ordinary call denial and unsupported-version/version-bypass denial. Tighten expected error only if actual PostgreSQL error behavior is stable; the feature's exact permission denied for function create_capability_draft expectation is more specific than main's generic permission denied.
+- Preserve Gateway signed assertion substitution tests (create, update target/payload, transition target/payload), Gateway admin list/create/update/transition positives, non-admin denial, lifecycle hierarchy/replacement/terminal-state tests, runtime direct table/function denial, and final runtime-vs-gateway privilege boundary assertions.
+- The runtime privilege source conflict must resolve to main's 43-function / 10-group / 1,024-stage model. Main's group list independently models registrationIdentityWrite, registrationIdentityRead, and capabilityGovernance. Feature's 39-function / 8-group / 256-stage model is stale and cannot be retained.
+- Correcting an earlier shorthand: main's runtime stage test includes both registration read and write in the pre-manual-cutover inventory, then models the write-only and read/write cutover groups separately. Do not claim registration write is already excluded from main's pre-cutover baseline. The exact mainline test assertions define the intended stage behavior.
+- Feature's separate Business Capability direct INSERT/sequence revoke migration is a distinct table/sequence permission cutover and is not an additional function group. Keep it separate from the runtime function-stage inventory and ensure its own SQL/migration contract qualification remains present.
+- No conflict file has been resolved or staged by the user in the supplied transcript; merge remains paused.
+
+No merge commit, push, PR merge, production DB migration, manual production cutover, ACL/role/secret/Render configuration change, deployment, or payment activation occurred.
