@@ -5833,3 +5833,29 @@ Findings:
 No source changes were made in this review. Exact-head GitHub Actions CI is still absent for branch head 08c4b139766d7ef16cb69a31c01b6e73a4ede2c3; the Cloudflare Pages preview did complete successfully for that commit. The last GitHub Actions CI success is for older commit c07cf2597c416284578f898cae0d5d342c565685 and does not qualify the current head. Disposable PostgreSQL execution was not performed in this pass.
 
 Production batch manifest remains []; PR #298 remains draft/open. No production SQL/DDL/ACL/role changes, migrations, secrets, Render changes/deployments, paid resources or payment state changed. Next: identify the exact historical schema-default ACL migration and confirm disposable database explicit runtime grants for all 39 signatures; then add a narrowly scoped default-ACL revocation only if the source history and disposable catalog prove compatibility.
+
+
+## 20 November 2026 — runtime function default ACL cleanup and disposable probe extension
+
+Mandatory pre-task review completed: re-read this handover, PR #298 current metadata/head and changed-file state, PRs #297/#300/#301/#302, actor-gateway branch list, the full migration path inventory, initial GHM schema migration, historical function-grant migrations, runtime 39-signature allow-list and eight staged cutover groups, Actor Gateway/Auth Issuer privilege verifiers, auth-issuer default ACL contract, disposable Auth Issuer cutover qualification, and the empty production batch manifest.
+
+Historical source trace:
+- The initial GHM schema migration creates a schema-owner default for SEQUENCE USAGE only; it does not grant function EXECUTE to ghm_runtime.
+- Reviewed function migrations grant EXECUTE to ghm_runtime on explicit named signatures (for example the auth-runtime and storage function migrations). No repository migration granting schema-wide/default function EXECUTE to ghm_runtime was found in the reviewed migration history. The precise origin of the legacy schema-specific default therefore remains unproven and may be historical/out-of-band; do not attribute it to a particular migration.
+- The runtime's 39-signature exact allow-list and eight manual cutover groups protect current function compatibility. The default-ACL migration must not revoke current function ACLs.
+
+Source correction committed:
+- Updated `20261112050000_revoke_public_default_function_execution.sql` to retain the global PUBLIC default revoke and additionally revoke future function EXECUTE defaults for `ghm_runtime` at both global and `ghm` schema scope. This is idempotent cleanup of default ACLs only; it does not remove EXECUTE from existing functions. Explicit per-function grants remain intact.
+- Extended `auth-issuer-default-function-privileges-migration-contract.test.ts` to assert both scopes and that the migration does not blanket-revoke current function ACLs.
+- Extended disposable `qualify-auth-issuer-cutover.mjs` to inject both global and schema-specific EXECUTE defaults for `ghm_runtime`, verify both Actor Gateway and Auth Issuer startup verifiers reject them, then remove both probes and verify clean baselines.
+
+Commits:
+- Migration default cleanup: `32e8c7303e81308ee26242a768656775d740e0db`
+- Contract test initial update: `51b8526b3c2d5b903d5b7824b1dc1ad3b9b6a408`
+- Contract test syntax correction: `3cbc599b3774e04ff9dc99642e6671611cd6c481`
+- Disposable probe extension: `6f0b6b39a0ca581474d56e28c2a01f4e57531a87`
+- Contract coverage for both probe scopes: `52044845dd83c56aa9a21895ea6168a575f06394`
+
+Validation limitation: source files and final probe structure were re-read. No disposable PostgreSQL execution or exact-head GitHub Actions CI result was obtained in this task. Therefore this is not yet qualified; verify exact-head test run, the full migration chain, runtime's 39-function allow-list through all eight cutover groups, and both service startup verifiers on disposable PostgreSQL. Do not merge PR #298 or populate the production batch manifest based on source review alone.
+
+Current status rechecked: PR #298 remains draft/open and not mergeable; PR #297 and #300 remain separate draft/open; PR #301 and #302 are merged; PR #302 exact-head CI #44810525158 passed its own change only. Production execution manifest remains `[]`. No production SQL/DDL/ACL/role changes, migrations, secrets, Render settings/deployments, paid resources, or payment state changed.
