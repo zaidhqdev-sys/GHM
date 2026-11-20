@@ -32,6 +32,8 @@ test('disposable PostgreSQL qualification proves caller pg_temp objects cannot s
   assert.match(qualification, /pg_catalog, ghm, pg_temp/);
   assert.match(qualification, /ghm-schema-object/);
   assert.match(qualification, /pg-temp-shadow-object/);
+  assert.match(qualification, /GRANT USAGE ON SCHEMA ghm TO ghm_migrator/);
+  assert.match(qualification, /ROLLBACK/);
   assert.match(qualification, /SECURITY DEFINER TEMP-OBJECT SHADOWING QUALIFICATION: PASS/);
   assert.match(packageJson, /qualify:security-definer-search-path/);
   assert.match(workflow, /Qualify SECURITY DEFINER temporary-object shadowing on disposable PostgreSQL[\s\S]*npm run qualify:security-definer-search-path/);
