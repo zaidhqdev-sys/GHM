@@ -5150,3 +5150,35 @@ No source change or production action is justified by this reproduction. It vali
 ### Change boundary
 
 This was a read-only source, PR, workflow, and CI status review plus this handover update. No production database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, migration inventory, execution manifest, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — exact-head CI #5456 completed successfully
+
+Re-read this handover, PR #298 and PR #300, and rechecked the branch comparison and current GitHub PR metadata before closing this qualification pass.
+
+### Corrected CI run chronology
+
+- CI #5455 (run ID `44783704515`) did not finish successfully; its `quality` job was cancelled after a newer run superseded it. Its earlier completed steps remain useful evidence, but it must not be described as a passing full run.
+- CI #5456 (run ID `44784144950`) ran against PR #298 head `d1593ebd2cfde65e1fa087118c0968eaa5235d81`.
+- Both required jobs completed successfully: `quality=success`, `web-quality=success`.
+- The completed quality job includes successful disposable PostgreSQL 18 delegated CREATEROLE reproduction; all migration syntax/build and migration plan-only checks; commercial consent/workflow; isolated Auth Issuer and Actor Gateway principals; all listed Gateway qualifications and cutovers (Campaign/directory review, Business Capability lifecycle and signed cutover, Saved Business, Business Hours, Trust Score, Business Logo, supplier classification/membership, Business profile); commercial settlement identity qualification; migration audit policy tests; runtime boundary verification; and pre/post disposable Auth Issuer cutover SECURITY DEFINER inventory comparison.
+- The web-quality job completed the web build, web tests, dependency audit and security-sensitive toolchain verification.
+- This is disposable CI PostgreSQL evidence only. It does not validate the live production ledger, Render role authority, production backup/recovery point, or production Gateway identity/ACL readiness.
+
+### Current branch and PR metadata
+
+- PR #298 head remains `d1593ebd2cfde65e1fa087118c0968eaa5235d81`, open, draft, unmerged, and GitHub reports `mergeable=true`.
+- Current comparison: 262 commits ahead / 0 behind `main`.
+- 31 files changed; the scope includes migration runner/inventory/manifest, privilege checks, CI qualification, and supporting handovers.
+- PR #300 remains separate, open, draft, unmerged, and untouched at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- Production migration execution manifest remains exactly `[]`.
+
+### Disposition / next safe task
+
+The complete disposable CI qualification for PR #298 is green. Do not equate this with production readiness or merge approval. PR #298 stays draft/unmerged until the live production pending ledger/checksum reconciliation, verified recoverable backup, provider/bootstrap correction of the specific PostgreSQL role membership authority edge, exact migrator identity/ACL verification, and Gateway production identity/route readiness are independently established.
+
+Next, continue the source-level review of the migration runner and production migration inventory against the actual migration dependency graph and cutover order. Do not populate the execution manifest or run production SQL. Keep PR #300 separate. No production deployment, database/role/ACL changes, paid resource, or PayFast work.
+
+### Change boundary
+
+This update records completed CI evidence and current PR metadata only. No application source, SQL, migration inventory, execution manifest, production database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
