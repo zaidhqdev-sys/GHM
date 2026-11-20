@@ -6331,3 +6331,57 @@ Important qualification:
 Corrective documentation: prior statements that production has SECURITY DEFINER functions owned by roles other than `ghm_schema_owner` are superseded. The actual current discrepancy is path normalization (58 routines), not ownership reassignment. The production dependency matrix was updated with this correction.
 
 No production SQL/DDL, routine path, ACL, role membership, migration, credential, secret, Render setting/deployment, payment state, backup or paid resource was changed. PR #298 remains draft/unmerged; production manifest remains `[]`.
+
+
+## 21 November 2026 — disposable SECURITY DEFINER migration authority pre/post qualification
+
+Mandatory pre-task review completed before changes: re-read this handover, PR #298 state/head and changed-file inventory, PRs #297/#300/#301/#302, branch and main heads, production batch manifest, the complete 21 November live SECURITY DEFINER catalogue report, exact hardening migration, existing shadowing qualification, whole-database audit/comparator scripts, package scripts and CI workflow.
+
+Pre-task repository state:
+- PR #298 open/draft/unmerged.
+- Feature branch `feat/actor-gateway-production-migration-batches`; main was `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- The preceding feature head was `8c4e9ea3c1961357156346b5056fdf8995d16ad0`.
+- PR #297/#300 remained open/draft; #301/#302 remained merged/closed.
+- Production migration manifest remains exactly `[]`.
+
+### Implemented qualification
+
+Added `scripts/qualify-security-definer-search-path-migration-postgres.mjs`, package command `qualify:security-definer-search-path-migration`, a contract test extension, and an exact-head CI step after the existing migration and temporary-object shadowing qualification.
+
+The qualification is hard-restricted to `NODE_ENV=test`, `ghm_disposable_test`, and a localhost `GHM_MIGRATOR_DATABASE_URL`. It starts a transaction, creates four fixture SECURITY DEFINER functions with intentionally varied search paths and one SECURITY DEFINER procedure, captures a complete pre-migration routine inventory and surrounding role/privilege state, executes the exact checked-in migration as `ghm_schema_owner`, captures the post-migration inventory, and rolls the entire fixture and migration back.
+
+Pre/post assertions require:
+- Identical SECURITY DEFINER routine identities and PostgreSQL server version.
+- Every routine has exactly `search_path=pg_catalog, ghm, pg_temp`.
+- Every owner, function/procedure definition metadata, direct routine ACL and non-search_path setting unchanged.
+- Role attributes, role memberships, database ACLs, schema ACLs, relation ACLs, column ACLs and default ACLs unchanged.
+- Intentionally nonconforming fixture paths actually normalized.
+- All fixture objects absent after rollback.
+
+The existing separate temporary-object shadowing test remains in CI and is not replaced.
+
+### Exact-head CI evidence
+
+- Exact head: `4d46e535be712baaf88bcc59d7a7febb785015b5`.
+- GitHub Actions run `44833850736`, workflow `CI`, PR #298.
+- Web-quality job completed successfully.
+- In the quality job, all migrations applied successfully to disposable PostgreSQL; the existing temporary-object shadowing qualification passed; the new pre/post migration authority comparison passed; and the whole-database audit script syntax check passed.
+- The full test suite was still running at the time this handover entry was prepared. No final exact-head CI conclusion is claimed here. Recheck run `44833850736` before any readiness/merge decision.
+
+The CI pre/post qualification is a disposable PostgreSQL 18 fixture result only. It is not a production migration, production ledger audit, live database ACL comparison, or authorization to run the migration in production.
+
+### Commits for this task
+
+- `4f7f39f7` — add transactional migration pre/post authority qualification.
+- `e65c82ff` — package command.
+- `49c289f0` — CI step.
+- `de108b27` — contract test coverage.
+- `4d46e535` — correct qualification contract regexes; exact head under CI run `44833850736`.
+
+### Current decision and boundaries
+
+The new disposable comparison passed. It checks the exact migration, owner stability, direct routine ACLs and role/database/schema/relation/column/default ACL invariance, with rollback. It does not compare the live production catalogue before and after; no production migration was run.
+
+PR #298 remains draft/unmerged pending final exact-head CI, fresh production ledger/checksum reconciliation, migration authority, backup/rollback proof and coordinated Gateway/Resource API readiness. Production batch manifest remains `[]`.
+
+No production SQL/DDL, routine path, ACL, role membership, credential, secret, Render setting/deployment, payment state, backup, or paid resource was changed. No production readiness or merge approval is claimed.
