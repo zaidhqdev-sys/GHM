@@ -5795,3 +5795,25 @@ Added `src/db/actor-gateway-security-definer-search-path-migration-contract.test
 The schema-specific `ghm_runtime=EXECUTE` default ACL remains unresolved. Do not revoke it until every existing runtime function consumer and explicit grant path has been inventoried and disposable PostgreSQL proves no future migration/function creation loses required runtime EXECUTE. The current `20261112050000` migration only revokes PUBLIC EXECUTE globally; it does not resolve the schema-scoped runtime default ACL.
 
 No production SQL/DDL/ACL/role changes, migration execution, secrets, Render changes/deployments, paid resources or payment state changed. Next: add disposable PostgreSQL assertions for all SECURITY DEFINER owners/path, temporary-object shadowing and schema-specific default ACL before changing any ACL migration; then obtain exact-head CI.
+
+
+## 20 November 2026 — Gate D routine coverage and test-suite wiring
+
+Re-read the current handover, PR #298 state/head, package test script, CI workflow, SECURITY DEFINER migration, migration contract test, and production execution manifest before continuing. PR #298 remains draft/open; execution manifest remains `[]`.
+
+Source review identified that the existing hardening migration only altered `FUNCTION` objects even though the catalogue inventory and audit include both functions and procedures (`pg_proc.prokind IN ('f','p')`). Updated migration `20261112090000_pin_security_definer_search_path` to:
+- Preflight ownership for every GHM SECURITY DEFINER function and procedure.
+- Apply the pinned `pg_catalog, ghm, pg_temp` path using `ALTER FUNCTION` or `ALTER PROCEDURE` as appropriate.
+- Use a deterministic ordering by schema, routine name and identity arguments.
+- Keep default ACL changes out of this migration.
+
+Expanded `src/db/actor-gateway-security-definer-search-path-migration-contract.test.ts` to cover function and procedure handling, and wired its compiled test into the normal `npm test` command in `package.json`.
+
+Commits:
+- Migration correction: `39ef7190a31214709aa15a1f10e34b6ea91d6463`
+- Contract coverage: `09b66fb049fdfa9631b5725479310bd18ef32dcc`
+- Test-suite wiring: `7d71dc16d79267de15e7990c722d88665f27fdf1`
+
+Qualification limitation: no local disposable PostgreSQL instance was connected or run during this task. Therefore temporary-object shadowing, actual ALTER FUNCTION/PROCEDURE execution, and post-migration catalogue state are NOT yet qualified. Exact-head CI must run on the final head and the disposable PostgreSQL migration suite must pass before treating Gate D as qualified. Do not infer that the migration has run against production. The schema-specific `ghm_runtime` function default ACL remains unresolved and unchanged.
+
+Production batch manifest verified empty (`[]`). No production SQL/DDL/ACL/role changes, migration execution, credentials/secrets, Render settings/deployments, paid resources or payment state changed. PR #298 remains draft and must not be merged or executed.
