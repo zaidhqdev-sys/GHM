@@ -6062,3 +6062,16 @@ Also incorporated the main capability cutover migration's pg_temp-last owner/pat
 Post-merge comparison: PR #298 is now 356 commits ahead / 0 behind main; GitHub reports mergeable=true. It remains draft/open. Exact-head CI runs 44826457016 and 44826449207 were in progress for merge commit 56b31a836b9ac12480e21ba6334597683b1ad5b0; require their final quality/web-quality/Cloudflare and disposable PostgreSQL results before claiming the merged branch qualified.
 
 Production migration manifest remains []. This branch integration does not authorize production migration execution or cutover. Existing production blockers remain: exact production ledger/checksum reconciliation, recoverable backup evidence, provider-authorized role/ACL remediation, production Gateway principal/schema/function grants, and live Gateway startup/route qualification. No production SQL/DDL/ACL/role changes, production migrations, secrets, Render settings/deployments, paid resources or payment state changed.
+
+
+## 20 November 2026 — 4,096-stage runtime ACL validation optimized
+
+Re-read this handover, PR #298 current head/mergeability, current branch comparison, runtime privilege implementation/tests and production manifest before editing.
+
+The merged runtime model now checks 45 signatures across 12 independently qualified cutover groups (4,096 exact stages). The first CI attempt on the merge commit remained in the full test suite longer than expected because each assertion rebuilt and normalized all 4,096 stages before comparing one actual permission set.
+
+Optimized the verifier to precompute the canonical JSON keys for all reviewed stages once at module initialization, then use a Set lookup for each startup assertion. Detailed missing/unexpected-stage diagnostics are still generated on a failed lookup only. The 4,096 exhaustive positive/negative stage tests remain unchanged; no coverage was removed.
+
+Commit: 8c6771e81eec821f3cda03f227571ddd07d8fef2.
+
+PR #298 remains draft/open and mergeable=true, 357 commits ahead / 0 behind main. Exact-head CI for the optimized code must complete before claiming the merged branch qualified. Production manifest remains []. No production database/ACL/role changes, migration execution, secrets, Render changes/deployments, paid resources or payment state changed.
