@@ -6101,3 +6101,44 @@ Exact-head CI for this correction is pending; do not claim qualification until i
 The Auth Issuer default-function-privilege qualification was reviewed: it injects global and schema-scoped `ghm_runtime` defaults, verifies both Auth Issuer and Actor Gateway reject the unsafe state, then removes test privileges. Migration `20261112050000_revoke_public_default_function_execution.sql` revokes future function EXECUTE defaults for PUBLIC and `ghm_runtime` at global and `ghm` schema scopes without changing existing per-function grants. Existing explicit runtime function grants and the exact allow-list remain the compatibility boundary.
 
 No production migration, SQL/DDL/ACL/role change, Render setting/deployment, secret, payment state or paid resource was changed. The production migration batch manifest remains `[]`. PR #298 remains draft/unmerged; do not merge or deploy based on this correction until exact-head quality, web-quality, Cloudflare and all downstream disposable PostgreSQL/authority checks pass.
+
+
+## 21 November 2026 — exact-head PR #298 disposable qualification passed
+
+Re-read the handover, PR #298 description/status, PRs #297/#300/#301/#302, current main/branch heads, relevant migration/cutover files, runtime privilege model/tests, disposable Auth Issuer qualification script, and production execution manifest before proceeding.
+
+Exact tested commit: `7d7972936791e3c5791cd1c7113beaef745e0d1d`.
+PR #298 remains open/draft/unmerged and GitHub reports mergeable=true. Main remains `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. PR #297 and #300 remain separate open/draft PRs; #301 and #302 remain merged.
+
+Exact-head GitHub Actions run `44830019940` completed successfully:
+- `quality`: passed.
+- `web-quality`: passed.
+- Cloudflare Pages: passed.
+- The quality job's isolated PostgreSQL 18 service and all migration/test/qualification steps completed successfully.
+
+Relevant disposable PostgreSQL evidence from the successful quality job:
+- All repository migrations applied to disposable `ghm_disposable_test`.
+- SECURITY DEFINER temporary-object shadowing qualification passed.
+- Production migration plan-only qualification passed against an isolated `ghm_db` fixture; this did not connect to or mutate production.
+- Actor Gateway principal and Auth Issuer principal qualification passed.
+- Whole-database SECURITY DEFINER authority inventory and pre/post issuer comparison completed; non-issuer definitions/ACLs, role memberships/attributes, database/column privileges and default ACLs were unchanged by the issuer cutover; unexplained non-issuer changes = 0.
+- Auth Issuer disposable cutover, lifecycle, rollback and final reapplication passed. Final report: issuer allow-list 10, runtime issuer function denials 19, final Resource API runtime auth allow-list 2; global and schema-scoped unsafe default ACLs rejected by both Auth Issuer and Actor Gateway; unsafe direct function grants rejected; SECURITY DEFINER ownership and temporary-safe search_path checks passed.
+- Campaign/review, capability governance, Business Capability, Saved Business, Business Hours, Trust Score, Business Logo, supplier classification and Business profile cutover/denial/reapplication qualifications reported PASS in their disposable PostgreSQL steps.
+- The test suite completed with 0 failures. The two prior failures were the stale static contract assertions corrected in commit `5131e32011d39cbd90dbdaa01a301ed2dfccdb79`.
+
+Runtime function boundary:
+- The current baseline is 45 SECURITY DEFINER function signatures across 12 independently qualified manual cutover groups (group sizes: 3, 14, 1, 1, 3, 3, 2, 1, 1, 1, 1, 1).
+- The exhaustive unit contract accepts all 4,096 possible combinations of those 12 transitions and rejects an added or missing function grant in every combination.
+- The fully cut-over runtime retains exactly 13 explicitly reviewed read/lookup/storage functions. This is exhaustive combinatorial contract coverage, not a claim that PostgreSQL physically instantiated 4,096 separate databases.
+- The disposable integration scripts independently exercised the relevant actual PostgreSQL cutover SQL, runtime/Gateway access boundaries, denials, rollback and reapplication.
+
+Default function ACL:
+- Migration `20261112050000_revoke_public_default_function_execution.sql` removes future PUBLIC EXECUTE defaults globally for functions created by `ghm_schema_owner`, and removes any legacy `ghm_runtime` function defaults globally and in schema `ghm`. Existing per-function ACLs are intentionally untouched.
+- Disposable qualification injects unsafe global and schema-scoped `ghm_runtime` defaults, confirms both Auth Issuer and Actor Gateway reject the unsafe state, removes the test defaults, and verifies both return to the safe baseline.
+- The existing explicit runtime function allow-list remains the compatibility boundary.
+
+Production safety:
+- `config/production-migration-batches.json` was re-read and remains exactly `[]`.
+- No production database connection, migration execution, SQL/DDL/ACL/role change, Render setting/deployment, secret, payment state or paid resource was changed.
+- The production ledger snapshot used in the PR body is not a fresh live production ledger audit. The PR explicitly remains a draft and states that a live ledger refresh, dependency/cutover review and active-route readiness review are still required before the first production batch can be derived. Those prerequisites are not satisfied by disposable CI.
+- Therefore the passing exact-head CI qualifies this code and its disposable test paths, but does NOT qualify a production migration batch or authorize PR merge/deployment. Keep PR #298 draft/unmerged and the production manifest empty until the production-specific prerequisites and handover are completed.
