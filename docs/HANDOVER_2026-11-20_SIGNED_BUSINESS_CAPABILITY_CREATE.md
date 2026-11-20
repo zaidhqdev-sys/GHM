@@ -291,3 +291,18 @@ The existing harness deliberately does not claim direct runtime INSERT or identi
 5. Only then qualify the separate runtime INSERT/identity-sequence revocation.
 
 No production migration, production database access, deployment, Render change, secret change, paid service, new database, recurring process or CI dispatch.
+
+## Verifier allowlist correction and adversarial cases — 2026-11-20
+
+A deeper source review found the existing `assert_actor_gateway_capability` operation allowlist did not include `business.capability.create`, despite the create function calling it. This meant all create requests would fail closed. Corrected with a new forward-only migration rather than editing the earlier migration:
+
+`database/migrations/20261120011000_allow_signed_business_capability_create_assertion.sql`
+
+This replaces the verifier with the same HMAC v2/session/expiry/active-account/nonce-replay checks and adds the missing create operation. It preserves all existing allowlisted operations and least-privilege function grants.
+
+The disposable harness now applies this allowlist migration before the create function migration and adds cases for expired assertion denial, same-nonce replay denial after a successful create, and invalid effective-period denial with no row written. Replay uses a fresh active selectable catalogue fixture so the first signed call succeeds and consumes the nonce before the second identical assertion is rejected.
+
+### Review warning
+
+The SQL/harness remain unexecuted. Do not call these cases passing. The harness has been source-edited only. Continue static review for correct fixture cleanup, migration order, and full test command registration before attempting execution against the existing localhost disposable DB. No new DB or paid service.
+
