@@ -5920,3 +5920,12 @@ Commits:
 The failure artifact was inspected directly; the three assertions and stack traces identify the stale assumptions. New branch CI is expected from the latest test corrections. Re-run must show all 1,104 tests passing, then continue to remaining downstream disposable cutover and whole-database SECURITY DEFINER pre/post comparison steps. Do not claim the failed full suite as qualification.
 
 No production changes, migration execution against production, ACL/role changes, secrets, Render settings/deployments, paid resources, or payment state changed. Production execution manifest remains []; PR #298 remains draft/open.
+
+
+## 20 November 2026 — final remaining contract assertion formatting fix
+
+The next exact-branch CI run 44822264214 passed the 41-function runtime baseline, Actor Gateway principal qualification, all migration and database qualification steps through storage/Opportunity, and 1,103 of 1,104 tests. The single remaining failure was the profile contract's regex expecting whitespace in a SQL function signature, while the actual signed migration uses compact formatting with no spaces after commas. This is a test-pattern formatting mismatch, not a SQL/runtime behavior failure.
+
+Updated the contract regex to match the exact signature formatting in 20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql. Commit: 90307509c83d0bdaabb10f233f3660d750e1db9d.
+
+The next exact-head CI run must confirm all 1,104 tests pass and continue through remaining post-test disposable cutover/SECURITY DEFINER inventory steps. No merge or production execution until it completes successfully. PR #298 remains draft/open and the production manifest remains [].
