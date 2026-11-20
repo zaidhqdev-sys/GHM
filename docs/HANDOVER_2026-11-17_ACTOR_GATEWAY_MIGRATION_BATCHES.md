@@ -5518,3 +5518,13 @@ Therefore an absent `PORT` would use the valid fallback `10000`; the observed ex
 - Auto-deploy remains OFF. The owner initiated the deployment manually.
 - PR #298 remains open/draft/unmerged; PR #300 remains a separate open/draft/unmerged branch; PR #297 remains separate/open/draft. No PR was merged or rebased.
 - This incident review was based on the Render logs supplied by the owner and the exact deployed `main` source. The next action is to correct only the PORT override (if present) and manually redeploy the same service, then diagnose the next actual startup result. Do not restart the pre-deployment qualification checklist or repeat environment-secret entry.
+
+## 20 November 2026 — repeated Render PORT failure log review
+
+The owner supplied the subsequent Render application-log excerpt (09:27–09:28 PM). It repeats the same startup exception at `dist/actor-gateway/server.js:41`: `PORT must be a valid TCP port`. The build again completed successfully. The excerpt contains no environment dump or numeric PORT value; the “Build not found” panel message is a missing/deleted build-details page and provides no runtime environment evidence.
+
+Re-read the exact `main` source and the Render environment contract. The source uses `Number.parseInt(process.env.PORT ?? '10000', 10)`, so the local machine's PORT value cannot establish the value injected into the separate Render process. Local inspection can confirm only the local shell/user/machine setting. The deployed failure remains consistent with a non-empty malformed/empty or out-of-range Render PORT override, but the actual Render value is not yet known.
+
+No source change or redeploy was made in this review. Do not change database credentials, JWT material, assertion secret, or other service variables based on this log. The next useful evidence is the local PORT-only read (to distinguish local configuration from Render) and, separately, inspection of whether the Render service has a manually-created PORT row. If present, remove that entire override so Render can inject its own value; if absent, do not invent a setting and obtain the runtime value through a temporary secret-safe diagnostic. Auto-deploy remains OFF; any retry is manual only.
+
+PR #298 remains open/draft/unmerged at the reviewed head; PR #300 and #297 remain separate open/draft/unmerged PRs. No production database, migration, SQL, role/ACL, secrets, paid resources, or other Render configuration changed.
