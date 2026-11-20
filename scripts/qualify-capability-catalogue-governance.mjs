@@ -236,10 +236,10 @@ try {
   if (gatewayUpdated.rows[0]?.name !== `${marker} Gateway Draft Updated`) throw new Error('Gateway draft update failed');
   console.log('GATEWAY ADMIN DRAFT UPDATE POSITIVE PASS');
 
-  const gatewayTransition = await gatewayCall(adminId, 'capability.transition',
+  const gatewayTransitionResult = await gatewayCall(adminId, 'capability.transition',
     'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
     [gatewayDraft.id, 'active', null, 1]);
-  if (gatewayTransition.rows[0]?.lifecycle_status !== 'active') throw new Error('Gateway lifecycle transition failed');
+  if (gatewayTransitionResult.rows[0]?.lifecycle_status !== 'active') throw new Error('Gateway lifecycle transition failed');
   console.log('GATEWAY ADMIN LIFECYCLE TRANSITION POSITIVE PASS');
 
   const replacement = await gatewayCreateDraft(adminId, {
