@@ -26,11 +26,11 @@ const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) 
 
 const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 
-test('runtime startup accepts all 256 reviewed combinations of the eight remaining manual cutovers', () => {
-  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 39);
-  assert.equal(CUTOVER_GROUPS.length, 8);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 3, 2, 1, 1, 1]);
-  assert.equal(ALL_STAGES.length, 256);
+test('runtime startup accepts all 1024 reviewed combinations of the ten remaining manual cutovers', () => {
+  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 41);
+  assert.equal(CUTOVER_GROUPS.length, 10);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 3, 2, 1, 1, 1, 1, 1]);
+  assert.equal(ALL_STAGES.length, 1024);
   assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
 
   for (const functions of ALL_STAGES) {
@@ -42,6 +42,18 @@ test('runtime startup accepts all 256 reviewed combinations of the eight remaini
       executable_functions: functions.map(postgresSignature),
     }));
   }
+});
+
+
+test('Business profile and supplier classification legacy functions remain accepted until their separate manual Gateway cutovers', () => {
+  const profile = 'ghm.update_business_profile(bigint, bigint, jsonb)';
+  const supplier = 'ghm.update_business_supplier_classification(bigint, bigint, boolean)';
+  assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(profile));
+  assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(supplier));
+  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.businessProfile, [profile]);
+  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.supplierClassification, [supplier]);
+  assert.ok(!(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS as readonly string[]).includes(profile));
+  assert.ok(!(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS as readonly string[]).includes(supplier));
 });
 
 test('the fully cut-over runtime state retains only the thirteen explicitly reviewed read/lookup/storage legacy functions', () => {
