@@ -194,6 +194,12 @@ const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
   ),
 );
 
+const REVIEWED_RUNTIME_FUNCTION_STAGE_KEYS = new Set(
+  REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
+    JSON.stringify(stage.map(normalizeSignature).sort()),
+  ),
+);
+
 export const RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS =
   REVIEWED_RUNTIME_FUNCTION_STAGES[REVIEWED_RUNTIME_FUNCTION_STAGES.length - 1];
 
@@ -213,21 +219,21 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   privileges: RuntimeDatabaseFunctionPrivileges,
 ): void => {
   const actual = privileges.executable_functions.map(normalizeSignature).sort();
-  const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
-    stage.map(normalizeSignature).sort(),
-  );
   if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 45
       || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
-      || stages.length !== 4096) {
+      || REVIEWED_RUNTIME_FUNCTION_STAGE_KEYS.size !== 4096) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
-  if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
-    const diagnostics = stages.map((expected, index) => ({
-      stage: index,
-      count: expected.length,
-      missing: expected.filter(signature => !actual.includes(signature)),
-      unexpected: actual.filter(signature => !expected.includes(signature)),
-    }));
+  if (!REVIEWED_RUNTIME_FUNCTION_STAGE_KEYS.has(JSON.stringify(actual))) {
+    const diagnostics = REVIEWED_RUNTIME_FUNCTION_STAGES.map((stage, index) => {
+      const expected = stage.map(normalizeSignature).sort();
+      return {
+        stage: index,
+        count: expected.length,
+        missing: expected.filter(signature => !actual.includes(signature)),
+        unexpected: actual.filter(signature => !expected.includes(signature)),
+      };
+    });
     throw new Error(
       `Runtime database function EXECUTE allow-list mismatch: actual=${JSON.stringify(actual)}, stages=${JSON.stringify(diagnostics)}`,
     );
