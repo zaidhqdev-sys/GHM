@@ -3804,3 +3804,54 @@ These are historical exact-head disposable results, not current production ACL e
 - Continue the PR #298 migration dependency/route qualification. Auth issuer deployment remains sequenced after qualification as the owner already decided; no hosting decision is reopened here.
 
 No source, migration, manual cutover, rollback, privilege allow-list, tests, production database/ACL, Render form/service/deployment, credentials/secrets, PR state, branch ancestry or payment state was changed. Only this handover correction was committed.
+
+
+## 20 November 2026 — commercial evidence/approval gateway and terminal post-deployment revocation dependency trace
+
+Re-read the latest migration-batches handover and hosting/credentials handover, then refreshed PR #296/#297/#298/#299 metadata, current branch/main refs, current PR file list, and Actions run #5397 before continuing. Do not repeat the earlier Auth Issuer or initial identity/capability source reviews.
+
+### Current PR, branch and CI reconciliation
+
+- PR #298 current head is `febedb0d92dbaa7ec0e2178af6f67d4c2ce3d91f`, open/draft/unmerged; GitHub currently reports `mergeable=false`. Current `main` is `ddb31ff59ab470973edf60a5078a75e5f962f803`. The branch is 220 commits ahead / 4 behind, merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- The four behind-main commits were isolated from the merge-base graph: `dc4cbd011ab75a8630e4ab8b111dd2c99c9969ef`, `f52ec0a9fa199ca3855aa39e911b732e0f520ef0`, `aa3842ddb67ec44f1e6fcdeb328cb2e77ddaade2`, and `ddb31ff59ab470973edf60a5078a75e5f962f803`. All four modify only `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md). Their substantive sections 37–40 have already been copied into the branch's corresponding hosting handover, as recorded in the prior reconciliation. This is documentation-content reconciliation only; it does not remove the four-commit ancestry divergence or change GitHub's non-mergeable state.
+- User-dispatched CI #5397 is run ID `44647318812`, workflow_dispatch on branch `feat/actor-gateway-production-migration-batches`, exact tested SHA `b25a176ee38ec0e9a1871854421646d9defc2f09`. Both `quality` and `web-quality` succeeded. The quality job included build, Actor Gateway Worker bundle/smoke, all migrations on disposable PostgreSQL, isolated production plan-only fixture, commercial schema and workflow qualification, storage/provider dual-proof, Connect provisioning, migration audit, runtime boundary, and Auth Issuer cutover/lifecycle/rollback checks. Web build, tests, audit and security-sensitive toolchain verification also passed.
+- Compare from tested SHA `b25a176...` to current PR head `febedb0...` shows ten commits changing only this migration-batches handover document. No application source, migration SQL, manifest, runner, tests, workflow or dependency files changed after #5397. Therefore #5397 remains the current code-validation evidence; do not dispatch/re-run solely for these documentation-only additions.
+- PR #296 remains open/draft/non-mergeable and its migration `20261116200000_narrow_business_identity_runtime_insert.sql` is absent from PR #298's pending inventory. PR #297 remains the overlapping older batch-runner alternative, not an additional prerequisite. PR #299 remains a separate Project detail/update API PR; its metadata still reports open/draft with a populated merge SHA, so do not infer merge state from that SHA. No related PR was modified.
+
+### Commercial evidence and founder-only approval chain
+
+Inspected migrations `20261116150000` through `20261116190000`, the Actor Gateway readers/app/server, the Actor Gateway function allow-list, and the disposable commercial qualification scripts.
+
+| Migration | Source-level contract | Qualification implication |
+|---|---|---|
+| `20261116150000_create_commercial_consent_evidence` | Creates immutable commercial document-version, status-event and consent-event evidence. UPDATE/DELETE/TRUNCATE are rejected. No runtime, gateway or PUBLIC table access is granted; migration authority alone receives maintenance access. | These tables are not directly writable by the API or gateway login. All application writes must use the later SECURITY DEFINER boundaries. |
+| `20261116160000_add_commercial_document_approval_authority` | Adds immutable authority principal/scope and append-only grant/revoke history. No authority is seeded and no application role receives table access. Approval status rows must cite a grant event. | Technical system-admin status alone does not confer legal-document approval authority. |
+| `20261116170000_add_founder_only_commercial_document_authority_gateway` | Adds a signed, one-use v2 Actor Gateway operation for founder-only grant/revoke. SQL resolves the canonical founder from the immutable bootstrap singleton and validates active system-admin/credential state; caller cannot supply a different approver. | Exact operation/context binding, founder bootstrap and nonce replay protection are prerequisites. Authority scope transitions are serialized. |
+| `20261116180000_add_founder_only_commercial_document_approval_transition` | Adds a distinct signed approval operation. It locks the exact document version and authority scope, requires the latest authority event to be granted and the latest document state to be draft, then appends an approved status event citing the grant event. | Approval is a separate operation from granting authority; neither can be replayed as the other. Revocation and approval serialize on the same scope lock. |
+| `20261116190000_add_commercial_consent_payment_prepare_gateway` | Adds signed Actor Gateway operation that validates active owner/administrator membership, current subscription/price, exact currently approved subscription-terms version, explicit acceptance and idempotency; atomically records pending payment attempt, consent evidence and commercial event. | This is preparation/evidence only: no provider/network call, checkout redirect, settlement or subscription activation occurs in SQL. Payment-provider activation remains outside this migration review and PayFast remains paused per owner instruction. |
+
+The Actor Gateway server composes the authority, approval and consent/payment-preparation readers. The database privilege verifier's expected allow-list contains the six corresponding assertion/operation functions; runtime EXECUTE and PUBLIC EXECUTE are rejected. The disposable scripts qualify schema ownership/search_path/grants, founder denial, forged/replayed/expired assertions, exact document approval, explicit consent, idempotent retry, and pending-checkout-only state. CI #5397 ran the relevant schema and workflow qualification steps successfully.
+
+The payment-preparation route is doubly fail-closed: both `GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED` and `GHM_COMMERCIAL_LAUNCH_AUTHORIZED` must be true and the reader must exist. The browser cannot choose the provider or actor. No provider API or subscription activation is invoked by the inspected SQL. Do not turn this source review into PayFast activation work.
+
+### Exact terminal post-deployment revocations and active route consumers
+
+The two final pending revocation migrations in the PR #298 inventory are explicitly post-deployment cutovers and remain excluded from any pre-deployment production batch:
+
+1. `20261117010000_revoke_runtime_business_registration_identity_write.sql` requires the signed Actor Gateway registration-identity replacement to exist, the dedicated gateway role and EXECUTE grant to exist, the gateway function to be SECURITY DEFINER/owned by `ghm_schema_owner`, and runtime EXECUTE to be absent on the gateway function. It then revokes the legacy caller-supplied account-ID `update_business_registration_identity` function from PUBLIC, runtime and gateway and checks no unexpected direct grantee remains. Its migration header explicitly requires deployed gateway, passing authenticated read/write E2E smoke tests and stable HTTPS URL before execution.
+2. `20261117020000_revoke_runtime_capability_governance.sql` requires the signed assertion verifier and signed list/create/update/transition gateway functions, correct schema-owner/SECURITY DEFINER/search_path metadata, gateway EXECUTE and runtime denial. It then revokes the legacy capability draft create/update/transition functions from PUBLIC, runtime and gateway and verifies no unexpected direct grantee remains. Its header explicitly identifies this as a post-deployment cutover.
+
+Cross-checked the active Resource API consumers:
+
+- Business registration identity: `src/http/business-registration-identity-router.ts` uses the bearer token to call `HttpBusinessRegistrationIdentityGatewayClient` when configured. In production, `businessRegistrationIdentityGatewayRequired` is true; if the gateway client/URL is missing, the route returns 503 rather than falling back to the direct repository. The current repository still contains the legacy direct SQL implementation for the pre-cutover compatibility stage.
+- Capability governance: `src/http/capability-catalogue-router.ts` routes admin list/create/update/transition through `CapabilityGovernanceGatewayClient`; when absent these admin routes return 503 and do not fall back to direct SQL mutation. The ordinary capability catalogue read path remains distinct and is not revoked by 20261117020000.
+- Both HTTP clients currently use a 5,000 ms request timeout. The already-recorded Free Render cold-start/timeout behaviour remains a reliability qualification item; do not weaken auth or database fail-closed behaviour to hide it.
+
+### Contiguous-prefix disposition
+
+- The commercial document authority/approval migrations and consent/payment-preparation migration are gateway-owned capabilities and have explicit CI qualification. They do not authorize provider activation or seed/approve any actual legal document or authority by migration alone.
+- The two 2026-11-17 legacy revocation migrations are terminal cutovers, not prerequisites to starting the service. They must remain outside the pre-deployment batch and be applied only after the corresponding deployed HTTP routes have passed authenticated end-to-end tests.
+- The current PR #298 inventory/manifest distinction remains unchanged: pending inventory is a dated candidate list; manifest remains empty; no production plan or execution is authorized.
+- PR #296's unmerged Business Identity ACL migration would insert a new pending version between the existing 20261112170000 and 20261116140000 tail. If it merges, regenerate the inventory from the exact repository and fresh authoritative production ledger; do not patch this branch's count or add that migration manually.
+
+No source, SQL migration, test, batch manifest, production ledger, production database/role/ACL, credential/secret, Render service/form/configuration/deployment, payment state, PR state, or branch ancestry was changed. Only this handover record was updated.
