@@ -6660,3 +6660,60 @@ Use the established local GHM workflow:
 6. Push the updated PR branch, confirm the exact new head and GitHub mergeable status, then rerun exact-head CI. Merge only after all required checks pass.
 
 This task was a read-only source comparison and handover update. No branch ref, source file, PR body/state, production database, migration manifest, ACL/role, credential, Render configuration/deployment, backup, payment state, or paid resource was changed.
+
+
+## 21 November 2026 — PR #300 continuation preflight (before local merge)
+
+Mandatory review repeated before this task:
+- Re-read this migration-batches handover, including the prior synchronization impact review.
+- Re-read the hosting/credentials handover and confirmed its section 40 records the owner's earlier staged-form state; do not use its old "not deployed" wording to override the owner's subsequent confirmation and the separately inspected current Render service state. Deployment remains downstream of the merge chain.
+- Retrieved current PR metadata for #297, #298, #300, #301 and #302 and enumerated repository branches.
+- Rechecked PR #300 exact-head CI, combined status, current main comparison and complete PR patch.
+- Rechecked PR #300 exact current head and main SHA before deciding whether to alter refs.
+
+### Current PR and branch state
+
+- PR #301: merged.
+- PR #302: merged.
+- PR #300: open, ready for review, unmerged, GitHub `mergeable=false`.
+  - Head branch: `feat/signed-business-capability-create`.
+  - Exact head: `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+  - Current main: `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+  - Compare: 92 ahead / 2 behind; merge base `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+  - Exact-head workflow run #5451 (`44779726228`) completed successfully.
+  - Combined commit status endpoint returned no status entries; this is not evidence of extra passing checks.
+- PR #298: open/draft/unmerged, exact head `758f0a3f3015663d5197e49f3cc4ce1602a5275a`, GitHub currently reports mergeable. Keep it separate; do not use its migration manifest or branch as a substitute for PR #300 synchronization.
+- PR #297: open/draft/unmerged, exact head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; separate migration-batch stream.
+- The branch catalogue still contains both the #300 feature branch and the migration qualification branches.
+
+### Current patch review
+
+The PR #300 patch still carries the signed Business Capability route, SQL wrapper, assertion allowlist, Resource API fail-closed integration, and dedicated disposable PostgreSQL qualification. It also contains stale assumptions relative to main:
+- PR branch runtime privilege test expects 39 pre-cutover functions and 256 combinations; current main expects 43 and 1,024 combinations.
+- PR branch removes/reshapes legacy function-stage entries that current main still models across its nine cutover groups.
+- PR branch modifies the governance migration's required SECURITY DEFINER search_path and does not contain main's matching migration contract test.
+- PR branch qualification script must be reconciled with main's catalogue route checks and legacy EXECUTE denial assertions.
+- Main's Actor Gateway startup diagnostics must be preserved when bringing the signed create route forward.
+
+This confirms the previous semantic-conflict assessment. A mechanical branch update is unsafe.
+
+### Execution boundary and next action
+
+The available GitHub connector can inspect refs, patches and CI, and can write individual files/trees/commits, but this session has no mounted `C:\GHM-main` or `C:\GHM` checkout and no local repository shell. A synthetic GitHub tree/merge commit would bypass the required local merge conflict resolution and complete PostgreSQL 18 test suite. Therefore no branch ref was moved and no code was changed in this task.
+
+The next operation must be performed in the user's established local `C:\GHM-main` checkout. Start by confirming the working tree is clean and fetching refs; do not switch branches with uncommitted changes and do not force-push. Merge `origin/main` into `feat/signed-business-capability-create`, resolve the semantic conflicts preserving main's 43-function/1,024-stage model and signed-create route, run all targeted tests and disposable PostgreSQL 18 qualification, then push normally. Return to GitHub for exact-head CI and mergeability checks. The deployment remains downstream of the qualified merges; do not start a separate deployment-debugging workstream.
+
+Suggested safe PowerShell preflight (run in `C:\GHM-main`):
+```powershell
+Write-Host "=== GHM PR #300 preflight ===" -ForegroundColor Cyan
+git status --short --branch
+git fetch origin --prune
+git switch feat/signed-business-capability-create
+git status --short --branch
+git rev-parse HEAD
+git rev-parse origin/main
+git rev-list --left-right --count origin/main...HEAD
+```
+Stop if the working tree is not clean, the branch is missing, or local refs do not match the GitHub SHAs above. Do not run the merge until those checks are reviewed. Then use `git merge origin/main` (no rebase/force-push) and resolve the semantic conflicts; run qualification before pushing.
+
+No branch ref, PR state, source code, production migration/manifest, production database, role/ACL, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed in this task.
