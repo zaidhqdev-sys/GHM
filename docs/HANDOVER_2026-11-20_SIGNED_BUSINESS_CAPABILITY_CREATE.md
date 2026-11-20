@@ -654,3 +654,19 @@ At the last check:
 - No CI conclusion is yet available for either quality job. In particular, do not report the PostgreSQL signed-create qualification as passed until the `quality` job completes and its logs confirm the qualification step succeeded.
 
 The handover-only commit `72590214bd9891df6032414e3d696a460d080598` was pushed after the PR opened. The workflow ignores documentation-only changes, so run #5398 is evaluating the code tree from `d361cf3`; the intervening change only appends this handover record. If any source code changes are made, verify a fresh CI run is triggered before treating the new code as qualified.
+
+
+## PR #300 CI failure diagnosis and source correction — 2026-11-20
+
+The first complete PR CI attempt for head 2521b2f303c2a5bbbbfa4a4393bfd2844f591dac completed:
+- web-quality: success.
+- quality: failure at the dedicated node --check scripts/qualify-business-capability-gateway-cutover-postgres.mjs step.
+- PostgreSQL 18 container initialization and isolated role provisioning succeeded. The job stopped before migrations were applied or any database qualification ran.
+
+The exact syntax error in the job log was: SyntaxError: Identifier 'replayContext' has already been declared at line 111. The new Business Capability create replay probe declared replayContext in the same function scope as an existing Business Capability Evidence replay probe. This was a local variable-name collision, not a database, secret, PostgreSQL or production issue.
+
+Corrected only the evidence replay probe variable name to evidenceReplayContext (including its corresponding sign(...) reference) in scripts/qualify-business-capability-gateway-cutover-postgres.mjs.
+
+Source correction commit: 6a8081549a081ba33292aa9810ba851276a44f77. No SQL migration, production configuration, database, role, secret, CI workflow, or PR #298 file was changed. PR #300 remains draft and unmerged.
+
+Next: verify a new PR CI run was triggered for the corrected source head. Confirm the syntax-check step passes, then inspect migration application and the actual signed Business Capability PostgreSQL qualification result. Do not count the prior run as a SQL qualification attempt: it stopped before migration application.
