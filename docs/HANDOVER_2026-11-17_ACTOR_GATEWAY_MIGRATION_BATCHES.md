@@ -4616,3 +4616,70 @@ The reports also establish that the deployed Resource API source at the last ins
 ### Safety and cost
 
 Production batch manifest remains `[]`. No production SQL, role, membership, table/column/sequence ACL, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state, branch ancestry or CI run was changed. No paid resource or recurring cost was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — existing disposable PostgreSQL ACL qualification coverage inspected
+
+Re-read this handover and refreshed PR #298 plus its main comparison and existing Actor Gateway branch set. Inspected the actual CI PostgreSQL role bootstrap and the qualification scripts that exercise direct table/sequence grants. This resolves part of the previous task: several exact direct ACL checks already exist, so a generic duplicate test is not justified.
+
+### Existing effective table/sequence ACL coverage found
+
+1. **Capability catalogue governance** — `scripts/qualify-capability-catalogue-governance.mjs`
+   - Uses distinct runtime and Gateway pools.
+   - Explicitly verifies `ghm_runtime` has no direct INSERT, UPDATE or DELETE on `ghm.capability`.
+   - Verifies runtime cannot execute the legacy capability governance RPCs or Gateway wrappers, while `ghm_actor_gateway` can execute the intended signed Gateway wrappers.
+   - This is a focused table/function ACL contract for the capability catalogue, not a global ACL inventory.
+
+2. **Business Capability signed cutover** — `scripts/qualify-business-capability-gateway-cutover-postgres.mjs`
+   - Restricted to `ghm_disposable_test` on localhost and requires three distinct runtime, Gateway and migrator connection strings.
+   - Applies the manual cutover to disposable PostgreSQL.
+   - Verifies runtime direct INSERT into `ghm.business_capability_evidence` is denied and direct `nextval('ghm.business_capability_evidence_id_seq')` is denied.
+   - Verifies runtime cannot execute signed mutation wrappers, Gateway can perform signed mutations, and the post-cutover role privilege matrix is exact.
+   - This proves a concrete table INSERT and associated sequence denial for that evidence table; it does not establish all sequence grants across the schema.
+
+3. **Campaign/directory-review cutover** — `scripts/qualify-campaign-directory-review-gateway-postgres.mjs`
+   - Verifies `ghm_runtime` retains `SELECT` on `ghm.campaign` after legacy campaign create/update/review EXECUTE is revoked.
+   - Verifies Gateway wrapper EXECUTE grants and legacy runtime denials.
+   - This confirms the previously identified intentional direct Campaign read.
+
+4. **Actor Gateway principal** — `scripts/qualify-actor-gateway-principal.mjs`
+   - Checks role flags and membership boundaries through `pg_roles` and `pg_auth_members`.
+   - Verifies the Gateway role has no direct SELECT/UPDATE on account identity, SELECT on authentication sessions, or SELECT on password credentials.
+   - This is a narrow Gateway isolation check, not a full runtime membership/effective-ACL report.
+
+5. **Storage metadata cutover** — `scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs`
+   - Captures exact function ACLs, applies revocation in disposable PostgreSQL, verifies effective denials, then restores the exact original ACL snapshot.
+   - It concerns SECURITY DEFINER function grants, not general table/sequence ACLs.
+
+6. **PostgreSQL catalog capture** — `scripts/capture-postgres-catalog.mjs`
+   - Captures schema/table/column metadata, sequences, RLS policies, RLS flags, and `information_schema.role_table_grants`.
+   - It is a metadata evidence snapshot, not a behavioral least-privilege qualification. It does not currently capture explicit column grants, sequence ACLs, default ACLs, schema ACLs, or effective role inheritance as a unified role-by-object matrix.
+
+### Existing CI disposable role setup
+
+`.github/workflows/ci.yml` creates a PostgreSQL 18 service named `ghm_disposable_test` and distinct login roles for `ghm_runtime`, `ghm_actor_gateway`, `ghm_auth_issuer`, `ghm_payment_provider`, `ghm_migrator`, plus `ghm_schema_owner` and the simulated dashboard admin. The migrations and focused qualification scripts run against this disposable service. No new service or CI run is needed to use the existing harness.
+
+### Remaining exact gap — bounded, not global
+
+Existing qualification already proves several critical direct table and sequence decisions. The remaining gap is a single effective catalog matrix for the relevant roles and objects, especially:
+- Business Capability INSERT: the direct `POST /api/v1/business-capabilities` route remains source-backed, but the inspected test set does not yet show an exact effective allowed-column / prohibited-column matrix for `ghm.business_capability`.
+- Evidence and Campaign reads: business/admin Evidence SELECT paths and Campaign SELECT are source-confirmed; only Campaign's runtime `SELECT` is explicitly asserted in the inspected Gateway cutover script. The Evidence list's exact effective SELECT grants and tenant/admin access contract are not represented by a unified role/object matrix in the inspected tests.
+- Sequence privileges: one Evidence sequence denial is explicitly tested; all relevant sequence USAGE/SELECT/UPDATE privileges are not catalogued together.
+- Column-level ACLs, `PUBLIC` and inherited/default ACL effects: no unified check was found in the inspected qualification scripts. PR #296's proposed Business Identity column-level INSERT test remains a separate, unmerged change.
+
+Do not add a schema-wide test yet. First decide the exact expected role/object matrix for the live route consumers, then extend the existing disposable qualification harness only for uncovered cases. Keep route-level authorization tests separate from database privilege tests: a table SELECT grant alone does not prove tenant scoping or administrator authorization.
+
+### Disposition
+
+- The previous broad statement that no direct ACL qualification existed is superseded: targeted table and sequence ACL checks do exist and are documented above.
+- The existing function-only 39/13 privilege model remains a separate contract.
+- No source or test code changed. No duplicate test was added.
+- Production batch manifest remains `[]`; no production ledger, ACL or role changes were made.
+
+### Refreshed branch state
+
+PR #298 remains open/draft/unmerged at `4ef69b53756a693047ff306477e10438a73b2ff5`; compare is 239 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left untouched. User-reported CI #5397 remains the recorded CI evidence; no run was triggered.
+
+### Safety and cost
+
+No production SQL, role, membership, grant, table/column/sequence ACL, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state, branch ancestry or CI run was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
