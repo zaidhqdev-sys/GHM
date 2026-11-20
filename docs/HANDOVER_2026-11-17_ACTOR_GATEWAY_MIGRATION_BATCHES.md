@@ -6517,3 +6517,37 @@ The discrepancy is now narrowed: the inspected branch-side files differ by eight
 Next safe action: retrieve PR #297's actual head SHA through the pull-request metadata endpoint or UI, then inspect the pending inventory at that exact SHA and compare it with PR #298. Separately obtain a fresh authorized live ledger export before deriving any production batch. Do not modify either inventory or the empty manifest to force agreement.
 
 PR #298 remains draft/unmerged. Its `config/production-migration-batches.json` remains exactly `[]`. No production SQL/DDL, migration, database privilege, role, membership, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed.
+
+
+## 21 November 2026 — correction: exact PR #297 head and canonical inventory path
+
+The prior follow-up compared the wrong PR #297 file path (`config/pending-migrations.production.json`), which is a seven-entry legacy allowlist, not the PR #297 pending inventory. That comparison and its conclusion that PR #297 had a 42-entry pending inventory are superseded and must not be used.
+
+### Exact PR metadata reviewed
+
+- PR #297 head branch: `feature/explicit-production-migration-batches`.
+- PR #297 exact head SHA: `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- PR #297 canonical pending inventory path: `config/production-pending-migration-inventory.json`.
+- PR #297 canonical inventory blob: `d3ce0fa76fe7b6da2d627a3e06f94bd502b8efbe`.
+- PR #297 production batch manifest blob: `fef4d1bb8c94b382d73f291d66635124aeec6b35`; contents remain exactly `{"batches":[]}`.
+- PR #298 exact head SHA at review: `5da71bda8cf26e53f596ef68fd1251226a8583f2`.
+- PR #298 pending inventory path: `config/pending-migrations.production.json`.
+
+### Correct exact comparison
+
+Compared the correct canonical inventory at PR #297 head with the PR #298 inventory at its exact reviewed head:
+- PR #297: 50 version/name entries.
+- PR #298: 50 version/name entries.
+- Shared exact pairs: 50.
+- Entries unique to PR #297: 0.
+- Entries unique to PR #298: 0.
+
+Therefore the source inventory files are identical in content. The apparent 42-vs-50 discrepancy came from comparing PR #297's separate seven-entry legacy allowlist at the wrong path. PR #297's body describes 48 baseline pending migrations and separately notes two post-deployment revocation migrations retained in the inventory; the checked-in canonical inventory contains 50 entries. PR #298's 50-entry inventory matches it exactly.
+
+PR #297 remains open/draft/unmerged, base main at historical `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. PR #298 remains open/draft/unmerged, base main at `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, head `5da71bda8cf26e53f596ef68fd1251226a8583f2`. PR #300 remains open/draft/unmerged at head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+
+### Remaining distinction
+
+This resolves the **repository inventory equality** question, not the live production audit. The shared 50-entry inventory is still derived from the supplied historical ledger snapshot and must be refreshed against an authorized live ledger export before any batch can be considered. The 7-entry legacy allowlist is not the pending inventory and is not execution authorization. The production manifest remains empty.
+
+No inventory, manifest, migration, source implementation, production database, ACL, role, membership, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed. PR #298 remains draft/unmerged.
