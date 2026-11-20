@@ -58,3 +58,23 @@ Proven cause:
 This is an existing qualification-script/workflow-state mismatch, not a reason to restore runtime EXECUTE, alter the migration's revocations, or weaken least privilege. No code/migration/ACL change was made during this investigation.
 
 Next task: refactor the catalogue qualification harness so all positive system-admin create/update/transition paths use the existing signed Gateway wrappers and test-only HMAC assertions. Preserve non-admin service-role denial as an application-level test only where it does not invoke revoked SQL; change direct runtime legacy-function probes to expect permission denied; and change final privilege assertions to require all three legacy EXECUTE checks false while signed Gateway wrapper EXECUTE remains available only to `ghm_actor_gateway`. Add focused regression assertions for this post-migration contract. Do not change the production migration, grant runtime privileges, deploy, provision services, or modify PR #298. Then run normal PR CI and verify the catalogue step passes before interpreting the dedicated Business Capability signed-create qualification result.
+
+
+## Capability catalogue qualification refactored to signed Gateway — pending CI — 2026-11-20
+
+Before changing files, re-read the current feature handover, PR #300, PR #298 and PR #272 context; verified the feature branch; fetched the exact current catalogue qualification script, Capability repository/service, and migration 20261117020000_revoke_runtime_capability_governance.sql.
+
+Implemented in commit a849566bf31bf36c4af6d414e9988088d36fa973:
+- Added qualification-only row mapping for Gateway-returned catalogue records and helpers that sign the exact capability create/update/transition context using the existing test-only HMAC key.
+- Replaced positive admin catalogue draft creation, update and lifecycle transitions in the PostgreSQL qualification script with signed Gateway wrapper calls. This covers substitution-target and replacement drafts, hierarchy parent/child setup, activation, deprecation, reactivation and retirement.
+- Preserved the service-level non-admin read denial check (which rejects before reaching the database).
+- Changed direct runtime legacy create-function probes to expect PostgreSQL permission denial, consistent with the migration's revoked EXECUTE contract.
+- Changed runtime privilege expectations so legacy create/update/transition and signed Gateway wrappers are all non-executable by the runtime principal, while the separate Gateway connection must have EXECUTE on the four signed Gateway operations and must not have EXECUTE on the three legacy functions.
+- No production migration, application service/repository implementation, database ACL, secret, deployment, paid service, or PR #298 change was made.
+
+Important validation boundary:
+- The refactor has been committed but has NOT yet been executed by CI or against PostgreSQL.
+- No claim is made that the revised catalogue qualification passes, nor that the dedicated Business Capability signed-create qualification has run.
+- Next: inspect CI triggered by commit a849566bf31bf36c4af6d414e9988088d36fa973; if the catalogue step passes, inspect the subsequent legacy capability cutover and dedicated Business Capability signed Gateway cutover steps. Fix only failures supported by logs. Confirm the signed-create test's full PostgreSQL/HMAC/ACL result before marking qualification complete.
+
+PR #300 remains draft/unmerged. PR #298 remains separate and untouched. No production/local DB changes, deployments, paid resources, or secret changes.
