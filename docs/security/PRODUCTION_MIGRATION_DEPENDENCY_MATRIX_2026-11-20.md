@@ -10,7 +10,7 @@
 
 Derived from the branch's 50-entry production pending inventory, migration SQL, Actor Gateway app/server, Resource API routers, and production role/service handovers. This is source-contract analysis, not proof of deployed service state.
 
-Not established: exact deployed Resource API commit and route flags; deployed Actor Gateway service/URL (the owner-selected single Free-service form remains unsubmitted); live ledger/checksum match; live Gateway function catalogue/ACL; fresh recoverable backup; provider-authorized PostgreSQL role/migrator ACL remediation.
+Not established: exact deployed Resource API commit and route flags; deployed Actor Gateway service/URL (the owner-selected single Free Render service already exists; its inspected deployments failed at startup and no healthy Gateway process is live); live ledger/checksum match; live Gateway function catalogue/ACL; fresh recoverable backup; provider-authorized PostgreSQL role/migrator ACL remediation.
 
 ## Service and principal contracts
 
@@ -122,3 +122,36 @@ Two new manual-only cutover scripts were added:
 They revoke PUBLIC, runtime, migrator and Gateway access to the legacy signatures, but only after their corresponding signed Gateway routes are deployed, end-to-end verified and rollback-rehearsed. They are not in `database/migrations` and are not part of the automatic pending inventory.
 
 Contract tests now assert the legacy runtime path is retained during additive migration and that the separate manual cutover contains the explicit revocation. This is source/test work only; disposable PostgreSQL and exact-head CI remain required. The production batch manifest remains `[]`; no production SQL, ACL, migration, secret, Render setting or deployment was changed.
+
+
+## 21 November 2026 — source/deployment dependency reconciliation addendum
+
+This addendum supersedes stale statements in the original evidence boundary and Actor Gateway service row where they conflict with the later 21 November Render inspection recorded in the PR #298 handover.
+
+### Verified deployment state
+
+- Resource API service `GHM-Internal-Runtime` is live on old commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`; its process-start logs do not prove current route integration or runtime principal. Current main is `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, and the PR #298 file set does not change the Resource API app/server route code.
+- Actor Gateway service `ghm-actor-gateway` exists as the owner-selected Free Frankfurt service, but latest inspected deployment failed at `database_privileges_assertion`; it is not healthy and no live Gateway route is available.
+- The live production DB has no effective `ghm_actor_gateway` schema USAGE or function EXECUTE, while the migration source's principal guard grants schema USAGE and signed Gateway migrations grant only the intended operation functions. Do not bypass the fail-closed startup assertion.
+- The service form is not a remaining prerequisite; successful deployment/readiness is.
+
+### Source-to-migration sequence findings
+
+1. The production pending inventory in this branch is a 50-entry source inventory, not a verified live queue. The last exact production audit remains historical (15 November) and reported 42 pending; the current live ledger is unreadable through the available connector identity. Never treat either the 50-entry branch inventory or the old 42 count as today's exact pending queue.
+2. Migration `20261110210000_add_actor_gateway_principal_guard` is additive and refuses to proceed unless `ghm_actor_gateway` is LOGIN/NOINHERIT/non-elevated and its only direct administrative membership is the bounded `ghm_db_user` ADMIN=true / INHERIT=false / SET=false edge. The latest read-only production catalog inspection observed this edge and the expected role attributes; the migration then grants `USAGE ON SCHEMA ghm` and the guard function. It does not remove existing Resource API runtime grants.
+3. Early Gateway wrapper migrations are additive foundation only. Initial ID-only wrappers must not be exposed as production request paths; later signed-assertion/context migrations must be applied and the service must use matching operation names, payload/context and one-use nonce semantics before any route is considered cut over.
+4. The supplier/profile migrations `20261110260000` and `20261110270000` now preserve legacy runtime grants in the automatic migration phase. Their runtime revocations are separate manual-only cutovers (`database/cutovers/20261120010000...` and `...20020000...`) after deployed signed routes, end-to-end proof and rollback rehearsal. They must not be confused with an automatic migration batch.
+5. The signed Gateway sequence spans capability, supplier classification, Business profile, registration identity, saved businesses, Business Hours, Trust Score, logo, Connect provisioning and Storage metadata. Storage completion additionally requires the independent provider workflow attestation; Actor Gateway identity alone is insufficient.
+6. `20261112050000_revoke_public_default_function_execution` is global for functions created by `ghm_schema_owner`. It changes future default privileges and must be gated by a complete live function/ACL inventory and explicit allow-lists for every deployed principal. Existing per-function grants are not automatically removed by this migration.
+7. `20261112090000_pin_security_definer_search_path` is catalogue-wide and has a hard preflight: every SECURITY DEFINER function/procedure in schema `ghm` must already be owned by `ghm_schema_owner`; it then pins each path to `pg_catalog, ghm, pg_temp`. The live production read-only inventory found multiple routines outside that owner/path contract. Do not execute this migration until a complete, reviewed ownership reconciliation is ready; do not patch functions ad hoc.
+8. Several later migrations revoke legacy runtime auth/external-identity/QuoteFlow entry points. Each requires exact deployed caller/route proof, not an assumption based on user migration policy. These are not interchangeable with Gateway cutovers.
+9. The final `20261117010000` registration-identity and `20261117020000` capability-governance revocations are explicitly post-deployment cutovers. Their SQL preflights the signed function owner, SECURITY DEFINER, pinned path, Gateway EXECUTE and runtime denial.
+
+### Batch conclusion
+
+No production batch can be safely derived from source order alone. Production batches must be exact contiguous prefixes of the *fresh live pending queue*, with matching checksums, no out-of-order gaps and all cutover dependencies satisfied. The source inventory is not a substitute for the live ledger. The approved forensic audit is still blocked; migrator/bootstrap authority and the complete catalogue-wide ownership remediation remain unresolved. Therefore:
+- keep `config/production-migration-batches.json` exactly `[]`;
+- do not execute automatic migrations or manual cutovers;
+- do not deploy Resource API or Actor Gateway as a substitute for database readiness;
+- keep PR #298 draft/unmerged;
+- no production SQL, service setting, secret, credential, payment state, or paid resource is changed by this analysis.
