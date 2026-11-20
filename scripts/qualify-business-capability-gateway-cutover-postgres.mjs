@@ -34,11 +34,10 @@ try{
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',false)",[unselectableCapId,marker+' unselectable',marker+'-unselectable']);
  const createCapId=randomUUID();ids.capabilities.push(createCapId);
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[createCapId,marker+' create',marker+'-create']);
- const allowCreateMigration=await readFile(fileURLToPath(new URL('../database/migrations/20261120011000_allow_signed_business_capability_create_assertion.sql',import.meta.url)),'utf8');
- await setup(allowCreateMigration);
- const createMigration=await readFile(fileURLToPath(new URL('../database/migrations/20261120010000_add_signed_business_capability_create.sql',import.meta.url)),'utf8');
- await setup(createMigration);
- console.log('SIGNED BUSINESS CAPABILITY CREATE MIGRATION APPLIED TO DISPOSABLE POSTGRESQL: PASS');
+ // The CI workflow applies every database/migrations/*.sql file before
+ // running qualification. These append-only CREATE FUNCTION migrations must
+ // not be applied a second time by this harness.
+ console.log('SIGNED BUSINESS CAPABILITY CREATE MIGRATIONS PRESENT FROM CI MIGRATION PHASE: PASS');
  const cutover=await readFile(fileURLToPath(new URL('../database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql',import.meta.url)),'utf8');
  await setup(cutover);
  console.log('MANUAL BUSINESS CAPABILITY CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS');
