@@ -27,6 +27,10 @@ try {
   assert.equal(identity.rows[0].database_name, expectedDatabase);
   assert.equal(identity.rows[0].session_user, 'ghm_migrator');
   assert.equal(identity.rows[0].current_user, 'ghm_migrator');
+  const schemaUsage = await client.query(
+    "SELECT has_schema_privilege(session_user, 'ghm', 'USAGE') AS can_use_schema",
+  );
+  assert.equal(schemaUsage.rows[0].can_use_schema, false, 'the disposable migrator identity starts without GHM schema USAGE');
 
   await client.query('BEGIN');
   try {
@@ -61,6 +65,8 @@ try {
     await client.query(
       'GRANT EXECUTE ON FUNCTION ghm.security_definer_path_probe() TO ghm_migrator',
     );
+    // Temporary caller USAGE is granted only inside this rollback-only probe.
+    await client.query('GRANT USAGE ON SCHEMA ghm TO ghm_migrator');
     await client.query('RESET ROLE');
 
     // The caller's temporary object deliberately has the same unqualified
@@ -94,11 +100,8 @@ try {
     assert.equal(catalogue.rows[0].owner, 'ghm_schema_owner');
     assert.ok(catalogue.rows[0].proconfig.includes('search_path=pg_catalog, ghm, pg_temp'));
 
-    await client.query('DROP TABLE pg_temp.security_definer_path_probe');
-    await client.query('SET LOCAL ROLE ghm_schema_owner');
-    await client.query('DROP FUNCTION ghm.security_definer_path_probe()');
-    await client.query('DROP TABLE ghm.security_definer_path_probe');
-    await client.query('COMMIT');
+    // Roll back the temporary canary objects and temporary schema grant.
+    await client.query('ROLLBACK');
     console.log('SECURITY DEFINER TEMP-OBJECT SHADOWING QUALIFICATION: PASS');
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined);
