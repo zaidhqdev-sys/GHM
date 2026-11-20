@@ -4,6 +4,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 const migration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql'), 'utf8');
+const legacyRuntimeCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime.sql'), 'utf8');
+const signedGatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql'), 'utf8');
 const gatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110260000_gateway_supplier_classification_cutover.sql'), 'utf8');
 const repository = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/repository.ts'), 'utf8');
 const identityContracts = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/contracts.ts'), 'utf8');
