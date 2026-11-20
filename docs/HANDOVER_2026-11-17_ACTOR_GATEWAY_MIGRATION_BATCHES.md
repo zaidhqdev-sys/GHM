@@ -6590,3 +6590,32 @@ PR #298's body says it does not submit or deploy the Render Actor Gateway servic
 ### Mandatory next action
 
 Inspect the existing Actor Gateway's latest failed deploy details and logs, then reconcile the startup error with the current production role/ACL and staged database URL evidence. Keep all actions read-only until the cause and safe correction are established. No new service, paid plan, database, credential, environment variable, deployment, or production permission was changed in this task.
+
+
+## 21 November 2026 — execution-sequence correction: deployment follows qualified merges
+
+The owner correctly clarified that the existing Render Actor Gateway failed deployment is already being addressed through the established branch qualification and merge sequence. Do not interrupt that workstream with a separate deployment-log investigation. The deployment is dependent on the required code changes reaching `main`; the correct next action is to continue the PR dependency chain, then deploy the resulting qualified mainline when its prerequisites are met.
+
+### Mandatory pre-task review completed
+
+Re-read this handover and the hosting/credentials, runtime privilege stage, production migration dependency and Gateway privilege remediation handovers; retrieved current metadata for PRs #297, #298, #300, #301 and #302; compared relevant branch refs; reviewed PR #300 patch, review threads, CI, and Render service/deployment state.
+
+### Current merge-chain facts
+
+- PR #301 is merged. Its exact-head CI run #5488 passed; it adds safe startup-stage diagnostics without changing database access, roles, ACLs, secrets or Render configuration.
+- PR #302 is merged. Its exact-head CI run #44810525158 passed. It fixes the capability cutover search_path guard and post-cutover disposable qualification expectations.
+- PR #300 is the next relevant signed Business Capability create integration candidate. Exact head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; its CI run #5451 completed successfully. The PR patch includes the signed Gateway route, Resource API fail-closed integration, SQL wrapper/allowlist, and dedicated disposable PostgreSQL cutover qualification.
+- PR #300 was marked ready for review, but GitHub recalculated it as `mergeable=false`. Its base is historical `ddb31ff59ab470973edf60a5078a75e5f962f803`; current `main` is `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. The compare reports PR #300 branch 92 commits ahead and 2 behind, with merge base `ddb31ff5`. It must be synchronized/reconciled with the two mainline commits and requalified before merge. Do not force-update the branch or merge while GitHub says unmergeable.
+- PR #298 remains draft, exact head `829a7f2972aa935ff75d12092b835d83a545f3e8`; its exact-head CI run #5550 was still in progress at the time checked. Its migration manifest remains empty.
+- PR #297 remains separate/draft. PR #300 must not be folded into PR #298 or treated as permission to run production migrations.
+- PR #301/#302 merge sequence and exact evidence above are now the source of truth; older handover text describing them as open/draft is superseded.
+
+### Actor Gateway deployment sequencing (owner-confirmed)
+
+The existing `ghm-actor-gateway` Render service is already created. Its deployment attempts failed against earlier mainline commits. Do not treat service creation/hosting as outstanding and do not start a separate diagnosis task. Continue the established code qualification/merge sequence. Once the required integration changes are merged to main, perform the already-planned coordinated deployment/readiness checks against the actual merged commit and existing service. The startup diagnostic work in #301 is specifically intended to make any remaining post-merge startup blocker actionable.
+
+### Next task
+
+Synchronize PR #300 with current main without force-pushing, review the two intervening commits against its patch for conflicts or changed contracts, then run exact-head CI. If synchronization cannot be done safely through the available GitHub operation, use the established local branch workflow rather than guessing or force-moving refs. Only merge when the branch is current, exact-head CI is green, GitHub reports mergeable, and the dependency review is clean. After each task, update this handover.
+
+No production migration, manual cutover, database ACL/role change, secret/environment change, Render configuration/deployment, backup, payment state, or paid resource was changed in this task.
