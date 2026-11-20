@@ -38,3 +38,30 @@ test('disposable PostgreSQL qualification proves caller pg_temp objects cannot s
   assert.match(packageJson, /qualify:security-definer-search-path/);
   assert.match(workflow, /Qualify SECURITY DEFINER temporary-object shadowing on disposable PostgreSQL[\s\S]*npm run qualify:security-definer-search-path/);
 });
+
+
+test('full disposable migration qualification compares authority and rolls back fixtures', () => {
+  const source = readFileSync(
+    'scripts/qualify-security-definer-search-path-migration-postgres.mjs',
+    'utf8',
+  );
+  assert.match(source, /NODE_ENV !== 'test'/);
+  assert.match(source, /GHM_MIGRATOR_DATABASE_URL/);
+  assert.match(source, /localhost.*127\\.0\\.0\\.1/);
+  assert.match(source, /ghm_disposable_test/);
+  assert.match(source, /BEGIN/);
+  assert.match(source, /SET LOCAL ROLE ghm_schema_owner/);
+  assert.match(source, /20261112090000_pin_security_definer_search_path/);
+  assert.match(source, /role attributes/);
+  assert.match(source, /role memberships/);
+  assert.match(source, /database ACLs/);
+  assert.match(source, /schema ACLs/);
+  assert.match(source, /relation ACLs/);
+  assert.match(source, /column ACLs/);
+  assert.match(source, /default ACLs/);
+  assert.match(source, /non-search_path routine metadata or ACL changed/);
+  assert.match(source, /all exact search_path=pg_catalog, ghm, pg_temp/);
+  assert.match(source, /ROLLBACK/);
+  assert.match(packageJson, /qualify:security-definer-search-path-migration/);
+  assert.match(workflow, /Compare SECURITY DEFINER migration authority before and after on disposable PostgreSQL[\\s\\S]*npm run qualify:security-definer-search-path-migration/);
+});
