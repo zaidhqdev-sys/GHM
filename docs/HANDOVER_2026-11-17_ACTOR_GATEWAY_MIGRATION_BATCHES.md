@@ -3884,3 +3884,43 @@ Re-read the migration-batch handover and production reconciliation, refreshed PR
 At the start of this task, PR #298 was open/draft/unmerged, current branch head was `42687624ed73c34266ffbcb518228109a0a7dc0a`, and `main` was `ddb31ff59ab470973edf60a5078a75e5f962f803`. The branch remained 221 commits ahead / 4 behind with merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`; GitHub continued to report it non-mergeable. No branch ancestry or related PR was changed.
 
 No source, SQL, test, inventory, manifest, production ledger/database/role/ACL, credential/secret, Render service/configuration/deployment, payment state, PR or branch ancestry was changed. Only this handover record was updated.
+
+
+## 20 November 2026 — Commercial payment settlement privilege chain and provider-neutrality boundary
+
+Re-read the existing migration-batch and production migration reconciliation handovers, refreshed PR #298 state, then traced the full Commercial payment schema/ACL sequence from `20260915150000` through `20261116140000`, including the PayFast settlement identity migration, source callback implementation, architecture decision record and rollout runbook. This follows the previous provider-code constraint review; no PayFast work was resumed.
+
+### Base Commercial schema and incremental runtime grants
+
+- `20260915150000_create_commercial_schema.sql` creates provider-neutral plans, versions, entitlements, prices, trials, subscriptions, payment attempts, provider events, payment transactions, commercial events and founding allocations.
+- Its initial runtime permissions are deliberately read-oriented: SELECT on catalogue/trial/subscription and payment-attempt tables. It grants no runtime table DML on provider events, payment transactions or founding allocations. Migrator receives table DML and sequence access.
+- `20260915203000_reconcile_commercial_runtime_sequence_acl.sql` removes unintended runtime sequence usage/default sequence grants for commercial identity sequences.
+- `20260915223000_reconcile_commercial_trial_runtime_dml_acl.sql` grants only column-scoped INSERT for governed trial/subscription/event creation; no UPDATE/DELETE is added.
+- `20261003160000_grant_commercial_payment_runtime_write.sql` adds only column-scoped INSERT on payment attempts and commercial events for payment preparation, plus sequence USAGE. It does not grant payment transaction/provider event mutation.
+- The 20260915 payment transaction status migrations reconcile allowed lifecycle values; `20260915220000` adds unique provider-event-to-transaction idempotency. These are schema/consistency corrections, not additional runtime authority.
+
+### Generic payment-result function and PayFast-specific isolation
+
+- `20261007120000_create_commercial_payment_result_boundary.sql` creates `ghm.commercial_apply_payment_result(...)` as SECURITY DEFINER owned by `ghm_schema_owner`, revokes PUBLIC and grants EXECUTE to `ghm_runtime` as the initial application-governed settlement boundary.
+- `20261104120000_bind_commercial_payment_attempt_provider.sql` adds nullable `provider_code`, initially constrained to NULL or `payfast`. It replaces the generic result function with a version that verifies the attempt's stored provider matches the submitted provider and requires the attempt to be payable before settlement. It retains the then-current runtime EXECUTE grant pending the immediately following identity cutover.
+- `20261104130000_isolate_payfast_settlement_identity.sql` is the actual security cutover: it requires the out-of-band `ghm_payment_provider` LOGIN role, revokes generic settlement EXECUTE from PUBLIC and `ghm_runtime`, creates a PayFast-only attempt-read SECURITY DEFINER function, creates a PayFast-only settlement SECURITY DEFINER wrapper that fixes provider identity to `payfast` and requires ZAR, and grants those two functions only to `ghm_payment_provider`. The provider role receives no direct commercial table DML. Both functions are owned by `ghm_schema_owner` and use pinned search_path.
+- The wrapper calls the generic settlement implementation internally under its owner. The generic function is not granted to the provider login or ordinary runtime. This is the intended privilege chain; do not misreport the earlier generic runtime grant as the final post-cutover contract.
+- The callback source verifies the PayFast ITN signature, merchant, server confirmation, attempt/provider binding, amount/currency and accepted terminal status before invoking the PayFast-specific settlement function. Its separate process checks both `session_user` and `current_user` are `ghm_payment_provider`.
+- The ADR and rollout runbook explicitly sequence the migration with the separate callback service, dedicated DB credential, readiness/identity checks, ingress/network verification and supervised settlement qualification. This is a controlled qualification/deployment sequence, not a reason to create an alternative general-API settlement path. Do not use the generic provider boundary class as evidence of a live production settlement route without tracing the active imports and process wiring.
+
+### Provider-neutral schema does not mean arbitrary provider enablement
+
+- `20261116140000_generalize_commercial_payment_provider_code.sql` aligns the payment-attempt constraint with the existing normalized provider identifier format.
+- This permits the schema to represent provider codes beyond `payfast`; it does **not** provision a provider role, credentials, callback process, provider-specific wrapper, network ingress or settlement authorization for another provider.
+- The inspected production-safe settlement design remains PayFast-specific: fixed provider wrapper, dedicated `ghm_payment_provider` role and isolated callback process. A future provider requires its own explicitly qualified identity/function boundary and deployment path; do not grant generic settlement execution to `ghm_runtime` or a shared provider role as a shortcut.
+- The `provider_code` column remains nullable for historical attempts. Existing handover/runbook evidence says not to infer historical provider identity from status or checkout metadata. Any backfill requires a separately approved read-only inventory and defensible evidence; unknown attempts must not be silently assigned a provider.
+- The owner has explicitly clarified that hosting is sequenced after qualification; do not describe the not-yet-deployed isolated gateway/callback services as an independently rejected product blocker or reopen hosting-cost decisions during this migration review. The technical prerequisites remain ordered qualification gates, not a change to the owner's deployment sequencing.
+
+### Migration-prefix and qualification disposition
+
+- The Commercial ACL evolution is intentionally incremental: initial read-only grants; sequence correction; column-scoped trial/payment preparation inserts; SECURITY DEFINER result boundary; provider binding; then provider-specific settlement identity cutover. Keep this historical order intact.
+- CI #5397's disposable PostgreSQL migration/qualification success is evidence for the tested source SHA only. It does not prove production role existence, production ledger state, historical provider classification, production callback readiness or authorization to execute the production migration.
+- The PR #298 manifest remains empty. The dated pending inventory cannot establish the live production predecessor/successor position. No production ledger access, backup, migration execution or ACL mutation was performed.
+- The previous review's next target is now the earlier Commercial schema/ACL group. No new migration or source defect was established by this pass; the main remaining operational dependency in this chain is the already-documented controlled identity/callback qualification and historical nullable-provider reconciliation, not a missing generic settlement grant.
+
+No source, SQL, tests, migration inventory, batch manifest, production database/ledger/roles/ACLs, provider role/credential, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover record was updated.
