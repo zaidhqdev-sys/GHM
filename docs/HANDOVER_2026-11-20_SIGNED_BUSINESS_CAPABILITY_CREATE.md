@@ -670,3 +670,20 @@ Corrected only the evidence replay probe variable name to evidenceReplayContext 
 Source correction commit: 6a8081549a081ba33292aa9810ba851276a44f77. No SQL migration, production configuration, database, role, secret, CI workflow, or PR #298 file was changed. PR #300 remains draft and unmerged.
 
 Next: verify a new PR CI run was triggered for the corrected source head. Confirm the syntax-check step passes, then inspect migration application and the actual signed Business Capability PostgreSQL qualification result. Do not count the prior run as a SQL qualification attempt: it stopped before migration application.
+
+
+## PR #300 migration-chain security-path correction — 2026-11-20
+
+After the duplicate replay variable was corrected, CI run #5402 (head 688722d33d8263d14e59801be39c0ff5a675c60c) passed all qualification-script syntax checks and the TypeScript build. It then failed while applying the existing migration chain, specifically at 20261117020000_revoke_runtime_capability_governance.sql, before any new Business Capability PostgreSQL qualification ran.
+
+Root cause confirmed by source and CI logs: 20261112090000_pin_security_definer_search_path.sql deliberately pins every SECURITY DEFINER function to `pg_catalog, ghm, pg_temp` (pg_temp last). The existing 20261117020000 preflight expected `search_path=pg_catalog, ghm`, so it rejected the established hardened path. This was a real migration contract mismatch, not a PostgreSQL service or CI secret problem.
+
+PR #298 was inspected. Its parallel branch contains the same root-cause correction, including a robust catalog-option parser and expected pinned path. PR #298 is a separate draft and was not edited or merged. For this feature branch, the correction was applied directly and narrowly:
+
+1. Commit 7028b518884676d1c9b7a15a9ca90afc114ce189 updates the existing cutover guard to expect the exact established `pg_catalog, ghm, pg_temp` path.
+2. Commit 396265a5e72f3f39553129004cd4de8bc4c49cfc pins the new signed create SECURITY DEFINER wrapper to `pg_catalog, ghm, pg_temp`.
+3. Commit 6b7e135432f025aa482029487b06154d600bafb9 pins the replaced signed assertion verifier to the same `pg_catalog, ghm, pg_temp` path.
+
+The pg_temp schema remains last; no weaker search path was introduced. The existing migration was edited on the feature branch only; production database was not touched. No PR #298 files or branch were changed. The three migrations were updated sequentially using exact existing declarations; no other SQL behavior was intentionally changed.
+
+Next: verify the new exact-head PR #300 CI run. The migration chain must now pass the `20261117020000` preflight and continue applying subsequent migrations. Only then can the signed Business Capability qualification execute. If another migration fails, inspect its exact SQL and relevant handovers/PRs before making a narrowly scoped forward-safe correction. Keep PR #300 draft/unmerged and PR #298 untouched.
