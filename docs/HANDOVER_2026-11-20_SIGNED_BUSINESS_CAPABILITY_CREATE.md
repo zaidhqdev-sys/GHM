@@ -375,3 +375,36 @@ Commit: `6be9544bcf0f7cfdc5ea9ee4f99e9a42e79bf63`.
 4. Do not begin Gateway HTTP/Resource API integration until PostgreSQL behavior is actually qualified.
 
 No production access/change, migration execution, deployment, CI dispatch, paid resource, new database/service, secret change or recurring process occurred.
+
+
+## Static review checkpoint — repository state reconciled — 2026-11-20
+
+### Authoritative branch and PR state
+
+Re-read the feature branch, commit history, main ref and PR #298 directly from GitHub before continuing.
+
+- Feature branch: `feat/signed-business-capability-create`
+- Feature branch HEAD: `0898ad69cf5dba6adaa920d7c484b9d76336be82`
+- Feature branch comparison: 20 commits ahead of `main`, 0 behind.
+- Main HEAD: `ddb31ff59ab470973edf60a5078a75e5f962f803`
+- PR #298 remains open, draft, targets `main`, head `f2f3cbb9588dad8ac0fdd8477e7434f6fc3d4b60`, GitHub reports `mergeable=false`.
+- The signed Business Capability feature remains a separate branch and has no PR in this checkpoint.
+
+### Static review findings
+
+Reviewed both new SQL migrations, the complete disposable qualification script, its package registration, and the existing manual cutover SQL.
+
+1. The create function is a separate SECURITY DEFINER operation, derives the actor from `assert_actor_gateway_capability`, checks the active Business and owner/administrator membership, locks the selectable active catalogue row with `FOR SHARE`, and uses a plain INSERT. It does not use the replacement/upsert function.
+2. The follow-up verifier migration adds `business.capability.create` while retaining the existing operation names shown in the migration. It retains the 60-second expiry, HMAC, active-account and nonce replay checks. This remains static review only; migration execution has not been observed.
+3. The harness applies the verifier allowlist migration, then the create migration, then the existing manual cutover script against its guarded disposable target. It contains signed create, duplicate/withdrawn duplicate, authorization, inactive Business/Capability, non-selectable Capability, expiry, replay, invalid-date/no-row, payload-tampering, forged-signature and signed-wrapper-denial assertions.
+4. The manual cutover SQL currently revokes Evidence INSERT/sequence access and legacy mutation function EXECUTE. It does **not** revoke direct INSERT or sequence access on `ghm.business_capability`. The harness's direct INSERT/sequence denial assertions are for Evidence, not Business Capability. Therefore direct Business Capability runtime ACL cutover remains unimplemented and unqualified; do not describe it as covered.
+5. The SQL/harness test files are registered in `package.json`, but no local test or PostgreSQL harness execution result is available from this GitHub-only inspection. Authored tests are not passing tests.
+
+### Next gate
+
+- Keep the SQL stage explicitly unqualified until the existing local checkout can run the registered migration contract test and the disposable PostgreSQL harness against the already-existing disposable database and its three principals.
+- Do not create or relaunch a database, use production, dispatch CI, deploy, or modify Render.
+- Do not start Gateway reader/HTTP/Resource API integration until PostgreSQL behavior is actually qualified.
+- After SQL qualification, design a separate Business Capability direct INSERT/identity-sequence ACL cutover and test it in the disposable harness; preserve current runtime grants until route integration and cutover are qualified.
+
+No production database access/change, migration execution, deployment, CI dispatch, paid resource, new database/service, secret change or recurring process occurred.
