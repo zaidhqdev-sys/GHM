@@ -29,7 +29,7 @@ try{
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[capId,marker,marker]);
  const bc=await setup("INSERT INTO ghm.business_capability(business_id,capability_id,assertion_status,assertion_basis,verification_status,created_by) VALUES($1,$2,'active','self_declared','unverified',$3) RETURNING id",[business,capId,owner]);const bcId=Number(bc.rows[0].id);ids.assertions.push(bcId);
  const inactiveCapId=randomUUID();ids.capabilities.push(inactiveCapId);
- await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'inactive',1,'gateway qualification',true)",[inactiveCapId,marker+' inactive',marker+'-inactive-cap']);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'deprecated',1,'gateway qualification',false)",[inactiveCapId,marker+' deprecated',marker+'-deprecated-cap']);
  const unselectableCapId=randomUUID();ids.capabilities.push(unselectableCapId);
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',false)",[unselectableCapId,marker+' unselectable',marker+'-unselectable']);
  const createCapId=randomUUID();ids.capabilities.push(createCapId);
