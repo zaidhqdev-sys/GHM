@@ -729,3 +729,25 @@ Current qualification evidence remains:
 Important workflow observation: the branch's `.github/workflows/ci.yml` pull_request target list includes `main`; markdown-only handover changes are excluded by `paths-ignore`. The CI job uses ephemeral PostgreSQL 18 and isolated principals; no local or production database is involved.
 
 Next: establish the current PR #300 head and its latest associated workflow run, then inspect that run's job state/logs. If no replacement run exists, make a narrowly scoped source change only if justified, or otherwise use the normal PR code-change trigger (not manual workflow dispatch) to obtain a fresh exact-head run. Keep PR #300 draft/unmerged and PR #298 untouched. No production changes, local DB changes, paid resources, deployments, or secrets were made in this task.
+
+
+## PR #300 CI run #5410 — Gateway function allow-list drift isolated — 2026-11-20
+
+Re-inspected PR #300, PR #298, the `feat/signed-business-capability-create` branch, its current handover, package qualification command, CI workflow and the exact run/job logs before proceeding. PR #300 remains draft/unmerged. PR #298 remains a separate draft and was not modified.
+
+Run #5410 (run ID `44668868603`) completed:
+- `web-quality`: passed.
+- TypeScript build: passed.
+- All migration syntax checks and Worker bundle: passed.
+- All repository migrations applied successfully to ephemeral PostgreSQL 18 `ghm_disposable_test`.
+- Auth issuer principal qualification: passed.
+- Actor Gateway principal qualification: failed at step 32 with `gateway_function_allow_list_mismatch`.
+- The dedicated Business Capability signed Gateway PostgreSQL qualification was skipped because the shared principal qualification failed first.
+
+Retrieved the full quality job log and the exact branch source `src/actor-gateway/database-privileges.ts`. The failure is a genuine exact-signature allow-list mismatch, not an environment, connection, role setup, migration syntax, or production issue. The diagnostic shows the actual executable Gateway set includes the new `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)`, while the source expected set does not include it. The diagnostic also shows three campaign/directory-review signatures expected by the current source but absent from the actual executable set: `gateway_create_campaign`, `gateway_update_campaign`, and `gateway_get_business_directory_review_presentation`. The actual list includes the rest of the currently granted signatures, including the registration identity read/write wrappers.
+
+The helper currently permits only two exact Campaign states (the full three-function campaign set or that set absent) while requiring all other expected signatures. Its source expected array still needs a reviewed exact-state reconciliation that accounts for the signed Business Capability create wrapper and the campaign/directory-review migration state. Do not simply append the new function or remove the three campaign functions based only on a count: inspect migration history, relevant PRs/handovers and exact migration effects first, then encode explicit safe states and regression tests. Preserve rejection of arbitrary extra/missing Gateway functions, PUBLIC/runtime execution, unsafe SECURITY DEFINER ownership/search_path, unsafe grants and direct relation access.
+
+No SQL Business Capability operation tests ran in #5410. The prior static migration contract test (5/5) and build pass remain valid but do not replace this missing runtime qualification. No local database, production database, Render service, secret, paid resource, deployment, or PR #298 content was changed in this task.
+
+Next: trace the three Campaign/directory-review signatures through migration files, PR #298 and other relevant PRs/handovers to establish the canonical post-migration Gateway allow-list state. Then update the validator and focused tests narrowly, run normal PR CI, and only proceed once the shared principal check passes to the dedicated signed-create PostgreSQL qualification.
