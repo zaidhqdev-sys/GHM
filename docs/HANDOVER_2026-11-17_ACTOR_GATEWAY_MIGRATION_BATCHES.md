@@ -5013,3 +5013,32 @@ Inspected current-main `src/resources/business-capability/repository.ts` and `se
 The exact original CREATE TABLE migration filename and complete DDL/default/check/index definitions have not yet been located in the current-main file inspection. The initial guessed paths were not found; do not treat that as evidence that constraints are absent. Search the migration history/PR #272 patches for the original table creation before authoring SQL. Also inspect the existing disposable `qualify-business-capability-gateway-cutover-postgres.mjs` fixture and tests to reuse its setup/assertion helpers.
 
 No feature branch implementation or migration was created in this pass. Keep this feature separate from PR #298. No production execution, deployment, paid infrastructure, new database/service, or recurring process.
+
+## Disposable Gateway cutover harness inspection — 2026-11-20
+
+Inspected current-main `scripts/qualify-business-capability-gateway-cutover-postgres.mjs`, the signed mutation migration, the Gateway reader, router tests and migration contract test.
+
+### Reusable harness behavior
+
+- Requires three distinct URLs for runtime, Actor Gateway and migrator.
+- Hard-fails unless qualification DB name is exactly `ghm_disposable_test` and host exactly `localhost`.
+- Requires canonical base64 32-byte assertion secret.
+- Uses migrator with `SET LOCAL ROLE ghm_schema_owner` for fixture setup/cleanup.
+- Signs assertions with the same v2 HMAC format and calls the signed SQL functions using the Gateway pool.
+- Existing coverage includes evidence submission/replay/tampering, membership denial, signed replacement/verification/review, runtime function denial, evidence table INSERT/sequence denial, and role privilege matrix.
+
+### Coverage boundary
+
+The existing script does NOT qualify signed single Business Capability creation. It creates the initial `ghm.business_capability` fixture directly through the migrator before applying the existing manual cutover, then tests the existing replacement/verification/evidence paths. Its current runtime privilege matrix covers Evidence INSERT, not Business Capability INSERT or its identity sequence.
+
+The existing SQL migration's verifier allows `business.capability.create`, but no create SQL wrapper is defined. The existing reader Operation union and interface also lack a create method. Existing router tests cover PUT replacement fail-closed behavior, not POST create Gateway forwarding/fail-closed behavior.
+
+### Important fixture/cleanup note
+
+The qualification script cleanup runs in a finally block and deletes its fixture rows through the migrator, then closes all pools. Any new create qualification should follow this isolated-fixture discipline and explicitly clean up a created Business Capability row before its parent Business/capability/account rows. It must test a withdrawn duplicate as well as an active duplicate; plain INSERT must reject both under the current unique constraint.
+
+### Original DDL search status
+
+PR #272 contains the signed mutation/cutover and qualification additions, not the original Business Capability table creation. Several earlier capability-related commits were searched, but the original table CREATE migration has not yet been conclusively identified from current-main paths or these PRs. Do not infer constraints/defaults solely from the existing SELECT projection or repository insert. Continue locating the original migration by querying the full migration filename inventory/history; do not author the new SQL migration until its exact table DDL is established.
+
+No code, SQL migration, test or feature branch was changed in this task. Keep the signed-create feature separate from PR #298. No production migration, deployment, new database/service, paid resource, CI dispatch or recurring process.
