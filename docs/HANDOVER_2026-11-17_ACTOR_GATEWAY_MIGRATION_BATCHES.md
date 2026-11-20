@@ -6481,3 +6481,39 @@ Mandatory pre-task review for this task:
 The source-side PR #298 inventory remains a branch-specific record, not live execution authority. The 48-entry PR #297 reconciliation is a dated exported-ledger result, not a fresh live ledger. The only safe next action is to identify PR #297's exact current head and compare its full inventory/checksum evidence with PR #298's 50 entries, then obtain a fresh authorized live ledger export through the provider-approved path. Do not select or add a production batch until those records are reconciled.
 
 No source code, migration SQL, pending inventory, execution manifest, database object, ACL, role, membership, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed in this task. PR #298 remains draft/unmerged and its production batch manifest remains `[]`.
+
+
+## 21 November 2026 — PR #297 inventory comparison follow-up
+
+Mandatory pre-task review completed:
+- Re-read this handover, PR #297/#298/#300 descriptions and open-state records, branch catalogue, PR #298 pending inventory and empty production execution manifest.
+- Rechecked branch refs and compared `main` with the named PR #297-associated branch `feat/production-migration-batch-execution-20261115`.
+- Retrieved both branch-side `config/pending-migrations.production.json` files and compared exact version/name pairs programmatically.
+- Did not treat the branch name as proof that it is PR #297's current head: the GitHub issue/PR search result exposes the PR description but not the pull-request head SHA, and the branch's own current inventory contradicts the PR description.
+
+### Exact branch-file comparison
+
+The current file at `feat/production-migration-batch-execution-20261115` contains **42** entries, not the **48** claimed in PR #297's body. The current file at PR #298's `feat/actor-gateway-production-migration-batches` contains **50** entries.
+
+Exact comparison:
+- 42 of 42 entries in the PR #297-associated branch file are also present in PR #298's 50-entry file.
+- No entries are unique to the 42-entry file.
+- PR #298 has exactly eight additional version/name pairs:
+  - `20261116140000 generalize_commercial_payment_provider_code`
+  - `20261116150000 create_commercial_consent_evidence`
+  - `20261116160000 add_commercial_document_approval_authority`
+  - `20261116170000 add_founder_only_commercial_document_authority_gateway`
+  - `20261116180000 add_founder_only_commercial_document_approval_transition`
+  - `20261116190000 add_commercial_consent_payment_prepare_gateway`
+  - `20261117010000 revoke_runtime_business_registration_identity_write`
+  - `20261117020000 revoke_runtime_capability_governance`
+
+The named PR #297-associated branch compares with current `main` as 152 commits ahead / 56 behind (merge base `61cd1121a1fb30e3b28c250b7b6812707f1c9109`). This is a divergent/stale branch and must not be presumed to be the current PR #297 head. The PR description's 48-entry result refers to a dated exported-ledger reconciliation at a historical main commit; the branch file's 42-entry count is a separate source artifact. The PR #298 50-entry file is likewise a branch-specific inventory. None is a fresh live production pending queue.
+
+### Outcome and next gate
+
+The discrepancy is now narrowed: the inspected branch-side files differ by eight entries, and the PR #297-associated branch file is itself stale/diverged from main. The 48-entry PR description remains an independently dated statement and cannot be reconciled to the stale 42-entry file without the exact PR #297 head SHA and the original 105-row exported ledger/checksum evidence. The live production ledger remains inaccessible through the current Render connector identity.
+
+Next safe action: retrieve PR #297's actual head SHA through the pull-request metadata endpoint or UI, then inspect the pending inventory at that exact SHA and compare it with PR #298. Separately obtain a fresh authorized live ledger export before deriving any production batch. Do not modify either inventory or the empty manifest to force agreement.
+
+PR #298 remains draft/unmerged. Its `config/production-migration-batches.json` remains exactly `[]`. No production SQL/DDL, migration, database privilege, role, membership, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed.
