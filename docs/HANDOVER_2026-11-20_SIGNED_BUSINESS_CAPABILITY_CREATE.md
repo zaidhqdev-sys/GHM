@@ -306,3 +306,40 @@ The disposable harness now applies this allowlist migration before the create fu
 
 The SQL/harness remain unexecuted. Do not call these cases passing. The harness has been source-edited only. Continue static review for correct fixture cleanup, migration order, and full test command registration before attempting execution against the existing localhost disposable DB. No new DB or paid service.
 
+## Follow-up verifier and adversarial harness review — 2026-11-20
+
+### Security defect found and corrected
+
+Static review caught that the existing verifier migration's original operation allowlist did not include `business.capability.create`. The new create function would therefore have failed closed for every request. Added the forward-only migration `20261120011000_allow_signed_business_capability_create_assertion.sql`, which replaces the verifier while preserving the existing HMAC v2 checks, 60-second expiry, active-account check, nonce replay protection, constant-time signature comparison, session_user restriction and all pre-existing allowed operations. The create operation is now explicitly included. The original historical migration was not edited.
+
+The migration inventory was checked on the feature branch; the two new migration versions are unique and ordered:
+- `20261120010000_add_signed_business_capability_create.sql`
+- `20261120011000_allow_signed_business_capability_create_assertion.sql`
+
+### Harness cases now authored
+
+In addition to the previously recorded signed create/actor provenance/normalization/duplicate/withdrawn/member/tamper/forged/runtime-wrapper cases, the harness now applies the verifier allowlist migration before the create-function migration and adds:
+- expired assertion rejection;
+- nonce replay rejection after a first successful create using the same exact assertion;
+- invalid effective-period rejection and explicit no-row assertion;
+- inactive Business denial;
+- inactive catalogue Capability denial;
+- active but non-selectable catalogue Capability denial.
+
+The replay fixture uses its own active selectable catalogue row and is included in deterministic cleanup.
+
+The migration contract test now asserts that the original verifier did not contain the create operation and that the forward-only follow-up migration adds it.
+
+### Execution status
+
+These are authored source tests only. No local PostgreSQL execution was possible through the connected GitHub source-editing workflow. No CI was dispatched. Do not describe any SQL/harness test as passing.
+
+### Next review gate
+
+Before Gateway reader integration:
+1. Run static diff review over both migrations and the complete qualification script.
+2. Run the registered normal test command locally if the user's existing working tree/dependencies are available, then run the disposable PostgreSQL harness only if the already-existing localhost `ghm_disposable_test` is available with its three distinct principals and assertion secret.
+3. Never create/relaunch a database or use production as a substitute. If unavailable, keep the SQL stage explicitly unqualified.
+4. Verify the create SQL's database object references and row-lock semantics against canonical current schema, then add reader/route/Resource API wiring only after SQL qualification.
+
+No production database was accessed or changed; no migration was applied; no deployment, Render change, secret modification, CI dispatch, paid infrastructure, new database/service or recurring process occurred. PR #298 remains separate.
