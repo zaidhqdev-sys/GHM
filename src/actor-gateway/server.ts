@@ -85,9 +85,28 @@ server.requestTimeout = 10_000;
 server.headersTimeout = 5_000;
 server.keepAliveTimeout = 5_000;
 
-const safeErrorDetails = (error: unknown): { name: string } => ({
-  name: error instanceof Error ? error.name : 'UnknownError',
-});
+let startupStage = 'initialization';
+
+const safeErrorDetails = (error: unknown, stage: string = startupStage): {
+  name: string;
+  stage: string;
+  category: string;
+} => {
+  const name = error instanceof Error ? error.name : 'UnknownError';
+  const categoryByStage: Record<string, string> = {
+    initialization: 'startup_initialization_failed',
+    database_identity_query: 'database_connection_or_identity_query_failed',
+    database_identity_assertion: 'database_identity_rejected',
+    database_privileges_query: 'database_privilege_query_failed',
+    database_privileges_assertion: 'database_privileges_rejected',
+    http_listen: 'http_listener_failed',
+  };
+  return {
+    name,
+    stage,
+    category: categoryByStage[stage] ?? 'startup_failed',
+  };
+};
 
 const shutdown = async (signal: string): Promise<void> => {
   console.log(`Received ${signal}; shutting down GHM Actor Gateway`);
@@ -107,6 +126,7 @@ process.on('unhandledRejection', (reason: unknown) => {
 });
 
 const start = async (): Promise<void> => {
+  startupStage = 'database_identity_query';
   const identity = await pool.query<{
     session_user: string;
     current_user: string;
@@ -146,16 +166,20 @@ const start = async (): Promise<void> => {
       FROM pg_roles r
      WHERE r.rolname = session_user
   `);
+  startupStage = 'database_identity_assertion';
   assertActorGatewayDatabaseIdentity(identity.rows[0]);
+  startupStage = 'database_privileges_query';
   const databasePrivileges = await readActorGatewayDatabasePrivileges(pool);
+  startupStage = 'database_privileges_assertion';
   assertActorGatewayDatabasePrivileges(databasePrivileges);
+  startupStage = 'http_listen';
   server.listen(port, () => {
     console.log(`GHM Actor Gateway listening on port ${port}`);
   });
 };
 
 void start().catch(async (error: unknown) => {
-  console.error(JSON.stringify({ event: 'actor_gateway_startup_failed', error: safeErrorDetails(error) }));
+  console.error(JSON.stringify({ event: 'actor_gateway_startup_failed', error: safeErrorDetails(error, startupStage) }));
   await pool.end();
   process.exitCode = 1;
 });
