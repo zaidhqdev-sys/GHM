@@ -343,3 +343,35 @@ Before Gateway reader integration:
 4. Verify the create SQL's database object references and row-lock semantics against canonical current schema, then add reader/route/Resource API wiring only after SQL qualification.
 
 No production database was accessed or changed; no migration was applied; no deployment, Render change, secret modification, CI dispatch, paid infrastructure, new database/service or recurring process occurred. PR #298 remains separate.
+
+## Further static security review — catalogue race and test correction — 2026-11-20
+
+### Catalogue state race closed
+
+Review identified a time-of-check/time-of-use window: the create function previously checked that a catalogue Capability was active/selectable with `EXISTS`, but did not hold the catalogue row stable through the INSERT. A concurrent catalogue governance transaction could deactivate or make the Capability unselectable after the check but before insertion.
+
+The create function now uses `PERFORM ... FOR SHARE` on the selected `ghm.capability` row and checks `FOUND`. This holds a row lock through the transaction, serializing the create against concurrent updates/deletion of that catalogue row. The migration contract test now requires this lock.
+
+Commit: `a9f35058ab672c2c1549c7dacf898f80ede5d4aa`.
+
+### Contract test corrected
+
+The contract test now correctly verifies that the historical verifier migration does NOT include `business.capability.create`, and that the forward-only allowlist migration adds it while retaining the Actor Gateway-only EXECUTE grant. It also requires the catalogue `FOR SHARE` lock.
+
+Commit: `6be9544bcf0f7cfdc5ea9ee4f99e9a42e79bf63`.
+
+### Harness review notes
+
+- The qualification script is a combined Business Capability gateway cutover harness. It applies the existing manual evidence/legacy-mutation cutover only inside its hard-guarded disposable localhost target. That cutover is not the new direct `business_capability` INSERT/sequence revocation; those original runtime grants remain untouched by the two new migrations.
+- The existing cutover script itself explicitly says production use is gated on deployed/qualified signed routes, resolved Render role model and a fresh verified production backup. No such production cutover is authorized or performed here.
+- The fixture includes the fresh replay Capability in deterministic cleanup. The invalid effective-period case checks no row exists for its new Business+Capability pair.
+- The harness and migration contract test have still not been executed. GitHub source editing does not provide the local working tree, dependencies, or disposable PostgreSQL connection needed to run them. Do not infer a passing result from source review.
+
+### Current next gate
+
+1. Continue static review of SQL/harness and package test registration.
+2. Execute source tests and the disposable PostgreSQL harness only from the existing local checkout if its installed dependencies and pre-existing `ghm_disposable_test` are available.
+3. Do not create/relaunch a DB, use production, dispatch CI, deploy, or modify Render.
+4. Do not begin Gateway HTTP/Resource API integration until PostgreSQL behavior is actually qualified.
+
+No production access/change, migration execution, deployment, CI dispatch, paid resource, new database/service, secret change or recurring process occurred.
