@@ -5428,3 +5428,27 @@ The signed Business Capability create endpoint, its Resource API client wiring a
 ### Disposition and change boundary
 
 No deployment-ready configuration can be certified. Keep owner form unsubmitted, Render auto-deploy OFF, production migration manifest `[]`, PR #298/#300 draft/unmerged, and PayFast paused. No production database, migration, ledger, role, membership, ACL, credential, secret, Render service, environment variable, deployment, plan, paid resource, route, retry or timeout setting changed. Only GitHub source/PR/branch/handover reads and this documentation update were performed.
+
+
+## 20 November 2026 — correction: Render secret fields are populated, intentionally masked
+
+The owner corrected the previous assistant interpretation of the shared `ghm-actor-gateway` Render creation form. The masked values are populated; they are not empty:
+
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`: populated, deliberately kept secret.
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM`: populated; owner copied it from the existing GHM-Internal-Runtime environment.
+- `GHM_JWT_ES256_KID`: populated; owner copied it from the existing GHM-Internal-Runtime environment.
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`: already entered using the existing internal `ghm-db` connection URL and the dedicated `ghm_actor_gateway` username, as previously recorded.
+- The service is still not created or deployed. The form has not been submitted; auto-deploy is OFF; selected compute remains Free ($0/month).
+
+This correction supersedes any wording in this handover/environment contract implying that the three masked secret/key fields are empty or not entered. Presence and owner-reported provenance are known. The assistant has not inspected secret values. Cryptographic validity, exact PEM encoding, key/KID correspondence, assertion-secret encoding/length and successful DB authentication/ACL startup remain untested; do not overstate them as verified.
+
+**Workflow correction:** the environment-entry task is complete. Do not send the owner back through the same variable-entry checklist. Resume from the next genuinely unfinished code/qualification item, first reusing the current handover, open PRs, branch comparison and existing CI evidence. Do not repeat completed checks absent new evidence or a specific failing result.
+
+### Repository state at this correction
+
+- PR #298: open, draft, unmerged; its branch is `feat/actor-gateway-production-migration-batches`.
+- PR #300: separate, open, draft, unmerged; do not mix its Business Capability create branch into PR #298 without deliberate integration.
+- Branch comparison performed against current `main` (`ddb31ff59ab470973edf60a5078a75e5f962f803)): PR #298 branch is 270 commits ahead and 0 behind; comparison reports 32 changed files. This is ancestry/diff metadata, not merge approval.
+- Production migration batch manifest remains `[]`.
+- PayFast remains paused.
+- No Render submission/deployment, production DB change, secret access/change, paid resource, merge, rebase, or force-push occurred in this correction.
