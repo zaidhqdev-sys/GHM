@@ -4332,3 +4332,51 @@ Inspected `src/db/migrate.ts`, `src/db/migration-batches.ts`, `src/db/production
 No defect in the reviewed batch selector, pending inventory validator or migration runner was established from source inspection. Do not add code merely to create activity. The substantive remaining gate is operational evidence: fresh read-only production ledger reconciliation, complete dependency/active-route prefix qualification, and the already-recorded Actor Gateway credential/ACL and deployment readiness. These should be pursued using existing local evidence and existing resources only. The Actor Gateway hosting work is a planned deployment/qualification sequence; do not characterize its current absence as a permanent blocker or an unapproved product direction. No additional paid service is authorized or required by this task.
 
 No source, migration, runner, tests, package scripts, CI workflow, inventory/manifest, database/ledger/role/ACL, credentials/secrets, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No Actions run was triggered. Only this handover was extended.
+
+
+## 20 November 2026 — migration dependency continuation: active route cutovers and hosting-state correction
+
+Re-read this migration handover and the hosting/credentials, production role/service dependency, legacy runtime authority, migrator remediation, deployment blocker and storage specialist handovers. Refreshed PR #298–#299 and related #296/#297, branch list and current main comparison before continuing the existing route-to-migration trace. Inspected the ordered early supplier/capability/principal migrations, signed assertion replacements, the previously recorded route matrix, and exact production role/service dependency evidence. No CI run or production operation was initiated.
+
+### Refreshed PR state
+
+- PR #298 remains open/draft/unmerged at head `e380dad63097b34daa33df4eebfd9863a42473e8` before this handover update; current `main` is `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Compare: diverged, 233 ahead / 4 behind; merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`; GitHub reports `mergeable=false`.
+- PR #296 remains open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`; #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; #299 remains open/draft/unmerged at `94a9d58894d11f0f886203af37cbd096619d447b` (`merged=false`).
+- No branch ancestry or PR state changed.
+
+### Source/route dependency findings reconfirmed
+
+1. The first inventory entries are not an isolated Gateway-only slice. Supplier classification and capability governance initially install SECURITY DEFINER functions that accept caller-supplied actor/account IDs and grant the legacy operations to `ghm_runtime`. These are transitional contracts, not a completed identity boundary.
+2. The early Gateway principal guard and initial wrappers are also transitional. The signed HMAC assertion chain evolves through `20261111020000` (capability), `20261111030000` (supplier), `20261111040000` (Business profile), `20261111050000` (registration/self identity), and `20261111060000` (exact request-context binding). Do not treat any earlier login-only wrapper as production-ready.
+3. The already documented Resource API route matrix maps Gateway-backed active routes and their clients. The source shows fail-closed 503/unavailable behavior rather than direct SQL fallback for the Gateway-required supplier/profile, registration, capability, storage and other operations. Route readiness still means deployed version, real Gateway endpoint, matching SQL signature/context, authenticated positive/negative E2E and availability behavior—not merely a source route or migration file.
+4. The route/migration trace through the 50-entry queue has already classified the separate surfaces: Business Identity/read models, storage lifecycle/provider dual proof, Connect provisioning, Auth recovery and QuoteFlow migration-reset, public Business Hours/Trust Score/logo projections, campaign/directory review, and commercial document/consent/payment preparation. Do not reconstruct those inventories or rerun specialist PostgreSQL qualifications without a source change or specific failed evidence.
+5. The final two 17-Nov revocation migrations remain terminal post-deployment cutovers and stay out of any pre-deployment batch. Their headers require the corresponding deployed Gateway and authenticated route E2E, exact signed function metadata/grants and stable endpoint.
+
+### Production principal / deployment facts that constrain the prefix
+
+The latest recorded 18-Nov production catalogue evidence says:
+- `ghm_actor_gateway` exists as LOGIN/NOINHERIT with CONNECT, but schema `ghm` USAGE is false and Gateway assertion/API functions were absent in that snapshot. This evidence is dated and does not claim a current live re-query.
+- `ghm_migrator` can authenticate and has a historically demonstrated read-only SET OWNER ledger-read route, but the stricter current runner preflight fails on the bootstrap `ghm_db_user` ADMIN OPTION memberships and explicit direct ACLs on 16 relations and 24 sequences. Do not repeat basic connectivity testing; the unresolved item is provider-authorized least-privilege remediation plus fresh ledger access under the exact runner contract.
+- The deployed Resource API remains on the older `main` commit recorded in the runtime handover and does not yet enforce the merged `GHM_RUNTIME_DATABASE_URL` / `ghm_runtime` startup principal contract. Preserve the existing application/recovery path until a separately qualified runtime cutover.
+- The production ledger export remains the dated 105-row snapshot through 2026-11-09. No exact current applied/pending prefix has been established. The ordinary Render SQL connector cannot read the ledger; use the already documented dedicated migrator/owner read-only route after its authority preflight is safely resolved.
+- The last recorded recovery evidence is a locally restored November 14 logical export, not a fresh verified recovery point or Render PITR proof.
+
+### Hosting handover correction — owner decision is Free, qualification sequence is deliberate
+
+The 18-Nov role/service dependency map contained stale wording that the Gateway host was cost-blocked and a paid always-on service was not approved. That wording has now been corrected in the same branch (hosting handover section 2 / role map). The owner's 19-Nov decision is one dedicated Render Free Node Web Service for initial free-directory/early access, using the already-filled but unsubmitted form; the same service is upgraded in place later if justified. No second service is intended. Deployment is deliberately sequenced after DB identity, ACL, signed assertion, migration, route and cold-start qualification. This is not a permanent architecture/cost blocker and does not authorize submitting or deploying the form now.
+
+The Resource API's five-second Gateway client timeout versus Free sleep/cold-start remains a real reliability qualification item. Preserve authentication, request-context signatures, database authorization and fail-closed behavior. Do not add a paid retry worker, proxy, monitoring service, second Gateway or other recurring-cost component. Prefer bounded in-process recovery or a clear user-retry/availability contract only after idempotency of each operation is established; never blindly retry non-idempotent mutations.
+
+### Prefix disposition
+
+- No first safe production prefix is selected. The source-level minimum assertion-complete boundary for early capability/supplier is at least through `20261111030000`, but this is **not** a proposed batch: the full active route set, production deployed version, Gateway endpoint, DB credential/ACL, assertion secret, migration ledger, recovery and migrator preflight must all be reconciled.
+- Several route families deliberately retain legacy runtime grants pending their own cutover; others revoke runtime execution in the initial migration. The prefix must be derived as one contiguous queue, not by cherry-picking only Gateway functions or manually reordering migrations.
+- The commercial/payment-preparation SQL is not PayFast activation; PayFast remains paused and outside this task.
+- The 50-entry inventory remains a dated candidate and the production batch manifest remains `[]`.
+
+### Documentation correction record
+
+Updated `docs/security/PRODUCTION_ROLE_SERVICE_DEPENDENCY_MAP_2026-11-18.md` in commit `e380dad63097b34daa33df4eebfd9863a42473e8` to remove stale paid-hosting/cost-blocked language and record the owner's Free/one-service/in-place-upgrade decision, staged-but-unsubmitted form, separate Gateway identity, and qualification-before-deployment sequence. The database role/function status remains explicitly labelled as the last recorded catalogue snapshot, not fresh live evidence.
+
+No source, SQL, migration, test, batch manifest, production inventory, database/ledger/role/ACL, credential/secret, Render form/service/configuration/deployment, payment state, PR state or branch ancestry was changed. No Actions run was triggered and no paid resource or recurring cost was added. Only the two existing handover documents were updated.
