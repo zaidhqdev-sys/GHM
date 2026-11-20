@@ -6238,3 +6238,32 @@ Production safety:
 - The approved forensic ledger audit is still blocked by current connector role access; this task did not resolve that earlier blocker.
 
 Next valid action remains owner/operator-provided output from the approved read-only migration audit connection. In parallel, source/deployment readiness can be prepared without production mutation, but no production batch can be selected until exact live ledger/checksum reconciliation, deployed Resource API route/commit proof, recoverable backup, and the Gateway role/ACL authority prerequisites are evidenced.
+
+
+## 21 November 2026 — Resource API deployed-commit and Actor Gateway route-source reconciliation (read-only)
+
+Mandatory pre-task review completed: reviewed the latest PR #298 handover, PR #298 open/draft status and complete changed-file list, current main and feature branch heads, related PRs #297/#300/#301/#302, production batch manifest, Actor Gateway hosting/credentials handover, Resource API boundary contract, and current source before inspecting Render deployment evidence.
+
+Repository/PR state:
+- PR #298 remains open/draft/unmerged; feature branch head before this entry: `a02d5333552a2b2d91ded7f2185c7cfa748faa77`.
+- Current `main` head: `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- PR #298's changed-file inventory contains migration/cutover SQL, migration runner/manifest/qualification tests and handovers; it does not modify `src/config.ts`, `src/http/app.ts`, or `src/server.ts`. Its database migration qualification cannot by itself deploy or enable the Resource API route integration.
+- PR #297 and #300 remain open/draft; #301 and #302 remain closed/merged.
+- Production batch manifest remains exactly `[]`.
+
+Render Resource API evidence:
+- Service `GHM-Internal-Runtime`, ID `srv-damupsek1f9s73eq8kkg`, URL `https://ghm-internal-runtime.onrender.com`, branch `main`, auto-deploy OFF, plan Free, health-check path `/healthz`.
+- Render reports current live deployment `dep-dbpmv8jrjlhs73abkli0` on commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, created 10 November 2026. Later deployment attempts on 15 November failed (one build failure, one runtime exit 1); neither replaced the live deployment.
+- Read-only Render application logs on 20 November show the currently live process starting `npm start` / `node dist/server.js` and logging `GHM Core Engine listening on port 10000` at 03:50:33Z and again at 05:32:43Z. Render still reports the deployment as live. These logs show process startup only; they do not prove the deployed DB identity, current route configuration, authenticated route behavior or live database authority.
+- Source at the exact live commit `c7cf1eb...` confirms `src/config.ts` only reads generic `DATABASE_URL`; `src/server.ts` runs `SELECT 1` before listening and does not assert `session_user=current_user=ghm_runtime`; it does not read `GHM_ACTOR_GATEWAY_URL` or instantiate gateway clients. `/healthz` is a shallow HTTP 200 handler. Consequently the live process is a legacy Resource API build and must not be represented as having the current principal guard or Actor Gateway route integration.
+- Current main source `0dc1b27...` has materially advanced route wiring: `src/config.ts` reads/validates optional credential-free HTTPS `GHM_ACTOR_GATEWAY_URL`; `src/http/app.ts` constructs the HTTP Gateway clients and marks multiple operations gateway-required in production (business hours/logo/storage metadata, campaign directory review, saved businesses, capability mutation, registration identity, trust score, etc.). The current Resource API source is not what Render is running. No Render environment values were read; the presence/value of `GHM_ACTOR_GATEWAY_URL` in the live service is not claimed.
+- Current main `src/server.ts` still must be assessed against the runtime principal deployment contract before any deploy; this task did not treat a source-level route wiring review as production runtime identity evidence.
+- The actual gateway service remains a separate Render service. Its previously inspected latest deploy built but failed at startup stage `database_privileges_assertion`; it is not healthy and has no accepted production route target. This task did not trigger a deployment or inspect secret values.
+
+Operational interpretation:
+1. Resource API is process-live on a stale legacy commit; current production route cutovers are not deployed.
+2. Gateway service is not ready, and production DB schema/function grants/default ACL/search_path/ownership prerequisites are not installed. The two sides cannot be switched independently.
+3. The correct order is exact live migration ledger/checksum reconciliation, source-to-route and database dependency mapping, recoverable backup and rollback proof, reviewed migration prefix/batch, then narrowly sequenced database/API/Gateway qualification. Do not deploy current main simply to expose routes while its required database API is absent; those production routes intentionally fail closed and would return service-unavailable or trigger startup failure depending on the component.
+4. Do not read Render secret values, change service environment, manually grant schema/function privileges, deploy either service, apply a migration, or enable product traffic as part of this read-only task.
+
+No production SQL/DDL, migration, role/membership/ACL, credential, secret, Render setting/deployment, payment/consent state, backup or paid resource was changed. No live route/identity assertion is claimed. PR #298 stays draft/unmerged and production manifest stays `[]`.
