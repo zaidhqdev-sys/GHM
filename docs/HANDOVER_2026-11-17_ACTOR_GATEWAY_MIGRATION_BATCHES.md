@@ -5022,3 +5022,51 @@ This is an ancestry merge, not a rebase or squash. No migration SQL, runner, pen
 ### Change boundary
 
 Only branch ancestry was reconciled and this handover is being updated. No production database, SQL, role, membership, grant, ACL, ledger, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — PR #298 migration safety and exact-head review
+
+Re-read the migration-batches handover, PR #298, PR #300, the branch and current `main` before this task.
+
+### GitHub state after ancestry reconciliation
+
+- PR #298 head at review start: `e29525ae43ee6c1386fcfb3f52c0ab12d36df468`.
+- Current `main`: `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Comparison: 259 ahead / 0 behind.
+- GitHub PR metadata now reports `mergeable=true`, open, draft and unmerged. The prior `mergeable=false` state is resolved; this is not merge approval.
+- PR #300 remains separate, open, draft, unmerged, and unchanged at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- Exact-head CI run `#5453` / run ID `44782911923` was found in progress for PR #298 head `e29525a...`. Do not call it passed until its completed result and jobs are inspected.
+- The workflow uses `paths-ignore: '**/*.md'` and `docs/**`; documentation-only updates do not independently trigger CI. The run above is associated with the current PR head and must be inspected rather than assumed from the latest handover commit.
+
+### Migration safety review
+
+Reviewed the exact PR-head source for:
+- `src/db/migrate.ts`
+- `src/db/migration-batches.ts` and tests
+- `src/db/production-pending-migration-allowlist.ts`
+- `src/db/migration-order.ts`
+- `config/pending-migrations.production.json`
+- `config/production-migration-batches.json`
+- `scripts/qualify-production-migration-plan-only.mjs`
+- `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+- CI workflow and production deployment/migrator blocker handovers.
+
+Findings:
+1. The execution manifest is exactly an empty JSON array (`[]`). The batch selector rejects a missing/unknown batch ID and only accepts an exact contiguous pending prefix with exact version/name/checksum. No production migration batch is currently selectable.
+2. The production pending inventory contains 50 ordered entries and is explicitly an inventory guard, not execution authority. It is based on the dated 105-row production snapshot and is not a fresh live ledger reconciliation or authorization.
+3. For the `ghm_db` target, the runner checks the inventory against the live ledger's pending queue, checks all already-applied repository migration checksums/provenance, rejects out-of-order pending migrations, and runs selected migration SQL inside a transaction after migrator identity and SET ROLE checks.
+4. Plan-only mode is separately guarded to NODE_ENV=test, the explicit plan-qualification flag, and localhost; its qualification provisions and drops only a disposable local database, asserts ledger/catalogue invariance, and checks the printed pending versions/checksums. It is not production evidence.
+5. The 17 November capability-governance migration is documented as a post-deployment cutover and the PR body explicitly excludes it from any pre-deployment batch. Its SQL asserts required signed Gateway functions, ownership, SECURITY DEFINER, pinned search_path, Gateway EXECUTE and runtime denial before revoking legacy runtime functions. Do not include it in a production batch before Gateway deployment/readiness.
+6. The production security handovers still identify unresolved live authority issues: no exact current production ledger read, no fresh verified recovery point, bootstrap-granted role memberships/authority edges, and incomplete dedicated Gateway production identity/ACL readiness. These are hard blockers, not items CI can resolve.
+7. CI workflow ignores documentation-only paths. The current PR-head run #5453 is in progress; no exact-head pass is claimed yet.
+
+### Disposition / next gates
+
+- PR #298 remains draft and unmerged despite GitHub mergeable=true.
+- Do not populate the batch manifest, select a batch, execute production SQL, or merge this deployment prerequisite solely on CI success.
+- Next inspect run #5453 jobs and final conclusion, then continue a file-by-file review of the remaining application/privilege qualification changes and reconcile the live ledger/authority/recovery gates only when an authorized safe evidence path exists.
+- PR #300 remains untouched. PayFast remains paused.
+
+### Change boundary
+
+This task was a source/PR/handovers/CI metadata review and this handover update only. No migration SQL, manifest, production database, ledger, role, membership, ACL, credential, secret, Render configuration/service/deployment, paid resource, or PayFast state was changed.
