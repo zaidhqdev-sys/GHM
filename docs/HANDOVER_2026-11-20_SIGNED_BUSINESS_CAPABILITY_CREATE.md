@@ -408,3 +408,37 @@ Reviewed both new SQL migrations, the complete disposable qualification script, 
 - After SQL qualification, design a separate Business Capability direct INSERT/identity-sequence ACL cutover and test it in the disposable harness; preserve current runtime grants until route integration and cutover are qualified.
 
 No production database access/change, migration execution, deployment, CI dispatch, paid resource, new database/service, secret change or recurring process occurred.
+
+
+## Follow-up static harness review — 2026-11-20
+
+Re-read the complete qualification script from its first fixture through cleanup, both SQL migrations, package test registration, and the existing manual cutover SQL.
+
+### Confirmed test ordering and scope
+
+- The harness hard-guards three distinct connection URLs and the exact localhost disposable database name/host before opening pools.
+- It provisions fixtures through the migrator principal under `SET LOCAL ROLE ghm_schema_owner`.
+- It applies the verifier allowlist migration, then the signed create migration, then the pre-existing manual Evidence/legacy-mutation cutover, all through the disposable migrator connection.
+- It then tests signed create, actor provenance, normalized fields, active duplicate rejection, expired assertion, nonce replay, invalid effective period/no-row, inactive Business, inactive Capability, unselectable Capability, payload tampering, forged signature, membership denial, signed replacement/evidence workflows, and the existing runtime wrapper/Evidence privilege boundaries.
+- Cleanup deletes fixture Evidence, Business Capability assertions, Businesses, catalogue Capabilities and accounts, then closes all three pools.
+- The package's `test` command includes the compiled migration contract test. The dedicated PostgreSQL qualification script is registered as `qualify:business-capability-gateway-cutover`.
+
+### Explicit non-coverage retained
+
+The harness's final privilege matrix checks the Evidence INSERT denial and existing wrapper EXECUTE permissions. It does not check:
+- `has_table_privilege('ghm_runtime','ghm.business_capability','INSERT')`;
+- column-level INSERT privileges on `ghm.business_capability`;
+- `ghm.business_capability_id_seq` USAGE/SELECT privileges;
+- corresponding PUBLIC or inherited-role effective access.
+
+This is consistent with the current manual cutover SQL, which revokes Evidence INSERT/sequence privileges and legacy function EXECUTE only. The new signed create migration intentionally does not revoke Business Capability direct grants. This is an outstanding, separately gated cutover—not a passing or completed control.
+
+### Execution limitation
+
+The connected GitHub workflow exposes repository source operations, not the user's Windows checkout or localhost PostgreSQL sockets. The current execution environment also has no mounted GHM checkout. Therefore no package test, TypeScript build, SQL migration, or PostgreSQL qualification was executed in this task. No test result is inferred from static review.
+
+### Next task
+
+The immediate next step remains executing the registered migration contract test and guarded PostgreSQL qualification from the user's existing local checkout, if its already-existing disposable DB and all three principals are available. If unavailable, keep the feature SQL unqualified and request the local command output; do not create a database or use production. Only after a genuine SQL pass should Gateway reader/HTTP/Resource API integration begin.
+
+No production access/change, migration execution, deployment, CI dispatch, paid resource, new database/service, secret change or recurring process occurred.
