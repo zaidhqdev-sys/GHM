@@ -5870,3 +5870,32 @@ Updated `.github/workflows/ci.yml` to include `feat/actor-gateway-production-mig
 At handover write time, the new workflow run had not yet been observed. Check the run's exact head SHA, quality job, PostgreSQL migration execution, npm test output, and `qualify-auth-issuer-cutover` result before claiming qualification. If CI reveals failures, fix those failures and repeat the mandatory handover/PR/branch review before each task.
 
 PR #298 remains draft/open. PR #297 and #300 remain separate draft/open; PR #301 and #302 remain closed/merged. Production batch manifest remains `[]`. No production database, permissions, secrets, Render settings/deployments, paid resources, or payment state changed.
+
+
+## 20 November 2026 — PostgreSQL 18 CI failure: runtime ACL baseline corrected
+
+Reviewed the prior handover, PR #298/#297/#300/#301/#302, actor-gateway branch, exact CI run `44821575978`, quality job logs/steps, runtime privilege verifier/tests, full migrations and the two signed Gateway route/manual cutover files before editing.
+
+The repaired branch trigger successfully ran the full CI against commit `690af68d1d0e67d95b178c90ee65b3748d45d723`. Results before failure:
+- Full 145-migration chain applied successfully to disposable PostgreSQL 18.
+- Production migration plan-only fixture passed.
+- Commercial document authority/approval/payment-consent qualification passed.
+- Auth Issuer principal and empty-privilege baseline passed.
+- Build, Worker bundle and web-quality passed.
+- Actor Gateway principal qualification failed at the Resource API runtime EXECUTE allow-list assertion, before the Actor Gateway-specific ACL check.
+
+Failure evidence: the actual 39-function baseline had two additional still-executable legacy functions: `ghm.update_business_profile(bigint,bigint,jsonb)` and `ghm.update_business_supplier_classification(bigint,bigint,boolean)`. They are intentionally retained during additive Gateway rollout; the corresponding signed wrappers exist, and dedicated manual-only cutover files `20261120010000_revoke_legacy_supplier_classification_runtime.sql` and `20261120020000_revoke_legacy_business_profile_runtime.sql` explicitly defer revocation until route deployment, end-to-end verification and rollback rehearsal. These are not unexpected privileges to revoke now; the runtime stage model was incomplete.
+
+Corrected `src/db/runtime-database-privileges.ts` and tests:
+- Added both exact legacy signatures to the 41-function pre-manual-cutover baseline.
+- Added two distinct, independently staged manual cutover groups matching the existing manual SQL files.
+- Updated the exhaustive stage model from 8 groups / 256 combinations to 10 groups / 1,024 combinations. The fully cut-over state remains 13 reviewed runtime functions.
+- Added explicit tests that both signatures are retained before their cutovers and absent after all manual cutovers.
+
+Commits:
+- Runtime stage model: `2f921e9329a5a294872a3fb74957377080da5822`
+- Exhaustive stage tests: `bf033f98ec6e4153fbdf2fcc30e6d4184dfc167d`
+
+New CI run `44821835864` was queued for exact code commit `bf033f98ec6e4153fbdf2fcc30e6d4184dfc167d` when this note was written. Await its full quality job; specifically confirm migration chain, runtime verifier, Actor Gateway principal qualification, npm test, all downstream disposable cutovers and final SECURITY DEFINER comparison. A prior failed run is not qualification. The docs-only handover commit should not trigger/cancel CI due workflow paths-ignore.
+
+PR #298 remains draft/open. PR #297/#300 remain separate draft/open; #301/#302 remain closed/merged. Production execution manifest remains `[]`. No production SQL/DDL/ACL/role changes, migrations, secrets, Render settings/deployments, paid resources or payment state changed.
