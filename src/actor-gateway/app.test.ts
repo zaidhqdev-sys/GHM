@@ -563,7 +563,7 @@ test('actor gateway derives evidence submitter from verified bearer token',async
  let received:any;
  const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
  const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
-  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},
+  async create(){throw new Error('unused')},async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},
   async submitEvidence(actor,input){received={actor,input};return{} as never;}
  };
  await withServer(identity,async baseUrl=>{
@@ -576,7 +576,7 @@ test('actor gateway rejects evidence submitter identity and unknown fields from 
  let called=false;
  const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
  const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
-  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},async submitEvidence(){called=true;return{} as never;}
+  async create(){throw new Error('unused')},async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},async submitEvidence(){called=true;return{} as never;}
  };
  await withServer(identity,async baseUrl=>{
   const response=await fetch(`${baseUrl}/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${sign(42)}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate',submittedBy:999})});
