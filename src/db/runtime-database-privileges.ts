@@ -47,6 +47,8 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.storage_mark_deletion_pending(bigint)',
   'ghm.transition_business_capability_evidence(bigint, text, bigint, text)',
   'ghm.transition_business_capability_verification(bigint, text, text, bigint, text)',
+  'ghm.update_business_profile(bigint, bigint, jsonb)',
+  'ghm.update_business_supplier_classification(bigint, bigint, boolean)',
   'ghm.update_campaign(bigint, bigint, text, text)',
 ] as const;
 
@@ -101,6 +103,14 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
 ] as const;
 
+const BUSINESS_PROFILE_LEGACY_FUNCTIONS = [
+  'ghm.update_business_profile(bigint, bigint, jsonb)',
+] as const;
+
+const SUPPLIER_CLASSIFICATION_LEGACY_FUNCTIONS = [
+  'ghm.update_business_supplier_classification(bigint, bigint, boolean)',
+] as const;
+
 // Every independently qualified manual runtime cutover is represented here.
 // These are exact legacy signatures revoked by the corresponding SQL files in
 // database/cutovers/. No unrelated function is accepted as a stage transition.
@@ -113,6 +123,8 @@ export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   businessHours: BUSINESS_HOURS_LEGACY_FUNCTIONS,
   trustScore: TRUST_SCORE_LEGACY_FUNCTIONS,
   businessLogo: BUSINESS_LOGO_LEGACY_FUNCTIONS,
+  supplierClassification: SUPPLIER_CLASSIFICATION_LEGACY_FUNCTIONS,
+  businessProfile: BUSINESS_PROFILE_LEGACY_FUNCTIONS,
 } as const;
 
 const normalizeSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
@@ -186,9 +198,9 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
     stage.map(normalizeSignature).sort(),
   );
-  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 39
+  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 41
       || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
-      || stages.length !== 256) {
+      || stages.length !== 1024) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
