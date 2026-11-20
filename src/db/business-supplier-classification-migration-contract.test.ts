@@ -5,6 +5,8 @@ import test from 'node:test';
 
 const migration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql'), 'utf8');
 const legacyRuntimeCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime.sql'), 'utf8');
+const legacyRuntimeRollback = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime_rollback.sql'), 'utf8');
+const qualification = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-business-supplier-classification-postgres.mjs'), 'utf8');
 const signedGatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql'), 'utf8');
 const gatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110260000_gateway_supplier_classification_cutover.sql'), 'utf8');
 const repository = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/repository.ts'), 'utf8');
@@ -36,6 +38,18 @@ test('supplier classification writes require active membership and signed Gatewa
   assert.doesNotMatch(repository, /ghm\.update_business_supplier_classification/);
   assert.match(repository, /must be updated through the authenticated actor gateway/);
   assert.match(http, /supplierClassificationGatewayClient\.update/);
+});
+
+test('supplier legacy runtime cutover has a narrow manual rollback and disposable rehearsal', () => {
+  assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
+  assert.match(legacyRuntimeRollback, /MANUAL ROLLBACK ONLY/);
+  assert.match(legacyRuntimeRollback, /GRANT EXECUTE ON FUNCTION ghm\.update_business_supplier_classification\(bigint,bigint,boolean\)\s+TO ghm_runtime/);
+  assert.doesNotMatch(legacyRuntimeRollback, /TO PUBLIC|TO ghm_actor_gateway|TO ghm_migrator/);
+  assert.match(qualification, /ghm_disposable_test/);
+  assert.match(qualification, /supplierCutoverSql/);
+  assert.match(qualification, /supplierRollbackSql/);
+  assert.match(qualification, /SUPPLIER LEGACY RUNTIME ROLLBACK REHEARSAL PASS/);
+  assert.match(qualification, /SUPPLIER LEGACY RUNTIME RECUTOVER PASS/);
 });
 
 test('public profile and directory expose only the canonical supplier boolean', () => {
