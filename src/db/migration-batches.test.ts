@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { selectProductionMigrationBatch, type MigrationBatch } from './migration-batches';
+import { assertProductionMigrationBatchCutoverDependencies, selectProductionMigrationBatch, type MigrationBatch } from './migration-batches';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 
 const migrations = [
@@ -73,7 +73,7 @@ test('allows a completed signed cutover and blocks an already-applied incomplete
     [replacement],
   );
   assert.throws(
-    () => selectProductionMigrationBatch([replacement], new Set([cutover.version]), batch([replacement]), 'gateway-foundation-01'),
+    () => assertProductionMigrationBatchCutoverDependencies([], new Set([cutover.version])),
     /without signed replacement/,
   );
 });
