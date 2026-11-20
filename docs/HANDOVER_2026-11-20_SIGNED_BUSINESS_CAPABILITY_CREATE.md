@@ -580,3 +580,16 @@ Ask for metadata-only inspection of:
 Use existing installed PostgreSQL services and previously provisioned local DBs only. Do not start/stop services, create roles/databases, generate secrets, modify env files, or use production credentials without establishing the existing setup. The earlier remembered local PayFast qualification DB on PG18 port 5433 is a separate database and is not automatically the required ghm_disposable_test.
 
 Static TypeScript build and focused migration contract test are confirmed passed (5/5). PostgreSQL qualification is still NOT RUN. No SQL migration, database creation, role creation, secret generation, deployment, CI dispatch, paid resource or production operation occurred.
+
+
+## Corrected local qualification setup source from prior handovers — 2026-11-20 03:15 UTC
+
+The user correctly pointed out that the existing setup is documented in prior handovers. Re-reading `docs/GHM_CURRENT_STATE.md` and prior context recovered the key fact: the established local qualification environment explicitly uses the verified `C:\GHM\.env` file via the process environment variable `$env:DOTENV_CONFIG_PATH`. The previous checks ran `node --require dotenv/config` without setting this path, so they loaded dotenv's default `.env` resolution from `C:\GHM-main` rather than the established qualification env file. Therefore the earlier MISSING results for Actor Gateway URL, assertion secret, database name and host were false negatives about the intended environment; they did not establish that the documented `C:\GHM\.env` lacks those values.
+
+User's latest machine output confirms both Windows PostgreSQL services are Running and local listeners exist on ports 5432 and 5433. Existing prior local notes identify PostgreSQL 18.6 and a separate PayFast qualification database on PG18/5433; do not assume that DB is `ghm_disposable_test`. Prior handover records specifically establish `C:\GHM\.env` as the source path; use it, not newly created env files.
+
+### Correct next action
+
+In the user's existing `C:\GHM-main` PowerShell session, set only the current-process variable `$env:DOTENV_CONFIG_PATH = 'C:\GHM\.env'`, then run the Node presence-only check with `node --require dotenv/config`. Do not print any URLs or signing secret. Check all six required variables, three URL distinctness, and exact `ghm_disposable_test` / `localhost` guards. If those pass, run the existing guarded qualification script using the same `DOTENV_CONFIG_PATH` in that PowerShell session. If a required value is missing, stop and inspect the existing documented file/configuration without modifying it. Do not create databases, roles, env files or secrets, do not use production credentials, and do not change PostgreSQL services.
+
+The focused static migration contract test passed 5/5 and TypeScript build passed. PostgreSQL qualification remains NOT RUN pending use of the correct existing env file. No SQL migration, DB creation, role creation, secret generation, service changes, deployment, CI dispatch, production operation or paid resource occurred.
