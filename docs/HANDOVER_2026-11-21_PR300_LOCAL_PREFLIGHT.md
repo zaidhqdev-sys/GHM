@@ -204,3 +204,15 @@ Read the user's uploaded 670-line PowerShell transcript. It confirms:
 - No conflict file has been resolved or staged by the user in the supplied transcript; merge remains paused.
 
 No merge commit, push, PR merge, production DB migration, manual production cutover, ACL/role/secret/Render configuration change, deployment, or payment activation occurred.
+## 21 November 2026 — PR #300 concrete conflict-resolution plan prepared
+
+Fresh source review repeated before this task: re-read both PR #300 preflight and canonical migration-batches handovers; re-fetched PR #300/#298/#297 metadata and the exact current main and feature source files. PR #300 remains open/unmerged at feature head 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700; local merge is still paused with three unresolved files.
+
+Confirmed source-side resolutions:
+- src/db/runtime-database-privileges.ts: use exact current main version (43 baseline functions, 10 independent groups, 1,024 states). Feature version is stale (39 / 8 / 256) and has removed the capabilityGovernance group and split registration write/read incorrectly.
+- src/db/runtime-database-privileges.test.ts: use exact current main test as the base (43 / 10 / 1,024 and separate registration write/read stage tests). Feature's assertion that capability-governance legacy functions are absent from the pre-cutover baseline is not compatible with main's current baseline. If adding a specific assertion, assert these three functions are in the baseline and are absent only after the capabilityGovernance group is cut over.
+- scripts/qualify-capability-catalogue-governance.mjs: main is the correct base for the latest route and Resource API/service contract. Feature adds useful typed gateway row mapping/helpers, both legacy create denial/version-probe checks, and explicit gateway-vs-runtime privilege assertions. Reconcile those additions onto main rather than taking either side wholesale. Preserve main's Gateway non-admin create denial; feature's service-layer non-admin denial may also be retained as additional coverage. Use one return shape consistently: helper-mapped camelCase objects or raw PostgreSQL snake_case rows.
+
+Recommended safe local sequence: resolve the two TypeScript files to origin/main in the working tree without staging, inspect the diff, then reconcile the script. Use git restore --source=origin/main --worktree -- <two TypeScript paths>; this writes main's exact versions to the worktree but does not stage. Do not use git restore on the script. After verifying all three files contain no conflict markers, run focused unit tests. Stage only after review.
+
+No local worktree edits have been made by the assistant. No merge commit, push, PR merge, production operation, deployment, or paid resource change occurred.
