@@ -70,3 +70,16 @@ Exact-head quality for commit `8f619799c07aab2ca7a070ccaf10b6d06444a9a1` reached
 Updated the script on PR #302 head `96d5807346465adccf0dc60a4b7330ff7fd08554`: all post-cutover positive create/update/lifecycle mutations now use the signed Actor Gateway wrappers; the non-admin denial is exercised through the Gateway; direct runtime calls to legacy create RPCs now assert `permission denied`. Existing forged assertion, replay, operation/context substitution, direct SQL hierarchy, role separation, and runtime privilege boundary tests remain. Static review confirms no `service.createDraft`, `service.updateDraft`, or `service.transition` mutations remain in this post-cutover qualification script.
 
 PR #302 remains draft/open/unmerged and requires exact-head CI. No production SQL, role/ACL, Render settings/deploy, secret, payment state, or paid resource changed. PR #301 remains blocked until PR #302's corrected migration and qualification chain passes, then its own exact-head CI must be rerun.
+
+## PR #302 CI run #5486 — capability harness advanced; final stale privilege expectation corrected
+
+Exact-head commit `96d5807346465adccf0dc60a4b7330ff7fd08554` CI run #5486 completed:
+- Cloudflare Pages: passed
+- web-quality: passed
+- quality: failed at the final runtime privilege matrix assertion in `scripts/qualify-capability-catalogue-governance.mjs:384`.
+
+Full log confirms the gateway-only test path now passes all functional checks: Gateway admin create/update/lifecycle positive; non-admin denial; context/payload substitution; forged assertion; replay; operation binding; runtime legacy create/version-bypass denial; direct SQL hierarchy cycle and duplicate slug denial; parent-retirement guard; deprecate/reactivate/retire replacement; retired terminal state; direct runtime update/delete denial; Gateway principal direct function denial.
+
+The final matrix still expected runtime `can_create`, `can_update_draft`, and `can_transition` to be true (negated in the assertion), even though the manual cutover intentionally revokes these legacy runtime RPCs. The observed disposable database values were all false for runtime table INSERT/UPDATE/DELETE, legacy create/update/transition EXECUTE, and Gateway list/create/update/transition EXECUTE. The expected state is therefore all ten false for the runtime connection after cutover.
+
+Corrected only the stale final assertion: it now fails if any of those ten privileges are true. No runtime EXECUTE was restored and no Gateway privilege was weakened. New PR #302 head: `67859370910984799b12df802e53bf891da1d668`. Exact-head CI has been triggered and is pending. PR remains draft/open/unmerged. No production database, Render environment/deploy, secrets, payment state or paid resource changed.
