@@ -3586,3 +3586,45 @@ This correction does not assert that production qualification has passed. The in
 Continue qualifying the implementation and its prerequisites from source, tests, existing handovers and controlled read-only evidence. Do not submit/deploy the already staged Render form as part of this review, and do not weaken fail-closed checks. Once the defined qualification evidence is complete, the owner can proceed with the already selected single-service deployment.
 
 No Render form/service/configuration, deployment, database, migration, role/ACL, credential, secret, payment state, PR state or paid resource was changed by this correction.
+
+
+## 20 November 2026 — continued contiguous migration-prefix trace: identity context and business-domain gateway surfaces
+
+This task began by rereading the latest Actor Gateway hosting handover and the PR #298 migration handover. The owner corrected the previous checkpoint's description of deployment: the single Free Render service is deliberately staged and undeployed until qualification is complete. That correction is recorded immediately above; hosting selection is settled for early access and is not a current cost/approval blocker.
+
+Continued source inspection from the seventh through twenty-sixth inventory entries (versions 20261110220000 through 20261111170000). This is a source-level contract trace only; it does not claim any of these migrations are applied in production.
+
+### Additional migration dependencies and surfaces
+
+| Migration range | Source-level addition / transition | Qualification implication |
+|---|---|---|
+| `20261110220000` | Adds gateway-only actor self-identity read, initially guarded by the gateway login and caller-supplied actor ID. | Later replaced by signed assertion operation `actor.identity.read`; the early overload must not be treated as final. |
+| `20261110230000`–`20261110233000` | Adds private Business registration identity read and write wrappers. The write migration repairs the existing upsert's ambiguous `ON CONFLICT (business_id)` target by using the named primary-key constraint. | Early gateway wrappers use the login-only assertion. The registration read/write functions are replaced with signed, operation-specific assertions in `20261111050000`. |
+| `20261110240000` | Adds a database trigger serializing Capability hierarchy changes and enforcing parent/cycle/replacement/lifecycle invariants at the database boundary. | This is a schema invariant prerequisite for safe capability mutations, not merely a gateway endpoint. It revokes direct execution of the trigger function from application roles. |
+| `20261110265000` | Restores the Business profile compatibility contract, adds paired latitude/longitude columns and range/pair constraints, and replaces the profile update function with a validated patch implementation supporting historical aliases. | This is a Business data/API contract migration that precedes the profile gateway cutover; inspect all downstream Connect/Resource API field expectations before treating it as independently deployable. |
+| `20261110270000` | Adds gateway Business profile update wrapper and revokes direct `ghm_runtime` execution of the legacy profile update function. | Intermediate wrapper uses login-only actor guard; signed assertion replacement is `20261111040000`. |
+| `20261111040000` | Extends signed assertion operation set to `business.profile.update`, replaces the profile wrapper with assertion/context-bearing signature. | Profile mutation identity is cryptographically bound, but exact request-context binding is strengthened in the next migration. |
+| `20261111050000` | Extends signed assertion operation set to registration read/write and actor self-identity read; replaces all three wrappers with signed assertion signatures. | The source boundary for these operations is no earlier than this migration. |
+| `20261111060000` | Replaces the v1 assertion payload with v2, binding the signature to the exact operation context JSON and enforcing context equality in each wrapper. The signed payload includes actor, operation, issue time, nonce and hex-encoded context. | This is a material security boundary: actor+operation signatures alone are insufficient for request-argument integrity. Qualify canonical JSON/context construction between Node gateway and SQL for every operation; preserve one-use nonce and 60-second expiry semantics. |
+| `20261111070000` | Adds signed gateway wrappers for Business Capability assertion replacement, verification transitions and evidence review/submission; extends the allowed operation catalogue. | Adds multiple sensitive mutation routes and role/business authorization paths. Must qualify owner/member/admin distinctions, evidence visibility and payload-context equality end to end. |
+| `20261111100000` | Adds signed private Saved Business list/create/delete gateway operations, with actor-scoped list results. | Qualify actor ownership and exact operation context for each mutation; legacy runtime grants are explicitly retained pending a separate route cutover. |
+| `20261111130000` | Adds signed Business Hours replace/read gateway operations and a public approved-business hours projection. | Distinguishes private member reads/mutations from public approved-business reads. Qualify role rules and public visibility. |
+| `20261111140000` | Adds Business Hours read projections. | Read-model/API consumer dependency; keep distinct from private write authority. |
+| `20261111150000` | Adds signed Trust Score calculation operation. | Calculation is a sensitive gateway write; qualify exact business context and caller authorization. |
+| `20261111160000` | Adds signed Business Logo object binding operation. | Depends on the storage object/provider workflow and canonical object lifecycle; qualify object ownership, pending deletion/cleanup and replacement semantics before route cutover. |
+| `20261111170000` | Adds signed Trust Score reads and public projections for approved businesses. | Distinguishes authenticated member access from public approved-directory projections; qualify filtering and read response contract. |
+
+### Important sequencing conclusions
+
+1. The initial gateway migrations from 20261110210000 through 20261110270000 contain transitional login-only wrappers. Their presence in a migration prefix does not mean the complete signed-assertion API is ready.
+2. The identity hardening is layered: signed actor identity (20261111020000+), operation binding, exact request-context binding (20261111060000), then domain-specific signed wrappers. The gateway implementation and database migration versions must agree on the same v2 context format and canonical serialization.
+3. The gateway surface is broader than the initial capability/supplier/profile functions. By 20261111170000 it includes identity, registration, Business Capability/evidence, Saved Business, Business Hours, Trust Score and Logo binding. Do not derive a first production prefix solely from the capability/supplier pair if active Resource API routes consume later operations.
+4. Public read projections remain callable by `ghm_runtime` by design in several migrations; private reads and mutations are restricted to `ghm_actor_gateway`. The runtime route catalogue must be reconciled against these distinctions before any privilege cutover. A blanket revoke or blanket grant would be unsafe.
+5. Several migrations explicitly retain legacy runtime grants until separately approved HTTP/resource route cutover. Conversely, other migrations revoke runtime execution immediately. Build a per-function route/privilege transition matrix; do not infer a global “all runtime access revoked” state from the presence of signed gateway wrappers.
+6. Business Logo binding depends on the storage metadata/provider workflow migrations and object lifecycle rules; Business Hours and Trust Score include public projection contracts; Business Capability evidence has distinct submit/review authority. These are separate dependencies, not interchangeable generic gateway readiness.
+
+### Next source-review segment
+
+Continue through the next inventory segment (20261111210000 onward), focusing on the runtime revocation migrations and token-bound recovery/QuoteFlow-related entry points. Cross-reference each affected function with current Resource API/Auth routes and current handover decisions. Keep the manifest empty until the exact current production ledger, recoverable backup, provider-authorized migrator authority and complete route/API qualification are established.
+
+No source, migration, manifest, PR, branch ancestry, production database, role/ACL, secret, Render form/service/configuration/deployment, payment state or paid resource was changed. The only change in this task is this handover record.
