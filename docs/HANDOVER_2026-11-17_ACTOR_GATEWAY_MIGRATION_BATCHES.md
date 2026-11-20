@@ -5108,3 +5108,45 @@ No immediate source change is justified by this static review. The scripts delib
 ### Change boundary
 
 This task was a read-only source/PR/CI review and handover documentation update. No SQL, application code, migration inventory, execution manifest, database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — PostgreSQL 18 delegated CREATEROLE authority reproduction
+
+Re-read the migration-batches handover, PR #298, PR #300, branch comparison, role/service dependency map, migrator authority remediation plan, legacy runtime authority findings, and exact CI workflow before this task.
+
+### Current PR/CI state
+
+- PR #298 remains open, draft, unmerged, and GitHub reports mergeable=true.
+- Branch is 261 commits ahead / 0 behind current main.
+- PR #300 remains separate, open, draft, unmerged and untouched.
+- CI run #5455 (run ID `44783704515`) is associated with PR #298's pre-handover head `5926253f9acc8031cc867e3eebf6af2878b5a1f0`; its `web-quality` job passed. Its `quality` job is in progress. Migration plan-only, commercial document consent, commercial workflow, isolated Auth Issuer principal, isolated Actor Gateway principal, Worker smoke, storage, Connect Business, registration, storage lifecycle and full Node test suite steps completed successfully. The job has advanced to Campaign/directory-review signed Gateway qualification; Business Capability lifecycle is next. Do not call the whole run green until the final job conclusion is available.
+- Documentation-only commits are ignored by CI path filters, so this handover update does not itself start a new run.
+
+### PostgreSQL 18 delegated CREATEROLE finding reproduced in CI
+
+Inspected the exact `.github/workflows/ci.yml` step named `Reproduce PostgreSQL 18 delegated CREATEROLE membership behavior`. The step runs on the disposable PostgreSQL 18 CI service as bootstrap `postgres` and:
+1. Creates a non-login `ghm_role_creator` with CREATEROLE.
+2. Executes `CREATE ROLE ghm_role_created LOGIN NOINHERIT` while `SET ROLE ghm_role_creator` is active.
+3. Asserts PostgreSQL records the new role's membership edge with grantor `postgres`, ADMIN OPTION=true, SET=false and INHERIT=false.
+4. Attempts `REVOKE ghm_role_created FROM ghm_role_creator` while still acting as `ghm_role_creator`.
+5. Asserts the postgres-granted membership edge still exists after that revoke attempt.
+6. Drops the isolated test roles.
+
+GitHub reports this step completed successfully in run #5455. This is direct reproducible PostgreSQL 18 CI evidence for why a CREATEROLE delegate cannot remove a bootstrap-granted membership edge merely by issuing REVOKE as itself. It supports the existing remediation plan's stop rule: obtain provider/bootstrap authority for the narrowly scoped edge correction; do not improvise revokes through `ghm_db_user` or application roles.
+
+### Role authority disposition
+
+The six production bootstrap ADMIN OPTION memberships held by `ghm_db_user` remain individually dependency-mapped; they are not a bulk revoke list. The live migrator contract still requires exactly one direct SET-capable membership to `ghm_schema_owner`, no incoming `ghm_migrator` membership, no direct relation/sequence ACLs, and no database/schema CREATE for the login. The current live state documented in the role remediation plan fails those requirements: the bootstrap incoming `ghm_db_user -> ghm_migrator` ADMIN OPTION edge and explicit migrator ACLs remain. No production connection as the dedicated migrator identity or exact live ledger export has been established.
+
+No source change or production action is justified by this reproduction. It validates the reason for the existing provider-authority gate; it does not authorize any role/ACL mutation.
+
+### Next checkpoints
+
+- Inspect completion of CI #5455, particularly Campaign/directory-review, Business Capability lifecycle, catalogue governance, legacy RPC cutover, Business Capability signed cutover, the remaining Gateway cutovers, runtime boundary, migration audit policy and Auth Issuer cutover/inventory comparisons.
+- Continue source review of the remaining qualification scripts against their role/route contracts.
+- Keep PR #298 draft/unmerged, execution manifest exactly `[]`, and do not run production SQL, migrations, role changes or ACL changes.
+- Keep PR #300 separate and untouched. PayFast remains paused.
+
+### Change boundary
+
+This was a read-only source, PR, workflow, and CI status review plus this handover update. No production database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, migration inventory, execution manifest, paid resource, or PayFast state was changed.
