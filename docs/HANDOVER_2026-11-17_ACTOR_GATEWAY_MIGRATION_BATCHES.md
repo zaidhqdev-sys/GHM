@@ -5528,3 +5528,40 @@ Re-read the exact `main` source and the Render environment contract. The source 
 No source change or redeploy was made in this review. Do not change database credentials, JWT material, assertion secret, or other service variables based on this log. The next useful evidence is the local PORT-only read (to distinguish local configuration from Render) and, separately, inspection of whether the Render service has a manually-created PORT row. If present, remove that entire override so Render can inject its own value; if absent, do not invent a setting and obtain the runtime value through a temporary secret-safe diagnostic. Auto-deploy remains OFF; any retry is manual only.
 
 PR #298 remains open/draft/unmerged at the reviewed head; PR #300 and #297 remain separate open/draft/unmerged PRs. No production database, migration, SQL, role/ACL, secrets, paid resources, or other Render configuration changed.
+
+## 20 November 2026 — second Actor Gateway Render startup failure after PORT override removal
+
+The owner confirmed that a manually-created PORT environment variable had been added because an earlier assistant example listed it. The assistant accepted responsibility for that misleading instruction. The owner deleted the manually-created PORT row and manually redeployed the same Free Frankfurt service; no other environment variable was intentionally changed.
+
+### Observed deployment
+
+- Render service: ghm-actor-gateway, service ID srv-dc09scl9el5s73fdgj1g.
+- Deployment: dep-dc0a1t6tlv9c739kgmbg, 20 November 2026, source commit ddb31ff59ab470973edf60a5078a75e5f962f803 (main).
+- Environment update triggered the deploy; build completed successfully with npm ci --include=dev && npm run build.
+- The process started with npm run start:actor-gateway, then exited status 1.
+- The prior explicit PORT must be a valid TCP port error is no longer present.
+- Current application log only reports {"event":"actor_gateway_startup_failed","error":{"name":"Error"}}; it does not include the safe error message or failure stage.
+- Render's Build not found panel is not a runtime diagnostic and does not explain the startup exit.
+- Owner's local PowerShell check returned PORT=[]; this is only the local Windows environment and is independent of Render's injected runtime port.
+
+### Source and prerequisite review
+
+Re-read exact deployed main source src/actor-gateway/server.ts (blob 2ed8e9ffa36ead9eeb9a091f4b7061ae78ee6ceb) and its database guards:
+
+1. The process reads required configuration and constructs the PostgreSQL pool.
+2. start() first queries the connected database identity and calls assertActorGatewayDatabaseIdentity.
+3. It next reads the live privilege matrix and calls assertActorGatewayDatabasePrivileges.
+4. Only after both database assertions pass does it call server.listen(port).
+
+The startup catch deliberately logs only the JavaScript error name, so the supplied logs cannot distinguish a connection error, identity-assertion failure, or privilege-assertion failure. Do not claim a specific runtime failure without a safe diagnostic.
+
+The latest recorded production catalogue evidence in the existing Render environment contract says ghm_actor_gateway had no ghm schema USAGE and no Gateway functions installed. The privilege assertion explicitly requires schema USAGE and an exact Gateway function allowlist, among other restrictions. In the absence of any subsequently authorized production migration/ACL change, this is a known unresolved prerequisite and a likely reason the service cannot yet become healthy after the PORT issue is removed. This remains a hypothesis about the current failed process until the live assertion output is safely identified.
+
+### Safety and next action
+
+- Do not add PORT again; Render supplies it.
+- Do not change any other Render variable, reveal/re-enter masked secrets, alter DB credentials, run production SQL, manually grant schema/function privileges, or change production roles/ACLs.
+- PR #298 remains open/draft/unmerged at fdb2d6b58ac83f37f48e483869134e6882182571; its production migration manifest remains empty. PR #300 remains separate/open/draft at 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700; PR #297 remains separate/open/draft at 304da520c5cfe1e77b479a97dfdd9d951fa6e245. No PR was merged or rebased.
+- Render service details confirm auto-deploy remains OFF, plan Free, Frankfurt, one instance, branch main.
+- No production DB, migration ledger, SQL, role/ACL, secret, payment state, or paid resource was changed during this diagnosis.
+- Next diagnostic should be a narrowly-scoped source change on the appropriate review branch that reports a safe startup stage and stable error classification (and only non-secret assertion failure identifiers), rather than logging raw connection details or environment values. Qualify exact-head CI, then deploy only through the existing manual-deploy process once the source change is deliberately integrated. Alternatively, resolve the already-known DB prerequisites through the reviewed migration path; do not bypass the production migration/backup gates.
