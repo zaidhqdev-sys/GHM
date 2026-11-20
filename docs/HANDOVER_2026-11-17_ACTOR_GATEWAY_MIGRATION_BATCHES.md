@@ -4949,3 +4949,25 @@ Required SQL qualification on the existing disposable PostgreSQL harness: valid 
 - Do not add a production batch or run any production migration.
 - No deployment, Render change, credential/secret change, paid resource, new database, or recurring process is authorized by this handover.
 - The previous conversational plan to implement SQL first is retained only as a task sequence; implementation must wait until the table DDL and repository contract are fully inspected on the dedicated feature branch.
+
+## Business Capability signed-create source inspection — 2026-11-20
+
+Inspected the canonical current-main sources before implementation. No SQL or application code was changed in this pass.
+
+### Confirmed current contracts
+
+- Resource API POST is `POST /api/v1/business-capabilities`; it parses and permits exactly `businessId`, `capabilityId`, `proficiencyLevel`, `description`, `effectiveFrom`, `effectiveUntil`, and `sourceReference`. It currently calls `service.createBusinessCapability(context, input)` directly and does not consult `gatewayRequired`. This confirms the production-required bypass.
+- The create contract excludes caller-controlled lifecycle/verification fields. `createdBy`, assertion status/basis, verification status, submitted/verified timestamps and verifier fields are server-governed.
+- The canonical table's relevant uniqueness behavior is exercised by the existing replacement SQL: `ON CONFLICT (business_id, capability_id) DO UPDATE`. Replacement can reactivate an existing withdrawn row. A new create operation must not reuse that upsert path; a plain INSERT should preserve duplicate rejection for either active or withdrawn existing rows.
+- Existing signed SQL migration `20261111070000_add_signed_business_capability_mutations.sql` recognizes `business.capability.create` in the assertion verifier's operation allowlist, but its Gateway reader's TypeScript `Operation` union and interface have only replace, verify, evidence review and evidence submit. No signed create SQL wrapper or reader method is present.
+- Existing assertion verification checks `session_user='ghm_actor_gateway'`, HMAC, 60-second expiry, active account, and nonce replay. The create wrapper must bind its full canonical payload in the signed context and derive actor only from the verified assertion.
+- Existing replacement SQL checks active Business membership and owner/administrator role, verifies selectable active catalogue entries, and performs broad replacement/upsert. It is not safe to call for single-item create.
+- Existing manual cutover `20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` revokes Evidence INSERT/sequence access and legacy mutation function EXECUTE. It does not revoke `ghm.business_capability` INSERT or its identity sequence. Do not infer that those create ACLs are already cut over.
+
+### Remaining pre-implementation inspection
+
+The table's original CREATE TABLE migration and exact constraints/defaults/indexes, plus the full `PostgresBusinessCapabilityRepository.createBusinessCapability` implementation and its existing lifecycle qualification fixture, still need to be fetched and reviewed together. The signed create SQL must match that repository's exact normalization, date validation and returned-row mapping before implementation.
+
+### Scope
+
+Keep this as a separate Resource API / Actor Gateway feature branch and PR, based on current main. It is not part of PR #298's production migration inventory. No migration batch, production execution, deployment, Render change, secret change, new database/service, paid resource, or recurring process is authorized. Preserve the existing runtime INSERT/sequence grants until the new signed route and later manual cutover are separately qualified.
