@@ -5070,3 +5070,41 @@ Findings:
 ### Change boundary
 
 This task was a source/PR/handovers/CI metadata review and this handover update only. No migration SQL, manifest, production database, ledger, role, membership, ACL, credential, secret, Render configuration/service/deployment, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — commercial PostgreSQL qualification review
+
+Re-read the current migration-batches handover and PR #298/#300, re-fetched the PR #298 changed-file list, and reviewed the commercial document-consent and commercial-workflow qualification scripts plus plan-only qualification and the migration cutover.
+
+### PR and CI state at review
+
+- PR #298: open, draft, unmerged; GitHub reports mergeable=true; 260 ahead / 0 behind; 31 changed files.
+- PR #298 head: `be173dbe72b481fda53d403d490e2b96cb57af16`.
+- PR #300 remains separate and untouched.
+- Exact-head CI run #5454 (run ID `44783349878`) is in progress. No pass is claimed yet.
+- The CI workflow ignores documentation-only changes; inspect the existing run and its actual jobs rather than assuming this handover update triggers another run.
+
+### Commercial document consent qualification review
+
+The PostgreSQL qualification uses the migrator connection only to provision rollback-only disposable fixtures and inspect catalogues, and uses the isolated `ghm_actor_gateway` login for authority grant, approval and payment-preparation calls. It checks six exact SECURITY DEFINER functions for schema-owner ownership, pinned `pg_catalog, ghm, pg_temp` search_path, no runtime/migrator/PUBLIC EXECUTE, and Gateway EXECUTE. It checks five evidence tables for no direct runtime or Gateway table privileges, verifies enabled UPDATE/DELETE/TRUNCATE immutability triggers, and exercises append-only rejection in a rolled-back transaction. Payment preparation is statically checked to require explicit acceptance and approved document status, create pending checkout evidence, make no provider/network calls, and not activate subscriptions.
+
+### Commercial workflow qualification review
+
+The end-to-end disposable PostgreSQL script creates a synthetic founder/business/plan/subscription/document fixture through the migrator connection and uses the separate Gateway login for signed authority grant, exact-version approval and consent-backed payment preparation. It exercises replay, forged HMAC, non-founder, expired assertion, false consent, unapproved version and revoked authority denial, and idempotent payment retry. Final assertions require one consent and payment attempt, an approved exact document version, subscription still `trialing`, and payment still `pending_checkout`. It explicitly reports no production database touched and no provider API call.
+
+Review boundary: this is CI test code evidence; the qualification has not been run against production and does not activate payment processing.
+
+### Plan-only and production cutover review
+
+- Plan-only fixture is created as local disposable `ghm_db`, seeds the 95-repository-migration applied prefix plus 10 documented retained historical ledger rows, and verifies all 50 pending inventory entries and SHA-256 checksums are printed.
+- It compares ledger and GHM catalogue counts before/after and drops the disposable database in `finally`. The runner requires NODE_ENV=test, explicit qualification flag, and localhost for the plan-only exception. The run is not production ledger evidence.
+- The production execution manifest remains `[]`; the exact batch selector is not authorized to execute a batch.
+- The 17 November capability-governance revocation migration is explicitly a post-deployment cutover. It checks the signed Gateway verifier and operations' ownership, SECURITY DEFINER, pinned search_path and role privileges before revoking legacy RPC execution. It must not be moved into a pre-deployment batch.
+
+### Findings and remaining gates
+
+No immediate source change is justified by this static review. The scripts deliberately distinguish migrator fixture setup from Gateway operations, and the payment tests preserve non-activation. Remaining review must inspect the exact-head CI result and other qualification coverage, plus resolve the already-documented live production blockers: refreshed live ledger/checksum reconciliation, verified recoverable backup, Render role membership/grantor authority edges, and dedicated Gateway production identity/ACL/readiness. Do not fill the execution manifest or execute migrations while these remain unresolved.
+
+### Change boundary
+
+This task was a read-only source/PR/CI review and handover documentation update. No SQL, application code, migration inventory, execution manifest, database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
