@@ -246,9 +246,24 @@ export const registerBusinessCapabilityRoutes = (
           res.status(400).json({ error: 'invalid_request' });
           return;
         }
+        if (gatewayClient || gatewayRequired) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+            res.status(401).json({ error: 'unauthorized' }); return;
+          }
+          if (!gatewayClient) { res.status(503).json({ error: 'service_unavailable' }); return; }
+          const result = await gatewayClient.create(authorization.slice(7).trim(), input);
+          res.status(201).json(result); return;
+        }
         const capability = await service.createBusinessCapability(context, input);
         res.status(201).json({ capability });
       } catch (error) {
+        if (error instanceof CapabilityMutationGatewayError) {
+          res.status(error.status === 400 ? 400 : error.status === 403 || error.status === 404 ? 404 : 503)
+            .json({ error: error.status === 400 ? 'invalid_request' : error.status === 403 || error.status === 404 ? 'not_found' : 'service_unavailable' });
+          return;
+        }
+        if (gatewayClient || gatewayRequired) { res.status(503).json({ error: 'service_unavailable' }); return; }
         handleError(error, res);
       }
     },
