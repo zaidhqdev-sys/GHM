@@ -6455,3 +6455,29 @@ PR #298's exact-head CI is green. Production execution remains blocked independe
 Do not infer an exact production ledger count of 105 from `pg_stat_user_tables`. Do not run the production migration runner, change ACLs/roles, provision secrets, deploy services, or alter the empty production manifest as a workaround.
 
 No production SQL/DDL, migration, role attribute, role membership, ACL, credential, secret, Render setting/deployment, payment state, backup, or paid resource was changed during this task. PR #298 remains draft/unmerged; production manifest remains `[]`.
+
+
+## 21 November 2026 — follow-up pre-task repository/PR/branch reconciliation
+
+Mandatory pre-task review for this task:
+- Re-read this migration-batches handover on `feat/actor-gateway-production-migration-batches`.
+- Re-read open PR records for #298, #297 and #300; checked PR #298 review submissions and inline review threads (none returned).
+- Rechecked the branch catalogue, current main ref, and compared `main` with `feat/actor-gateway-production-migration-batches`.
+- Re-read the production pending inventory, empty execution manifest, and production migration dependency matrix.
+- Reviewed the prior exact-head CI and Render role/ledger-access findings recorded above.
+
+### Branch and PR findings
+
+- PR #298 remains open/draft/unmerged.
+- PR #298 feature branch remains `feat/actor-gateway-production-migration-batches`.
+- GitHub compare reports this branch is 379 commits ahead of `main`, 0 behind; merge base is current main `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. This supersedes the older November 18 handover note describing 142 ahead / 4 behind.
+- PR #297 remains a separate open/draft PR. Its current PR description states a 48-entry pending inventory, derived from a November 16 ledger reconciliation of 143 repository migrations against 105 ledger rows, with 0 unexplained checksum mismatches and 0 name mismatches. The PR description also states the manifest is empty and production execution is not authorized.
+- PR #300 remains a separate open/draft signed Business Capability implementation. Its description explicitly says it is not merged and no production migration/cutover has run.
+- PR #298's checked-in `config/pending-migrations.production.json` contains 50 entries. Its `config/production-migration-batches.json` remains exactly `[]`.
+- The 48-entry statement in PR #297 and 50-entry inventory in PR #298 are not interchangeable. The exact current PR #297 head/branch inventory was not independently established in this task, and the live production ledger/checksum/order cannot be refreshed using the current Render connector identity. Therefore no attempt was made to reconcile the two inventories by guesswork.
+
+### Decision and next action
+
+The source-side PR #298 inventory remains a branch-specific record, not live execution authority. The 48-entry PR #297 reconciliation is a dated exported-ledger result, not a fresh live ledger. The only safe next action is to identify PR #297's exact current head and compare its full inventory/checksum evidence with PR #298's 50 entries, then obtain a fresh authorized live ledger export through the provider-approved path. Do not select or add a production batch until those records are reconciled.
+
+No source code, migration SQL, pending inventory, execution manifest, database object, ACL, role, membership, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed in this task. PR #298 remains draft/unmerged and its production batch manifest remains `[]`.
