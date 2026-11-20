@@ -61,3 +61,12 @@ It then failed at `scripts/qualify-capability-catalogue-governance.mjs:148`: the
 Do not restore runtime EXECUTE or weaken the manual cutover. Next correction should be isolated to the disposable qualification harness: exercise post-cutover positive create/update/lifecycle through the signed Gateway SQL wrappers, and assert direct runtime calls to legacy RPCs are denied. Keep pre-cutover application-level service authorization assertions where their setup genuinely runs before the cutover; otherwise adjust test ordering explicitly and document it. Review all remaining `service.createDraft`, `service.updateDraft`, `service.transition` and direct runtime legacy RPC calls in the script before editing.
 
 PR #302 remains draft/unmerged with quality failed; PR #301 remains draft/unmerged and must not deploy yet. No production SQL, role/ACL, Render setting/deploy, secrets, payment state or paid resource changed.
+
+
+## Qualification harness correction — gateway-only capability cutover
+
+Exact-head quality for commit `8f619799c07aab2ca7a070ccaf10b6d06444a9a1` reached `Qualify system-admin Capability catalogue governance` after passing prior migrations, actor-gateway principal checks, runtime stage validation, signed assertions, and Business Capability lifecycle qualification. It failed because `scripts/qualify-capability-catalogue-governance.mjs` called runtime-backed `service.createDraft` after the manual cutover had intentionally revoked runtime EXECUTE on legacy capability governance RPCs (`permission denied for function create_capability_draft`). This is a stale test-harness expectation, not a reason to restore runtime EXECUTE.
+
+Updated the script on PR #302 head `96d5807346465adccf0dc60a4b7330ff7fd08554`: all post-cutover positive create/update/lifecycle mutations now use the signed Actor Gateway wrappers; the non-admin denial is exercised through the Gateway; direct runtime calls to legacy create RPCs now assert `permission denied`. Existing forged assertion, replay, operation/context substitution, direct SQL hierarchy, role separation, and runtime privilege boundary tests remain. Static review confirms no `service.createDraft`, `service.updateDraft`, or `service.transition` mutations remain in this post-cutover qualification script.
+
+PR #302 remains draft/open/unmerged and requires exact-head CI. No production SQL, role/ACL, Render settings/deploy, secret, payment state, or paid resource changed. PR #301 remains blocked until PR #302's corrected migration and qualification chain passes, then its own exact-head CI must be rerun.
