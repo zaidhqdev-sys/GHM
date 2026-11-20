@@ -4380,3 +4380,43 @@ The Resource API's five-second Gateway client timeout versus Free sleep/cold-sta
 Updated `docs/security/PRODUCTION_ROLE_SERVICE_DEPENDENCY_MAP_2026-11-18.md` in commit `e380dad63097b34daa33df4eebfd9863a42473e8` to remove stale paid-hosting/cost-blocked language and record the owner's Free/one-service/in-place-upgrade decision, staged-but-unsubmitted form, separate Gateway identity, and qualification-before-deployment sequence. The database role/function status remains explicitly labelled as the last recorded catalogue snapshot, not fresh live evidence.
 
 No source, SQL, migration, test, batch manifest, production inventory, database/ledger/role/ACL, credential/secret, Render form/service/configuration/deployment, payment state, PR state or branch ancestry was changed. No Actions run was triggered and no paid resource or recurring cost was added. Only the two existing handover documents were updated.
+
+
+## 20 November 2026 — merged gateway foundation, timeout policy and outstanding route boundary cross-check
+
+Re-read this handover, refreshed PR #298–#299 and related PRs #296/#297, enumerated Actor Gateway branches, compared #298 with main, and cross-checked the historical unified Gateway integration and the current route/timeout matrix. Also checked PR #298 review submissions and inline threads. No source or production changes were needed.
+
+### Integration lineage confirmed
+
+- Unified Actor Gateway foundation PR #272 is **merged** (head `81b0a90f762772ca745fbca122f9848968d4f234`). The earlier feature PRs #269–#271 and integration PR #273 are closed unmerged/superseded; do not restart or independently merge those stacks.
+- PR #275 (Resource API runtime DB principal), #276 (Auth Issuer foundation), #277 (Worker body limits), #278 (trusted Render administrator membership), and #283 (commercial launch state read) are merged. Their work is already part of the repository history; use the current main/PR #298 branch and the existing handovers, not the old closed branches, as the active integration baseline.
+- PR #298 remains open/draft/unmerged at `d5dc6b73936abb09d1af14be10c2b204c20ee77a`; current main is `ddb31ff59ab470973edf60a5078a75e5f962f803`; comparison remains 234 ahead / 4 behind, diverged, mergeable=false.
+- Related #296 and #297 remain open/draft/unmerged. #299 remains open/draft/unmerged; its PR info currently reports mergeable=true but merged=false.
+- PR #298 has no submitted reviews and no inline review threads at this check. This is not approval.
+- User-reported CI #5397 pass remains recorded. The commit-workflow lookup only returns pull_request-triggered runs and therefore cannot independently resolve a manually dispatched run's exact SHA; no extra Actions run was started.
+
+### Free cold-start timeout policy — no blanket retry
+
+The existing route matrix already confirms 5,000 ms AbortController timeouts across the Gateway-backed client set (supplier classification, Business profile, capability mutation/governance, Trust Score, Business Logo, Storage metadata, Campaign/Directory Review, Business Hours, registration identity and related identity operations). The five-second assumption is therefore not limited to one or two clients.
+
+Existing handover classification remains the safe policy:
+- Read-only GET may be eligible for one narrowly classified transport/cold-start retry, only within a total deadline and never for authorization, validation or application responses.
+- PUT is not automatically retryable until its exact replacement semantics, authorization, assertion nonce/replay behavior and end-to-end behavior are proven.
+- POST/PATCH/DELETE must not be automatically replayed after ambiguous timeout without durable idempotency/deduplication.
+- Business Hours PUT, Business Logo PUT, Trust Score POST calculation, registration/profile/supplier writes, storage lifecycle operations and commercial preparation require operation-specific treatment. A blanket retry middleware or global timeout increase would be unsafe.
+- No retry implementation is approved or needed for this migration qualification task. The existing fail-closed 503 behavior remains intact. The early-access contract can instead communicate temporary unavailability/retry to the caller until operation-specific safe recovery is proven. No paid worker, proxy, keepalive schedule, monitor or extra service is warranted.
+
+### Route readiness cross-check: outstanding legacy paths remain explicit
+
+The existing route matrix also retains important exceptions that must not be erased by a generic “Gateway integration complete” statement:
+- Business Capability `POST /api/v1/business-capabilities` remains a direct Resource API repository INSERT; the Gateway-backed PUT/PATCH paths do not cover this POST. The old runtime column-level INSERT grant is still required by that path. A signed create operation plus production route/fail-closed tests and a later separately reviewed ACL cutover are required before revoking it.
+- Business Capability Evidence list reads remain direct Resource API SELECT paths; the current Gateway operations cover submit/review, not the two list queries. Do not revoke SELECT until tenant-scoped and admin queue read semantics have an approved replacement.
+- Campaign list/get reads remain direct Resource API SQL while create/update use Gateway. Preserve the intentional read-side grants and membership checks until a Gateway read contract is implemented or the existing direct read is explicitly retained under a reviewed narrow grant.
+- These are previously discovered, still-open route/ACL boundaries, not newly introduced defects and not permission to make broad privilege revocations. They remain part of the complete migration-prefix and active-route reconciliation.
+
+### Disposition
+
+- Do not add generic retries, alter client timeouts, or change fail-closed behavior merely to mask Free cold-start.
+- Do not revoke the remaining Business Capability INSERT, Evidence SELECT or Campaign read privileges as part of the current Gateway governance revocation candidate.
+- Keep the production batch manifest empty; do not select a prefix until exact production ledger, dependency order, deployed route versions, Gateway credential/ACL, signed assertion, migrator preflight and recovery evidence are current.
+- No source, test, SQL, migration manifest, inventory, CI workflow, credential, database/role/ACL, Render form/service/deployment, PR state or branch ancestry changed. No Actions run was triggered and no paid resource or recurring cost was introduced. Only this handover was extended.
