@@ -3434,3 +3434,17 @@ No workflow file, dependency, branch, source, database, Render service, deployme
 ### Next operator action
 
 Dispatch the existing workflow `CI` via GitHub Actions `workflow_dispatch` on branch `feat/actor-gateway-production-migration-batches`. Record both job outcomes and inspect any failure logs. Do not re-run historical #5396 or change its dependency gate as a substitute for current-head validation.
+
+
+
+## 20 November 2026 — CI dispatch permissions and commit identity rechecked
+
+Continued the CI-trigger investigation from the handover and inspected the latest PR metadata, repository Actions history, and GitHub commit API metadata for the three ledger-name source commits and subsequent handover commits.
+
+- Current PR #298 head at this check: `a72f05d8a3eb8c415222bc7cb63a4076c8062bb7`; base `b73839b27ac90446650f921d3e8ce1b5de041f04`; PR remains open/draft.
+- Repository Actions history has not advanced beyond run #5396 (2026-11-18 03:27:57Z). No newer PR workflow run exists for the current head.
+- GitHub API reports the source commits and docs commits with author/committer account `zaidhqdev-sys` (User). This does **not** establish which credential/token caused the commits, and it does not prove the GITHUB_TOKEN suppression hypothesis. Keep the cause of missing workflow events **unknown**.
+- The connected GitHub tool inventory contains read/inspection and rerun-existing-run actions, but no create/dispatch-workflow-run action. Re-running #5396 would only retest the old `6eb0ec8...` commit and its known dependency-audit failure; it would not qualify the current PR head. It was deliberately not rerun.
+- The existing workflow supports manual `workflow_dispatch`. A manual dispatch against the current branch is therefore the remaining route to exact-current-branch CI, but it must be initiated by an account with Actions write permission in GitHub's Actions UI (Actions → CI → Run workflow → branch `feat/actor-gateway-production-migration-batches` → Run workflow). Preserve both existing jobs and all audit gates.
+
+No source, workflow, branch, dependency, Actions setting, PR state, production DB, Render service, secret or deployment was changed. No historical run was rerun. The source-level local evidence remains build passed and 17/17 focused migration tests passed at `5d090283...`; it is not a substitute for current-head CI.
