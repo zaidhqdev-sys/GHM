@@ -5652,3 +5652,14 @@ Re-inspected PRs #302, #301, #298, #300 and #297 and the actor-gateway handover 
 Fetched commit-associated GitHub Actions workflow runs for PR #302 exact head: CI run 44810525158 (run number 5488) is completed with conclusion success. Earlier job-level inspection for that run showed quality, web-quality and Cloudflare Pages all passed. The PR is mergeable and open. It was promoted from draft to ready-for-review (not merged). Its body still contains historical draft wording in the safety paragraph; treat the live PR state as authoritative: ready-for-review, open, unmerged.
 
 PR #301 remains draft/open/unmerged, based on main SHA ddb31ff59ab470973edf60a5078a75e5f962f803. Its exact-head quality check failed on the old main migration chain. PR #302's passing checks do not automatically validate PR #301. Do not deploy PR #301 yet. Next step is normal review/integration of PR #302; after it is integrated into main, refresh PR #301's base and run exact-head CI again. No merge was performed in this task because the user said proceed with the workflow, not specifically to merge the migration/security PR. No Render deployment, production SQL/migration/role/ACL changes, environment/secrets, or payment-state changes occurred. PR #298 manifest remains empty.
+
+
+## 20 November 2026 — PR #302 review-readiness cleanup
+
+Before continuing, re-inspected PRs #302, #301, #298, #300 and #297, their base/head SHAs, and PR #302's exact-head workflow run. PR #302 is open, ready-for-review, mergeable, unmerged at head 67859370910984799b12df802e53bf891da1d668; PR #301 remains draft/open/unmerged at bb05a23524689070ded3b633d6d46da310bda001; PR #298 remains draft/open/unmerged. PR #300 and #297 remain separate and unmerged.
+
+Confirmed exact-head CI run 44810525158 is completed/successful. Job inspection confirms both web-quality and quality succeeded; the quality job included disposable PostgreSQL migrations, isolated least-privilege Actor Gateway principal qualification, capability governance and gateway-only cutover qualification. PR #302 had no submitted review records and no inline review threads at the time inspected.
+
+Cleaned PR #302 metadata: removed stale statements claiming it was draft and exact-head CI was still required, replaced with a concise scope/root-cause/validation/safety summary, and retained ready-for-review state. No source changes, merges, rebases or deploys occurred.
+
+PR #301 remains blocked on its old main base (ddb31ff59ab470973edf60a5078a75e5f962f803); its prior quality failure has not been invalidated by PR #302 passing. Do not deploy #301. Next step: obtain/complete normal review and integrate PR #302 only through the repository's normal merge controls; then update PR #301 against new main and run exact-head CI. No production SQL/migration/role/ACL changes, Render settings/secrets/deployments, or payment-state changes. PR #298 production batch manifest remains empty.
