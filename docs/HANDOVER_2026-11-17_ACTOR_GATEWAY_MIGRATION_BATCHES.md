@@ -5106,3 +5106,33 @@ Also inspected the immediately following runtime narrowing migration:
 The original DDL and runtime narrowing history are now conclusively identified and inspected. This removes the previous blocker to designing the create SQL. No application or SQL implementation has been added yet. Next inspect the exact signed assertion helper/function signatures and transaction/context binding in the current Gateway migration before creating a dedicated feature branch and writing the function.
 
 This is a separate Resource API / Actor Gateway feature and remains outside PR #298. No production migration, deployment, paid resource, database/service, recurring process, or CI dispatch.
+
+## Signed Business Capability create — SQL implementation stage 1 — 2026-11-20
+
+Created dedicated feature branch `feat/signed-business-capability-create` from current `main`. This is separate from PR #298 and the migration-batch branch.
+
+### Implemented
+
+Added `database/migrations/20261120010000_add_signed_business_capability_create.sql`.
+
+The new `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)` SECURITY DEFINER entry point:
+
+- Requires the existing `ghm_actor_gateway` session through `ghm.assert_actor_gateway_capability`.
+- Uses the existing HMAC v2 assertion verifier with operation `business.capability.create`; actor identity is returned by the verifier, not trusted from unsigned payload data.
+- Requires signed context JSON to match the complete payload exactly.
+- Rejects unknown payload keys and validates positive Business ID, UUID, proficiency, description, source reference and effective timestamps.
+- Checks active Business, active owner/administrator membership and active/selectable catalogue Capability inside SQL.
+- Performs one plain INSERT, setting active/self_declared/unverified state and deriving `created_by` from the verified actor.
+- Uses transaction timestamp defaults consistent with the existing Resource API repository.
+- Leaves the unique constraint untouched; active and withdrawn duplicates both fail. It does not call replacement/upsert and does not reactivate withdrawn rows.
+- Is owned by `ghm_schema_owner`; EXECUTE is revoked from PUBLIC, `ghm_runtime` and `ghm_migrator`, and granted only to `ghm_actor_gateway`.
+
+### Explicitly not yet complete or qualified
+
+This is SQL stage 1 only. No Gateway reader method, HTTP endpoint, Resource API POST forwarding/fail-closed change, harness test, or direct runtime INSERT/sequence cutover has been implemented yet. The new migration has not been applied to any database and has not been executed against disposable PostgreSQL. Treat it as unqualified source pending migration-contract tests and the existing disposable harness.
+
+Next task: add a focused migration contract test, then extend the existing `qualify-business-capability-gateway-cutover-postgres.mjs` fixture to exercise the signed create SQL operation, authorization, invalid/expired/forged/replayed assertions, exact context binding, duplicates including withdrawn rows, rollback and actor attribution. Only after SQL qualification implement Gateway reader/HTTP/Resource API wiring. Preserve runtime grants until that entire path is qualified.
+
+### Cost / production boundary
+
+No database was created, no migration was applied, no production execution or deployment occurred, no CI was dispatched, and no paid/recurring resource was added. PR #298 remains untouched and separate.
