@@ -3973,3 +3973,43 @@ Re-read the migration-batches handover, production reconciliation, PR #298 metad
 - PR #298 remains open/draft/unmerged; its execution manifest remains empty. No production execution or manifest population is authorized by this review.
 
 No source, migration SQL, tests, manifest, inventory, production ledger/database/roles/ACLs, credentials, Render configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover record was updated.
+
+
+
+## 20 November 2026 — branch/PR recheck and earliest-prefix source confirmation
+
+Re-read this migration-batches handover and the production migration reconciliation, hosting/credentials handover, migrator-authority remediation plan, role/service dependency map, runtime deployment findings, and the relevant PRs/branches before continuing. Refreshed PR #298, #296, #297 and #299 metadata, searched the repository branch list, compared the PR #298 branch with current `main`, and re-opened the first five ordered migration SQL files in the 50-entry candidate inventory.
+
+### Current PR and branch state
+
+- PR #298 remains open, draft and unmerged. Its exact current head is `1f100948f3d14c7698a22067b36c94813b4a8318`; `main` is `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- The compare result is `diverged`, 224 commits ahead / 4 behind, with merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`. GitHub reports `mergeable=false`. Do not rebase, merge, cherry-pick, or rewrite ancestry as part of this qualification pass.
+- PR #298 has no submitted reviews or inline review threads at this check.
+- PR #296 remains open/draft/unmerged at `5fa018304970c0e84c56b22111a7255b80fd7c60`. Its new migration `20261116200000_narrow_business_identity_runtime_insert.sql` is absent from PR #298's 50-entry candidate inventory. It must not be silently inserted or guessed into the current inventory. If PR #296 is merged, rebuild the repository migration list and reconcile the complete pending version/name set against a fresh authoritative production ledger export before revising the candidate inventory.
+- PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. It is an overlapping alternative migration-runner/inventory implementation, with different configuration paths and runner code. Do not merge it alongside PR #298 or combine its implementation piecemeal; use PR #298 as the active qualification line unless the owner explicitly changes that decision.
+- PR #299 remains open/draft/unmerged according to its current PR metadata. Its populated `merge_commit_sha` field is not by itself proof of a merge; do not treat it as merged or use it to change the migration inventory without confirming the PR state/base history.
+- Branch search confirms the active PR #298 branch and the related feature branches remain present. No branch was created, deleted, switched, rebased, or merged.
+
+### Earliest five migration source confirmation
+
+Re-opened the exact SQL for the first five ordered entries and compared them with the existing full-queue static review in this handover. The existing classification remains accurate; this is confirmation, not a new migration audit:
+
+1. `20261110010000_add_business_supplier_classification`: adds the descriptive supplier flag and a SECURITY DEFINER mutation that accepts a caller-supplied account ID. Its legacy runtime EXECUTE path is later revoked by the supplier cutover and replaced by signed assertion enforcement. The flag is not a capability or Trust assertion.
+2. `20261110100000_create_account_onboarding_progress`: creates account/journey/step progress with uniqueness and lifecycle/time checks; runtime receives SELECT/INSERT/UPDATE and required identity-sequence access.
+3. `20261110120000_create_business_relationship_outcome_read_models`: creates relationship/outcome reference and read-model structures with Business, Opportunity and Account Identity foreign keys; intended runtime access is read-only.
+4. `20261110140000_allow_pending_storage_object_cleanup`: changes the storage lifecycle constraint and exposes a SECURITY DEFINER deletion-pending function to runtime. Its user/object authorization and provider-confirmed cleanup remain distinct; this migration is not an Actor Gateway identity cutover.
+5. `20261110160000_add_admin_capability_catalogue_governance`: installs SECURITY DEFINER capability draft/lifecycle functions that accept a caller-supplied administrator account ID. Later gateway wrappers and signed assertion migrations establish the intended boundary; the early runtime function grant must be interpreted with those later cutovers.
+
+The prior handover's full 50-entry static review and later route/cutover analysis already cover these dependencies. No new test or source change is justified by re-reading these same contracts.
+
+### Hosting/deployment decision — preserve the owner's correction
+
+The owner's current decision remains one dedicated Render Free Actor Gateway Web Service for initial free-directory/early access, using the already-filled but unsubmitted service form; later compute is an in-place upgrade of that same service. Deployment is intentionally sequenced after qualification. Do not describe the service as an unapproved paid-cost blocker, do not create a second service, and do not submit/deploy the existing form on the owner's behalf. Free sleep/cold-start and the existing client timeout are reliability constraints to qualify without weakening authentication or fail-closed behavior.
+
+### Disposition
+
+- The 50-entry inventory remains a dated candidate, not proof of the live production pending queue.
+- The production execution manifest remains empty.
+- The first safe production prefix is not selected. The existing migration dependency, route readiness, migrator authority, live-ledger and recovery evidence gates remain in force.
+- CI #5397 remains the latest exact-branch source/qualification evidence for its tested code SHA; the later handover-only commits do not require another CI run.
+- No production SQL, database/ledger/role/ACL, credential/secret, Render service/configuration/deployment, payment state, migration, inventory, manifest, PR state or branch ancestry was changed. Only this handover record was extended.
