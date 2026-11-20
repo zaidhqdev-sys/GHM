@@ -21,7 +21,7 @@ test('signed create migration targets the canonical append-only Business Capabil
 test('signed create binds the exact payload and uses the existing create assertion operation',()=>{
  assert.doesNotMatch(signedVerifier,/'business\.capability\.create'/);
  assert.match(createAllowlist,/'business\.capability\.create'/);
- assert.match(createAllowlist,/CREATE OR REPLACE FUNCTION ghm\\.assert_actor_gateway_capability/);
+ assert.match(createAllowlist,/CREATE OR REPLACE FUNCTION ghm\.assert_actor_gateway_capability/);
  assert.match(createAllowlist,/GRANT EXECUTE ON FUNCTION ghm\\.assert_actor_gateway_capability[\\s\\S]*TO ghm_actor_gateway/);
  assert.match(migration,/p_context::jsonb\s*<>\s*p_payload/);
  assert.match(migration,/ghm\.assert_actor_gateway_capability\(\s*p_actor,\s*'business\.capability\.create'/);
@@ -46,9 +46,8 @@ test('signed create derives lifecycle, verification and actor provenance server-
 });
 
 test('signed create function is restricted to Actor Gateway execution',()=>{
- const signature='gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)';
  assert.match(migration,/ALTER FUNCTION ghm\.gateway_create_business_capability\(\s*bigint,\s*bigint,\s*uuid,\s*text,\s*text,\s*jsonb\s*\)\s*OWNER TO ghm_schema_owner/);
  assert.match(migration,/REVOKE ALL ON FUNCTION ghm\.gateway_create_business_capability\(\s*bigint,\s*bigint,\s*uuid,\s*text,\s*text,\s*jsonb\s*\)\s*FROM PUBLIC,\s*ghm_runtime,\s*ghm_migrator/);
- assert.match(migration,/GRANT EXECUTE ON FUNCTION ghm\.gateway_create_business_capability\(\s*bigint,\s*bigint,\s*uuid,\s*text,\s*jsonb\s*\)\s*TO ghm_actor_gateway/);
+ assert.match(migration,/GRANT EXECUTE ON FUNCTION ghm\.gateway_create_business_capability\(\s*bigint,\s*bigint,\s*uuid,\s*text,\s*text,\s*jsonb\s*\)\s*TO ghm_actor_gateway/);
  assert.doesNotMatch(migration,/GRANT\s+(?:INSERT|USAGE)[\s\S]*TO\s+ghm_runtime/i);
 });
