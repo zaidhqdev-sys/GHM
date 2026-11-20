@@ -18,3 +18,13 @@ test('supplier assertion verifier compares the complete HMAC before branching', 
   assert.match(migration, /get_byte\(v_expected,?\s*v_i\)\s*#\s*get_byte\(v_provided,?\s*v_i\)/);
   assert.doesNotMatch(migration, /v_expected\s*<>\s*decode\(p_signature/);
 });
+
+const prepareMigration = readFileSync('database/migrations/20261110260000_gateway_supplier_classification_cutover.sql', 'utf8');
+const manualCutover = readFileSync('database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime.sql', 'utf8');
+
+test('supplier legacy runtime access is retained until the separately gated manual cutover', () => {
+  assert.doesNotMatch(prepareMigration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\([^;]+FROM ghm_runtime/);
+  assert.match(prepareMigration, /FROM PUBLIC/);
+  assert.match(manualCutover, /MANUAL CUTOVER ONLY/);
+  assert.match(manualCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\([^;]+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
+});
