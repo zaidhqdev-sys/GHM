@@ -4464,3 +4464,72 @@ Re-read this migration handover and refreshed PR #298, related PRs #296/#297/#29
 ### Safety and cost
 
 The production batch manifest remains `[]`. No first production prefix is selected. The live production ledger remains unrefreshed and the dated production role/ACL catalogue remains historical evidence, not a fresh current-state claim. No production SQL, role, grant, ledger, data, credential, secret, Render service/configuration/deployment, payment state, CI run, PR state or branch ancestry was changed. No paid resource, recurring process or additional cost was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — complete runtime SECURITY DEFINER allowlist and manual-cutover stage reconciliation
+
+Re-read this handover, refreshed PRs #298/#296/#297/#299, compared PR #298 with `main`, checked existing Actor Gateway branches and PR #298 review submissions/threads, then inspected the exact runtime privilege inventory and tests. Followed the previous route-specific review by reconciling all eight manual runtime cutover groups against the allowlist model. No source change was necessary.
+
+### Current GitHub state (refreshed)
+
+- PR #298: open, draft, unmerged; current head `d9d9eee4b87eee13c4cfc14f99abb783bd64b873`; GitHub reports 236 commits ahead / 4 behind `main`, diverged, `mergeable=false`; 31 changed files.
+- PR #296: open/draft/unmerged, head `5fa018304970c0e84c56b22111a7255b80fd7c60`, 9 commits / 4 changed files, mergeable=false.
+- PR #297: open/draft/unmerged, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`, 119 commits / 28 changed files, mergeable=false.
+- PR #299: open/draft/unmerged, head `94a9d58894d11f0f886203af37cbd096619d447b`, 26 commits / 8 changed files, mergeable=true (not merged).
+- PR #298 has no submitted reviews or inline review threads in the refreshed query. Existing Actor Gateway branch search returned the previously documented integration/security branches; none were modified.
+- The PR #298 compare's 31 files include the migration runner, production inventories, allowlist model/tests, qualification scripts, CI workflow and handovers. Do not treat this as a documentation-only branch.
+- User-reported CI #5397 remains accepted evidence. No new Actions run was triggered.
+
+### Exact runtime privilege-stage model
+
+`src/db/runtime-database-privileges.ts` defines a 39-function SECURITY DEFINER EXECUTE baseline for the post-migration / pre-manual-cutover state. It defines eight disjoint manual cutover groups; the stage generator therefore recognizes `2^8 = 256` exact combinations. The test file confirms 256 combinations and rejects any unexpected added or missing EXECUTE privilege.
+
+The eight separately modelled groups are:
+
+1. `campaignReview`: create/update campaign and legacy directory-review presentation.
+2. `authenticationIssuer`: fourteen Auth lifecycle/credential/session/recovery/QuoteFlow reset functions.
+3. `registrationIdentity`: remaining legacy registration-identity read (the write is already migration-revoked).
+4. `businessCapabilityMutations`: assertion replacement, evidence transition and verification transition functions.
+5. `savedBusiness`: saved-business create/delete.
+6. `businessHours`: business-hours replacement.
+7. `trustScore`: legacy trust-score calculation.
+8. `businessLogo`: legacy business-logo object mutation.
+
+The exact signatures are maintained in the source constants and should not be reconstructed from memory or handover prose. The tests assert group disjointness, exact expected stage membership and rejection of grants outside the reviewed combinations.
+
+### Fully cut-over runtime state
+
+The model expects 13 SECURITY DEFINER functions to remain after all eight manual groups are revoked. The exact retained signatures are:
+
+- `ghm.auth_lookup_business_external_mapping(text, text)`
+- `ghm.auth_lookup_external_identity(text, text)`
+- `ghm.connect_service_assertion_consume(text, text, timestamp with time zone)`
+- `ghm.get_public_business_hours(bigint)`
+- `ghm.get_public_trust_score(bigint)`
+- `ghm.is_business_capability_publicly_evidence_eligible(bigint)`
+- `ghm.list_public_trust_scores(text)`
+- `ghm.storage_create_pending(bigint, text, bigint, text, text, text, bigint, text, text)`
+- `ghm.storage_get_object(bigint, bigint)`
+- `ghm.storage_get_public_business_logo(bigint)`
+- `ghm.storage_mark_available(bigint, text)`
+- `ghm.storage_mark_deleted(bigint)`
+- `ghm.storage_mark_deletion_pending(bigint)`
+
+This is an allowlist of SECURITY DEFINER function EXECUTE privileges, not a claim that all remaining direct table privileges or all production role memberships are reconciled. The code's SQL deliberately scopes the inventory to schema `ghm`, SECURITY DEFINER routines and `session_user` EXECUTE privilege.
+
+### Cross-check with route findings
+
+- The eight manual groups are distinct from the three retained direct Resource API route/ACL cases documented in the immediately preceding handover addition: Business Capability POST INSERT; Business Capability Evidence business/admin SELECT; Campaign list/detail SELECT.
+- Do not infer those direct table grants from this SECURITY DEFINER function inventory. They are different privilege classes and need their own effective ACL checks.
+- Campaign create/update and directory-review presentation legacy functions are explicitly removed by the campaign-review manual cutover group; current campaign list/detail direct SELECT remains a separate read path. Preserve the read grants/predicates.
+- Capability governance's three legacy administration functions are already excluded from the 39-function baseline by the migration revocation; they are not part of the business-capability assertion/evidence/verification manual group. Do not conflate these operations.
+- Registration identity write is already migration-revoked; its remaining read is a manual cutover item.
+- The model contains a comment saying `2^9` combinations, but the implementation uses eight groups and the tests correctly assert 256 (`2^8`) combinations. This is a harmless source-comment typo, not a behavioral defect; no source edit was warranted.
+
+### Disposition and safety
+
+The model's 39-function baseline and 13-function fully cut-over endpoint are source/test contracts. They do not prove that production currently has either exact state. The production legacy-authority report and role/service dependency map remain historical, point-in-time evidence with an explicit no-mutation disposition; current live identity, full role membership, ACL, ledger and recovery evidence must be freshly qualified before any production cutover.
+
+Keep all eight manual cutovers independently staged and do not bulk-revoke them. Do not revoke the separately retained Business Capability INSERT or Evidence/Campaign SELECT paths based on this function-only inventory. Production batch manifest remains `[]`; no batch is authorized.
+
+No source, test, SQL, migration, manifest, CI workflow, branch, PR, credential, secret, production database/role/ACL/data, Render service/configuration/deployment, payment state or schedule was changed. No CI run was triggered. No paid resource or recurring cost was introduced. Only this existing handover was extended.
