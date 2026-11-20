@@ -4766,3 +4766,50 @@ PR #298 remains open/draft/unmerged at `3bcb4762ee01d899bbc81cf6a0364ce9f8c80b3d
 ### Safety and cost
 
 Production batch manifest remains `[]`. No production SQL, role, membership, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — existing capability Gateway contract reviewed for POST-create reuse
+
+Re-read the current handover, refreshed PR #298 and its main comparison, and inspected the existing Actor Gateway branches. Traced the Resource API mutation client, Gateway route, Gateway mutation reader, contracts and both HTTP route contracts to decide whether the existing signed replacement operation can safely serve POST-create.
+
+### Existing signed operation
+
+- The existing Resource API client `HttpCapabilityMutationGatewayClient.replace` sends the verified bearer token to `PUT /v1/businesses/:businessId/capabilities`.
+- The Gateway route authenticates the actor upstream, validates `businessId` and an `assertions[]` payload, then calls `GatewayCapabilityMutationReader.replace(actor,businessId,assertions)`.
+- `PostgresGatewayCapabilityMutationReader.replace` creates a signed actor assertion for operation `business.capability.replace` and calls `ghm.gateway_replace_business_capability_assertions(...)`.
+- This is a complete signed Gateway path for the bulk replace operation, not a separately exposed single-create operation.
+- The same mutation reader exposes signed operations for verification, evidence review and evidence submission. No separate `business.capability.create` operation is present in its operation union or reader interface.
+
+### Why direct reuse is not yet proven safe
+
+The legacy POST contract accepts a single `CreateBusinessCapabilityInput`:
+`businessId, capabilityId, proficiencyLevel, description, effectiveFrom, effectiveUntil, sourceReference`.
+
+The existing PUT replacement contract accepts a whole array of `ReplaceBusinessCapabilityAssertionInput`:
+`capabilityId, proficiencyLevel, description, sourceReference, effectiveUntil`.
+It does not accept `effectiveFrom`; its semantics are replace-all for a business, not append-one. Blindly adapting POST to PUT with a one-element array could remove other assertions and would not preserve the POST effectiveFrom behavior. Therefore do not route POST through `replace` by wrapping one item.
+
+### Confirmed route contract gap
+
+- The PUT route checks `gatewayClient || gatewayRequired`, validates the bearer token, fails with 503 when required Gateway client is absent, and maps Gateway failures fail-closed.
+- The POST route still calls `service.createBusinessCapability(context,input)` directly and does not inspect the Gateway client or required flag.
+- The POST route tests cover server-owned field rejection, canonical input and authenticated context, but the inspected tests do not cover Gateway-required mode, missing Gateway client, or signed Gateway forwarding.
+- The application composition supplies `capabilityMutationGatewayRequired = config.isProduction || dependencies.capabilityMutationGatewayRequired === true`; the POST route currently ignores it.
+
+### Decision
+
+Do not reuse the existing bulk-replace endpoint for single-create. The safe options are:
+1. Add a distinct signed `business.capability.create` operation end-to-end (client, Gateway route, mutation-reader interface, signed assertion operation, SQL function/migration, role grants, tests); or
+2. Confirm the POST API is not a supported product contract and retire it deliberately with route/consumer compatibility evidence.
+
+Option 1 preserves the current POST semantics and is the least disruptive route, but it is a new capability operation and needs a complete signed SQL path. Do not add a direct INSERT grant or revoke an existing one as a shortcut. No source implementation was made in this review.
+
+### Next implementation scope
+
+Inspect the existing `gateway_replace_business_capability_assertions` SQL and migration history to reuse its assertion verification, actor/business authorization, catalogue checks, audit and replay protections without duplicating or weakening them. Then design a narrowly scoped `gateway_create_business_capability_assertion` operation that preserves `effectiveFrom`, only appends one assertion, and cannot overwrite/remove sibling assertions. Add its explicit operation identity to the signed assertion contract and migration ACL checks. Afterward update POST to call it in Gateway-required mode and add fail-closed route plus disposable PostgreSQL tests. Do not proceed to production ACL revocation until those tests pass.
+
+### Refreshed state and safety
+
+PR #298 remains open/draft/unmerged at `679e8b10d462d2364e04114fedc0cc1dd08c8673`, 242 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left unchanged. No CI run was triggered.
+
+Production migration batch manifest remains `[]`. No source, test, SQL, migration, ACL, role, production data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
