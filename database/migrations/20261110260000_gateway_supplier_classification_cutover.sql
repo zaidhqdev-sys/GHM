@@ -32,7 +32,6 @@ ALTER FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigin
 
 REVOKE ALL ON FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigint, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime;
-GRANT EXECUTE ON FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigint, boolean) TO ghm_actor_gateway;
 
 -- Remove PUBLIC access, but retain the explicit legacy runtime grant until the
 -- separately gated manual cutover after signed Gateway route verification.
