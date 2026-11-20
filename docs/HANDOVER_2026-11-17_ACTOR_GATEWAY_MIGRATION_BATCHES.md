@@ -5587,3 +5587,12 @@ Review of the first diagnostic commit found that safeErrorDetails had gained a r
 Queried GitHub's exact-head check-runs endpoint for bb05a23524689070ded3b633d6d46da310bda001. At the latest observation: quality queued; web-quality in progress; Cloudflare Pages in progress. No conclusions have completed; validation remains pending. Run/check URL: https://github.com/zaidhqdev-sys/GHM/actions/runs/44804463550
 
 PR #301 remains draft/open/unmerged and must not be deployed until quality and web-quality pass; Cloudflare Pages is also still running. No merge, Render deploy, production SQL, database/role/ACL change, migration, secret/environment change, or payment-state change was made. PR #298, #300 and #297 remain separate.
+### PR #301 validation status refresh — 20 November 2026
+
+At the latest exact-head check-runs refresh for bb05a23524689070ded3b633d6d46da310bda001:
+- web-quality: completed successfully.
+- Cloudflare Pages: completed successfully.
+- quality: still in progress. Its job had completed setup, dependency installation, and the initial PostgreSQL role qualification; it was working through the full quality pipeline. No conclusion was available yet.
+- Exact-head workflow run: https://github.com/zaidhqdev-sys/GHM/actions/runs/44804463550
+
+Do not treat PR #301 as fully validated until quality completes successfully. No Render deploy or merge has been initiated.
