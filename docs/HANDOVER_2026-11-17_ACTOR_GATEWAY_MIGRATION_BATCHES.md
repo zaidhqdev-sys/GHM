@@ -6619,3 +6619,44 @@ The existing `ghm-actor-gateway` Render service is already created. Its deployme
 Synchronize PR #300 with current main without force-pushing, review the two intervening commits against its patch for conflicts or changed contracts, then run exact-head CI. If synchronization cannot be done safely through the available GitHub operation, use the established local branch workflow rather than guessing or force-moving refs. Only merge when the branch is current, exact-head CI is green, GitHub reports mergeable, and the dependency review is clean. After each task, update this handover.
 
 No production migration, manual cutover, database ACL/role change, secret/environment change, Render configuration/deployment, backup, payment state, or paid resource was changed in this task.
+
+
+## 21 November 2026 — PR #300 synchronization impact review (before any merge)
+
+Mandatory pre-task review repeated:
+- Re-read this handover and the current PR #297/#298/#300 records.
+- Rechecked all current repository branches.
+- Re-fetched PR #300 metadata, exact head, exact-head workflow run, current main comparison and the relevant source files on both refs.
+- Confirmed PR #300 remains open, ready-for-review (not draft), unmerged, and GitHub reports `mergeable=false`.
+- Exact PR #300 head remains `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; current main remains `0dc1b27c2b7de71c77d071966a9f374e13075e2b`; exact-head CI run #5451 remains successful.
+
+### Mainline delta and substantive compatibility findings
+
+The two mainline commits since PR #300's merge base are not merely metadata:
+- Mainline changed `src/actor-gateway/server.ts` to add startup-stage diagnostics (commit `0dc1b27c`). PR #300's branch version does not contain those diagnostics. A correct sync must preserve the mainline diagnostics while retaining PR #300's signed Business Capability route.
+- Mainline changed `database/migrations/20261117020000_revoke_runtime_capability_governance.sql` and added `src/db/revoke-runtime-capability-governance-migration-contract.test.ts`. The migration content at the PR #300 ref and main is not byte-identical; the mainline contract test file is absent from the feature branch. Preserve mainline's corrected `pg_temp` search_path contract and its test.
+- Mainline changed `scripts/qualify-capability-catalogue-governance.mjs`. Mainline's qualification checks the new gateway catalogue routes and does not use PR #300's extra legacy-execute assertions in the same form. The merged script must retain both the mainline route checks and the least-privilege legacy-function denials.
+- Mainline changed `src/db/runtime-database-privileges.ts` and its test. This is a material semantic conflict, not a simple text merge:
+  - Mainline expects 43 pre-cutover runtime functions and enumerates 1,024 reviewed stages.
+  - PR #300 expects 39 pre-cutover functions and enumerates 256 stages.
+  - Mainline's post-manual-cutover inventory still contains 13 functions.
+  - PR #300's 39/256 model is stale against current mainline and must not overwrite it. Reconcile all signed Business Capability and intervening cutover states into the 1,024-stage model, preserve the 43-function baseline where correct, and add tests for the resulting eight manual cutover combinations before merge.
+- Mainline's runtime privilege tests have additional stage expectations not present in PR #300's branch.
+
+### Decision
+
+Do not use a blind "update branch" or force-ref operation. Do not merge PR #300 yet. The previous statement that the branch only needed a routine two-commit sync understated the semantic conflicts.
+
+The existing GitHub connector supports ref movement and file/tree/commit creation but does not expose GitHub's pull-request "Update branch" operation or a local checkout. Constructing a synthetic merge commit through the contents/tree API would require carefully resolving the above semantic changes and validating the full 1,024-state model; it is not a safe substitute for the repository's normal local merge/rebase + test workflow.
+
+### Next execution step
+
+Use the established local GHM workflow:
+1. Fetch current `main` and `feat/signed-business-capability-create`.
+2. Merge current main into the PR #300 branch (do not force-push).
+3. Resolve the server and migration/script changes as described above.
+4. Port the Business Capability gateway permission stage into the current 1,024-state runtime privilege model; do not retain the stale 39/256 constants.
+5. Run the complete disposable PostgreSQL 18 qualification, especially capability catalogue governance, signed Business Capability create cutover, and all eight manual-cutover combinations.
+6. Push the updated PR branch, confirm the exact new head and GitHub mergeable status, then rerun exact-head CI. Merge only after all required checks pass.
+
+This task was a read-only source comparison and handover update. No branch ref, source file, PR body/state, production database, migration manifest, ACL/role, credential, Render configuration/deployment, backup, payment state, or paid resource was changed.
