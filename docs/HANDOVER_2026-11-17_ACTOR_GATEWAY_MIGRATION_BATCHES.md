@@ -6179,3 +6179,30 @@ Result:
 - The first production migration batch remains unselected; `config/production-migration-batches.json` remains exactly `[]`. PR #298 remains draft/unmerged. No production migration, SQL/DDL/ACL/role/credential/secret, Render service/configuration/deployment, payment state, backup, or paid resource was changed.
 
 The next step requires the authorized owner/operator to run the exact forensic pre-deploy audit using an already-authorized read-only credential/connection with verified TLS, or to arrange the approved Render administrator to provide the audit output. Do not ask for or paste passwords/secrets into chat. Once exact rows and checksums are available, reconcile them against the current branch inventory before any batch derivation.
+
+
+## 21 November 2026 — production ledger audit privilege path narrowed (read-only)
+
+Before this task, re-reviewed the current PR #298 handover, PR #298 status/head, production-only migration reconciliation handover and audit implementation, current production batch manifest, and current branch state. PR #298 remains open/draft/unmerged at `faf9b9e2a63352ce3e627299f53aec63873eca78`; production manifest remains `[]`.
+
+A further read-only catalog inspection was performed on the same production Render PostgreSQL target (`ghm-db` / `ghm_db`, PostgreSQL 18.6) using the existing connector session. No SQL writes or role changes were issued.
+
+Exact privilege results for `ghm.ghm_schema_migrations`:
+- `ghm_auditor`: SELECT on table and all columns = true; schema USAGE = true; schema CREATE = false.
+- `ghm_schema_owner`: SELECT on table and all columns = true; schema USAGE/CREATE = true.
+- `ghm_db_user`: SELECT = false.
+- `ghm_app_user`: SELECT = false.
+- `ghm_migrator`: SELECT = false; schema USAGE = false.
+- `ghm_runtime` and `ghm_actor_gateway`: SELECT = false.
+
+Role login/attribute results:
+- `ghm_auditor` is NOLOGIN, INHERIT, non-superuser, no CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_schema_owner` is NOLOGIN, NOINHERIT, non-superuser, no elevated attributes.
+- `ghm_migrator` is LOGIN, NOINHERIT, non-superuser, no CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_db_user` is LOGIN/INHERIT with CREATEDB and CREATEROLE; not superuser.
+
+This narrows the safe path: the ledger's intended audit grant exists on the NOLOGIN `ghm_auditor` role, but the current connector's `ghm_db_user` membership is ADMIN OPTION=true / INHERIT=false / SET=false, so it cannot assume the auditor role. `ghm_migrator` can SET `ghm_schema_owner` (the ledger owner), but the existing audit implementation explicitly requires `GHM_MIGRATOR_DATABASE_URL` and verified TLS; no migrator credential was read or used. Do not try `SET ROLE`, change membership options, grant ledger SELECT to the connector, or use a role/credential outside the approved audit contract.
+
+No authorized read-only audit connection is currently exposed through the available Render connector. The forensic production audit remains blocked. The only safe next action is for the authorized owner/operator to run the repository's existing `npm run audit:migrations:predeploy` through an already-authorized read-only connection (or have the approved Render administrator provide the resulting report), with `DATABASE_SSL=true` and certificate verification. Do not paste credential values into chat.
+
+No production data, ledger, role, membership, ACL, secret, service, environment variable, deployment, migration, payment state, backup or paid resource was changed. No exact ledger rows/count/checksum result is claimed. Keep PR #298 draft/unmerged and the production batch manifest exactly `[]`.
