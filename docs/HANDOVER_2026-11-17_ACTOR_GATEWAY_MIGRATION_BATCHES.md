@@ -5371,3 +5371,60 @@ PR #298 remains open, draft and unmerged. The live PR read reported head `a2a25d
 ### Change boundary
 
 Read-only Render workspace/service/Postgres/Key Value inventory, service detail, deployment history, events and logs only; followed by this GitHub handover documentation update. No Render configuration, service, environment variable, deployment, database, backup, role, ACL, migration, branch/PR state, paid plan, or PayFast state was changed. No new paid resource was added.
+
+
+## 20 November 2026 — Actor Gateway environment contract and Free-plan deployment readiness
+
+Before this task I re-read the current migration-batches handover, hosting/credentials handover, production runtime deployment blockers, production role/service map, 50-migration dependency matrix, PR #298/#300/#299 and the open PR list, plus Actor Gateway and Resource API branches/source. No branch switch, merge, rebase, PR edit, Render mutation or database operation occurred.
+
+### PR and branch state at review start
+
+- PR #298: open/draft/unmerged, head `830fd1b9c4b484368b2bb4b05eba527a09dd7a8b`, 268 commits, 32 files, mergeable=true.
+- PR #300: open/draft/unmerged, head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`, isolated `feat/signed-business-capability-create`; PR body records CI #5449 passed.
+- PR #299, #297, #296, #286 and #285 remain separate open drafts; no PR was changed.
+- The intended single-service Free Render lifecycle is recorded in the hosting handover: one `ghm-actor-gateway` Web Service, owner-filled form remains unsubmitted, later upgrade that same service in place. This supersedes older hosting text that says Free is not acceptable or insists on paid compute initially.
+- Production batch manifest remains `[]`.
+
+### Source contract document added
+
+Added `docs/security/ACTOR_GATEWAY_RENDER_ENVIRONMENT_CONTRACT_2026-11-20.md` (commit `f33112a6d0e5e29f984f66dd010c243588368b38`).
+
+It records the exact Node Web Service build/start/health/port contract; required Actor Gateway environment variable names; optional paired previous ES256 key rotation values; the public-key-only boundary (no JWT private key in Gateway); separate Resource API runtime URL and storage provider attestation secret; what is confirmed versus still unverified; Free cold-start limits; safe deployment sequencing; and the PR #300 branch boundary.
+
+### Confirmed source-level findings
+
+Actor Gateway `main` source:
+- Start command is `npm run start:actor-gateway`, invoking `node dist/actor-gateway/server.js`.
+- Build requires dev type packages: `npm ci --include=dev && npm run build`.
+- Health endpoint is `/healthz`; Render supplies `PORT` (source fallback 10000).
+- Required environment values are `GHM_ACTOR_GATEWAY_DATABASE_URL`, `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_KID`, and production `DATABASE_SSL_MODE=internal` for the same-region Render private DB URL. `NODE_ENV=production` is the expected production setting.
+- Optional previous ES256 public key and KID must be supplied together; Gateway uses public verification keys only and must not receive `GHM_JWT_ES256_PRIVATE_KEY_PEM`.
+- Optional commercial switches are not required for free directory operation and remain disabled.
+- Gateway startup asserts `session_user=current_user=ghm_actor_gateway`, restricted role attributes/membership shape, and exact schema/function/table/sequence privileges before listening.
+- Gateway PostgreSQL connection timeout is 5 seconds.
+
+Resource API `main` source has a separate contract:
+- Production requires `GHM_RUNTIME_DATABASE_URL` and `DATABASE_SSL=true`.
+- `GHM_ACTOR_GATEWAY_URL` must be a credential-free HTTPS origin, configured only after a real Gateway endpoint exists and is qualified.
+- Production storage also requires the separate `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`; do not reuse the Gateway capability assertion secret.
+- The 15 Nov Render failed-start log is consistent with the intentional fail-closed check: storage was configured but the candidate process did not receive a usable Gateway URL.
+
+### Important unresolved provisioning boundary
+
+The owner confirmed on 18 Nov that the internal Render `ghm-db` URL with username changed to `ghm_actor_gateway` was staged in the unsubmitted service form. The form masks values. Neither the password nor the exact connection string, SSL mode, JWT public key/KID or assertion secret has been inspected or validated. Do not infer validity from the fact the form field was filled.
+
+The last recorded live production catalogue evidence says `ghm_actor_gateway` lacks `ghm` schema USAGE and no Gateway functions were installed. Therefore the service would fail its intentional startup ACL assertion even if the staged environment fields were valid. The exact live ledger, fresh recoverable backup and provider-authorized role/migrator authority resolution remain blockers.
+
+### Free-plan cold-start and retry safety
+
+The owner selected Free for the one service, with later in-place upgrade; this is the accepted hosting/cost lifecycle. Source review confirms Resource API Gateway clients use a 5,000 ms AbortController timeout and the Gateway DB pool also uses 5,000 ms connection timeout. Render Free may sleep/wake beyond that. The inspected clients do not implement automatic retries.
+
+Do not add blanket retries for mutations. A timed-out response may follow a committed DB transaction; a new attempt gets a new signed nonce and is not necessarily idempotent. The inspected Business Capability create API has no general idempotency key. Qualify measured cold-start latency, operation-specific idempotency and caller recovery before early-access traffic. Until then retain fail-closed timeout/503 behaviour; do not bypass Gateway or route back to direct runtime SQL. No timeout/retry code was changed.
+
+### PR #300 integration boundary
+
+The signed Business Capability create endpoint, its Resource API client wiring and manual-only privilege cutover are in separate draft PR #300, not current `main`. CI #5449 is recorded as passed against disposable PostgreSQL 18 in the PR body. Do not claim the current production/main Actor Gateway contains this route, and do not deploy PR #300 branch as a shortcut. It needs deliberate integration, exact-head CI and the full production migration/backup/ACL gates. PR #300 remains untouched and separate from #298.
+
+### Disposition and change boundary
+
+No deployment-ready configuration can be certified. Keep owner form unsubmitted, Render auto-deploy OFF, production migration manifest `[]`, PR #298/#300 draft/unmerged, and PayFast paused. No production database, migration, ledger, role, membership, ACL, credential, secret, Render service, environment variable, deployment, plan, paid resource, route, retry or timeout setting changed. Only GitHub source/PR/branch/handover reads and this documentation update were performed.
