@@ -3,6 +3,40 @@ export type MigrationBatch = { id: string; purpose: string; migrations: Migratio
 
 const identityKey = ({ version, name }: MigrationBatchEntry): string => `${version}_${name}`;
 
+/**
+ * Runtime revocations must never be committed without their signed Gateway
+ * replacements in the same completed migration state. Because production
+ * batches are contiguous prefixes, the replacement may be in a later batch,
+ * but the cutover batch cannot be selected on its own.
+ */
+const REQUIRED_SIGNED_CUTOVER_REPLACEMENTS: Array<{ cutover: string; replacement: string }> = [
+  {
+    cutover: '20261110260000_gateway_supplier_classification_cutover',
+    replacement: '20261111030000_bind_supplier_gateway_actor_to_signed_assertion',
+  },
+  {
+    cutover: '20261110270000_gateway_business_profile_update',
+    replacement: '20261111040000_bind_business_profile_gateway_actor_to_signed_assertion',
+  },
+];
+
+export const assertProductionMigrationBatchCutoverDependencies = (
+  selectedEntries: MigrationBatchEntry[],
+  appliedVersions: ReadonlySet<string>,
+): void => {
+  const selectedVersions = new Set(selectedEntries.map((entry) => entry.version));
+  for (const dependency of REQUIRED_SIGNED_CUTOVER_REPLACEMENTS) {
+    if (!appliedVersions.has(dependency.cutover.slice(0, 14)) &&
+        !selectedVersions.has(dependency.cutover.slice(0, 14))) continue;
+    if (!appliedVersions.has(dependency.replacement.slice(0, 14)) &&
+        !selectedVersions.has(dependency.replacement.slice(0, 14))) {
+      throw new Error(
+        `Production migration batch would leave runtime cutover ${dependency.cutover} without signed replacement ${dependency.replacement}`,
+      );
+    }
+  }
+};
+
 const assertUniqueOrdered = (entries: MigrationBatchEntry[], label: string): void => {
   if (!Array.isArray(entries)) throw new Error(`${label} must be an array`);
   const seen = new Set<string>();
@@ -63,5 +97,6 @@ export const selectProductionMigrationBatch = (
       );
     }
   }
+  assertProductionMigrationBatchCutoverDependencies(selectedPending, appliedVersions);
   return selectedPending;
 };
