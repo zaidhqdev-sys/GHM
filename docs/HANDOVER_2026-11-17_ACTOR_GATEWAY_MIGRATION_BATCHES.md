@@ -3518,3 +3518,47 @@ The 50-entry inventory remains a dated candidate list, not a live ledger. The ba
 
 No PR state, source, migration, inventory, manifest, production database, role/ACL, credential, backup, Render service/configuration/deployment, payment state or paid resource was changed in this review. No production migration was executed.
 
+
+
+## 20 November 2026 — first contiguous migration-prefix dependency and identity-boundary trace
+
+Re-read the current PR #298 handover, the production role/service dependency map, legacy runtime authority findings, migrator authority remediation plan, Actor Gateway hosting/credentials handover, and the current PR/branch state before inspecting the first six entries in the branch's production pending inventory. Also rechecked related PRs #296, #297 and #299 so this trace does not duplicate or combine their work.
+
+### Current GitHub state correction
+
+- Live PR #298 metadata reports head `14dc532a0bdd2063781ee426f7616633fe18791f`, not the older `e40df8b6...` value recorded in the preceding checkpoint. Use the live PR head/ref as authoritative.
+- PR #298 remains open, draft and unmerged; GitHub reports `mergeable=false`.
+- Current main is `ddb31ff59ab470973edf60a5078a75e5f962f803`; compare remains diverged, 213 commits ahead / 4 behind, merge base `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- The previous claim that all four mainline-only commits changed only the hosting handover is not supported by the current compare response: the compare file list contains the PR branch's aggregate changes since the merge base, not a clean list of the four behind-only commits. Do not reuse that earlier file-list interpretation as proof of content/ancestry reconciliation. The four-behind count is current; the exact behind-only commit/file set must be isolated from the merge-base commit graph before any integration decision.
+- PR #296 remains open/draft/non-mergeable and carries the additional Business Identity ACL migration `20261116200000_narrow_business_identity_runtime_insert.sql`, absent from PR #298's 50-entry candidate inventory. PR #297 remains an overlapping older runner alternative, not an independent merge prerequisite. PR #299's current metadata is internally inconsistent (`state=open` while a merge SHA is populated); verify its actual merged state from the PR timeline/base branch before relying on it for migration inventory decisions. Its Project HTTP scope does not itself alter the first six migration dependencies.
+
+### Source-level trace of the first six contiguous inventory entries
+
+The following is a source contract trace only. It does not establish whether any migration is applied in production; the current production ledger cannot be read through the available connector, and the dated inventory is not execution authority.
+
+| Ordered migration | Source-level dependency / effect | Identity and runtime implication |
+|---|---|---|
+| `20261110010000_add_business_supplier_classification` | Alters `ghm.business`; creates a SECURITY DEFINER supplier-classification update function that checks a caller-supplied `p_account_id` against active owner/administrator membership. | Grants EXECUTE to `ghm_runtime`. The function itself does not cryptographically bind the supplied account ID to the authenticated request. It is later cut over and runtime EXECUTE is revoked by `20261110260000`; signed one-use assertion enforcement is added by `20261111030000`. |
+| `20261110100000_create_account_onboarding_progress` | Creates account/journey/step progress table, unique identity key, lifecycle checks and account/journey index. | Grants runtime SELECT/INSERT/UPDATE and sequence USAGE/SELECT; no gateway dependency is introduced in this migration. |
+| `20261110120000_create_business_relationship_outcome_read_models` | Creates relationship and outcome reference/read-model tables with foreign keys to existing Business, Opportunity and Account Identity records; seeds relationship/outcome types. | Grants runtime SELECT only and explicitly revokes runtime write privileges. |
+| `20261110140000_allow_pending_storage_object_cleanup` | Changes the storage-object lifecycle check and creates SECURITY DEFINER `storage_mark_deletion_pending(bigint)`. | Grants EXECUTE to `ghm_runtime`; this is a storage-provider workflow contract and should not be treated as Actor Gateway readiness. |
+| `20261110160000_add_admin_capability_catalogue_governance` | Creates/updates SECURITY DEFINER capability draft and lifecycle functions, each accepting `p_actor_account_id` and checking active administrator status. | Grants EXECUTE to `ghm_runtime`. These functions are later wrapped behind gateway operations in `20261110250000`, then cryptographically bound to signed one-use assertions in `20261111020000`. |
+| `20261110210000_add_actor_gateway_principal_guard` | Requires the pre-provisioned `ghm_actor_gateway` LOGIN/NOINHERIT role and its bounded `ghm_db_user` ADMIN=true/INHERIT=false/SET=false membership; creates `assert_actor_gateway(bigint)`; grants gateway schema USAGE and function EXECUTE. | This is only a database-login/active-account guard. Its own comment relies on the caller deriving the account ID from a verified access token; the SQL function does not verify a signed actor assertion. It is not the completed identity boundary. |
+
+### Cutover dependency discovered across later contiguous entries
+
+- `20261110250000_add_gateway_capability_governance` adds gateway capability wrappers that call the login-only `assert_actor_gateway`; it leaves the legacy runtime grants in place at that stage.
+- `20261110260000_gateway_supplier_classification_cutover` adds the supplier gateway wrapper and revokes direct `ghm_runtime` EXECUTE on the legacy supplier function. At this intermediate point the gateway wrapper still relies on the login-only assertion.
+- `20261111020000_bind_capability_gateway_actor_to_signed_assertion` replaces the capability gateway signatures with short-lived HMAC assertions, one-use nonce/replay checks and operation binding; the gateway DB login cannot read the HMAC secret.
+- `20261111030000_bind_supplier_gateway_actor_to_signed_assertion` extends the signed assertion verifier to supplier classification and replaces the supplier gateway wrapper with the assertion-bearing signature.
+- Consequently, a production plan must not expose/operate the gateway after the principal-guard or login-only wrapper migrations but before the corresponding signed-assertion migrations. For the capability and supplier surfaces together, the minimum source-level assertion-complete boundary is at least through `20261111030000`. This is a dependency boundary, not a selected or approved production batch.
+- Even after that source boundary, the dedicated always-on Frankfurt Actor Gateway service is not approved/hosted under the standing no-additional-paid-service constraint; the live database role has no schema USAGE or gateway function grants, and the assertion secret has not been provisioned. The production Auth Issuer role/service is also absent. These are independent blockers.
+- The earliest five migrations are not a self-contained Actor Gateway batch: they span Business, onboarding, relationship/outcome, storage and capability functions with separate active runtime routes. A first production prefix cannot be inferred from timestamp order alone; it must include all contiguous entries through the required cutover and be reconciled against active route/service readiness and the exact live ledger.
+
+### Decision and next gate
+
+Do not populate `config/production-migration-batches.json`, run plan-only against production, execute any migration, provision secrets/grants, or create/deploy a service. The manifest remains `[]`. The exact live production ledger and recoverable backup proof remain unavailable, migrator authority preflight remains blocked by bootstrap memberships and direct ACLs, the Actor Gateway service/cost gate remains unresolved, and the Auth Issuer isolation gap remains separate.
+
+Next useful evidence step is to isolate the exact four behind-main commits from the commit graph (not infer their file set from the aggregate compare), then continue the source trace through the rest of the 50-entry prefix and its active route consumers. A future production batch can only be derived after an authoritative ledger export, backup/recovery proof, approved hosting/credential path and reviewed contiguous-prefix dependency map are all available.
+
+No production SQL, role/ACL, migration, secret, Render setting/service/deployment, payment state, PR state, branch ancestry, manifest, or paid resource was changed in this review.
