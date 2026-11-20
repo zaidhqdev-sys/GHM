@@ -855,3 +855,21 @@ Normal PR CI run #5417 (ID `44679136123`) was automatically triggered for the co
 No code, migration, database, secret, deployment, paid resource, PR #298 or branch configuration was changed in this task. This is an observation-only checkpoint; the previous task's code and handover commit remain the latest changes.
 
 Next: inspect run #5417 after its quality job completes; verify the Actor Gateway principal, storage-provider qualification, and then whether `qualify:business-capability-gateway-cutover` executes. Diagnose only the first real failure and preserve all security controls.
+
+
+## CI #5417 — storage qualification passed; focused static matcher corrected — 2026-11-20
+
+Re-read the handover, PR #300, PR #298 and current branch before examining run #5417 (ID `44679136123`, commit `8f32fedb1fe03f07bdf5baddf5258daa5e41936b`).
+
+Confirmed in the actual job steps:
+- Build, migrations and isolated Actor Gateway principal qualification passed.
+- Storage provider dual-proof transitions passed.
+- Legacy storage metadata grant/rollback, signed Connect provisioning, Business registration, storage getter, Opportunity marketplace and storage lifecycle qualifications all passed.
+- Full Node test suite reached 1,081 tests: 1,080 passed, 1 failed.
+- Dedicated Gateway qualification jobs were skipped because the test-suite step failed.
+
+Downloaded and inspected the `ghm-test-suite-diagnostics` artifact. The sole failure was `includes the signed Business Capability create wrapper in the exact Gateway executable allow-list`. Its regex was over-escaped and searched for literal backslashes, while the SQL correctly contained ordinary dots and parentheses. This is a test matcher defect, not a SQL permission or migration failure.
+
+Corrected the regex to match the exact SQL signature. No SQL, ACL, migration, production DB, secret, deployment, paid resource or PR #298 change. PR #300 remains draft/unmerged.
+
+Next CI must pass the complete test suite and then run the dedicated signed Business Capability PostgreSQL qualification. The matcher correction is not yet CI-validated.
