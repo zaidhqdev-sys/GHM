@@ -6142,3 +6142,40 @@ Production safety:
 - No production database connection, migration execution, SQL/DDL/ACL/role change, Render setting/deployment, secret, payment state or paid resource was changed.
 - The production ledger snapshot used in the PR body is not a fresh live production ledger audit. The PR explicitly remains a draft and states that a live ledger refresh, dependency/cutover review and active-route readiness review are still required before the first production batch can be derived. Those prerequisites are not satisfied by disposable CI.
 - Therefore the passing exact-head CI qualifies this code and its disposable test paths, but does NOT qualify a production migration batch or authorize PR merge/deployment. Keep PR #298 draft/unmerged and the production manifest empty until the production-specific prerequisites and handover are completed.
+
+
+## 21 November 2026 — fresh Render production ledger reconciliation attempt (read-only; blocked by audit-role access)
+
+Mandatory pre-task review completed: re-read this PR #298 handover, the 15 November production migration reconciliation handover, 20 November production dependency matrix, PR #298 status/body, related PR/branch state, production migration audit source and checksum policy, production pending allow-list, production batch manifest, and Render PostgreSQL inventory before querying. PR #298 was open/draft/unmerged; branch head before this entry was `90d9602457cac69c978eb0bc09da96d758cfda22`. Production manifest remains `[]`.
+
+Render workspace `ZAID Technologies` (`tea-d9svua6417fc73bhcutg`) inventory confirms the intended live target is:
+- Service: `ghm-db`
+- Postgres ID: `dpg-dag0sdtbedkc7389vi2g-a`
+- Database: `ghm_db`
+- PostgreSQL 18.6, Frankfurt, status available/not suspended
+- No credential or environment-variable value was read.
+
+A fresh Render read-only query on 21 November 2026 at 22:46:22 UTC confirmed:
+- `session_user=ghm_app_user`, `current_user=ghm_db_user`
+- `transaction_read_only=on`
+- `ghm.ghm_schema_migrations` owner is `ghm_schema_owner`
+- Exact ledger columns: `version varchar(64)`, `name varchar(255)`, `checksum varchar(64)`, `applied_at timestamptz`
+- Current session `has_table_privilege(current_user, 'ghm.ghm_schema_migrations', 'SELECT') = false`
+- `pg_stat_all_tables.n_live_tup=105`, but `last_autoanalyze=2026-09-21 21:48:33 UTC`; this is stale approximate statistics only, not an exact current ledger count.
+
+Read-only role and membership inspection confirmed:
+- `ghm_app_user` can SET `ghm_db_user`; the connector session is currently using `ghm_db_user`.
+- `ghm_db_user` has a direct membership in `ghm_auditor` with ADMIN OPTION=true but INHERIT=false and SET=false (grantor `postgres`). Therefore neither current user nor session can SET ROLE `ghm_auditor`; `ghm_db_user` also cannot SELECT the ledger.
+- `ghm_db_user` retains ADMIN OPTION memberships over `ghm_actor_gateway`, `ghm_auditor`, `ghm_migrator`, `ghm_payment_provider`, and `ghm_schema_owner` with SET=false / INHERIT=false, granted by `postgres`. The direct non-admin `ghm_runtime` SET membership remains present as a separate edge. `ghm_migrator` has the intended SET membership in `ghm_schema_owner`.
+- No attempt was made to SET ROLE, use another login, bypass the ACL, read a secret, change a role/membership/ACL, or mutate production.
+
+The repository's `npm run audit:migrations:predeploy` invokes `scripts/forensic-migration-reconciliation.mjs --allow-pending`. Source review confirms it requires `GHM_MIGRATOR_DATABASE_URL`, `DATABASE_SSL=true`, verified TLS (`rejectUnauthorized: true`), and performs `BEGIN READ ONLY` before reading the ledger. It compares every repository migration's canonical/legacy-line-ending checksum against the exact live ledger, plus the production historical-provenance/retained-history manifests and pending inventory. It is distinct from `npm run migrate`, which executes SQL. The approved audit cannot run through the current connector principal because it cannot SELECT the ledger. No alternate credential was requested, exposed or used.
+
+Result:
+- No exact live production ledger rows, version/name/checksum list, applied count, pending count, ordering, or full forensic verdict were obtained.
+- The last exact full audit remains the user's supplied 15 November evidence (137 repository migrations / 105 ledger rows / 42 pending / 1 pending-allowlist set mismatch / 0 unexplained checksum mismatches). It is historical evidence only and must not be represented as a 21 November refresh.
+- Do not infer the exact ledger count from the stale 105-row statistic.
+- Production reconciliation remains BLOCKED pending an authorized read-only audit connection with SELECT on the ledger and verified TLS. Use the existing approved audit procedure only; do not improvise SET ROLE, privilege changes, new users, or alternate database services.
+- The first production migration batch remains unselected; `config/production-migration-batches.json` remains exactly `[]`. PR #298 remains draft/unmerged. No production migration, SQL/DDL/ACL/role/credential/secret, Render service/configuration/deployment, payment state, backup, or paid resource was changed.
+
+The next step requires the authorized owner/operator to run the exact forensic pre-deploy audit using an already-authorized read-only credential/connection with verified TLS, or to arrange the approved Render administrator to provide the audit output. Do not ask for or paste passwords/secrets into chat. Once exact rows and checksums are available, reconcile them against the current branch inventory before any batch derivation.
