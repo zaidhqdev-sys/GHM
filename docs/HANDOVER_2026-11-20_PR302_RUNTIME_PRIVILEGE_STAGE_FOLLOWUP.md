@@ -46,3 +46,18 @@ Exact-head CI run #5483 is running:
 - `web-quality`: in progress
 
 No Render deploy, merge, production SQL, migration, DB role/ACL change, secret/environment update, payment-state change, or paid resource change occurred. PR #301 remains draft and is not deployable until its own exact-head CI passes after the migration/privilege corrections.
+
+## PR #302 exact-head quality result — third blocker isolated
+
+Exact-head run #5483 for PR #302 commit `8f619799c07aab2ca7a070ccaf10b6d06444a9a1` completed:
+- Cloudflare Pages: passed
+- web-quality: passed
+- quality: failed at step 51, `Qualify system-admin Capability catalogue governance on disposable PostgreSQL`
+
+Fetched the full job log and exact failure context. The previous runtime privilege-stage mismatch is cleared: the run progressed through all migration, runtime-principal, gateway-principal, signed assertion, and Business Capability lifecycle qualifications. The capability catalogue script passed non-admin service read denial, runtime/gateway role-separation checks, gateway admin listing, context-substitution rejection, forged assertion rejection, replay rejection, operation binding, non-admin gateway denial, and gateway draft creation.
+
+It then failed at `scripts/qualify-capability-catalogue-governance.mjs:148`: the script calls `service.createDraft(admin,...)`, which uses the legacy runtime RPC `ghm.create_capability_draft`; PostgreSQL returns `permission denied for function create_capability_draft`. This is the intended gateway-only cutover state, not a database migration/ACL defect. The manual capability cutover revokes runtime execution of legacy create/update/transition functions. The qualification script still attempts subsequent successful create/update/lifecycle operations through the runtime-backed `CapabilityServiceImpl`, despite having already proved Gateway positive operations. Its direct runtime non-admin/version-guard assertions later in the script likewise need to be reconciled with the post-cutover expected permission denial.
+
+Do not restore runtime EXECUTE or weaken the manual cutover. Next correction should be isolated to the disposable qualification harness: exercise post-cutover positive create/update/lifecycle through the signed Gateway SQL wrappers, and assert direct runtime calls to legacy RPCs are denied. Keep pre-cutover application-level service authorization assertions where their setup genuinely runs before the cutover; otherwise adjust test ordering explicitly and document it. Review all remaining `service.createDraft`, `service.updateDraft`, `service.transition` and direct runtime legacy RPC calls in the script before editing.
+
+PR #302 remains draft/unmerged with quality failed; PR #301 remains draft/unmerged and must not deploy yet. No production SQL, role/ACL, Render setting/deploy, secrets, payment state or paid resource changed.
