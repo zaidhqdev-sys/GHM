@@ -538,3 +538,22 @@ Important correction: the qualification script imports `dotenv/config` at module
 Next step is a safe presence/guard check that runs Node with `--require dotenv/config`, prints only SET/MISSING for each required variable, checks the three URL values are distinct without printing them, and reports whether database name and host exactly match `ghm_disposable_test` and `localhost`. Never print URLs or the assertion secret. Only if all checks pass may the existing guarded qualification script be run. If any value is missing or guards fail, stop and inspect existing local setup/handovers; do not invent credentials, create a database, use production or bypass the guard.
 
 The focused static contract test result remains 5/5 passed and the TypeScript build succeeded. No PostgreSQL qualification has been executed.
+
+
+## Dotenv-backed qualification check — partial local configuration — 2026-11-20 03:11 UTC
+
+User ran the recommended `node --require dotenv/config` presence-only check. Observed:
+- `GHM_RUNTIME_DATABASE_URL`: SET
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`: MISSING
+- `GHM_MIGRATOR_DATABASE_URL`: SET
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`: MISSING
+- `GHM_QUALIFICATION_DATABASE_NAME`: MISSING
+- `GHM_QUALIFICATION_DATABASE_HOST`: MISSING
+- Three distinct database URLs: FAIL
+- Disposable target guard: FAIL
+
+Conclusion: dotenv is loading at least two existing values, but the full three-principal, signed-assertion disposable qualification configuration is not provisioned in the current checkout. Do not run the PostgreSQL qualification script; its required preconditions are unmet. Do not copy production URLs, generate a signing secret ad hoc, create a database, or relax the database-name/localhost guards.
+
+Next safe action is inspect local file/configuration inventory without printing contents or secrets: identify whether `.env`, `.env.local`, `.env.test`, or documented local qualification setup files exist, and inspect repository handovers/branch notes for an already-established Actor Gateway principal and disposable DB setup. The user has previously said there is an existing local qualification environment, so reconcile that prior setup before concluding it is absent. If no existing configuration/DB/principals can be located, stop and report this as an environment provisioning gap rather than introducing paid infrastructure or new DBs.
+
+Static checks remain: TypeScript build succeeded and focused migration contract test passed 5/5. PostgreSQL qualification remains NOT RUN. No production access/change, SQL migration, deployment, CI dispatch, paid resource, new database or secret generation occurred.
