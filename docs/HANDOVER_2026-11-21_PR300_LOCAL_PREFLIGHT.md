@@ -216,3 +216,10 @@ Confirmed source-side resolutions:
 Recommended safe local sequence: resolve the two TypeScript files to origin/main in the working tree without staging, inspect the diff, then reconcile the script. Use git restore --source=origin/main --worktree -- <two TypeScript paths>; this writes main's exact versions to the worktree but does not stage. Do not use git restore on the script. After verifying all three files contain no conflict markers, run focused unit tests. Stage only after review.
 
 No local worktree edits have been made by the assistant. No merge commit, push, PR merge, production operation, deployment, or paid resource change occurred.
+## 21 November 2026 — runtime privilege conflict worktree restored; index still unresolved
+
+The user ran `git restore --source=origin/main --worktree --` for the runtime privilege implementation and test. The output confirms the worktree implementation contains the 43-function guard, 1,024-stage guard, and independent registrationIdentityWrite, registrationIdentityRead, and capabilityGovernance groups.
+
+Important Git index detail: `git restore --worktree` changes only the working-tree copy. `git status` still reports both files as `UU`, and `git diff --name-only --diff-filter=U` still lists them. This is expected until the chosen resolution is staged. The current intended resolution for these two files is exactly `origin/main`; verify `git diff --exit-code origin/main -- <paths>` returns zero before staging them. Then stage only these two paths with `git add -- <paths>` to mark those conflicts resolved. Do not stage the catalogue script or any untracked file.
+
+PR #300 remains open, not draft, and GitHub reports `mergeable=false`; no source branch refs have been pushed or PR merged. Both runtime files are the only conflicts being resolved in this step; the catalogue script remains unresolved and must be reconciled separately. No tests, merge commit, push, production operation, or deployment have been performed yet.
