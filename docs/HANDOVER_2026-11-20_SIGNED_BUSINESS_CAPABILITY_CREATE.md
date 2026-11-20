@@ -593,3 +593,28 @@ User's latest machine output confirms both Windows PostgreSQL services are Runni
 In the user's existing `C:\GHM-main` PowerShell session, set only the current-process variable `$env:DOTENV_CONFIG_PATH = 'C:\GHM\.env'`, then run the Node presence-only check with `node --require dotenv/config`. Do not print any URLs or signing secret. Check all six required variables, three URL distinctness, and exact `ghm_disposable_test` / `localhost` guards. If those pass, run the existing guarded qualification script using the same `DOTENV_CONFIG_PATH` in that PowerShell session. If a required value is missing, stop and inspect the existing documented file/configuration without modifying it. Do not create databases, roles, env files or secrets, do not use production credentials, and do not change PostgreSQL services.
 
 The focused static migration contract test passed 5/5 and TypeScript build passed. PostgreSQL qualification remains NOT RUN pending use of the correct existing env file. No SQL migration, DB creation, role creation, secret generation, service changes, deployment, CI dispatch, production operation or paid resource occurred.
+
+
+
+## Qualification environment investigation correction — 2026-11-20
+
+The previous handover entry titled "Corrected local qualification setup from prior handovers" incorrectly concluded that the required Actor Gateway values were present in `C:\\GHM\\.env` and that earlier MISSING results came from loading the wrong dotenv path. The user's subsequent check explicitly set `DOTENV_CONFIG_PATH=C:\\GHM\\.env` and still reported the Actor Gateway URL, assertion secret, qualification database name and host as MISSING. That later direct observation supersedes the earlier inference. Do not repeat the claim that these values are present in the local env file.
+
+This is not an Actor Gateway deployment defect. Actor Gateway has not been deployed, and production deployment configuration is intentionally absent. The local qualification harness has a separate requirement: three distinct connections (runtime, Actor Gateway, migrator), a test-only 32-byte HMAC key, and exact localhost/disposable-database guards. These values must be supplied by a local disposable test setup or a disposable CI runner; they must never be sourced from production.
+
+### Existing CI provisioning pattern recovered from merged PR #272
+
+The current `.github/workflows/ci.yml` already provisions a fresh PostgreSQL 18 service named `ghm_disposable_test` for CI, then creates isolated test roles including `ghm_runtime`, `ghm_actor_gateway`, `ghm_migrator` and `ghm_schema_owner`. The workflow defines distinct localhost URLs, the exact `GHM_QUALIFICATION_DATABASE_NAME=ghm_disposable_test` and `GHM_QUALIFICATION_DATABASE_HOST=localhost` guards, and a fixed 32-byte test-only assertion key. It then applies migrations and runs existing disposable PostgreSQL qualifications, including the Business Capability signed Gateway qualification. PR #272's merged CI implementation is the precedent; it does not deploy Actor Gateway or require Render configuration.
+
+The feature's new `qualify-business-capability-gateway-cutover-postgres.mjs` script is separately registered as `npm run qualify:business-capability-gateway-cutover` in `package.json`. The script itself refuses to run unless all three URLs are distinct and the database name/host guards match. Do not weaken or bypass these checks.
+
+### Current status and next safe action
+
+- Build passed and the focused static migration contract test passed 5/5 in the user's Windows checkout.
+- Full `npm test` did not run because PowerShell hit Windows' command-line length limit; this is not a test failure.
+- PostgreSQL signed-create qualification has NOT run.
+- The local PostgreSQL services/listeners being active does not prove that `ghm_disposable_test` or the three dedicated local principals exist.
+- No database, role, secret, env file, service, CI workflow, production configuration or paid resource was created or changed during this investigation.
+- PR #298 remains a separate open draft and is not modified by this feature.
+
+Next, inspect the existing local PostgreSQL instances read-only for whether `ghm_disposable_test` and the required roles already exist. If they do not, do not create them under this task's no-new-database/no-new-resource constraint. The existing CI workflow's ephemeral PostgreSQL service is the established alternative qualification environment; use it only through the normal feature-branch PR validation path, not a manual workflow dispatch. Keep the signed-create SQL unqualified until a real disposable PostgreSQL run passes.
