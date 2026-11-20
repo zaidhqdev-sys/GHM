@@ -259,8 +259,8 @@ export const registerBusinessCapabilityRoutes = (
         res.status(201).json({ capability });
       } catch (error) {
         if (error instanceof CapabilityMutationGatewayError) {
-          res.status(error.status === 400 ? 400 : error.status === 403 || error.status === 404 ? 404 : 503)
-            .json({ error: error.status === 400 ? 'invalid_request' : error.status === 403 || error.status === 404 ? 'not_found' : 'service_unavailable' });
+          res.status(error.status === 400 ? 400 : error.status === 403 || error.status === 404 ? 404 : error.status === 409 ? 409 : 503)
+            .json({ error: error.status === 400 ? 'invalid_request' : error.status === 403 || error.status === 404 ? 'not_found' : error.status === 409 ? 'conflict' : 'service_unavailable' });
           return;
         }
         if (gatewayClient || gatewayRequired) { res.status(503).json({ error: 'service_unavailable' }); return; }
