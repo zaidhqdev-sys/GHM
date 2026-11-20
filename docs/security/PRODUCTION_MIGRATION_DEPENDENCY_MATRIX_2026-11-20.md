@@ -103,3 +103,22 @@ Pre-service = schema/function creation before traffic switches. Cutover = runtim
 No safe first production batch can be approved. There is no verified deployed service commit/route matrix, fresh live ledger/checksum reconciliation, verified recoverable backup, or resolution of PostgreSQL bootstrap/migrator authority and Gateway identity/ACL readiness.
 
 Keep the manifest exactly []. Keep PR #298 draft/unmerged. Do not run production SQL, change roles/ACLs, submit/deploy the Gateway form, or alter existing Render services. No new paid resource is required or authorized. PayFast remains paused.
+
+
+## 20 November 2026 — supplier/profile migration sequencing correction
+
+Source review confirmed two automatic migrations previously combined additive Gateway wrapper creation with premature removal of the existing Resource API runtime path:
+- `20261110260000_gateway_supplier_classification_cutover`
+- `20261110270000_gateway_business_profile_update`
+
+Both now retain the explicit legacy `ghm_runtime` function grant during the additive migration phase while continuing to revoke PUBLIC access. The initial ID-only Gateway wrapper grants were removed from these two migrations; Gateway EXECUTE is granted only when the later signed-assertion migrations replace the wrappers:
+- `20261111030000_bind_supplier_gateway_actor_to_signed_assertion`
+- `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion`
+
+Two new manual-only cutover scripts were added:
+- `database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime.sql`
+- `database/cutovers/20261120020000_revoke_legacy_business_profile_runtime.sql`
+
+They revoke PUBLIC, runtime, migrator and Gateway access to the legacy signatures, but only after their corresponding signed Gateway routes are deployed, end-to-end verified and rollback-rehearsed. They are not in `database/migrations` and are not part of the automatic pending inventory.
+
+Contract tests now assert the legacy runtime path is retained during additive migration and that the separate manual cutover contains the explicit revocation. This is source/test work only; disposable PostgreSQL and exact-head CI remain required. The production batch manifest remains `[]`; no production SQL, ACL, migration, secret, Render setting or deployment was changed.
