@@ -192,3 +192,38 @@ CI runs #5432 and #5433 were cancelled due to newer commits arriving; they are n
 Important remaining work: inspect CI #5437 through full completion. Review/extend the Gateway reader tests and SQL qualification for withdrawn duplicate, owner/admin positive authorization, explicit administrator membership positive path, and direct runtime INSERT/sequence denial for `ghm.business_capability` (the current dedicated script tests active/withdrawn duplicate and runtime denial for evidence, but does not assert the Business Capability table's legacy direct INSERT/sequence grants are revoked). The new migration currently leaves those runtime grants intact, and the separate evidence/replacement cutover does not revoke them. Do not claim Gateway-only create enforcement until a safe forward-only manual cutover migration revokes legacy runtime INSERT/sequence privileges and a separate qualification verifies runtime denial and Gateway create success. Keep any such cutover isolated and clearly guarded; do not apply to production. Preserve an intentional compatibility path only if the product owner explicitly decides not to cut over.
 
 PR #300 remains draft/open/unmerged; PR #298 remains separate and untouched. Do not deploy or merge. No paid resources or production changes.
+
+
+## Signed create Gateway wiring, direct-write cutover and build-fix follow-up — 2026-11-20
+
+Re-read this handover, PR #300, PR #298, PR #272, feature branch and latest CI/job logs before continuing. PR #300 remains draft/open/unmerged; PR #298 remains separate/untouched.
+
+### Application integration added
+- Added `create(actor,input)` to `GatewayCapabilityMutationReader` and `PostgresGatewayCapabilityMutationReader`. It signs the exact canonical seven-field context with operation `business.capability.create`, calls `ghm.gateway_create_business_capability`, and maps the returned database row.
+- Added authenticated Actor Gateway `POST /v1/business-capabilities`; actor identity comes only from the verified JWT local. Request fields are allowlisted and validated; no caller-supplied actor/created_by/lifecycle/verification fields accepted.
+- Added `HttpCapabilityMutationGatewayClient.create` and routed Resource API `POST /api/v1/business-capabilities` through the Gateway whenever Gateway is configured or required. When required but missing/unavailable, it fails closed and does not fall back to the runtime repository. Legacy service route remains only for non-production mode where Gateway is not configured/required.
+- Added Resource API route tests for bearer forwarding and fail-closed behavior; added Actor Gateway route tests for verified actor binding and invalid input; added reader HMAC/context/SQL invocation tests and included them in `npm test`.
+- Corrected Gateway HTTP conflict mapping so duplicate create maps to HTTP 409.
+
+### Direct runtime write bypass identified and closed in a guarded cutover artifact
+The initial signed-create migration explicitly retained legacy runtime INSERT/sequence grants, so a working Gateway route alone did not establish Gateway-only create authority. Added `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql`, explicitly marked MANUAL CUTOVER ONLY and excluded from automatic migrations. It revokes direct INSERT on `ghm.business_capability` and USAGE/SELECT on its identity sequence from PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway`. The SECURITY DEFINER function owned by `ghm_schema_owner` remains the controlled create path.
+
+Extended `scripts/qualify-business-capability-gateway-cutover-postgres.mjs` to apply this new cutover only in the guarded disposable PostgreSQL target and assert direct runtime INSERT denial, runtime sequence denial, Gateway direct INSERT denial, and a false table/sequence privilege matrix. The existing signed create wrapper path must still pass after these revocations. Extended the migration contract test to require this manual cutover contract.
+
+No production cutover was run. The new manual cutover artifact must not be applied to Render production as part of this work. Its header lists required preconditions (deployed/qualified route, provisioned Gateway principal, resolved Render role model, fresh verified backup).
+
+### CI diagnosis and correction
+- Run #5431 (`44776342145`) passed both jobs and all steps through 69, including signed Business Capability create PostgreSQL qualification (step 53), other gateway cutovers and isolated Auth Issuer cutover/evidence.
+- First application wiring CI run #5437 (`44777635823`) failed build due to two precise issues: duplicate `positiveId` declaration in `src/actor-gateway/app.ts`, and two existing typed mutation-reader test doubles missing the new `create` method. These were corrected in commits `f0663df6e42836abd942e9c99732b5f5f9cac2d9` and `b5381417b8b5b2a95c7312be4801870ef76ce0ff`.
+- Added manual cutover and qualification in commits `7ac5813fd55357e5f0e722de4cc1da7a741d7442`, `33c78ea50e8c0e6181cb554a828d1b03c522d624`, and static contract test in `40eecefd1c1e7a64af05a74e2bda5696ba20ab68`.
+- Added Gateway reader, endpoint, Resource API client/router and test commits: `21bcfc108c403cc883ec7258b9e27c5b44fdcec1`, `d746ac74cc138cad4adc43280ca289a7b23971fd`, `5ba95fb20e2eb72e2462dafa56d4264dcafe1544`, `6e35ca2f2990fe672f01b1d920e62ca019c2cb47`, `959fc83792df58860611f2fbd19cb7011330443a`, `b135bfa2792ca979fec907c3f06274e1580d8d13`, `b1012cfda68b0117ff6ce20e4b75280901c3e5e8`, `a131e2a645724b7ac12a437785ebc49a53bf31da`, and `2b5167a8d6cb1c04b750d12d15dadba1b0258d25`.
+- CI run #5445 (ID `44778117399`) triggered for the corrected head and is in progress. It must validate build, tests, worker bundle, migrations and the full PostgreSQL qualification including the newly added direct-write cutover. No pass is claimed yet for the new application wiring or new direct-write cutover.
+
+### Next tasks
+1. Inspect CI #5445; diagnose any exact failure from logs.
+2. Confirm the new `business-capability-mutation-reader.test.ts` is in the test command and passes.
+3. Confirm full disposable PostgreSQL qualification passes after direct runtime INSERT and sequence revocation, including signed create HMAC/replay/expiry/tamper/membership/active+withdrawn duplicate and final privilege matrix.
+4. Inspect route behavior and DTO mapping for HTTP 201/400/403/404/409/503; ensure no production fallback to Resource API.
+5. Update PR #300 summary to accurately describe Gateway HTTP wiring and manual cutover boundary only after the code and CI are verified. Keep PR #300 draft/unmerged pending review and owner-directed next steps.
+
+No production database changes, manual production cutover, deployment, new paid service, new database, secret rotation, workflow dispatch, PayFast work, or PR #298 changes.
