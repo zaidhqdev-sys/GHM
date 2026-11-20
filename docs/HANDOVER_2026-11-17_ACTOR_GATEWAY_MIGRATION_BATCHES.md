@@ -4990,3 +4990,35 @@ The connector does not expose GitHub's detailed conflict-file list or a test-mer
 ### Change boundary
 
 This task changed one documentation file only. The migration execution manifest remains empty. No production database, SQL, role, grant, credential, secret, Render service, environment, deployment, CI dispatch, payment state, paid resource, or branch ancestry was changed. PR #300 remains separate and untouched; PayFast remains paused.
+
+
+
+## 20 November 2026 — PR #298 mainline ancestry reconciliation
+
+Re-read this handover, PRs #298 and #300, the current `main` ref, and the migration-batches branch before this task.
+
+### Exact comparison
+
+- PR #298 head before reconciliation: `420f4bd32c8735db5232d96b7bf1f27cd5ef0c33`.
+- Current `main` head: `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Merge base: `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- GitHub compare reported 257 commits ahead / 4 behind.
+- The four mainline commits were all documentation-only changes to `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md`.
+- A line-by-line comparison established that the branch's hosting handover already contained every current-main line in exact order; it additionally contained 100 branch-specific lines/sections after the mainline content. The branch was therefore content-reconciled but its ancestry did not include the four mainline commits.
+
+### Ancestry reconciliation
+
+Created merge commit `85e84849b3fd0c7e0040af0c47386b904be42835` with both the previous PR #298 head and current `main` as parents. Its tree preserves the existing feature-branch contents, including the 100 branch-specific hosting-handover lines, while recording the current mainline ancestry. The branch ref was advanced with a non-force update and an expected-head lease from `420f4bd32c8735db5232d96b7bf1f27cd5ef0c33`.
+
+This is an ancestry merge, not a rebase or squash. No migration SQL, runner, pending inventory, execution manifest, tests, application source, or PR base was changed. No force-push was used.
+
+### Remaining verification
+
+- Re-fetch PR #298 metadata and compare `main` against the updated feature branch to confirm the new ahead/behind counts and GitHub mergeability state.
+- Check whether the workflow has any applicable checks for the new merge commit. Do not manually dispatch CI or claim exact-head qualification if the workflow skips documentation-only changes.
+- Keep PR #298 draft/unmerged. Keep `config/production-migration-batches.json` empty. Do not execute production migrations.
+- PR #300 remains separate and untouched.
+
+### Change boundary
+
+Only branch ancestry was reconciled and this handover is being updated. No production database, SQL, role, membership, grant, ACL, ledger, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
