@@ -12,7 +12,7 @@ CREATE FUNCTION ghm.gateway_create_business_capability(
 ) RETURNS SETOF ghm.business_capability
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, ghm
+SET search_path = pg_catalog, ghm, pg_temp
 AS $gateway_create_business_capability$
 DECLARE
   v_actor bigint;
