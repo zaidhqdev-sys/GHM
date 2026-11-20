@@ -5578,3 +5578,12 @@ PR #301 is draft and unmerged. No source change has been deployed to Render. Exa
 PR #298 remains draft/unmerged at 85f9fd3716cfac9ee643901bc5181c69cf7aeb8e. PR #300 remains separate/draft at 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700. PR #297 remains separate/draft at 304da520c5cfe1e77b479a97dfdd9d951fa6e245. PR #301 does not merge or modify any of them.
 
 No production database, migration, SQL, role, ACL, credential, secret, Render environment variable, service configuration, payment state, or paid resource was changed. The manually-created PORT override remains removed; Render auto-deploy remains OFF.
+## 20 November 2026 — PR #301 exact-head validation started; uncaught-handler typing corrected
+
+Continued the startup diagnostics task after re-reading PRs #301, #298, #300 and #297, the actor-gateway branch list, and the current PR #301 source. PR #301 remains isolated from all migration and feature branches.
+
+Review of the first diagnostic commit found that safeErrorDetails had gained a required stage argument while the uncaughtException and unhandledRejection handlers still called it with one argument. Corrected this by defaulting the helper stage to the current startupStage, preserving safe error output and ensuring those handlers type-check. The correction is included in exact head bb05a23524689070ded3b633d6d46da310bda001 (second commit bb05a23524689070ded3b633d6d46da310bda001; initial commit fdde8587160c388ce27b1a00133eb3b5acc6d3df). Only src/actor-gateway/server.ts is changed in PR #301.
+
+Queried GitHub's exact-head check-runs endpoint for bb05a23524689070ded3b633d6d46da310bda001. At the latest observation: quality queued; web-quality in progress; Cloudflare Pages in progress. No conclusions have completed; validation remains pending. Run/check URL: https://github.com/zaidhqdev-sys/GHM/actions/runs/44804463550
+
+PR #301 remains draft/open/unmerged and must not be deployed until quality and web-quality pass; Cloudflare Pages is also still running. No merge, Render deploy, production SQL, database/role/ACL change, migration, secret/environment change, or payment-state change was made. PR #298, #300 and #297 remain separate.
