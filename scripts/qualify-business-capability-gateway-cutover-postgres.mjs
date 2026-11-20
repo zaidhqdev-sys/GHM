@@ -55,10 +55,12 @@ try{
  const expiredSignature=createHmac('sha256',key).update(expiredPayload,'utf8').digest('hex');
  const expired=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',[owner,expiredIssued,expiredNonce,expiredContext,expiredSignature,expiredContext]),'EXPIRED SIGNED CAPABILITY CREATE ASSERTION DENIED');assert.equal(expired.code,'42501');assert.match(expired.message,/expired/i);
  // Reuse one assertion and its exact payload: the second attempt must fail at nonce replay protection.
- const replayContext={...createInput,capabilityId:createCapId,description:'replay-probe'};
+ const replayCapId=randomUUID();ids.capabilities.push(replayCapId);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[replayCapId,marker+' replay',marker+'-replay']);
+ const replayContext={...createInput,capabilityId:replayCapId,description:'replay-probe'};
  const replaySigned=sign(owner,'business.capability.create',replayContext);
  const replayArgs=[owner,replaySigned.issuedAt,replaySigned.nonce,replaySigned.context,replaySigned.signature,JSON.stringify(replayContext)];
- const replayFirst=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',replayArgs),'FIRST REPLAY PROBE HAS NO WRITE DUE TO UNIQUE COLLISION');assert.equal(replayFirst.code,'23505');
+ const replayFirst=await gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',replayArgs);assert.equal(replayFirst.rowCount,1);ids.assertions.push(Number(replayFirst.rows[0].id));
  const replaySecond=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',replayArgs),'SIGNED CAPABILITY CREATE ASSERTION REPLAY DENIED');assert.equal(replaySecond.code,'42501');assert.match(replaySecond.message,/replay/i);
  const invalidDates={...createInput,capabilityId:randomUUID(),effectiveFrom:'2027-01-01T00:00:00.000Z',effectiveUntil:'2026-01-01T00:00:00.000Z'};
  const invalidDate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(invalidDates)],invalidDates),'INVALID CAPABILITY EFFECTIVE PERIOD DENIED');assert.equal(invalidDate.code,'22023');
