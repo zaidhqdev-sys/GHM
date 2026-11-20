@@ -5311,3 +5311,63 @@ The next live verification requires the owner's explicit confirmation to inspect
 ### Change boundary
 
 This task was a read-only GitHub source/PR/branch inspection and handover documentation update. No Render workspace was selected; no Render service/environment/deployment/log/metric was accessed or changed. No database, migration, ledger, role, membership, ACL, secret, production route, PR state, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — confirmed Render workspace, read-only live inventory and deployment failure diagnosis
+
+Owner explicitly authorized read-only inspection of the ZAID Technologies Render workspace. The workspace was passed by ID to read-only list/get/deploy/log/event tools. No workspace selection mutation was used.
+
+### Workspace inventory
+
+Workspace: ZAID Technologies (`tea-d9svua6417fc73bhcutg`).
+
+The Render service inventory returned five web services:
+- `GHM-Internal-Runtime` — existing production Resource API; branch `main`; Frankfurt; auto-deploy OFF; one instance; health path `/healthz`; free web-service plan; service ID `srv-damupsek1f9s73eq8kkg`.
+- `ghm-identity-qualification` — separate qualification service; branch `integration/ghm-identity-merge-candidate-20261018`; auto-deploy OFF; free plan; no production Actor Gateway role implied.
+- `ghm-payfast-sandbox-runtime` and `ghm-payfast-callback-sandbox` — legacy sandbox services; auto-deploy OFF; kept out of this production review.
+- `zaid-ai-workforce` — unrelated service.
+
+No `ghm-actor-gateway` service exists in the returned service inventory. No new service was created.
+
+The Postgres inventory returned:
+- `ghm-db` / database `ghm_db`: PostgreSQL 18, Frankfurt, available, primary, 1 GB disk, plan `0.1c-256mb`, database user shown as `ghm_app_user`, service ID `dpg-dag0sdtbedkc7389vi2g-a`.
+- `ghm-payfast-sandbox-db`: suspended, billing suspender, expired 2026-11-08; excluded from target production.
+- No Key Value instances.
+
+**Cost clarification:** Render currently reports the Resource API web service plan as `free` and the existing `ghm-db` Postgres plan as `0.1c-256mb`. This read does not change either plan. No paid resource was added or proposed.
+
+### Actual deployed Resource API commit and failed candidate deploy
+
+The latest successful/live Resource API deployment remains commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` (deploy `dep-dbpmv8jrjlhs73abkli0`, status `live`). The service branch is `main`, but auto-deploy is OFF, so branch head does not imply deployment head.
+
+A later deployment attempt at `fe5a82d856f8733d0094e7d4599733da93537719` (2026-11-15, deploy `dep-dbsva6c9v7es73bordlg`) built successfully but failed at process startup with exit status 1. Render app logs show the exact error:
+`GHM_ACTOR_GATEWAY_URL is required when production storage is enabled`
+from `dist/http/app.js:323`. It retried and failed again. The failed candidate did not replace the previous live deployment; the last successful deploy remains `c7cf1eb`.
+
+A prior 2026-11-15 deployment attempt at `8f3ee5748679c736aaefc7bcf9f6716b5453314a` failed during build with exit status 2. It is not the current live commit.
+
+Recent 2026-11-20 app logs show the existing service starting `npm start` / `node dist/server.js` and listening on port 10000. These logs do not prove that current main's Gateway-aware code is deployed.
+
+### Environment-variable visibility boundary
+
+The Render connector's available read-only service and deploy responses expose service configuration metadata, but no read-environment-variable action was available in the discovered tool set. No environment-variable values or secret values were retrieved. Therefore the exact current presence/absence of `GHM_ACTOR_GATEWAY_URL`, storage-provider attestation secret, `GHM_RUNTIME_DATABASE_URL`, or database credentials remains unverified from Render metadata. The failed deployment log proves that the candidate's startup process did not receive a usable Gateway URL at that time; it does not by itself establish the current value state.
+
+### Identity qualification service
+
+The separate `ghm-identity-qualification` service's last live deploy is `ee91f42503e064571d57e87ed0d5cd1e9d5badd5` (2026-11-04). It remains on the integration qualification branch with auto-deploy OFF. It is not the production Resource API or Actor Gateway.
+
+### Updated production readiness decision
+
+1. Resource API remains on the older live commit `c7cf1eb`; the Gateway-aware candidate `fe5a82d` failed at startup because the Gateway URL was required while production storage was enabled.
+2. No Actor Gateway web service is currently present in the ZAID Technologies workspace inventory.
+3. Existing production DB `ghm-db` is available and PostgreSQL 18, but its live schema/ledger/role/ACL/recovery readiness was not inspected in this Render-only task.
+4. Current exact environment variable/secret values are not exposed by the read-only connector methods discovered; do not infer them.
+5. Consequently no migration batch is safe to approve and the manifest remains `[]`. The next engineering action should be source/CI investigation of the failed startup's required Gateway configuration and service contract, without creating/deploying a service or changing Render settings. Production remains fail-closed; no attempt was made to bypass the Gateway requirement.
+
+### PR/branch state at handover update
+
+PR #298 remains open, draft and unmerged. The live PR read reported head `a2a25da6e91177144b7f60dd22c88daa9c72f5be`, 267 commits, 32 changed files, mergeable=true. PR #300 remains a separate draft and was not changed. The manifest remains `[]`.
+
+### Change boundary
+
+Read-only Render workspace/service/Postgres/Key Value inventory, service detail, deployment history, events and logs only; followed by this GitHub handover documentation update. No Render configuration, service, environment variable, deployment, database, backup, role, ACL, migration, branch/PR state, paid plan, or PayFast state was changed. No new paid resource was added.
