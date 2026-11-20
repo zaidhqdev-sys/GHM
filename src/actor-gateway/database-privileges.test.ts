@@ -146,7 +146,7 @@ test('normalizes PostgreSQL regprocedure comma spacing before exact comparison',
 test('includes the signed Business Capability create wrapper in the exact Gateway executable allow-list', () => {
   assert.match(
     ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
-    /'ghm\\.gateway_create_business_capability\\(bigint, bigint, uuid, text, text, jsonb\\)'/,
+    /'ghm\.gateway_create_business_capability\(bigint, bigint, uuid, text, text, jsonb\)'/,
   );
   const createSignature = 'ghm.gateway_create_business_capability(bigint, bigint, uuid, text, text, jsonb)';
   assert.throws(() => assertActorGatewayDatabasePrivileges({
