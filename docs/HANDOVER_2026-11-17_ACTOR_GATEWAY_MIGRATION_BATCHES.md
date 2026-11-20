@@ -4683,3 +4683,43 @@ PR #298 remains open/draft/unmerged at `4ef69b53756a693047ff306477e10438a73b2ff5
 ### Safety and cost
 
 No production SQL, role, membership, grant, table/column/sequence ACL, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state, branch ancestry or CI run was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — route/ACL matrix refinement and correction of earlier route description
+
+Re-read the handover and refreshed PR #298 plus branch comparison and Actor Gateway branch inventory. Inspected current branch source at the exact Business Capability router/repository, Evidence router/repository, manual Business Capability cutover SQL and its disposable qualification script. This pass found a material precision correction to an earlier handover statement; the correction is recorded explicitly below.
+
+### Correction: Business Capability HTTP route is PUT, not POST
+
+- The current router registers `PUT /api/v1/business-capabilities`, not `POST`.
+- In the production-required Gateway path, the PUT route validates the request, requires a bearer token, returns 503 if the required Gateway client is absent, and calls `gatewayClient.replace(...)`. It does not call the direct repository INSERT.
+- Only when Gateway is neither configured nor required does the route call `service.replaceBusinessCapabilities`, which invokes the legacy `ghm.replace_business_capability_assertions` wrapper.
+- The repository method `createBusinessCapability` does contain a direct `INSERT INTO ghm.business_capability`, with explicit columns `business_id, capability_id, proficiency_level, description, effective_from, effective_until, source_reference, created_by`; it checks active/selectable catalogue state and owner/administrator membership within `withTenantTransaction`. However, the inspected current router does not register a POST route that calls this method.
+- Therefore the earlier handover's assertion that an active `POST /api/v1/business-capabilities` route currently requires direct runtime INSERT is **not supported by the current router** and is withdrawn. The direct repository method remains source code, but its current route reachability must not be assumed. Do not use it to justify a production runtime INSERT grant without locating an actual registered caller and verifying application composition.
+
+### Confirmed Evidence routes and SQL
+
+- `GET /api/v1/business-capability-evidence` routes administrators to `listForVerification` and requires `businessId` for the business-scoped `listForBusiness` path.
+- Both repository methods issue direct SELECTs joining `ghm.business_capability_evidence`, `ghm.business_capability`, `ghm.business` and `ghm.capability`. The business path uses `withTenantTransaction`; the verification queue uses `withAuthorizedTransaction`.
+- The inspected manual cutover SQL revokes direct INSERT and column INSERT plus sequence USAGE/SELECT on `ghm.business_capability_evidence` from PUBLIC, `ghm_runtime` and `ghm_migrator`. It does not revoke SELECT on Evidence tables.
+- The paired disposable qualification proves runtime Evidence INSERT and `nextval` are denied, and asserts `has_table_privilege('ghm_runtime','ghm.business_capability_evidence','INSERT') = false`. It does not yet assert the exact SELECT grants needed by both read paths.
+
+### Refined direct ACL disposition
+
+| Object / operation | Current source evidence | Qualification disposition |
+|---|---|---|
+| `ghm.business_capability` direct INSERT | Repository method exists; current router path to it not found in inspected router | Do not claim active runtime route need; trace all call sites and actual composition before preserving or revoking |
+| `ghm.business_capability_evidence` INSERT | Manual cutover explicitly revokes table/column INSERT | Existing disposable test asserts runtime denial |
+| Evidence sequence | Manual cutover revokes USAGE/SELECT | Existing disposable test asserts `nextval` denial |
+| Evidence business/admin SELECT | Both HTTP branches use direct SELECT repository methods | Add/confirm exact runtime SELECT matrix; separately test route-level tenant/admin authorization |
+| Campaign SELECT | Existing campaign cutover asserts runtime SELECT remains | Retain until route contract changes |
+
+### Next bounded action
+
+Search all call sites of `createBusinessCapability` and all production composition wiring to establish whether any registered route or background consumer reaches that direct INSERT. If no caller exists, document it as unreachable legacy repository code rather than inventing an ACL requirement. For Evidence SELECT, inspect migrations and existing route tests before proposing an ACL test. Do not broaden to schema-wide changes.
+
+### Refreshed state and safety
+
+PR #298 remains open/draft/unmerged at `7b13ece5ac420aae99b8971ff719089e41b563a3`, 240 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left unchanged. No CI run was triggered.
+
+Production batch manifest remains `[]`. No source, test, SQL, migration, ACL, role, production data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
