@@ -709,3 +709,23 @@ Inspected PR #298's exact source and commit history. Its runtime privilege corre
 - `src/db/runtime-database-privileges.test.ts` copied from PR #298 source SHA `ab77b12ed387c9b2d1def6951a3b21d10fa5b27e`; feature commit `96465bb05e1009bb7f7464e8b33ac5395ca069e6`.
 
 No PR #298 branch/file was modified. This is a feature-branch-only reconciliation of the shared validator and its unit tests to the already-migrated mainline database state. It does not revoke any database grants, execute any production cutover, or alter production. Next check exact-head PR #300 CI, confirm the updated validator passes, then ensure the dedicated Business Capability qualification runs. If it fails, diagnose its own SQL evidence; do not widen the runtime allow-list or weaken ACL checks without source/hand-over evidence.
+
+
+## PR #300 run #5408 cancellation diagnosis — 2026-11-20
+
+Inspected PR #300 and PR #298 metadata, the feature branch handover, the feature branch CI workflow, and the latest available branch search result before proceeding. PR #300 remains open and draft; PR #298 remains a separate open draft with no review submissions. The feature branch remains `feat/signed-business-capability-create`.
+
+Run #5408 (run ID `44668651541`) completed with conclusion `cancelled`, not `failure`. Both `quality` and `web-quality` were cancelled. The quality job was cancelled during container initialization; checkout, dependency installation, role provisioning, syntax checks, build, migration application, and all database qualification steps were skipped. Therefore run #5408 provides no new evidence about the shared runtime privilege validator or the signed Business Capability SQL.
+
+The workflow defines `concurrency.group: ghm-${{ github.workflow }}-${{ github.ref }}` with `cancel-in-progress: true`. This means a newer run for the same PR ref can cancel an in-progress attempt. The available workflow-run query for commit `96465bb05e1009bb7f7464e8b33ac5395ca069e6` returned only run #5408; it did not identify a later successful replacement. Do not describe #5408 as a code or SQL failure, and do not claim the new qualification passed.
+
+Current qualification evidence remains:
+- TypeScript build and static migration contract tests passed in earlier local validation.
+- Migration application passed on run #5407.
+- Run #5407 then failed at the shared isolated Actor Gateway principal permission-stage validator, before the dedicated signed Business Capability qualification step.
+- The feature branch reused PR #298's reviewed runtime privilege baseline and matching tests (feature commits `39dcc1c0e8c8f0a8e086633c53073a545c097f7a` and `96465bb05e1009bb7f7464e8b33ac5395ca069e6`); PR #298 itself was not modified.
+- Run #5408 was cancelled before it could validate those corrections.
+
+Important workflow observation: the branch's `.github/workflows/ci.yml` pull_request target list includes `main`; markdown-only handover changes are excluded by `paths-ignore`. The CI job uses ephemeral PostgreSQL 18 and isolated principals; no local or production database is involved.
+
+Next: establish the current PR #300 head and its latest associated workflow run, then inspect that run's job state/logs. If no replacement run exists, make a narrowly scoped source change only if justified, or otherwise use the normal PR code-change trigger (not manual workflow dispatch) to obtain a fresh exact-head run. Keep PR #300 draft/unmerged and PR #298 untouched. No production changes, local DB changes, paid resources, deployments, or secrets were made in this task.
