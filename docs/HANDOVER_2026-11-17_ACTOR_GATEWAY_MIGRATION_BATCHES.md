@@ -5964,3 +5964,28 @@ Commits:
 Exact-head CI run 44823461106 for code commit be987a0002f83542b4eba32a79f8d46a2c85b3a4 was in progress when this note was written. Confirm both disposable manual cutover/rollback rehearsals, full test suite, all downstream signed Gateway cutovers, and final SECURITY DEFINER pre/post inventory comparison before claiming qualification.
 
 PR #298 remains draft/open. PR #297 and #300 remain separate draft/open; #301 and #302 remain closed/merged. Production execution manifest remains []. No production SQL/DDL/ACL/role changes, production migration execution, secrets, Render settings/deployments, paid resources, or payment state changed.
+
+
+## 20 November 2026 — full disposable qualification passed; temp-shadowing canary added
+
+Re-read this handover, PR #298 and related PR/branch state, migration manifest, CI run 44823461106, all quality-job steps, test diagnostics, and the pre/post SECURITY DEFINER inventory artifacts.
+
+Completed exact code-head CI run 44823461106 for commit be987a0002f83542b4eba32a79f8d46a2c85b3a4:
+- quality: success
+- web-quality: success
+- Cloudflare Pages: success
+- full test suite: 1,106 passed, 0 failed
+- all 145 migrations applied on disposable PostgreSQL 18.7
+- production migration plan-only, Auth Issuer/Actor Gateway principal checks, founder/commercial authority, Worker smoke, Connect provisioning, storage, Opportunity marketplace, all signed Gateway cutover qualifications, supplier/profile manual cutover and rollback rehearsals, payment identity, migration audit policy, runtime boundary, Auth Issuer cutover/lifecycle, and final authority comparison all passed.
+- supplier and profile scripts applied the manual cutover only in localhost ghm_disposable_test, verified legacy runtime denial, restored only the runtime EXECUTE grant for rollback rehearsal, proved legacy call success, then reapplied the cutover and verified denial.
+- whole-database SECURITY DEFINER inventory recorded 112/112 routines owned by ghm_schema_owner with search_path=pg_catalog, ghm, pg_temp, both before and after Auth Issuer cutover. Routine identity set unchanged. Comparison observed 14 expected Auth Issuer function ACL changes, non-issuer definitions/ACLs unchanged, role memberships/attributes unchanged, zero unexplained non-issuer changes, and structural comparison passed. Evidence artifacts are attached to run 44823461106.
+
+Additional hardening task started after that successful run: the audit proves the pinned path catalog state but did not directly exercise a caller-created pg_temp object with the same unqualified name as a GHM object. Added scripts/qualify-security-definer-search-path-postgres.mjs, which is restricted to NODE_ENV=test and localhost ghm_disposable_test, creates a disposable SECURITY DEFINER canary referencing an unqualified GHM table, creates a same-named caller temp table, asserts the GHM object wins, checks owner/config, and drops all canary objects in a transaction. Wired the script into package.json and the CI workflow immediately after applying migrations; expanded the SECURITY DEFINER migration contract test to require this qualification. Commits:
+- Canary script: 38b0a910cc54d0193101873cb1ca8ecae99f94fa
+- Package wiring: 13f47bf4c73016eaf5ea8b322ff8e67be7e0c9f9
+- CI step: 3545cc73caf0d5aef6fc239479d5cbfbfd5dfb7d
+- Contract test and regex correction: 30bf97a04d28299c4b1d313e5573e414daa18984, 39bd8e54478d3bb56c03c97817fa468a9f5d60ff
+
+New CI run 44824481575 is pending for exact code commit 39bd8e54478d3bb56c03c97817fa468a9f5d60ff. Do not claim the temp-shadowing canary has passed until this run completes. The previous full qualification pass remains valid for commit be987a... but does not include this new canary.
+
+PR #298 remains draft/open. PR #297 and #300 remain separate draft/open; #301 and #302 remain closed/merged. Production execution manifest remains []. No production SQL/DDL/ACL/role changes, production migration execution, secrets, Render settings/deployments, paid resources, or payment state changed.
