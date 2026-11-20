@@ -519,7 +519,6 @@ export const createActorGatewayApp = (
       res.status(201).json({ capability });
     } catch (error) { capabilityFailure(error, res); }
   });
-  const positiveId = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0;
   app.put('/v1/businesses/:businessId/capabilities', async (req: Request, res: Response) => {
     const raw=req.params.businessId; const businessId=typeof raw==='string'&&/^[1-9][0-9]*$/.test(raw)?Number(raw):NaN;
     const body=req.body as Record<string,unknown>|null;
