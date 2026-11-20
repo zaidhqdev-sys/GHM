@@ -227,3 +227,29 @@ No production cutover was run. The new manual cutover artifact must not be appli
 5. Update PR #300 summary to accurately describe Gateway HTTP wiring and manual cutover boundary only after the code and CI are verified. Keep PR #300 draft/unmerged pending review and owner-directed next steps.
 
 No production database changes, manual production cutover, deployment, new paid service, new database, secret rotation, workflow dispatch, PayFast work, or PR #298 changes.
+
+
+## Follow-up: CI #5445 build diagnostics fixed; nullable date handling corrected — 2026-11-20
+
+Re-read this handover, PR #300/PR #298/PR #272 context, current branch and exact latest CI logs before proceeding.
+
+CI #5445 (run ID `44778117399`) confirmed `web-quality` passed and reached build. Its build failed with four TypeScript diagnostics:
+1. Two existing typed `GatewayCapabilityMutationReader` test doubles in `src/actor-gateway/app.test.ts` lacked the newly required `create` method.
+2. `src/actor-gateway/app.ts` declared `positiveId` twice after the new create route was inserted.
+
+Both defects were corrected in `f0663df6e42836abd942e9c99732b5f5f9cac2d9` and `b5381417b8b5b2a95c7312be4801870ef76ce0ff`. The next observation of #5445 showed Build PASS and Actor Gateway Worker bundle PASS, but the run was cancelled by subsequent branch commits before migrations/tests/qualification. Thus it does not validate the new app integration end-to-end.
+
+A further request/adapter review found the HTTP client intentionally serializes absent effective dates as JSON null, while the Gateway route initially treated null as invalid. Corrected the validator to accept explicit null (which the SQL function treats as default/no bound) and added a regression case to `src/actor-gateway/app.test.ts`: commits `843468685db8808526d9831585ede4a65ce88c2d` and `8587c308c316a34659e23a1e7eaee890817738fa`.
+
+The new reader test file `src/actor-gateway/business-capability-mutation-reader.test.ts` is included in the package test command. It verifies exact HMAC v2 signing over the canonical context, SQL wrapper invocation, returned row mapping, transaction lifecycle and key format validation. The Resource API Gateway create route tests cover bearer forwarding and fail-closed behavior; the Gateway app test now covers nullable date values.
+
+The manual create cutover file and PostgreSQL qualification additions are in place:
+- `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql` revokes direct `business_capability` INSERT and identity sequence usage from PUBLIC, runtime, migrator and Gateway roles. It is manual-only and not part of automatic migrations.
+- The disposable qualification applies that cutover, verifies runtime direct INSERT and sequence denial, Gateway direct INSERT denial, and checks the privilege matrix while the SECURITY DEFINER signed create operation still succeeds.
+- Static contract test checks the cutover's manual-only contract.
+
+The last full green run remains #5431 (`44776342145`) for the SQL-only qualification and existing full suite, before application wiring. Run #5437 (`44777635823`) was cancelled after a build failure. Run #5445 (`44778117399`) passed build and Worker bundle after the first corrections, then was cancelled by newer commits before PostgreSQL/tests. The current tip changes after that cancellation have not yet received a complete CI result; no application wiring or direct-write cutover pass is claimed.
+
+Next: obtain/inspect normal PR CI for the current branch tip. Confirm TypeScript build, Worker bundle, full test suite (including new reader/app/router tests), and the entire disposable PostgreSQL workflow through step 53 and subsequent steps. Fix only failures supported by logs. Then review route error mapping and the PR summary. PR #300 stays draft/unmerged; PR #298 remains untouched.
+
+No production migration/cutover, deployment, production DB changes, paid resources, secrets, manual workflow dispatch or PayFast work.
