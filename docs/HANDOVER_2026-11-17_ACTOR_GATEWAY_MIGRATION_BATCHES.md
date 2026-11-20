@@ -4533,3 +4533,43 @@ The model's 39-function baseline and 13-function fully cut-over endpoint are sou
 Keep all eight manual cutovers independently staged and do not bulk-revoke them. Do not revoke the separately retained Business Capability INSERT or Evidence/Campaign SELECT paths based on this function-only inventory. Production batch manifest remains `[]`; no batch is authorized.
 
 No source, test, SQL, migration, manifest, CI workflow, branch, PR, credential, secret, production database/role/ACL/data, Render service/configuration/deployment, payment state or schedule was changed. No CI run was triggered. No paid resource or recurring cost was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — direct table/sequence ACL evidence boundary
+
+Re-read this handover, refreshed PRs #296–#299, compared PR #298 with `main`, checked the existing Actor Gateway branch set, and inspected the exact runtime privilege source and tests. This task deliberately separates SECURITY DEFINER function EXECUTE privileges from direct table/sequence ACLs.
+
+### Confirmed from source
+
+- `src/db/runtime-database-privileges.ts` measures only functions in schema `ghm` where `pg_proc.prosecdef` is true and `has_function_privilege(session_user, oid, 'EXECUTE')` is true.
+- Its allowlist is 39 pre-manual-cutover SECURITY DEFINER function signatures, eight disjoint manual cutover groups, 256 accepted stage combinations, and 13 functions in the fully cut-over endpoint.
+- `src/db/runtime-database-privileges.test.ts` verifies those exact combinations and rejects missing/unexpected SECURITY DEFINER EXECUTE grants. It explicitly asserts that the query is limited to `p.prosecdef`, `has_function_privilege` and schema `ghm`.
+- Neither the query nor this test file measures table ACLs, column ACLs, sequence ACLs, default privileges, schema CREATE/USAGE privileges, role memberships or inherited privileges.
+- A targeted repository code search for table/sequence ACL inventory helpers and `has_table_privilege`/`has_sequence_privilege` found no matching dedicated inventory implementation in the searchable default-branch source. This is not proof that no other test or SQL script checks individual grants; inspect the exact qualification scripts and migrations before concluding absence globally.
+
+### Required direct ACL reconciliation matrix
+
+Keep the earlier source-confirmed direct route consumers as explicit rows in a separate table/sequence ACL matrix:
+
+1. `ghm.business_capability`: runtime INSERT columns used by `POST /api/v1/business-capabilities`; current repository uses `withTenantTransaction` and writes `created_by=context.userId`. Must distinguish column-level from table-level INSERT and test omitted columns.
+2. Capability Evidence tables: direct SELECTs for business-scoped history and administrator verification queue. Preserve tenant/admin authorization semantics and determine the exact underlying table/view grants.
+3. Campaign tables: direct SELECT for list/detail, with active membership and Business predicates. Campaign writes are separately Gateway-backed/required in production.
+4. Business Identity tables: PR #296's column-level INSERT proposal is separate, unmerged work; do not assume its ACL is active on main or PR #298.
+5. Sequences: inspect identity/serial columns and effective `USAGE`/`SELECT` grants for each permitted direct INSERT; do not infer sequence rights from table INSERT or column grants.
+6. Defaults and role inheritance: inspect `pg_default_acl`, schema privileges, role memberships/inherit options and `PUBLIC` grants, not just explicit grants to `ghm_runtime`.
+
+### Disposition
+
+- The current 39/13 function model is useful but is not a whole-runtime database privilege audit.
+- Do not broaden its query and silently change the tested contract. A direct ACL inventory should be a separate, explicitly scoped qualification, preferably reusing existing disposable PostgreSQL infrastructure and roles.
+- Before adding tests, search the remaining existing qualification scripts/migrations for catalog checks and inspect the current table/sequence grant definitions. Avoid duplicate work.
+- The three direct Resource API route families previously confirmed remain constraints on any future table ACL revocation.
+- No direct ACL is approved for revocation based on the function-only model.
+
+### Current PR / branch state
+
+PR #298 remains open/draft/unmerged; latest observed head before this handover-only update was `139175a76b30d2b86ca89c9032d82a74d6ebeb4e`, compare 237 ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. PRs #296/#297/#299 remain open/draft/unmerged. Existing Actor Gateway branches were inspected; none changed. No review or CI action was initiated.
+
+### Safety and cost
+
+Production batch manifest remains `[]`. No production SQL, role membership, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, branch ancestry, PR state or CI run was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
