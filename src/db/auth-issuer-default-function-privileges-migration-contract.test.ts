@@ -71,8 +71,10 @@ test('issuer default ACL verifier rejects EXECUTE granted to any non-owner role'
 
 
 test('disposable qualification exercises and cleans up schema-scoped unexpected EXECUTE defaults', () => {
-  assert.ok(qualification.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO postgres'));
-  assert.ok(qualification.includes('IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM postgres'));
+  assert.ok(qualification.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner GRANT EXECUTE ON FUNCTIONS TO ghm_runtime'));
+  assert.ok(qualification.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO ghm_runtime'));
+  assert.ok(qualification.includes('IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime'));
+  assert.ok(qualification.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime'));
   assert.ok(qualification.includes('issuerWithUnexpectedDefault.unsafe_function_defaults'));
   assert.ok(qualification.includes('actorWithUnexpectedDefault.unsafe_function_defaults'));
 });
