@@ -5223,3 +5223,40 @@ This review establishes runner ordering guarantees and identifies operational de
 ### Change boundary
 
 This task was a source and migration-tree review plus handover documentation. No SQL, application source, inventory, execution manifest, database, ledger, role, membership, ACL, credentials, secrets, Render configuration/services/deployment, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — migration-by-migration service dependency matrix
+
+Re-read the migration-batches handover, PR #298/#300, branch comparison, 50-entry production pending inventory, batch selector, production role/service dependency map, deployment blockers, Actor Gateway source/routes and the migration SQL before this task.
+
+### Current PR state at review start
+
+- PR #298 was open, draft, unmerged, mergeable=true; head `20143d892cc61dd16988bc70d61bd868be1440d8`.
+- Comparison was 264 ahead / 0 behind `main`, with 31 changed files.
+- PR #300 remains separate and untouched.
+- Execution manifest was and remains `[]`.
+
+### New dependency matrix
+
+Added `docs/security/PRODUCTION_MIGRATION_DEPENDENCY_MATRIX_2026-11-20.md` (commit `2e307f18b70a7bc12c26edf8ab256fe81fb66ac7`). It maps all 50 pending inventory entries to their required service/principal and pre-execution gate, and records the Actor Gateway / Resource API route families, Auth Issuer absence, storage's distinct provider attestation, and commercial payment's non-activation boundary.
+
+The matrix distinguishes schema/function preparation from traffic cutovers and records these specific ordering hazards:
+
+1. `20261110260000_gateway_supplier_classification_cutover` and `20261110270000_gateway_business_profile_update` revoke legacy runtime functions before the signed-binding migrations `20261111030000` and `20261111040000`. They must not be executed as independent batches or expose an intermediate service state. Treat them only as one reviewed, non-interruptible migration/deployment window or redesign/requalify the sequence.
+2. Initial ID-based Gateway wrappers are not production-ready until signed HMAC assertion, nonce, operation and request-context binding migrations are installed and the service's exact function allowlist is qualified.
+3. Auth runtime revocations require exact deployed Resource API caller/route proof; Auth Issuer is absent from the last recorded live production snapshot.
+4. Global PUBLIC EXECUTE revocation requires a complete live function/grant inventory and explicit allowlist for every production principal.
+5. Catalogue-wide SECURITY DEFINER search_path normalization requires live owner preflight and exact postflight.
+6. Storage provider completion requires a separate provider workflow attestation in addition to the Actor Gateway actor assertion.
+7. Commercial consent/payment preparation does not activate PayFast; payment remains pending checkout and subscription trialing.
+8. `20261117010000` and `20261117020000` remain final post-deployment runtime revocations.
+
+### Batch decision
+
+No safe first production batch can be approved. Exact deployed service commits/route flags, fresh live ledger/checksum reconciliation, a verified recovery point, provider-authorized PostgreSQL bootstrap/migrator authority remediation, and production Gateway identity/ACL readiness are still absent or unresolved. The dependency matrix is a source-contract review, not live deployment or database evidence.
+
+Keep PR #298 draft/unmerged, PR #300 separate, and the execution manifest exactly `[]`. Do not execute production SQL, change roles/ACLs, submit/deploy the staged Gateway form, alter existing Render services, add paid resources, or activate PayFast.
+
+### Change boundary
+
+This task added two documentation records only (the dependency matrix and this handover entry). No migration SQL, application source, production inventory, execution manifest, database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
