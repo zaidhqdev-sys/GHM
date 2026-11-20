@@ -500,3 +500,30 @@ Three follow-up test-source commits were made:
 Important: the focused test has **not yet been rerun** after these edits. Do not call it passing. Re-run `npm run build` and the focused test command from the user's local checkout to compile and execute the corrected assertions. The PostgreSQL harness remains unexecuted; no SQL has been applied.
 
 No production access/change, database migration, deployment, CI dispatch, paid resource, or new database occurred.
+
+
+## Focused Windows migration contract test — verified pass — 2026-11-20 03:08 UTC
+
+User pulled the corrected feature branch through commit `32c7681ec8ffeb00764ca304a1952638a0fd7898`, ran `npm run build`, and reran the focused compiled test:
+`node --require ./scripts/test-env.cjs --test dist/db/actor-gateway-business-capability-create-migration-contract.test.js`
+
+Observed result:
+- TypeScript build: exit success.
+- Focused migration contract tests: 5 passed, 0 failed, 0 skipped.
+- All five assertions now pass: canonical append-only relation, exact signed payload/operation, Business authority and selectable active catalogue, server-derived lifecycle/verification/provenance, and Actor Gateway-only execution grants.
+
+This is a static migration-contract test pass only. It does not execute either SQL migration against PostgreSQL and does not qualify transaction behavior, HMAC execution, nonce replay, or runtime privileges.
+
+### Next gate — inspect existing local qualification configuration without exposing secrets
+
+Use a local presence-only check after loading the existing dotenv file. Do not print URL or secret values. Required variables from the qualification script are:
+- `GHM_RUNTIME_DATABASE_URL`
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`
+- `GHM_MIGRATOR_DATABASE_URL`
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`
+- `GHM_QUALIFICATION_DATABASE_NAME=ghm_disposable_test`
+- `GHM_QUALIFICATION_DATABASE_HOST=localhost`
+
+Only if the existing local configuration already supplies all required values and the three connection URLs are distinct should the guarded PostgreSQL qualification be attempted. Do not create a database, invent credentials, use production, or bypass the script's target guard. If configuration is absent, stop and report which variable names are missing (never values).
+
+No SQL migration, PostgreSQL harness, CI dispatch, deployment, production operation, paid resource or new database occurred in this checkpoint.
