@@ -22,15 +22,17 @@ test('supplier classification is a canonical GHM Business field with a determini
   assert.match(identityContracts, /isSupplier\?: boolean/);
 });
 
-test('supplier classification writes require active owner or administrator membership in a SECURITY DEFINER function', () => {
+test('supplier classification writes require active membership and signed Gateway authority with deferred legacy cutover', () => {
   assert.match(migration, /SECURITY DEFINER/);
   assert.match(migration, /membership_status = 'active'/);
   assert.match(migration, /membership_role IN \('owner', 'administrator'\)/);
   assert.match(migration, /SET search_path = pg_catalog, ghm/);
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM PUBLIC/);
-  assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
-  assert.match(gatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) TO ghm_actor_gateway/);
   assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
+  assert.match(signedGatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint,bigint,uuid,text,bigint,boolean\) TO ghm_actor_gateway/);
+  assert.match(signedGatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint,bigint,uuid,text,bigint,boolean\) FROM PUBLIC,ghm_runtime,ghm_migrator/);
+  assert.match(legacyRuntimeCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint,bigint,boolean\)\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
+  assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
   assert.doesNotMatch(repository, /ghm\.update_business_supplier_classification/);
   assert.match(repository, /must be updated through the authenticated actor gateway/);
   assert.match(http, /supplierClassificationGatewayClient\.update/);
