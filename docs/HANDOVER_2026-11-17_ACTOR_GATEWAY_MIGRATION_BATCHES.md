@@ -5817,3 +5817,19 @@ Commits:
 Qualification limitation: no local disposable PostgreSQL instance was connected or run during this task. Therefore temporary-object shadowing, actual ALTER FUNCTION/PROCEDURE execution, and post-migration catalogue state are NOT yet qualified. Exact-head CI must run on the final head and the disposable PostgreSQL migration suite must pass before treating Gate D as qualified. Do not infer that the migration has run against production. The schema-specific `ghm_runtime` function default ACL remains unresolved and unchanged.
 
 Production batch manifest verified empty (`[]`). No production SQL/DDL/ACL/role changes, migration execution, credentials/secrets, Render settings/deployments, paid resources or payment state changed. PR #298 remains draft and must not be merged or executed.
+
+
+## 20 November 2026 — Runtime default ACL consumer inventory review
+
+Re-read the current handover, PR #298 metadata and branch head, production batch manifest, runtime privilege baseline, Actor Gateway and Auth Issuer privilege verifiers, runtime ACL tests, auth issuer default-privilege migration contract, disposable auth-issuer pre-cutover and cutover qualification scripts, and SECURITY DEFINER migration before deciding whether to alter the schema-specific default ACL.
+
+Findings:
+- The Resource API runtime verifier has an exact reviewed SECURITY DEFINER function baseline of 39 signatures and models eight independently qualified manual cutover groups (256 allowed combinations); after all eight cutovers, 13 reviewed runtime functions remain. The executable-function inventory is queried using has_function_privilege(session_user, ...), so effective grants are checked rather than only direct ACL entries.
+- Actor Gateway and Auth Issuer startup verifiers both reject unexpected function default EXECUTE privileges. Their unsafe_function_defaults check explicitly examines both global and ghm-schema default ACL rows and rejects EXECUTE granted to any non-owner role.
+- The disposable Auth Issuer cutover qualification already probes an injected schema-specific EXECUTE default, asserts both service verifiers reject it, revokes the probe, and asserts both return to the safe baseline.
+- The current migration 20261112050000_revoke_public_default_function_execution only removes the global PUBLIC default. The exact source migration that removes the historical ghm_runtime schema-specific default ACL was not identified in this pass. Do not claim the production ACL is fixed or add a duplicate REVOKE based only on partial migration inventory.
+- Existing runtime compatibility is represented by the explicit 39-signature runtime allow-list and staged manual cutover groups. The existence of this baseline alone does not prove every one of those direct function grants is independent of the historical default ACL; the disposable database catalog must confirm that before any default is removed.
+
+No source changes were made in this review. Exact-head GitHub Actions CI is still absent for branch head 08c4b139766d7ef16cb69a31c01b6e73a4ede2c3; the Cloudflare Pages preview did complete successfully for that commit. The last GitHub Actions CI success is for older commit c07cf2597c416284578f898cae0d5d342c565685 and does not qualify the current head. Disposable PostgreSQL execution was not performed in this pass.
+
+Production batch manifest remains []; PR #298 remains draft/open. No production SQL/DDL/ACL/role changes, migrations, secrets, Render changes/deployments, paid resources or payment state changed. Next: identify the exact historical schema-default ACL migration and confirm disposable database explicit runtime grants for all 39 signatures; then add a narrowly scoped default-ACL revocation only if the source history and disposable catalog prove compatibility.
