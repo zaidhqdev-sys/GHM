@@ -527,3 +527,14 @@ Use a local presence-only check after loading the existing dotenv file. Do not p
 Only if the existing local configuration already supplies all required values and the three connection URLs are distinct should the guarded PostgreSQL qualification be attempted. Do not create a database, invent credentials, use production, or bypass the script's target guard. If configuration is absent, stop and report which variable names are missing (never values).
 
 No SQL migration, PostgreSQL harness, CI dispatch, deployment, production operation, paid resource or new database occurred in this checkpoint.
+
+
+## Qualification environment check clarification — 2026-11-20 03:09 UTC
+
+User's PowerShell presence-only check reported all six required variables as NOT SET in the current PowerShell process.
+
+Important correction: the qualification script imports `dotenv/config` at module startup. The check the user ran queried only process environment variables and did not load `.env`. Therefore this output does **not** establish that the repository's existing local `.env` configuration is absent. Do not ask the user to create or populate credentials based on this result.
+
+Next step is a safe presence/guard check that runs Node with `--require dotenv/config`, prints only SET/MISSING for each required variable, checks the three URL values are distinct without printing them, and reports whether database name and host exactly match `ghm_disposable_test` and `localhost`. Never print URLs or the assertion secret. Only if all checks pass may the existing guarded qualification script be run. If any value is missing or guards fail, stop and inspect existing local setup/handovers; do not invent credentials, create a database, use production or bypass the guard.
+
+The focused static contract test result remains 5/5 passed and the TypeScript build succeeded. No PostgreSQL qualification has been executed.
