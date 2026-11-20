@@ -459,3 +459,23 @@ Re-read the qualification script's configuration contract. It loads `dotenv/conf
 Do not print or request the URL or secret values in chat. The user should first run `npm test` independently; this package test is separate from the database qualification script and should not require those three database URLs. For the database qualification, inspect only variable presence and the two non-secret guard values, then use the existing local `.env` setup if it is already provisioned. Do not invent credentials, reuse production credentials, create a new database, or bypass the localhost/name guards.
 
 No test, SQL migration, PostgreSQL harness, deployment, production operation, CI dispatch, or paid resource was executed in this task.
+
+
+## Windows test-run checkpoint — 2026-11-20 03:03 UTC
+
+User checked out the feature branch successfully and ran `npm test`. The package script began by expanding a very long explicit list of compiled test paths; Windows rejected the resulting command with `The command line is too long.` This is a Windows command-line length limitation, not a test assertion failure. The output shows the script did not reach a test summary, so no tests passed or failed and no test result can be claimed.
+
+The branch is current with origin. The attempted environment lookups confirmed the two optional qualification guard variables are not defined in the current PowerShell process. The transcript did not show whether local dotenv configuration exists.
+
+### Next local validation sequence
+
+Avoid invoking the oversized `npm test` script again on this Windows shell for now. Run the build independently, then the focused feature migration contract test using the short explicit path:
+
+```powershell
+npm run build
+node --require ./scripts/test-env.cjs --test dist/db/actor-gateway-business-capability-create-migration-contract.test.js
+```
+
+This focused test is a source/migration contract test only; it does not execute SQL against PostgreSQL. If it passes, report its actual summary. Then inspect local `.env` variable presence without printing values, and only run the PostgreSQL qualification if all three distinct localhost disposable URLs, the signing key, and the exact database name/host guards are already configured.
+
+Do not alter the package-wide test script as part of this checkpoint; first establish whether this is only a Windows invocation issue and preserve the canonical test coverage. No PostgreSQL migration, disposable DB test, CI run, deployment, production operation, or paid resource occurred.
