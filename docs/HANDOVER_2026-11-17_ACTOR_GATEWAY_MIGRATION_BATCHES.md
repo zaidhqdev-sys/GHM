@@ -5042,3 +5042,31 @@ The qualification script cleanup runs in a finally block and deletes its fixture
 PR #272 contains the signed mutation/cutover and qualification additions, not the original Business Capability table creation. Several earlier capability-related commits were searched, but the original table CREATE migration has not yet been conclusively identified from current-main paths or these PRs. Do not infer constraints/defaults solely from the existing SELECT projection or repository insert. Continue locating the original migration by querying the full migration filename inventory/history; do not author the new SQL migration until its exact table DDL is established.
 
 No code, SQL migration, test or feature branch was changed in this task. Keep the signed-create feature separate from PR #298. No production migration, deployment, new database/service, paid resource, CI dispatch or recurring process.
+
+## Historical PR lineage search — Business Capability original DDL — 2026-11-20
+
+Continued the requested handover/PR/branch review. The following historical PRs were checked by changed-file inventory and, where relevant, patches:
+
+- PR #49 introduced the verification transition function and runtime lifecycle qualification, but not the base table creation.
+- PR #103 adopted the existing Business Capability repository onto the durable tenant boundary; its changed-file inventory includes the repository and qualification script, but no table-creation migration.
+- PR #213 introduced evidence lifecycle and replacement SQL migrations; it operates on the pre-existing `ghm.business_capability` table and is not its original DDL.
+- PR #250 introduced catalogue governance, not the Business Capability assertion table.
+- PR #272 introduced the signed Gateway mutation/cutover and its disposable qualification; it also does not contain the base table creation.
+
+### Newly confirmed reusable behavior
+
+PR #49's lifecycle qualification fixture demonstrates the canonical fixture setup and service behavior:
+- owner account, admin verifier, customer account;
+- approved/active Business and active owner membership;
+- active selectable capability catalogue row;
+- service create returns an initially `unverified` assertion with no verifier provenance;
+- lifecycle transitions preserve assertion fields;
+- cleanup deletes business-capability rows before Business, catalogue and account fixtures.
+
+PR #213's replacement SQL confirms that the unique key `(business_id, capability_id)` is relied upon for conflict handling and that replacement deliberately uses upsert/reactivation semantics. The new create operation must remain a plain INSERT.
+
+### Original DDL status and next search
+
+The original table-creation migration is still not identified. Do not mistake later transition/replacement/evidence migrations for the table DDL. Next inspect the complete migration filename inventory through the repository tree/commit history (rather than guessing timestamped filenames), then fetch the exact original migration and verify its primary key identity mechanism, unique/check constraints, defaults, indexes and sequence ownership before implementing signed create SQL.
+
+No application or SQL implementation was made in this task. The only change is this handover entry. PR #298 remains separate. No production operation, deployment, CI dispatch, paid resource, new database/service, or recurring process.
