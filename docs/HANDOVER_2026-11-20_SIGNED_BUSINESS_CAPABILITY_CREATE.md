@@ -641,3 +641,16 @@ The workflow's `quality` job provisions its own ephemeral PostgreSQL 18 service 
 PR #300 was intentionally created as draft. It must remain unmerged until the actual PostgreSQL qualification and all relevant CI checks pass and the feature is reviewed. PR #298 remains separate and untouched. No production DB, Render service, local database, role, env file, secret, or CI workflow was changed. No paid resource was added. PayFast remains out of scope.
 
 At PR creation the connector returned `mergeable: false`; treat that as GitHub's current mergeability calculation, not as evidence of a conflict or permission to merge. Recheck PR status and CI checks before taking further action.
+
+
+## PR #300 initial CI run observed — 2026-11-20
+
+PR #300 opened successfully as a draft against `main`. GitHub created CI run #5398 (run ID `44667449795`) for the feature code head `d361cf36228bb00a8121e5f1af473a8d536bb5e8`.
+
+At the last check:
+- `quality`: in progress.
+- `web-quality`: in progress.
+- Cloudflare Pages: success, reported a branch preview URL. This is a preview check, not evidence of a production Render deployment or production database change.
+- No CI conclusion is yet available for either quality job. In particular, do not report the PostgreSQL signed-create qualification as passed until the `quality` job completes and its logs confirm the qualification step succeeded.
+
+The handover-only commit `72590214bd9891df6032414e3d696a460d080598` was pushed after the PR opened. The workflow ignores documentation-only changes, so run #5398 is evaluating the code tree from `d361cf3`; the intervening change only appends this handover record. If any source code changes are made, verify a fresh CI run is triggered before treating the new code as qualified.
