@@ -5182,3 +5182,44 @@ Next, continue the source-level review of the migration runner and production mi
 ### Change boundary
 
 This update records completed CI evidence and current PR metadata only. No application source, SQL, migration inventory, execution manifest, production database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — migration ordering and cutover dependency review
+
+Re-read this handover, PR #298/#300, current branch metadata, migration runner, strict pending-inventory validator, exact batch selector, execution manifest, production inventory, migration tree, and selected cutover/authority migration names before this task.
+
+### Current PR state
+
+- PR #298 remains open, draft, unmerged, GitHub mergeable=true.
+- Head before this handover update: `277c043f0a6a9b39171f28d6a9777a9ba40da45f`.
+- Comparison before update: 263 ahead / 0 behind; 31 changed files.
+- PR #300 remains separate and untouched.
+- Production batch execution manifest remains exactly `[]`.
+
+### Ordering controls verified
+
+- Repository migrations are loaded and sorted lexically by their 14-digit version; duplicate versions are rejected.
+- Applied ledger names are checked against repository names for matching versions.
+- Any pending migration followed by a later applied repository migration is rejected as a history gap.
+- Production inventory must equal the entire live pending queue by exact length, order, version and name.
+- A selected batch must be a non-empty, strictly ordered, unique list with valid SHA-256 checksums and must match an exact contiguous prefix of the current pending queue; checksums are compared against repository SQL.
+- Existing applied migration checksums are validated before execution, including documented historical provenance exceptions.
+- Selected SQL runs under an explicit transaction/advisory lock after database identity and migrator-role checks. The manifest is empty, so no batch can currently be selected.
+
+### Dependency/cutover conclusion
+
+The production inventory contains 50 pending migrations spanning supplier classification, onboarding/read models/storage cleanup, capability catalogue governance, Actor Gateway principal/self-identity/registration identity, signed assertion binding, Business Capability/Saved Business/Business Hours/Trust Score/Business Logo gateways, auth/runtime revocations, signed Connect provisioning, storage attestation, commercial document/consent authority and payment preparation, and the final two runtime revocation cutovers.
+
+Version order alone is not proof of safe operational cutover. In particular:
+- `20261110260000_gateway_supplier_classification_cutover` and `20261110270000_gateway_business_profile_update` appear before the subsequent signed-assertion binding migrations (`20261111030000`, `20261111040000`) in the pending sequence. Their names indicate a need to verify the deployed Gateway's expected assertion contract before applying them; do not infer safe deployment order from timestamps.
+- Multiple auth/runtime revocation migrations occur before later token-bound recovery additions and public/unsigned Gateway cleanup. Their route/function dependency and rollback implications must be checked against the deployed Resource API/Auth Issuer versions, not just SQL order.
+- `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads`, `20261112080000_signed_connect_business_provisioning_gateway`, storage Gateway/attestation changes, commercial consent/payment preparation, and `20261117010000`/`20261117020000` runtime revocations require explicit service/route readiness and principal/ACL evidence. The last two remain post-deployment cutovers and are excluded from any pre-deployment batch by the PR scope.
+- The PR body correctly says the first safe batch is not yet known. No batch manifest should be populated until a migration-by-migration dependency matrix is tied to exact deployed service commits, routes and live production ledger.
+
+### Safety disposition
+
+This review establishes runner ordering guarantees and identifies operational dependency gates; it does not establish a safe first production batch. Do not derive batch boundaries from timestamps or names alone. Keep manifest `[]`, PR #298 draft/unmerged, PR #300 separate, and no production SQL, migration, role/ACL, or deployment action.
+
+### Change boundary
+
+This task was a source and migration-tree review plus handover documentation. No SQL, application source, inventory, execution manifest, database, ledger, role, membership, ACL, credentials, secrets, Render configuration/services/deployment, paid resource, or PayFast state was changed.
