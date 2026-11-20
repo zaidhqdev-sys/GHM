@@ -51,3 +51,9 @@ test('signed create function is restricted to Actor Gateway execution',()=>{
  assert.match(migration,/GRANT EXECUTE ON FUNCTION ghm\.gateway_create_business_capability\(\s*bigint,\s*bigint,\s*uuid,\s*text,\s*text,\s*jsonb\s*\)\s*TO ghm_actor_gateway/);
  assert.doesNotMatch(migration,/GRANT\s+(?:INSERT|USAGE)[\s\S]*TO\s+ghm_runtime/i);
 });
+
+test('forward-only assertion allowlist preserves every existing signed Gateway operation',()=>{
+ const operations=["capability.list","capability.create","capability.update","capability.transition","supplier.classification.update","business.profile.update","actor.identity.read","business.registration.read","business.registration.update","business.capability.create","business.capability.replace","business.capability.verify","business.capability.evidence.review","business.capability.evidence.submit","saved_business.read","saved_business.create","saved_business.delete","business.hours.replace","business.hours.read","trust.score.calculate","trust.score.read","business.logo.bind","business.connect.provision","storage.metadata.create","storage.metadata.read","storage.metadata.mark_deletion_pending","storage.metadata.mark_available","storage.metadata.mark_deleted"];
+ for(const operation of operations) assert.ok(createAllowlist.includes(`'${operation}'`),`missing signed Gateway operation: ${operation}`);
+ assert.equal(operations.length,28);
+});

@@ -828,3 +828,16 @@ Actual run #5410 mismatch is the newly auto-migrated `ghm.gateway_create_busines
 No existing manual cutover or rollback SQL was modified. No privileges were granted/revoked, no production DB changed, no migration executed manually, and no Render/deployment/paid-resource/secret changes were made. PR #300 remains draft/unmerged; PR #298 remains separate and untouched.
 
 Validation still required: normal PR CI on the updated branch must prove the shared Actor Gateway principal check now passes and the dedicated signed Business Capability PostgreSQL qualification actually executes. No SQL qualification pass is claimed yet.
+
+
+## CI #5416 — Gateway principal passed; assertion operation allowlist regression corrected — 2026-11-20
+
+Re-read the feature handover, PR #300, separate PR #298 and feature branch before investigating run #5416. Run #5416 (`44678876225`) showed web-quality passed and the corrected Actor Gateway principal qualification passed. It then failed before the signed Business Capability qualification, in the existing storage provider workflow-attestation qualification.
+
+Exact error: `Invalid actor assertion` from `ghm.assert_actor_gateway_capability`, invoked by `ghm.gateway_storage_create_pending` in `scripts/qualify-storage-provider-workflow-attestation-postgres.mjs`.
+
+Root cause: the new forward migration `20261120011000_allow_signed_business_capability_create_assertion.sql` had copied an older operation list from `20261111070000_add_signed_business_capability_mutations.sql`. It omitted later operations introduced by canonical migration `20261112140000_add_signed_storage_metadata_actor_gateway.sql`, including `storage.metadata.create` and other saved-business, hours, trust, logo, Connect and storage operations. Thus the new create operation was allowed but pre-existing operations were unintentionally disabled.
+
+Correction: rebuilt the forward migration's allowlist from the latest canonical verifier state, preserving all 27 pre-existing operations and adding only `business.capability.create` (28 total). Added a static migration contract test asserting all 28 operation strings remain present. HMAC v2, 60-second expiry, constant-time signature comparison, active actor, nonce replay protection, session-user restriction, ownership/search_path and grants remain unchanged.
+
+No production or local DB, secrets, deployment, paid resource, or PR #298 changes. PR #300 remains draft/unmerged. No SQL qualification pass is claimed; next CI must pass storage provider qualification and continue to the dedicated signed Business Capability test.

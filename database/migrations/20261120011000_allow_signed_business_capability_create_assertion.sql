@@ -10,11 +10,34 @@ BEGIN
  IF session_user<>'ghm_actor_gateway' OR p_actor IS NULL OR p_actor<=0 OR p_issued IS NULL OR p_nonce IS NULL
  OR p_context IS NULL OR octet_length(convert_to(p_context,'UTF8'))>32768
  OR p_operation IS NULL OR p_operation NOT IN (
-  'capability.list','capability.create','capability.update','capability.transition',
-  'supplier.classification.update','business.profile.update','actor.identity.read',
-  'business.registration.read','business.registration.update',
-  'business.capability.create','business.capability.replace','business.capability.verify',
-  'business.capability.evidence.review','business.capability.evidence.submit'
+  'capability.list',
+  'capability.create',
+  'capability.update',
+  'capability.transition',
+  'supplier.classification.update',
+  'business.profile.update',
+  'actor.identity.read',
+  'business.registration.read',
+  'business.registration.update',
+  'business.capability.create',
+  'business.capability.replace',
+  'business.capability.verify',
+  'business.capability.evidence.review',
+  'business.capability.evidence.submit',
+  'saved_business.read',
+  'saved_business.create',
+  'saved_business.delete',
+  'business.hours.replace',
+  'business.hours.read',
+  'trust.score.calculate',
+  'trust.score.read',
+  'business.logo.bind',
+  'business.connect.provision',
+  'storage.metadata.create',
+  'storage.metadata.read',
+  'storage.metadata.mark_deletion_pending',
+  'storage.metadata.mark_available',
+  'storage.metadata.mark_deleted'
  ) OR p_signature IS NULL OR p_signature !~ '^[0-9a-f]{64}$' THEN
   RAISE EXCEPTION 'Invalid actor assertion' USING ERRCODE='42501';
  END IF;
