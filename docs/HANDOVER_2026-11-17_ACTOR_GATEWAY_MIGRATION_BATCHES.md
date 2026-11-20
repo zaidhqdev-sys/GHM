@@ -4922,3 +4922,43 @@ No source or test implementation was made in this task. This is a resolved compa
 PR #298 remains open/draft/unmerged at `8cea0220b693302e28b1f9dba91ae4c137a7cd25`, 244 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left untouched. No CI run was triggered.
 
 Production migration batch manifest remains `[]`. No production SQL, role, membership, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+
+## 20 November 2026 — post-PR #300 continuation review; PR #298 remains separately gated
+
+Before choosing the next task, re-read this migration-batches handover and the production migration reconciliation, refreshed PR #298 and PR #300 metadata/diffs, searched the current feature branches, and compared the migration-batches branch against `main`.
+
+### Completed adjacent feature — PR #300
+
+The separately scoped signed Business Capability create feature has now been completed on `feat/signed-business-capability-create`, PR #300. It is fully qualified on CI disposable PostgreSQL; CI #5449 and #5450 both passed `quality` and `web-quality`, including the new signed create wrapper, HTTP Gateway/Resource API integration, and the manual-only direct INSERT/sequence cutover qualification. PR #300 remains open/draft/unmerged. Its manual cutover is not in automatic migrations and has not been applied to production. This work remains outside PR #298's migration-batch scope and is not added to its pending inventory or execution manifest.
+
+### Refreshed PR #298 / branch state
+
+- PR #298 remains OPEN / DRAFT / UNMERGED, `mergeable=false`, head `f2f3cbb9588dad8ac0fdd8477e7434f6fc3d4b60`, base `main`; no review submissions or inline review threads were returned. Its only current comment is the automated Cloudflare Pages branch-preview bot message, not a code review or production deployment.
+- The current head commit is documentation-only (`docs/HANDOVER_2026-11-17_ACTOR_GATEWAY_MIGRATION_BATCHES.md`). `fetch_commit_workflow_runs` returned no PR-triggered workflow runs for that head or the preceding documented code checkpoint `8cea0220b693302e28b1f9dba91ae4c137a7cd25`. The CI workflow ignores documentation-only changes. Therefore there is no exact-current-head CI pass established by this review; do not claim one.
+- Branch comparison against current `main`: 254 commits ahead, 4 behind. The four commits on `main` since the branch point touch only `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md`. A line-content comparison confirms every current-main line is present in the branch copy, while the branch has 66 additional lines of branch-specific history. The PR remains reported non-mergeable; do not assume the shared handover is conflict-free or rewrite ancestry just to remove the four behind commits.
+- `config/production-migration-batches.json` remains exactly `[]`.
+- `config/pending-migrations.production.json` remains a 50-entry repository-side pending inventory based on the supplied 105-row production ledger snapshot. It is not live refreshed authority and does not authorize execution.
+
+### Static runner / qualification review
+
+Re-read `src/db/migrate.ts`, `src/db/migration-batches.ts`, `src/db/migration-batches.test.ts`, `src/db/migration-runner-plan-mode.test.ts`, `src/db/production-pending-migration-allowlist.ts`, `.github/workflows/ci.yml`, and `scripts/qualify-production-migration-plan-only.mjs`.
+
+Confirmed from source:
+- Production pending migrations are checked against an exact pending-queue allowlist before planning or execution.
+- Normal production execution requires an explicit known batch ID; selected batches must match the exact contiguous pending prefix and exact checksums.
+- The reviewed batch manifest is empty, so there is no selectable production execution batch.
+- Plan-only mode does not execute migration SQL and rolls back its transaction. Its CI fixture uses a local PostgreSQL service, creates a temporary `ghm_db` fixture, checks that all pending migration filenames/checksums are printed, and compares ledger/catalog counts before and after.
+- CI job environment sets `NODE_ENV=test` and uses localhost PostgreSQL; the plan-only qualification guard also checks the exact `ghm_disposable_test` qualification context. The fixture database name `ghm_db` is local-only and must never be confused with the Render production database of the same name.
+
+This was a source-level review only. No local database was created, no script or workflow was executed, and no live production ledger was queried. It does not establish that the 50-entry pending inventory matches the current live production ledger, that a first batch can safely be derived, or that production migration authority is ready.
+
+### Next safe work
+
+1. Keep PR #298 draft/unmerged and keep its execution manifest empty.
+2. Reconcile why GitHub reports `mergeable=false` without rebasing or merging; the branch is still 254 commits ahead and its shared hosting handover has branch-specific additions.
+3. Establish exact-head CI for the code-bearing PR #298 state using the normal PR workflow only when a meaningful code/test change is justified. Do not dispatch workflows manually merely to obtain a green check, and do not claim CI passed based on a docs-only head.
+4. Separately refresh the live production ledger only through the already approved dedicated read-only authority path; then re-derive the exact pending inventory and dependency/cutover order. The current 50-entry file is historical input, not execution authority.
+5. Do not populate a production batch until exact ledger/checksum reconciliation, route readiness, migrator role/ACL authority remediation, provider-confirmed administration, and verified recovery are complete.
+
+No production SQL, migration, role, membership, grant, ACL, ledger, data, credential, secret, Render service/configuration/deployment, payment state, branch ancestry, or paid resource was changed. PR #300 and PR #298 remain separate. PayFast remains paused.
