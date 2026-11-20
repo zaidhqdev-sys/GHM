@@ -249,6 +249,8 @@ jobs:
 
       - name: Qualify SECURITY DEFINER temporary-object shadowing on disposable PostgreSQL
         run: npm run qualify:security-definer-search-path
+      - name: Compare SECURITY DEFINER migration authority before and after on disposable PostgreSQL
+        run: npm run qualify:security-definer-search-path-migration
 
       - name: Qualify production migration plan-only mode on isolated ghm_db fixture
         env:
