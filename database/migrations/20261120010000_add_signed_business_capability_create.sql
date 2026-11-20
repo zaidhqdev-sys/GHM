@@ -92,8 +92,10 @@ BEGIN
     v_effective_until := (p_payload->>'effectiveUntil')::timestamptz;
   END IF;
 
+  v_effective_from := COALESCE(v_effective_from, transaction_timestamp());
+
   IF v_effective_until IS NOT NULL
-     AND v_effective_until <= COALESCE(v_effective_from, clock_timestamp()) THEN
+     AND v_effective_until <= v_effective_from THEN
     RAISE EXCEPTION 'Effective-until must be later than effective-from' USING ERRCODE='22023';
   END IF;
 
@@ -134,8 +136,8 @@ BEGIN
     ) VALUES (
       v_business, v_capability, v_proficiency, v_description,
       'active', 'self_declared', 'unverified',
-      COALESCE(v_effective_from, clock_timestamp()), v_effective_until,
-      v_source_reference, clock_timestamp(), v_actor
+      v_effective_from, v_effective_until,
+      v_source_reference, transaction_timestamp(), v_actor
     )
     RETURNING *;
 END;
