@@ -3924,3 +3924,52 @@ Re-read the existing migration-batch and production migration reconciliation han
 - The previous review's next target is now the earlier Commercial schema/ACL group. No new migration or source defect was established by this pass; the main remaining operational dependency in this chain is the already-documented controlled identity/callback qualification and historical nullable-provider reconciliation, not a missing generic settlement grant.
 
 No source, SQL, tests, migration inventory, batch manifest, production database/ledger/roles/ACLs, provider role/credential, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover record was updated.
+
+
+## 20 November 2026 — early Commercial schema/index/status/ACL migration reconciliation
+
+Re-read the migration-batches handover, production reconciliation, PR #298 metadata and current branch/main state. Continued the Commercial review backwards through every remaining 2026-09-15/16 Commercial schema reconciliation migration. Inspected the original schema grants, all eight follow-up SQL files, Commercial repository/service tests, and the migration runner's transaction boundary.
+
+### Ordered migration contracts
+
+| Version | Actual effect | Final-state interpretation |
+|---|---|---|
+| `20260915193000` | Replaces the payment-transaction status check with `pending,succeeded`. | Temporary narrowing; immediately superseded by the next status correction. |
+| `20260915194500` | Adds Business+created-time payment-attempt and Business+occurred-time transaction indexes. | Adds the intended chronological Business access paths; retains existing indexes. |
+| `20260915200000` | Replaces the status check with `pending,succeeded,failed`. | Restores the authoritative lifecycle required by the provider-result boundary; this is the final status constraint from this pair. |
+| `20260915210000` | Adds Business+lifecycle subscription index. | Supports the documented subscription lookup path. |
+| `20260915220000` | Adds a partial unique index on non-NULL `provider_event_id` in payment transactions. | One provider event can create at most one transaction; NULL remains available for non-provider-origin transactions and multiple distinct financial events per attempt remain possible. |
+| `20260915223000` | Grants runtime only column-scoped INSERT on trial, subscription and commercial-event rows, plus required sequence USAGE. | Does not grant UPDATE/DELETE or access to provider events, payment transactions or founding allocations. |
+| `20260916003000` | Temporarily grants runtime column-scoped SELECT on selected commercial-event evidence columns. | Superseded by the immediately following revocation; do not describe as final runtime access. |
+| `20260916004500` | Revokes the exact column-scoped commercial-event SELECT grant. | Final state is no direct runtime SELECT on commercial_event; governed evidence is read through the schema-owner qualification path. |
+
+### Important transaction-boundary finding
+
+- `src/db/migrate.ts` begins one database transaction before migration ledger validation and iterates the selected migration list by executing normalized migration SQL, then commits once after the complete list.
+- Therefore the temporary intermediate states in `20260915193000` (narrower status check before `20260915200000`) and `20260916003000` (event SELECT before `20260916004500`) are not committed/visible between individual files when run through the supported migration runner. A failure rolls the enclosing migration transaction back.
+- Do not manually execute these SQL files one at a time outside the runner. The documented migration runner transaction is part of the safety contract.
+- PR #298's batch selector chooses an exact contiguous pending prefix, but the runner still wraps the selected prefix in the same enclosing transaction. Batch boundaries do not make intermediate migration states externally visible.
+
+### Original schema and effective ACL evolution
+
+- The original `20260915150000_create_commercial_schema.sql` grants runtime SELECT on plan/version/entitlement/price/trial/subscription/payment-attempt tables and reference tables needed by governed operations. It deliberately grants no runtime table DML on provider events, payment transactions, commercial events or founding allocations.
+- The original schema grants broad table DML and all-sequence access to `ghm_migrator`; this is a migration-authority grant, not application runtime authority. The production reconciliation handover separately records the observed legacy migrator ACL inventory and its controlled remediation plan. Do not conflate the two principals or add speculative revocations here.
+- The subsequent Commercial changes progressively add only the exact runtime capability needed: column-scoped trial/subscription/event inserts; later payment-attempt/event inserts; then provider settlement is removed from runtime and isolated behind the dedicated provider principal.
+- The temporary commercial-event read grant is explicitly undone. The final intended runtime contract is not direct commercial-event evidence access.
+- The composite indexes and partial unique index are additive; they do not alter row ownership, grants or payment-provider activation.
+
+### Existing application test coverage and gap assessment
+
+- `src/resources/commercial/repository.test.ts` covers Business membership gating, entitlement fail-closed reads, trial activation as an atomic three-write transaction, rollback on event failure, payment-preparation membership/idempotency/provider binding, and atomic pending payment-attempt/event writes.
+- `src/resources/commercial/service.test.ts` covers the service delegation/authorization contract.
+- `src/resources/commercial/payfast-callback.test.ts` covers isolated provider attempt lookup, PayFast-specific settlement function use, provider mismatch and invalid callback statuses.
+- No dedicated source-contract test file was found for these early 2026-09-15/16 SQL migrations. This is a test-granularity observation only; CI #5397's disposable PostgreSQL migration/qualification passed for its tested SHA. Do not claim an untested dedicated migration contract test exists, and do not add a duplicate test without identifying an uncovered invariant and an appropriate current test task.
+
+### Corrections to prior handover wording
+
+- The preceding assistant response accidentally repeated `20260915223000` several times in its illustrative table. That table was malformed and is superseded by the exact ordered migration table above.
+- The Commercial migration order is `15193000 → 15194500 → 15200000 → 15210000 → 15220000 → 15223000 → 16003000 → 16004500`. The two temporary grants/status states must be understood together with their immediate corrective migrations.
+- The migration source and transaction runner establish repository intent and disposable execution semantics; neither proves which of these versions are applied in production. The latest authoritative production ledger remains the 15 November supplied audit; the later approved connector read was denied SELECT on the migration ledger. Exact live pending prefix remains unverified.
+- PR #298 remains open/draft/unmerged; its execution manifest remains empty. No production execution or manifest population is authorized by this review.
+
+No source, migration SQL, tests, manifest, inventory, production ledger/database/roles/ACLs, credentials, Render configuration/deployment, payment state, PR state or branch ancestry was changed. Only this handover record was updated.
