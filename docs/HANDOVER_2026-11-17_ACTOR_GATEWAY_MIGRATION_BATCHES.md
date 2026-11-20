@@ -5452,3 +5452,37 @@ This correction supersedes any wording in this handover/environment contract imp
 - Production migration batch manifest remains `[]`.
 - PayFast remains paused.
 - No Render submission/deployment, production DB change, secret access/change, paid resource, merge, rebase, or force-push occurred in this correction.
+
+
+## 20 November 2026 — implementation: reject incomplete signed Gateway cutover batches
+
+### Pre-task repository review
+
+Before this task, the current migration handover and environment contract were read; PR #298, PR #300 and adjacent migration PR #297 were inspected. PR #298 remained open/draft/unmerged, PR #300 remained separate/open/draft/unmerged, and the migration-batches branch was 270 commits ahead / 0 behind main before this implementation. PR #298 had no submitted review records or unresolved inline review threads. The exact current handover recorded the two ordering hazards below.
+
+### Defect addressed
+
+The dependency matrix already identified that:
+- `20261110260000_gateway_supplier_classification_cutover` revokes the legacy runtime path before signed replacement `20261111030000_bind_supplier_gateway_actor_to_signed_assertion`.
+- `20261110270000_gateway_business_profile_update` revokes the legacy runtime path before signed replacement `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion`.
+
+The production batch selector enforced exact contiguous prefixes, but did not itself reject a selected prefix that ended after one of these revocations and before its signed replacement. That left an avoidable gap between the documented hazard and the executable batch guard.
+
+### Implementation committed
+
+- `8e8c68fecd96d5b9d62c085c22303ba49f845408` — added explicit signed-cutover dependency guard in `src/db/migration-batches.ts`; batch selection now rejects either runtime revocation unless its corresponding signed replacement is already applied or included in the same selected batch.
+- `980df6af660ce8a771ef947253ee1bbcb24e6ea2` — added tests for supplier and Business Profile incomplete cutovers and completed cutover behavior.
+- `296df2b3f0efceeee6915a1e7f194e79dde5cee8` — corrected the applied-cutover negative test to exercise the dependency assertion directly.
+
+The rule does not authorize a production batch or change the pending inventory. The production manifest remains exactly `[]`. It does not redesign migration ordering; it makes the current unsafe intermediate state unselectable through the reviewed batch selector.
+
+### Qualification and safety status
+
+- CI run #5465 was observed in progress for the preceding handover-only head `a145f27a...`; it is not evidence for these implementation commits.
+- The new source/tests have been pushed to PR #298 branch. Exact-head CI for `296df2b3...` has not yet been observed; do not claim tests passed until that run completes.
+- No production SQL, role/ACL, migration ledger, Render service/form, environment variable, secret, deployment, payment state, schedule, or paid resource was changed.
+- PR #298 remains draft/unmerged. PR #300 remains separate and untouched.
+
+### Next task
+
+Check exact-head CI for `296df2b3...`. If it fails, inspect the failing job and fix only the demonstrated defect. If it passes, continue to the next source-level production migration safety gap identified by the dependency review; do not return to repeated environment-variable or database-readiness checklists absent new evidence.
