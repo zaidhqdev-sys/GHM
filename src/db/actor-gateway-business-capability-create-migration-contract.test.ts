@@ -19,7 +19,10 @@ test('signed create migration targets the canonical append-only Business Capabil
 });
 
 test('signed create binds the exact payload and uses the existing create assertion operation',()=>{
- assert.match(signedVerifier,/'business\.capability\.create'/);
+ assert.doesNotMatch(signedVerifier,/'business\\.capability\\.create'/);
+ assert.match(createAllowlist,/'business\\.capability\\.create'/);
+ assert.match(createAllowlist,/CREATE OR REPLACE FUNCTION ghm\\.assert_actor_gateway_capability/);
+ assert.match(createAllowlist,/GRANT EXECUTE ON FUNCTION ghm\\.assert_actor_gateway_capability[\\s\\S]*TO ghm_actor_gateway/);
  assert.match(migration,/p_context::jsonb\s*<>\s*p_payload/);
  assert.match(migration,/ghm\.assert_actor_gateway_capability\(\s*p_actor,\s*'business\.capability\.create'/);
  assert.match(migration,/p_payload\s*-\s*ARRAY\[/);
