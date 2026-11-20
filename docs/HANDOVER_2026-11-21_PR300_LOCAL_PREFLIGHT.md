@@ -110,3 +110,47 @@ Expected semantic conflict areas remain:
 - Run targeted tests and full disposable PostgreSQL 18 qualification after resolving conflicts; then push normally and require fresh exact-head CI plus GitHub mergeability before considering merge.
 
 No source changes, merge of main, push, PR merge, production migration/cutover, production database/ACL/role change, secret/environment change, Render configuration/deployment, backup operation, payment activation, or paid resource change was performed in this fast-forward task.
+
+
+## 21 November 2026 — PR #300 mainline merge started; semantic conflicts isolated
+
+The user ran the approved `git merge --no-commit --no-ff origin/main` from the synchronized feature branch.
+
+Terminal evidence:
+- Pre-merge feature HEAD: `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- `origin/main`: `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- Git auto-merged:
+  - `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+  - `scripts/qualify-capability-catalogue-governance.mjs` (then reported content conflict)
+  - `src/db/runtime-database-privileges.test.ts` (then reported content conflict)
+  - `src/db/runtime-database-privileges.ts` (then reported content conflict)
+- Explicit content conflicts:
+  - `scripts/qualify-capability-catalogue-governance.mjs`
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/runtime-database-privileges.ts`
+- Git reports merge failed pending conflict resolution; no merge commit has been created.
+
+The migration file was auto-merged, but it must still be inspected to ensure mainline's `pg_temp` SECURITY DEFINER search_path guard and signed-create migration changes are both retained. The mainline contract test `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` must also exist in the merge result.
+
+Remote review for this task:
+- Re-read this handover and the canonical migration-batches handover; rechecked PR #300 metadata and current branch comparison.
+- PR #300 remains open/not draft and GitHub reports `mergeable=false`.
+- Mainline #301/#302 are closed/merged; PRs #297/#298 remain separate draft migration workstreams.
+- No production migration, manual cutover, production DB/ACL/role change, Render setting/deployment, secret, or payment state was changed.
+
+### Immediate next action — inspect, do not resolve blindly
+
+The assistant cannot inspect the user's in-progress local index/worktree directly. Before proposing conflict edits, collect the exact unmerged paths, conflict-marker locations, and combined diffs from the local checkout. Do not run `git add`, `git checkout --ours/theirs`, `git restore`, `git merge --abort`, or commit yet. Keep the merge paused and preserve the two known untracked files.
+
+Use:
+```powershell
+git status --short
+git diff --name-only --diff-filter=U
+Select-String -Path "scripts\qualify-capability-catalogue-governance.mjs","src\db\runtime-database-privileges.test.ts","src\db\runtime-database-privileges.ts" -Pattern '^(<<<<<<<|=======|>>>>>>>)'
+git diff --cc -- "src/db/runtime-database-privileges.ts"
+git diff --cc -- "src/db/runtime-database-privileges.test.ts"
+git diff --cc -- "scripts/qualify-capability-catalogue-governance.mjs"
+```
+Return the complete output. Then reconcile semantics using the actual stage definitions and qualification checks. Preserve mainline's 43-function baseline and 1,024-stage state model; do not choose either side wholesale. Ensure the merged script retains signed Gateway catalogue route checks and legacy EXECUTE denial assertions. Verify the auto-merged migration and mainline migration contract test before staging.
+
+No conflict resolution, staging, merge commit, push, CI rerun, PR merge, production operation, or deployment was performed in this task.
