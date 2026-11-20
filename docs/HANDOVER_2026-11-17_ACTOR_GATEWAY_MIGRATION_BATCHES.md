@@ -3416,3 +3416,21 @@ No CI was dispatched or rerun, no workflow file or dependency was changed, and n
 ### Next bounded action
 
 Determine why the existing workflow is not producing a new PR run for the recent source commits, using the PR event/timeline and repository Actions metadata. Do not rerun the known failing historical run: its failure is the web dependency audit, not the migration code. Once trigger cause is known, obtain exact-head CI for the current PR source tree without weakening or bypassing the dependency audit.
+
+
+
+## 20 November 2026 — PR workflow dispatch path identified
+
+Further inspection corrected the earlier CI trigger diagnosis:
+
+- The authoritative `.github/workflows/ci.yml` on both `main` and the PR branch explicitly defines `workflow_dispatch`, `pull_request` for base branch `main`, and ignores documentation-only changes. PR #298 targets `main` and includes TypeScript/config/test changes, so the PR's source/base/path filters are compatible with CI.
+- The latest PR head before this handover update (`b42625eda9989ca9c07ec21f550fe5fb4702105b`) has no GitHub Actions check run; its only returned check run is the external Cloudflare Pages check, which succeeded. Its commit status endpoint contains zero status contexts.
+- Repository Actions history still ends with PR run #5396 on 2026-11-18; there is no run after the 2026-11-19 source change. The ledger-name source commits were authored via the GitHub connector's file-update path. GitHub documents that events created using the repository's `GITHUB_TOKEN` do not trigger new workflow runs (to prevent recursive workflow execution). This is a plausible explanation for why Cloudflare Pages saw the commit while Actions did not, but the connector's token identity is not exposed here, so record it as a **likely, not proven, cause**.
+- No workflow dispatch or rerun action is exposed by the connected GitHub tool set. The workflow itself does support manual `workflow_dispatch`, so the safe way to qualify the exact branch without a source change is to manually dispatch the existing `CI` workflow against `feat/actor-gateway-production-migration-batches`. This executes the existing quality and web-quality jobs; it does not deploy or run against production (the quality job's PostgreSQL is a disposable Actions service).
+- The known historical #5396 web audit failure remains a real dependency gate. Manual dispatch must retain that gate; do not use force upgrades, audit exceptions, or a bypass. A successful core job with a failing web audit is not an overall green CI result.
+
+No workflow file, dependency, branch, source, database, Render service, deployment, or secret was changed. PR #298 remains draft/unmerged; the reviewed production batch manifest remains empty. The focused local evidence for the ledger-name guard remains build passed and 17/17 tests passed on `5d090283...`; exact-head CI is still outstanding.
+
+### Next operator action
+
+Dispatch the existing workflow `CI` via GitHub Actions `workflow_dispatch` on branch `feat/actor-gateway-production-migration-batches`. Record both job outcomes and inspect any failure logs. Do not re-run historical #5396 or change its dependency gate as a substitute for current-head validation.
