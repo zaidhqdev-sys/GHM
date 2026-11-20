@@ -4286,3 +4286,49 @@ Fetched each exact commit diff and checked every nonblank added line against the
 - No branch was created/deleted, and no PR state or code was changed.
 
 No production database, migration ledger, role, membership, ACL, secret, credential, Render form/configuration/deployment, payment state, CI workflow, inventory or execution manifest was changed. Only this handover was extended.
+
+
+## 20 November 2026 — migration runner, inventory, batch selector and plan-only safeguards reviewed
+
+Re-read this handover, refreshed PR #298–#299 and related #296/#297, enumerated the Actor Gateway branches, and re-fetched the live PR #298 compare before reviewing the exact migration runner, batch selector, production inventory validator, unit tests, plan-only disposable qualification and package scripts. No paid CI run was triggered.
+
+### Refreshed state
+
+- PR #298 remains open/draft/unmerged; latest head before this handover-only commit: `d75ae513e2bcf19aa19f5b36181f10c07d852f06`.
+- Current main: `ddb31ff59ab470973edf60a5078a75e5f962f803`; merge base: `b73839b27ac90446650f921d3e8ce1b5de041f04`.
+- Compare: 231 ahead / 4 behind, diverged; GitHub reports `mergeable=false`.
+- Related PRs: #296 and #297 remain open/draft/unmerged; #299 remains open/draft/unmerged (latest PR info reports `mergeable=true`, but `merged=false`). Their independent implementation/qualification histories must not be conflated with #298.
+- User reports PR #298 CI run #5397 passed. This review does not claim an independent rerun or re-verify its exact tested SHA. No workflow dispatch or other GitHub Actions run was started.
+
+### Runner and batch selector — verified source properties
+
+Inspected `src/db/migrate.ts`, `src/db/migration-batches.ts`, `src/db/production-pending-migration-allowlist.ts`, and their test files.
+
+1. The production target is explicitly bound to the configured database name and host by `assertPostgresTargetConfiguration`. The production database `ghm_db` requires `DATABASE_SSL=true` with certificate verification; the only SSL-off exception is the test-only plan qualification on localhost with `NODE_ENV=test` and explicit `GHM_MIGRATION_PLAN_QUALIFICATION=true`.
+2. Before `SET ROLE ghm_schema_owner`, the runner verifies the connected database, the exact `ghm_migrator` session/current identity, its non-login/non-superuser/NOINHERIT/least-privilege shape, no direct relation privileges, and its one explicit non-inheritable SET path to the NOLOGIN schema owner. It then checks the effective current/session identity after `SET ROLE`.
+3. The runner locks the migration transaction, checks applied version/name identity, checks the production inventory against the entire live pending queue, detects out-of-order gaps, and verifies checksums for every applied repository migration before planning or execution.
+4. Production execution requires a nonblank explicit batch ID. The batch selector validates unique strictly ordered migration identities, valid SHA-256 strings, unique valid batch IDs, nonempty purposes and nonempty batches; the selected batch must be the exact contiguous pending prefix and every selected checksum must match repository SQL.
+5. The committed execution manifest remains `[]`. Consequently there is no selectable production batch and production execution remains fail-closed.
+6. Plan-only is a distinct branch: it enumerates all pending migrations with SHA-256 values, does not invoke migration SQL, does not require a batch ID, and explicitly rolls back before returning. Normal production execution remains SSL-verified and batch-gated.
+
+### Test registration and disposable plan qualification
+
+- `package.json` normal `npm test` includes compiled `migration-batches.test.ts`, `migration-runner-plan-mode.test.ts`, `migration-checksum.test.ts`, `postgres-target-guard.test.ts`, and `migrator-principal.test.ts`.
+- The batch tests cover missing/unknown IDs, exact prefix, skipped prefix, start after applied versions, duplicate versions/IDs, malformed identities/checksums, ordering, empty/invalid batch metadata, checksum mismatch, and exact production inventory behavior.
+- The runner plan-mode tests cover all-pending plan selection without batch, no-SQL output and rollback, non-production target rejection, and checksum checking before output.
+- The separate `qualify: migration-plan-only` CI step (actual npm script `qualify:migration-plan-only`) creates a local-only disposable `ghm_db`, seeds 95 repository migrations plus 10 retained historical ledger rows (105 total), executes the compiled runner as the restricted migrator, requires all 50 pending inventory entries and checksums in the output, verifies ledger row count and GHM relation-object count remain unchanged, then drops the disposable database.
+- The script refuses production NODE_ENV and requires `GHM_QUALIFICATION_DATABASE_NAME=ghm_disposable_test`; it hardcodes localhost-only disposable URLs and deletes only its own local `ghm_db` fixture. It is not a production plan invocation and does not use Render or external infrastructure.
+- The fixture's before/after no-change assertion compares ledger row count and GHM relation-object count, not a complete byte-for-byte snapshot of every row/catalog attribute. However, the runner's explicit plan branch does not execute migration SQL; this is a test-observability limitation, not evidence that plan mode mutates the DB. Keep the source-level no-execution assertions and existing disposable qualification; do not expand this into a costly or unnecessary hosted test.
+
+### Inventory and manifest disposition
+
+- The 50-entry production pending inventory is checked at runtime for exact equality with the entire pending repository queue (version, name and order), but remains a dated candidate derived from the 105-row production snapshot through 2026-11-09, not a fresh live ledger export.
+- The separate production batch manifest is empty. Do not populate it until live ledger, retained-history provenance, migration dependency/route readiness and exact prefix review are complete.
+- The two 2026-11-17 capability/business identity revocations remain post-deployment cutovers and are not eligible for the pre-deployment batch.
+- No current production ledger evidence was refreshed during this task. No plan-only run was directed at Render or any remote host.
+
+### Decision / next action
+
+No defect in the reviewed batch selector, pending inventory validator or migration runner was established from source inspection. Do not add code merely to create activity. The substantive remaining gate is operational evidence: fresh read-only production ledger reconciliation, complete dependency/active-route prefix qualification, and the already-recorded Actor Gateway credential/ACL and deployment readiness. These should be pursued using existing local evidence and existing resources only. The Actor Gateway hosting work is a planned deployment/qualification sequence; do not characterize its current absence as a permanent blocker or an unapproved product direction. No additional paid service is authorized or required by this task.
+
+No source, migration, runner, tests, package scripts, CI workflow, inventory/manifest, database/ledger/role/ACL, credentials/secrets, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No Actions run was triggered. Only this handover was extended.
