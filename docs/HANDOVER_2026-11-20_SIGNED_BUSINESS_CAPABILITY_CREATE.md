@@ -78,3 +78,19 @@ Important validation boundary:
 - Next: inspect CI triggered by commit a849566bf31bf36c4af6d414e9988088d36fa973; if the catalogue step passes, inspect the subsequent legacy capability cutover and dedicated Business Capability signed Gateway cutover steps. Fix only failures supported by logs. Confirm the signed-create test's full PostgreSQL/HMAC/ACL result before marking qualification complete.
 
 PR #300 remains draft/unmerged. PR #298 remains separate and untouched. No production/local DB changes, deployments, paid resources, or secret changes.
+
+
+## CI rerun state after catalogue qualification refactor — 2026-11-20
+
+Re-read this handover, fetched PR #300 and PR #298, verified the feature branch, and inspected the latest CI job details and workflow trigger configuration.
+
+- PR #300 remains open, draft, unmerged. Its current head at inspection is `45007ea9aa131b88f2cd072f72804823e4cac71` (the catalogue harness code commit is `a849566bf31bf36c4af6d414e9988088d36fa973`; the later head commit only appends this handover).
+- PR #298 remains a separate draft and was not changed.
+- CI run #5422 (ID `44680567186`) was cancelled in the `quality` job during step 26 `Build`. Steps 29 onward, including migrations and every PostgreSQL qualification, were skipped. `web-quality` passed. Therefore run #5422 provides no result for the revised catalogue harness.
+- The workflow uses `concurrency.cancel-in-progress: true`; its `pull_request` trigger targets PRs into `main` and ignores Markdown/docs-only changes. The handover-only commit does not itself provide a new qualification result. No manual workflow dispatch or rerun was initiated.
+- Confirmed the code change is present at the current PR head. Static review of the helper's parameter shifting shows it inserts the assertion context/signature parameters into the five-argument Gateway prefix and expands the create/update/transition calls to their expected full arity; nevertheless, only CI/PostgreSQL execution can establish runtime correctness.
+- The catalogue refactor has not yet passed a PostgreSQL run. The dedicated Business Capability signed Gateway qualification remains unexecuted.
+
+Next: wait for or inspect a normal PR-triggered CI run on the current feature head. Do not treat cancelled run #5422 as a test failure or pass. If no run appears, inspect the PR check state and use only an ordinary source change that is genuinely needed; do not dispatch a workflow manually. Continue through the catalogue qualification, legacy capability cutover and dedicated Business Capability signed Gateway cutover in workflow order.
+
+No production/local DB changes, deployment, paid resources, database grants, secrets, or PR #298 modifications.
