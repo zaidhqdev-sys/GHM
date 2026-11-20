@@ -5596,3 +5596,17 @@ At the latest exact-head check-runs refresh for bb05a23524689070ded3b633d6d46da3
 - Exact-head workflow run: https://github.com/zaidhqdev-sys/GHM/actions/runs/44804463550
 
 Do not treat PR #301 as fully validated until quality completes successfully. No Render deploy or merge has been initiated.
+### PR #301 exact-head CI result — quality failed on migration fixture, 20 November 2026
+
+Refreshed PR #301 and related PR state before acting. PR #301 remains draft/open/unmerged at exact head bb05a23524689070ded3b633d6d46da310bda001; PR #298 remains draft/open/unmerged at d577d6f03820b4570259d8b25cc362d51a0d8bb9; PR #300 remains separate/draft; PR #297 remains separate/draft and mergeability false. No branch was merged.
+
+Exact-head workflow run 44804463550 completed:
+- web-quality: success.
+- Cloudflare Pages: success.
+- quality: failure.
+
+Fetched the failed quality job logs and step summaries. The failing step is `Apply all migrations to disposable PostgreSQL` (step 29). The migration runner built successfully, then PostgreSQL rejected a migration guard with: `A signed capability gateway function has unexpected owner, SECURITY DEFINER setting, or search_path: ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)`. The next qualification, test-suite, and downstream steps were skipped. This is a migration/fixture/schema-owner qualification failure, not a TypeScript compilation error from the PR #301 diagnostic edit; the migration runner's preceding `npm run build` completed and the failure arose during disposable database migration execution.
+
+Do not mislabel the PR as passing CI or deploy it under the stated exact-head CI gate. Do not fix or bypass this migration guard inside PR #301: its scope is one-file startup diagnostics only. The failure requires a separate root-cause review of the migration that installs `ghm.assert_actor_gateway_capability(...)`, the function owner/search_path/security-definer attributes in disposable PostgreSQL, and the migration execution role. Do not weaken the guard or alter production roles/ACLs. Keep production database and migration manifest untouched.
+
+PR #301 remains not deployable under the current validation gate. Next action: investigate the disposable migration owner mismatch on a separate narrowly-scoped fix branch/PR after inspecting the exact migration and schema-owner execution path; update the relevant handover. Once that issue is corrected and exact-head CI passes, re-evaluate PR #301 deployment. No Render deploy, production SQL, database/role/ACL change, migration, secret/environment change, payment-state change, or paid resource change occurred.
