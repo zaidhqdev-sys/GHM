@@ -5260,3 +5260,54 @@ Keep PR #298 draft/unmerged, PR #300 separate, and the execution manifest exactl
 ### Change boundary
 
 This task added two documentation records only (the dependency matrix and this handover entry). No migration SQL, application source, production inventory, execution manifest, database, ledger, role, membership, ACL, credential, secret, Render service/configuration/deployment, paid resource, or PayFast state was changed.
+
+
+## 20 November 2026 — Resource API deployment and route-readiness evidence review
+
+Re-read the migration-batches handover, PR #298 and #300, open PRs #296/#297/#299, relevant runtime/security branches, production role/service map, deployment blockers, and the 50-migration dependency matrix before this task.
+
+### PR and branch state at review
+
+- PR #298: open, draft, unmerged, mergeable=true; head `db88242d556f278c79095630b68e65340ae008ba`; 266 commits ahead / 0 behind main.
+- PR #300: open, draft, unmerged, mergeable=true; isolated branch `feat/signed-business-capability-create`, head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; CI #5449 is recorded as passed in its PR body.
+- PR #299: open, draft, mergeable=true; Project detail/update API work, not a Gateway deployment.
+- PR #297 and #296 remain separate open drafts and are not folded into #298.
+- Resource API related branches found: `feat/resource-api-gateway-registration-read-20261110` and `security/resource-api-runtime-principal-20261112`; runtime-related branch search also returned historical/construction branches. No branch was switched, rebased, or merged.
+- PR #300 remains untouched and separate.
+
+### Exact live-vs-source comparison
+
+The production runtime deployment blocker handover identifies the last known live Render Resource API commit as `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, with auto-deploy OFF. Its exact GitHub source was inspected read-only.
+
+At that live commit:
+- `package.json` exposes `start:payfast-callback` but no `start:actor-gateway` script.
+- `src/config.ts` uses generic `DATABASE_URL`; it has no `GHM_RUNTIME_DATABASE_URL` binding and no `GHM_ACTOR_GATEWAY_URL` configuration.
+- `src/server.ts` exposes `/readyz` and does not call the later runtime database identity / function-privilege startup guards.
+- `src/http/app.ts` registers Business Capability, capability catalogue, registration identity and storage routes without Gateway client wiring. Business Capability POST is a direct Resource API service operation at this commit.
+- Therefore the last known live Resource API is materially behind the current repository's Gateway-aware route contract. It must not be described as having the new principal guard or signed Gateway routing deployed.
+
+Current `main` source was separately inspected:
+- Production DB configuration requires `GHM_RUNTIME_DATABASE_URL`; non-production may fall back to `DATABASE_URL`.
+- Startup calls `assertRuntimeDatabaseIdentity` and reads/asserts the runtime function privilege allowlist when non-production or when `GHM_RUNTIME_FUNCTION_ALLOWLIST_ENFORCED=true`. Production otherwise logs that the function allowlist is not enforced because the production ACL baseline has not yet been independently qualified.
+- `GHM_ACTOR_GATEWAY_URL` is parsed as an optional credential-free HTTPS origin. It is not globally required at config load. When the Resource API is production and storage is configured, the app explicitly requires both the Gateway URL and storage-provider workflow attestation secret.
+- For multiple Gateway-backed write/read operations, production marks Gateway use as required and returns 503 rather than falling back when the client is absent (including Business Hours, Business Logo, Saved Business, Trust Score and Business Capability mutation paths). Supplier classification and Business Profile updates also return 503 when no Gateway client is configured. Registration identity receives a production required flag and returns 503 when no Gateway client exists. Capability catalogue admin routes require a Gateway client and return 503 if absent.
+- Business Capability read routes remain Resource API reads; create/replace and verification operations are Gateway-bound when production requires the Gateway client.
+- The five-second Gateway client timeout remains a known operational risk for the selected single Free Render service due to sleep/cold-start behaviour. It must be qualified without weakening auth or fail-closed behavior.
+
+This is source-contract evidence only. The current main source does not prove that the live Render service has been deployed to that commit, that the Gateway URL/secret are set, or that any production route currently reaches a live Gateway.
+
+### Render evidence limitation
+
+A Render workspace listing returned one available workspace, `ZAID Technologies` (workspace ID held only for this review). The Render service inventory was not retrieved because the connector requires the user to explicitly select/confirm the workspace before resource access. No workspace was selected and no Render service, environment variable, deployment, log, or metric was read or changed in this task.
+
+The next live verification requires the owner's explicit confirmation to inspect the ZAID Technologies Render workspace. Until then, use the last recorded deployment blocker evidence only: live commit `c7cf1eb`, auto-deploy OFF, and no production Actor Gateway service deployed.
+
+### Route readiness disposition
+
+- **Not deployed / not proven live:** Resource API runtime-principal guard and Gateway route wiring on current main; dedicated Actor Gateway service and HTTPS endpoint; Gateway database schema USAGE/functions/ACL; signed assertion secret and provider attestation; exact production route configuration.
+- **Known code-level fail-closed behavior on current main:** Gateway-required routes return 503 if the URL/client is absent, rather than silently falling back. This does not create a usable Gateway or establish service readiness.
+- **Not ready for migration cutover:** No production migration batch may be selected from this source comparison. The early supplier/profile revocation-order hazards, fresh ledger/checksum reconciliation, backup/recovery, and bootstrap/migrator authority blockers remain unresolved.
+
+### Change boundary
+
+This task was a read-only GitHub source/PR/branch inspection and handover documentation update. No Render workspace was selected; no Render service/environment/deployment/log/metric was accessed or changed. No database, migration, ledger, role, membership, ACL, secret, production route, PR state, paid resource, or PayFast state was changed.
