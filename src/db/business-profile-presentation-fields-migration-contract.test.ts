@@ -9,6 +9,8 @@ const repository = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/bu
 const contracts = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/contracts.ts'), 'utf8');
 const gatewayCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110270000_gateway_business_profile_update.sql'), 'utf8');
 const legacyCompatibility = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110265000_reconcile_business_profile_legacy_contract.sql'), 'utf8');
+const signedGatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql'), 'utf8');
+const legacyRuntimeCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120020000_revoke_legacy_business_profile_runtime.sql'), 'utf8');
 
 test('owner-editable avatar and business tenure fields are stored in canonical GHM Business', () => {
   for (const field of ['avatar_letter', 'avatar_color', 'years_in_business']) {
