@@ -25,7 +25,6 @@ ALTER FUNCTION ghm.gateway_update_business_profile(bigint, bigint, jsonb)
 
 REVOKE ALL ON FUNCTION ghm.gateway_update_business_profile(bigint, bigint, jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ghm.gateway_update_business_profile(bigint, bigint, jsonb) FROM ghm_runtime;
-GRANT EXECUTE ON FUNCTION ghm.gateway_update_business_profile(bigint, bigint, jsonb) TO ghm_actor_gateway;
 
 -- Remove PUBLIC access, but retain the explicit legacy runtime grant until the
 -- separately gated manual cutover after signed Gateway route verification.
