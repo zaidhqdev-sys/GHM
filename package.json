@@ -81,6 +81,7 @@
     "qualify:business-logo-gateway-cutover": "npm run build && node scripts/qualify-business-logo-gateway-cutover-postgres.mjs",
     "start:auth-issuer": "node dist/auth-issuer/server.js",
     "qualify:auth-issuer-principal": "npm run build && node scripts/qualify-auth-issuer-principal.mjs",
+    "qualify:security-definer-search-path": "node scripts/qualify-security-definer-search-path-postgres.mjs",
     "qualify:auth-issuer-cutover": "npm run build && node scripts/qualify-auth-issuer-cutover.mjs",
     "audit:security-definer-authority": "node scripts/audit-security-definer-authority.mjs",
     "typecheck:worker:actor-gateway": "tsc -p workers/actor-gateway/tsconfig.json",
