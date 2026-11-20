@@ -687,3 +687,12 @@ PR #298 was inspected. Its parallel branch contains the same root-cause correcti
 The pg_temp schema remains last; no weaker search path was introduced. The existing migration was edited on the feature branch only; production database was not touched. No PR #298 files or branch were changed. The three migrations were updated sequentially using exact existing declarations; no other SQL behavior was intentionally changed.
 
 Next: verify the new exact-head PR #300 CI run. The migration chain must now pass the `20261117020000` preflight and continue applying subsequent migrations. Only then can the signed Business Capability qualification execute. If another migration fails, inspect its exact SQL and relevant handovers/PRs before making a narrowly scoped forward-safe correction. Keep PR #300 draft/unmerged and PR #298 untouched.
+
+
+## PR #300 run #5405 migration failure and SQL quoting fix — 2026-11-20
+
+Run #5405 (head 7f4abe6435b15b253c7b259f5e17cbd2032aefe4) passed all syntax checks, the TypeScript build, and Worker bundling. The disposable PostgreSQL service and isolated principal setup also succeeded. The migration-application step failed before any Business Capability qualification with PostgreSQL 42601: syntax error at or near "$" at character 387 in migration 20261120011000_allow_signed_business_capability_create_assertion.sql.
+
+The exact failing source line had `... SET search_path=pg_catalog,ghm,pg_temp AS $` (single dollar) while the function body terminator was `$$`. This typo was introduced while aligning the verifier's pinned search_path. Corrected the opener to `AS $$` in commit 96317053a17163ce82559772bfead51fd56c5e5b. No logic, verifier checks, privileges or function body were otherwise changed.
+
+Run #5405 is a failed migration-chain attempt; it does not qualify the new SQL. The corrected source should trigger another PR CI run. Next verify that run's migration step, then confirm the dedicated `Qualify Business Capability signed gateway cutover on disposable PostgreSQL` step actually runs and passes. PR #300 remains draft/unmerged. PR #298 remains open/draft and untouched. No production resources, paid services, or local databases were changed.
