@@ -4922,3 +4922,30 @@ No source or test implementation was made in this task. This is a resolved compa
 PR #298 remains open/draft/unmerged at `8cea0220b693302e28b1f9dba91ae4c137a7cd25`, 244 commits ahead / 4 behind `main`, diverged, `mergeable=false`, 31 changed files. Existing Actor Gateway branches were inspected and left untouched. No CI run was triggered.
 
 Production migration batch manifest remains `[]`. No production SQL, role, membership, grant, ACL, table, sequence, ledger, data, credential, secret, Render service/configuration/deployment, payment state, PR state or branch ancestry was changed. No paid resource or recurring process was introduced. Only this existing handover was extended.
+
+## Business Capability create-route correction — 2026-11-20
+
+This is a separate Resource API / Actor Gateway feature gap, not part of the production migration-batch runner scope of PR #298. Do not mix the feature implementation into this migration-runner PR.
+
+### Existing implementation confirmed from merged PR #272 / current main
+
+- `PUT /api/v1/business-capabilities` uses the signed Actor Gateway replacement operation `business.capability.replace`.
+- `PATCH /api/v1/business-capabilities/:businessCapabilityId/verification` uses the signed Gateway verification operation.
+- `POST /api/v1/business-capabilities` still calls `BusinessCapabilityService.createBusinessCapability()`, whose PostgreSQL repository performs a direct INSERT into `ghm.business_capability` under the Resource API runtime transaction.
+- The existing signed Gateway migration `20261111070000_add_signed_business_capability_mutations.sql` implements replacement, verification, evidence review and evidence submission. It does not implement a signed single-assertion create operation.
+- The existing HMAC assertion verifier already recognizes the operation name `business.capability.create`, but the current `GatewayCapabilityMutationReader` operation union and methods do not expose it. Merely allowing the operation string in the verifier is not an implementation.
+
+### Required separate feature work
+
+Create a dedicated feature branch/PR based on current main; do not change PR #298's migration-batch scope.
+
+Before authoring the SQL migration, inspect the canonical `ghm.business_capability` table DDL, all constraints/indexes, the existing create repository validation, and the SECURITY DEFINER helper functions it can safely reuse. The new SQL operation must preserve the POST contract (including `effectiveFrom`, `effectiveUntil`, proficiency, description and source reference), derive actor identity from the signed assertion, verify active owner/administrator membership and selectable active catalogue capability, perform exactly one append-style INSERT, and preserve existing duplicate/withdrawn-row semantics. Do not implement by calling the bulk replacement function.
+
+Required SQL qualification on the existing disposable PostgreSQL harness: valid owner/admin insert; non-member and non-admin denial; inactive business/capability denial; invalid/expired/forged/replayed assertion denial; exact context mismatch denial; duplicate/withdrawn-row behavior matching the existing unique constraint; rollback on failure; runtime direct INSERT/sequence denial after the later cutover. Keep the runtime grant unchanged until the route is wired and the separate cutover is qualified.
+
+### Scope and safety
+
+- This work is not included in PR #298's 50-entry migration inventory or its empty production execution manifest.
+- Do not add a production batch or run any production migration.
+- No deployment, Render change, credential/secret change, paid resource, new database, or recurring process is authorized by this handover.
+- The previous conversational plan to implement SQL first is retained only as a task sequence; implementation must wait until the table DDL and repository contract are fully inspected on the dedicated feature branch.
