@@ -769,3 +769,22 @@ The current source validator is still unchanged: it expects the three Campaign/d
 No source code, migration, PR, branch configuration, database, secret, deployment or paid resource was changed in this task. PR #300 remains draft/unmerged; PR #298 remains untouched. The handover is updated with the incomplete provenance investigation so the same searches are not repeated blindly.
 
 Next required evidence: inspect the exact migration tree/files at the PR #300 head (including grant/revoke history for the three Campaign functions and the Business Capability wrapper), and compare against the mainline migration ledger and PR #298's relevant source diff. Once the intended post-migration Gateway signature set is established, update the exact allow-list and add regression coverage for both accepted migration states and rejection of arbitrary extra/missing signatures. Then trigger normal PR CI and verify that the dedicated signed-create PostgreSQL qualification runs.
+
+
+## Migration/PR provenance follow-up — directory-review retirement confirmed; Campaign wrapper provenance still open — 2026-11-20
+
+Re-read the current feature handover and branch validator/tests, then inspected mainline migration source and historical PR records. Findings:
+
+1. PR #214 introduced Founder directory review, including the review authority probe, queue, decision and owner submission/presentation routes. Its PR description explicitly records the feature and its deliberate empty reviewer allowlist: https://github.com/zaidhqdev-sys/GHM/pull/214
+2. Mainline migration `20261109140000_close_evidence_and_founder_review_authority.sql` explicitly revokes PUBLIC and `ghm_runtime` EXECUTE on:
+   - `ghm.submit_business_directory_review(bigint,bigint)`
+   - `ghm.list_businesses_for_directory_review(bigint,text,integer,integer)`
+   - `ghm.review_business_directory_listing(bigint,bigint,text,text)`
+   It also replaces `ghm.is_directory_listing_founder_reviewer(bigint)` with `SELECT false` and revokes its PUBLIC/runtime execution.
+3. PR #242 then removed the founder-reviewer lookup from the Resource API repository/service path and changed the authenticated authority endpoint to return `isFounderReviewer:false` without calling the revoked database function. The commit search result for PR #242 shows the endpoint no longer invokes the repository lookup. PR #242's description states it made no DB permission/migration changes; it relies on the prior retirement migration.
+4. This confirms Founder review is deliberately disabled in the current mainline contract. It does **not yet prove** that `ghm.gateway_get_business_directory_review_presentation(...)` is the same legacy function or that its wrapper should be removed: that exact Actor Gateway wrapper is not among the three signatures explicitly revoked in migration `20261109140000`.
+5. The two missing Campaign wrappers `ghm.gateway_create_campaign(...)` and `ghm.gateway_update_campaign(...)` also have not yet been tied to an exact mainline grant/revoke migration. The PR #300 CI diagnostic alone is insufficient to authorize dropping them.
+
+No source validator, test, migration, or PR was modified. The current safe decision is to keep the exact allow-list strict and not encode a guessed optional state. PR #300 remains draft/unmerged; PR #298 remains untouched. No database, secret, production setting, deployment or paid resource changed.
+
+Next evidence needed: inspect the migration(s) that originally granted the three exact `gateway_*` wrappers and all later forward migrations that revoke or replace them. Compare those exact signatures against the live migration chain and PR #272 gateway integration source. Once proven, encode the single canonical post-migration allow-list (or narrowly documented explicitly safe migration stages) and regression tests; then rerun normal PR CI to reach the signed Business Capability qualification.
