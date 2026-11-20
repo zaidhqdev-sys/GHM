@@ -5929,3 +5929,38 @@ The next exact-branch CI run 44822264214 passed the 41-function runtime baseline
 Updated the contract regex to match the exact signature formatting in 20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql. Commit: 90307509c83d0bdaabb10f233f3660d750e1db9d.
 
 The next exact-head CI run must confirm all 1,104 tests pass and continue through remaining post-test disposable cutover/SECURITY DEFINER inventory steps. No merge or production execution until it completes successfully. PR #298 remains draft/open and the production manifest remains [].
+
+
+## 20 November 2026 — supplier/profile manual cutover and rollback qualification corrected
+
+Mandatory pre-task review completed: re-read this handover, PRs #298/#297/#300/#301/#302, current branch/head, production manifest, CI run 44822625254 and its quality-job logs, supplier/profile qualification scripts, additive Gateway migrations, signed assertion-bound migrations, and both manual-only legacy runtime cutover SQL files.
+
+The exact CI failure was in scripts/qualify-business-supplier-classification-postgres.mjs: line 71 expected ghm.update_business_supplier_classification to be denied before the separate manual-only cutover had been applied. The migration intentionally retains the legacy runtime grant until signed route end-to-end verification and rollback rehearsal. The qualification script therefore tested the wrong stage.
+
+Corrected both supplier and Business profile disposable PostgreSQL qualification scripts:
+- Strictly restrict cutover/rollback rehearsal to ghm_disposable_test on localhost/127.0.0.1.
+- Verify the legacy runtime EXECUTE grant exists before cutover.
+- Exercise the signed Gateway operation and its actor/tenant/context/replay/invalid-assertion checks first.
+- Apply the paired manual-only cutover SQL as ghm_schema_owner in disposable PostgreSQL.
+- Verify direct legacy Resource API runtime invocation is denied.
+- Apply a narrowly scoped manual rollback restoring only the explicit ghm_runtime EXECUTE grant (not PUBLIC, migrator or Actor Gateway).
+- Verify the legacy runtime call succeeds after rollback.
+- Reapply the manual cutover and verify runtime denial again, leaving the disposable database in the post-cutover state for subsequent checks.
+
+Added paired manual-only rollback SQL:
+- database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime_rollback.sql
+- database/cutovers/20261120020000_revoke_legacy_business_profile_runtime_rollback.sql
+
+Updated supplier/profile migration contract tests to assert that cutover and rollback are manual-only, restore only the intended runtime grant, and are actually rehearsed by their disposable qualification scripts.
+
+Commits:
+- Supplier qualification rehearsal: 73f0fc7c62652417593780bf2b6710a64c038b17
+- Profile qualification rehearsal: df1df87432266e7c3eec2260aaa6d8825714cdd2
+- Supplier rollback SQL: 024a25292659f3c68a56000e1b8e957e153dc49e
+- Profile rollback SQL: 7f54ed51aa6ac4a2dbab953c10ddfd1096aabb25
+- Supplier contract tests: 4670b8706ab21b920195e0a9ad051a340cbd5aba
+- Profile contract tests: be987a0002f83542b4eba32a79f8d46a2c85b3a4
+
+Exact-head CI run 44823461106 for code commit be987a0002f83542b4eba32a79f8d46a2c85b3a4 was in progress when this note was written. Confirm both disposable manual cutover/rollback rehearsals, full test suite, all downstream signed Gateway cutovers, and final SECURITY DEFINER pre/post inventory comparison before claiming qualification.
+
+PR #298 remains draft/open. PR #297 and #300 remain separate draft/open; #301 and #302 remain closed/merged. Production execution manifest remains []. No production SQL/DDL/ACL/role changes, production migration execution, secrets, Render settings/deployments, paid resources, or payment state changed.
