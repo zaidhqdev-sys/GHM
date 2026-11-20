@@ -6551,3 +6551,42 @@ PR #297 remains open/draft/unmerged, base main at historical `632a8fc67a0ca4c3f8
 This resolves the **repository inventory equality** question, not the live production audit. The shared 50-entry inventory is still derived from the supplied historical ledger snapshot and must be refreshed against an authorized live ledger export before any batch can be considered. The 7-entry legacy allowlist is not the pending inventory and is not execution authorization. The production manifest remains empty.
 
 No inventory, manifest, migration, source implementation, production database, ACL, role, membership, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed. PR #298 remains draft/unmerged.
+
+
+## 21 November 2026 — correction: Actor Gateway Render service already exists
+
+A correction is required to the previous task's recommendation and the stale PR #298 description. The statement that Actor Gateway hosting is an outstanding creation/cost decision is incorrect.
+
+### Current Render account evidence (read-only)
+
+Render workspace: `ZAID Technologies` (`tea-d9svua6417fc73bhcutg`).
+
+Existing service:
+- Name: `ghm-actor-gateway`.
+- Service ID: `srv-dc09scl9el5s73fdgj1g`.
+- Type: Web Service; Frankfurt.
+- Public URL: `https://ghm-actor-gateway.onrender.com`.
+- Health path: `/healthz`.
+- Plan: Free (not a new paid resource).
+- Repository: `zaidhqdev-sys/GHM`, branch `main`.
+- Start command: `npm run start:actor-gateway`.
+- Auto-deploy: off.
+- Service is not suspended.
+
+Render service creation timestamp: `2026-11-20T19:23:31Z`.
+
+Latest deployment history retrieved:
+- `dep-dc0b5lbm8hqs73dh2ds0`, commit `0dc1b27c`, status `update_failed`, finished `2026-11-20T20:52:45Z`.
+- `dep-dc0a1t6tlv9c739kgmbg`, commit `ddb31ff5`, status `update_failed`.
+- `dep-dc09u849v7es73b3et20`, commit `ddb31ff5`, status `update_failed`.
+- `dep-dc09sd59el5s73fdgl0g`, commit `ddb31ff5`, status `update_failed`.
+
+Therefore: the Actor Gateway Render service has already been created and deployment attempted. Do not propose creating/hosting another service, treating hosting as an unapproved future decision, or adding hosting cost. The remaining issue is to inspect and resolve the existing service's deployment/startup failure and its database prerequisites. Service existence and a failed deployment do not establish that the latest process is healthy or serving traffic.
+
+### PR #298 stale scope wording
+
+PR #298's body says it does not submit or deploy the Render Actor Gateway service. That wording is now factually stale relative to the Render service record. It should be corrected in the PR description/handover at the appropriate source-maintenance step, without rewriting history or implying successful runtime health. The current task only records the factual correction in this handover.
+
+### Mandatory next action
+
+Inspect the existing Actor Gateway's latest failed deploy details and logs, then reconcile the startup error with the current production role/ACL and staged database URL evidence. Keep all actions read-only until the cause and safe correction are established. No new service, paid plan, database, credential, environment variable, deployment, or production permission was changed in this task.
