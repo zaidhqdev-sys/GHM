@@ -929,3 +929,50 @@ test('actor gateway accepts an injected Worker-compatible JSON body parser', asy
   });
   assert.equal(parserCalls, 1);
 });
+
+
+test('actor gateway routes signed Business Capability create using verified actor identity', async () => {
+  let received: unknown;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const mutations = {
+    create: async (actor: number, input: unknown) => {
+      received = { actor, input };
+      return { id: 101, businessId: 55, capabilityId: '550e8400-e29b-41d4-a716-446655440000', createdBy: actor };
+    },
+  } as unknown as import('./business-capability-mutation-reader').GatewayCapabilityMutationReader;
+  await withServer(reader, async (baseUrl) => {
+    const input = { businessId: 55, capabilityId: '550e8400-e29b-41d4-a716-446655440000', proficiencyLevel: 'advanced' };
+    const response = await fetch(`${baseUrl}/v1/business-capabilities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(received, { actor: 42, input: { ...input, description: undefined, effectiveFrom: undefined, effectiveUntil: undefined, sourceReference: undefined } });
+  }, undefined, undefined, undefined, undefined, {}, verifier, mutations);
+});
+
+test('actor gateway Business Capability create rejects invalid payload before reader execution', async () => {
+  let called = false;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const mutations = {
+    create: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as import('./business-capability-mutation-reader').GatewayCapabilityMutationReader;
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/business-capabilities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ businessId: -1, capabilityId: 'bad', createdBy: 99 }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal(called, false);
+  }, undefined, undefined, undefined, undefined, {}, verifier, mutations);
+});
