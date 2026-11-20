@@ -253,3 +253,41 @@ Continued implementation on `feat/signed-business-capability-create`; PR #298 re
 Review the extended harness and SQL carefully, add the remaining adversarial cases, then execute only on the existing `ghm_disposable_test` localhost harness if its already-provisioned credentials and instance are available. Do not create or relaunch a database. If the disposable instance is unavailable, stop and record the qualification as blocked rather than substituting production or a paid database. After SQL qualification, add Gateway reader/HTTP/Resource API forwarding and fail-closed tests.
 
 No production migration, production database access, deployment, Render modification, secret change, paid service, new database, recurring process or CI dispatch occurred.
+
+## Handover ownership correction — 2026-11-20
+
+The earlier capability notes had been appended to the PR #298 migration-batch handover branch. That was inappropriate scope coupling. Those capability notes have now been moved into this dedicated feature handover, and the PR #298 handover has been restored to its migration-batch-only content. Keep all future Business Capability create notes on this feature branch/hand-over file.
+
+## SQL contract and disposable harness extension — 2026-11-20
+
+### Feature commits
+
+- SQL function initial implementation: `afded2ef2e9842617dad72f614190eba34e7a667`
+- Timestamp and safe-integer corrections: `80182e529aeb4f12f2cd465f493d0a1230b3378a`, `570333e43e9659e46d8f3515d73f9010caa0be3d`
+- Contract test: `0e77b0393dd340463ab8ff6e73712cead5bbde32`
+- Package test registration: `4b112bbe69a4504128b65f1e3d73c888bba1384c`
+- Disposable harness extension: `2314a4a8bf2f776f0dd88c3c8791c750c064e28a`
+
+### Current authored test coverage
+
+The migration contract test checks append-only plain INSERT, exact payload binding, existing signed operation recognition, active Business and owner/admin authorization, active/selectable catalogue checks, server-derived lifecycle and provenance, function ownership and Actor Gateway-only EXECUTE.
+
+The existing disposable qualification script now applies the new migration only after its hard localhost/ghm_disposable_test guard and adds checks for signed create, actor attribution, field normalization, active duplicate rejection, withdrawn duplicate rejection, non-management member denial, payload tampering, forged HMAC and runtime inability to execute the signed wrapper.
+
+The Business ID parser now allows the full positive JavaScript safe-integer range through 9007199254740991.
+
+### Qualification status — not executed
+
+No PostgreSQL instance was available through the GitHub source-editing workflow. Neither the migration nor the extended harness has been run. No CI was dispatched. Static source and contract review is not a substitute for PostgreSQL execution.
+
+The existing harness deliberately does not claim direct runtime INSERT or identity-sequence denial; those grants remain unchanged until the HTTP/Resource API path is wired and a separate cutover is qualified.
+
+### Next
+
+1. Review the harness additions and migration as a whole.
+2. Add missing adversarial PostgreSQL cases: expired assertion, replay nonce, invalid payload/date bounds, inactive Business, inactive/non-selectable Capability, and rollback/no partial write.
+3. Run only against the existing localhost disposable `ghm_disposable_test` if already available; never create or relaunch a database. If unavailable, leave SQL unqualified and record the blocker.
+4. After SQL qualification, implement Gateway reader, HTTP endpoint, Resource API POST forwarding and fail-closed behavior.
+5. Only then qualify the separate runtime INSERT/identity-sequence revocation.
+
+No production migration, production database access, deployment, Render change, secret change, paid service, new database, recurring process or CI dispatch.
