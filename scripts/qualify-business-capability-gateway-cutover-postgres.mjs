@@ -27,6 +27,8 @@ try{
  const bc=await setup("INSERT INTO ghm.business_capability(business_id,capability_id,assertion_status,assertion_basis,verification_status,created_by) VALUES($1,$2,'active','self_declared','unverified',$3) RETURNING id",[business,capId,owner]);const bcId=Number(bc.rows[0].id);ids.assertions.push(bcId);
  const createCapId=randomUUID();ids.capabilities.push(createCapId);
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[createCapId,marker+' create',marker+'-create']);
+ const allowCreateMigration=await readFile(fileURLToPath(new URL('../database/migrations/20261120011000_allow_signed_business_capability_create_assertion.sql',import.meta.url)),'utf8');
+ await setup(allowCreateMigration);
  const createMigration=await readFile(fileURLToPath(new URL('../database/migrations/20261120010000_add_signed_business_capability_create.sql',import.meta.url)),'utf8');
  await setup(createMigration);
  console.log('SIGNED BUSINESS CAPABILITY CREATE MIGRATION APPLIED TO DISPOSABLE POSTGRESQL: PASS');
@@ -47,6 +49,20 @@ try{
  assert.equal(created.rows[0].verification_status,'unverified');
  console.log('SIGNED APPEND-ONLY CAPABILITY CREATE AND ACTOR PROVENANCE: PASS');
  const activeDuplicate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput),'ACTIVE CAPABILITY DUPLICATE DENIED');assert.equal(activeDuplicate.code,'23505');
+
+ const expiredIssued=Math.floor(Date.now()/1000)-120,expiredNonce=randomUUID(),expiredContext=JSON.stringify(createInput);
+ const expiredPayload='ghm-actor-gateway:v2|'+owner+'|business.capability.create|'+expiredIssued+'|'+expiredNonce+'|'+Buffer.from(expiredContext,'utf8').toString('hex');
+ const expiredSignature=createHmac('sha256',key).update(expiredPayload,'utf8').digest('hex');
+ const expired=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',[owner,expiredIssued,expiredNonce,expiredContext,expiredSignature,expiredContext]),'EXPIRED SIGNED CAPABILITY CREATE ASSERTION DENIED');assert.equal(expired.code,'42501');assert.match(expired.message,/expired/i);
+ // Reuse one assertion and its exact payload: the second attempt must fail at nonce replay protection.
+ const replayContext={...createInput,capabilityId:createCapId,description:'replay-probe'};
+ const replaySigned=sign(owner,'business.capability.create',replayContext);
+ const replayArgs=[owner,replaySigned.issuedAt,replaySigned.nonce,replaySigned.context,replaySigned.signature,JSON.stringify(replayContext)];
+ const replayFirst=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',replayArgs),'FIRST REPLAY PROBE HAS NO WRITE DUE TO UNIQUE COLLISION');assert.equal(replayFirst.code,'23505');
+ const replaySecond=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',replayArgs),'SIGNED CAPABILITY CREATE ASSERTION REPLAY DENIED');assert.equal(replaySecond.code,'42501');assert.match(replaySecond.message,/replay/i);
+ const invalidDates={...createInput,capabilityId:randomUUID(),effectiveFrom:'2027-01-01T00:00:00.000Z',effectiveUntil:'2026-01-01T00:00:00.000Z'};
+ const invalidDate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(invalidDates)],invalidDates),'INVALID CAPABILITY EFFECTIVE PERIOD DENIED');assert.equal(invalidDate.code,'22023');
+ const invalidDateCount=await setup('SELECT count(*)::int AS count FROM ghm.business_capability WHERE business_id=$1 AND capability_id=$2',[business,invalidDates.capabilityId]);assert.equal(invalidDateCount.rows[0].count,0);
  await setup("UPDATE ghm.business_capability SET assertion_status='withdrawn' WHERE id=$1",[createdId]);
  const withdrawnDuplicate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput),'WITHDRAWN CAPABILITY DUPLICATE DENIED');assert.equal(withdrawnDuplicate.code,'23505');
  const memberCreate=await denied(()=>call(member,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput),'NON-ADMIN MEMBER CANNOT CREATE BUSINESS CAPABILITY');assert.match(memberCreate.message,/Business management permission required/);
