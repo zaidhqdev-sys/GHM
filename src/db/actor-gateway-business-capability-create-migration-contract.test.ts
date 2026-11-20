@@ -33,7 +33,7 @@ test('signed create enforces business authority and selectable active catalogue 
  assert.match(migration,/FROM ghm\.business b[\s\S]*b\.is_active = true[\s\S]*FOR UPDATE/);
  assert.match(migration,/FROM ghm\.business_membership bm[\s\S]*bm\.membership_status = 'active'[\s\S]*FOR SHARE/);
  assert.match(migration,/v_membership_role NOT IN \('owner','administrator'\)/);
- assert.match(migration,/FROM ghm\.capability c[\s\S]*c\.lifecycle_status = 'active'[\s\S]*c\.is_selectable = true/);
+ assert.match(migration,/FROM ghm\.capability c[\s\S]*c\.lifecycle_status = 'active'[\s\S]*c\.is_selectable = true[\s\S]*FOR SHARE/);
 });
 
 test('signed create derives lifecycle, verification and actor provenance server-side',()=>{
