@@ -651,3 +651,23 @@ Safety decision: do not mutate `ghm_restore_20261116` either. Its name and role 
 The two existing local databases therefore both remain read-only evidence sources, not qualification targets. This task has ruled out both for mutation-based qualification under the current constraints. Continue with source-level and exact-head CI qualification for PR #300, and complete review of the in-progress local merge resolution in `C:\GHM-main` without connecting either local snapshot or production. The local merge must still be tested before any merge commit/push. If a dedicated disposable DB is unavailable and no new paid DB is permitted, do not create one; do not silently convert the restore snapshot.
 
 Before this task, refreshed PR #300/#298/#297 metadata, handover, and Actor Gateway branches. PR #300 remains open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 is open/draft/unmerged/mergeable=true at `788c4097c8ed484dc9a164895c99bc4858370d40`; PR #297 is open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. The feature branch and production migration batch branch remain present. No branch change, merge, push, deploy, or production operation occurred.
+
+
+## 21 November 2026 — checkout-path mismatch in merge-state inspection
+
+The user supplied the result of the requested PR #300 merge-state inspection. The PowerShell prompt was `PS C:\GHM>`, not the intended `PS C:\GHM-main>`. The inspected checkout reported:
+- `git status --short --branch`: detached HEAD (`## HEAD (no branch)`).
+- `git rev-parse -q --verify MERGE_HEAD`: no merge in this checkout.
+- No staged files, unstaged tracked changes, unresolved conflict entries, or staged-file conflict markers.
+- Six untracked files: `.env.before-cleanup-20261114-214134.bak`, `.env.before-jwt-secret-removal-20261114-214300.bak`, `.ghm-quoteflow-readonly-preflight.mjs`, `.ghm-storage-acl-readonly.mjs`, `production-ledger-20261116.csv`, and `production-migration-audit-20261116.txt`. The subsequent `Get-Item` check for the two earlier C:\GHM-main preservation files returned no rows in this checkout; that does not establish they are absent from C:\GHM-main.
+
+Important interpretation: this output describes C:\GHM only. It does NOT establish whether the paused no-commit merge in C:\GHM-main remains active or what its current index/worktree contains. Preserve all six untracked files in C:\GHM; do not clean, stash, delete, overwrite, or stage them. Do not run merge/restore/checkout commands in C:\GHM.
+
+Remote review refreshed for this task:
+- PR #300 remains open, not draft, unmerged; GitHub currently reports `mergeable=false`.
+- PR #298 remains open/draft/unmerged; GitHub reports `mergeable=true`.
+- PR #297 remains open/draft/unmerged; GitHub reports `mergeable=false`.
+- Both `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches` branches remain present.
+- The current handover branch was re-read before this update.
+
+Next safe operation: change directory explicitly to `C:\GHM-main` and run only `Get-Location`, `git status --short --branch`, `git rev-parse -q --verify MERGE_HEAD`, `git diff --cached --name-status`, `git diff --name-status`, and `git diff --name-only --diff-filter=U`. Do not run any Git mutation until that exact checkout's state is known. If the merge is still present, continue its review there. If it is absent, inspect branch/ref state before deciding whether to restart the merge. The local database snapshots remain read-only and unsuitable for PR #300 qualification; no DB/production/Render/PayFast changes were made.
