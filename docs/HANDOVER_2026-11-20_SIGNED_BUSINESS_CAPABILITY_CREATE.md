@@ -369,3 +369,10 @@ The completed `quality` job confirms success for the whole-database SECURITY DEF
 Local focused validation on the same branch also passed: TypeScript build; Actor Gateway database-privilege tests (12/12); signed Business Capability create migration-contract tests (7/7); and Node syntax check of the guarded PostgreSQL qualification script (syntax only).
 
 PR #303 remains open and draft; it has not been merged. This CI qualification does not apply the manual cutover to production. No production database, Render service, deployment, credentials, roles, ACLs, secrets, or settings were changed. The manual cutover remains separately gated by its documented deployment, principal, role-model and verified-backup prerequisites. PR #298/#297 remain separate and untouched.
+
+
+## PR #303 review-state decision — remain draft and separate — 2026-11-21
+
+Owner direction: keep PR #303 separate for review. It remains open, draft and unmerged; do not mark it ready for review or merge it as part of this continuation. The branch remains isolated from `main`. Continue recording subsequent source corrections, local validation and CI evidence in this handover, with exact commit/run identifiers and explicit production-boundary statements.
+
+No production database change, manual cutover, Render setting/deployment, role/ACL/credential/secret change, paid resource, or PR #298/#297 change is authorized by this decision.
