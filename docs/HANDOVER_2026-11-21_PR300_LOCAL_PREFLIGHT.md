@@ -483,3 +483,22 @@ Current task outcome:
 Next safe direction:
 - Do not proceed with live qualification. Continue with non-mutating checks that do not use database credentials: full staged diff review, package/unit/contract tests that do not connect to PostgreSQL, and static review of migration/script contracts.
 - If disposable PostgreSQL qualification is essential, it requires an already-existing local disposable database with the required schema/migrations and separate runtime, Gateway, and migrator roles. Do not create a new paid DB/service, revive the sandbox, or use production as a substitute. If no such local database is available, record the qualification as unavailable and keep the PR unmerged until the owner chooses an acceptable safe path.
+
+
+## 21 November 2026 — renewed PR/branch/handover review; local PostgreSQL route
+
+Before proceeding, re-read this handover and refreshed PR metadata and branch listings.
+
+Current GitHub state:
+- PR #300 remains open, ready-for-review (not draft), unmerged, `mergeable=false`, head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700` on `feat/signed-business-capability-create`.
+- PR #298 remains open/draft, unmerged, `mergeable=true`, head `3f76225331c0199ab72b86d268857735b32a8123` on `feat/actor-gateway-production-migration-batches`.
+- PR #297 remains open/draft, unmerged, `mergeable=false`, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245` on `feature/explicit-production-migration-batches`.
+- The signed capability feature branch and actor-gateway migration-batches/handover branch both remain present. The broader Actor Gateway branch search also shows the expected production migration, capability-governance and recent startup/search-path branches; no branch was changed or deleted.
+
+Clarification for the next step:
+- The user's Windows machine has local PostgreSQL 17 and 18 Windows services running. These are existing local resources, not a new paid Render database/service and not the suspended sandbox.
+- `C:\GHM-main` has no dotenv file; `C:\GHM\.env` points all three qualification URLs to Render production `ghm_db` and must not be used for qualification.
+- Proceed by inventorying the already-running local PostgreSQL listeners and databases (including the previously used local `ghm_payfast_qualification` candidate if it still exists), without connecting to or mutating Render. Then verify database identity and role availability locally before considering any qualification setup. Do not create paid infrastructure, revive sandbox, or reuse production credentials.
+- The current local merge remains six staged intended paths, conflict-free, with the two preservation files untracked. No merge commit/push/deployment has occurred.
+
+Next operation: run read-only local PostgreSQL discovery on the existing Windows services (ports/readiness and database names only), plus non-DB static/unit checks. Do not execute the mutating qualification script until its three pools are explicitly bound to verified local disposable DB roles.
