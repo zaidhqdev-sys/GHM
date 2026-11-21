@@ -339,3 +339,41 @@ Current state in the user's output:
 - No commit, push, production DB operation or deployment occurred.
 
 PR #300 was rechecked while recording this result. Continue with local conflict resolution only after reviewing the complete combined script diff and final file content. Then stage only the script, verify the unresolved-path list is empty and the preservation files remain untracked. Do not commit/push until targeted tests and disposable PostgreSQL qualification pass.
+
+
+## 21 November 2026 — catalogue script staged; all merge conflicts resolved in index
+
+The user supplied the final local staging/verification output from `C:\GHM-main`.
+
+Verified:
+- `node --check scripts\qualify-capability-catalogue-governance.mjs` passed (the command proceeded to the required-marker checks).
+- All eleven required qualification markers were present:
+  - Gateway admin list and draft-create positive checks.
+  - Gateway non-admin list and draft-create denials.
+  - Service non-admin draft denial.
+  - Capability request substitution rejection.
+  - Forged and replayed actor assertion rejection.
+  - Runtime legacy create EXECUTE denial and unsupported-version/version-probe denial.
+  - Runtime capability-governance privilege-boundary check.
+- Only `scripts/qualify-capability-catalogue-governance.mjs` was staged in this operation.
+- `git diff --name-only --diff-filter=U` returned no paths: all merge conflicts are now resolved in the index.
+- Staged merge paths now are:
+  - `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+  - `scripts/qualify-capability-catalogue-governance.mjs`
+  - `src/actor-gateway/server.ts`
+  - `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` (added)
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/runtime-database-privileges.ts`
+- The two preservation originals remain untracked and were not staged:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- The signed Gateway bind helper was separately reviewed: it adds five assertion/context values and shifts original operation placeholders, so the seven capability arguments become twelve binds; the inserted denial call's apparent arity mismatch is not a defect.
+
+Remote review repeated before this continuation:
+- Re-read this preflight handover; refreshed PR #300/#298/#297 metadata and the relevant feature/handover branch listings.
+- PR #300 remains open/not draft at remote head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`, GitHub mergeable=false pending the local merge result being pushed.
+- PR #298 remains open/draft and separate; PR #297 remains open/draft and separate. No production migration execution is authorized by these PRs.
+
+### Next operation
+
+The merge is now conflict-free in the index but remains uncommitted and unpushed. Before commit, inspect the **entire staged merge diff** and confirm only the six intended tracked paths are staged; keep the two preservation files untracked. Inspect `package.json` and the qualification script's environment/connection-target guard to identify the exact test commands and prove the PostgreSQL target is disposable/local before executing it. Run targeted unit/contract tests and the complete disposable PostgreSQL qualification; do not run against Render `ghm_db`. Do not create the merge commit or push until those checks pass. No production database, migration ledger, ACL/role, secrets, Render configuration/deployment, backup, payment state, or paid resource was changed.
