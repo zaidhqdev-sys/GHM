@@ -124,6 +124,17 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
         SELECT 1
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'ghm'
+           AND c.relkind IN ('r', 'p')
+           AND (
+             has_any_column_privilege(session_user, c.oid, 'INSERT')
+             OR has_any_column_privilege('ghm_runtime', c.oid, 'INSERT')
+           )
+      )
+      OR EXISTS (
+        SELECT 1
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
           CROSS JOIN (VALUES ('USAGE'), ('SELECT'), ('UPDATE')) AS p(privilege)
          WHERE n.nspname = 'ghm'
            AND c.relkind = 'S'

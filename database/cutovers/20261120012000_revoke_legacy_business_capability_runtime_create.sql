@@ -4,9 +4,23 @@
 -- exists. This file is intentionally excluded from automatic migrations.
 BEGIN;
 
--- The signed SECURITY DEFINER Gateway operation owns the only intended create
--- path after cutover. Runtime and migrator callers must not bypass its HMAC,
+-- The signed SECURITY DEFINER Gateway operations own the only intended mutation
+-- paths after cutover. Runtime and migrator callers must not bypass their HMAC,
 -- actor, membership, catalogue and append-only checks with direct INSERT.
+-- Revoke the historical column-level grant as well as any table-level grant.
+REVOKE INSERT (
+  business_id,
+  capability_id,
+  proficiency_level,
+  description,
+  effective_from,
+  effective_until,
+  source_reference,
+  created_by
+)
+ON TABLE ghm.business_capability
+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway;
+
 REVOKE INSERT ON TABLE ghm.business_capability
   FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway;
 REVOKE USAGE, SELECT ON SEQUENCE ghm.business_capability_id_seq

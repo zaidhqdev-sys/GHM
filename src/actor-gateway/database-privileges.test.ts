@@ -131,6 +131,11 @@ test('requires every reviewed gateway signature even when a required function is
 });
 
 
+test('detects table and column-level INSERT grants for the session and runtime principals', () => {
+  assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /has_any_column_privilege\(session_user, c\.oid, 'INSERT'\)/);
+  assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /has_any_column_privilege\('ghm_runtime', c\.oid, 'INSERT'\)/);
+});
+
 test('rejects EXECUTE grant option on Actor Gateway functions', () => {
   assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /acl\.is_grantable/);
 });

@@ -320,3 +320,16 @@ This confirms the current PR head (including the latest handover documentation) 
 PR #300 remains open, draft, unmerged and mergeable. Its description now accurately documents the end-to-end Gateway route, manual-only cutover, full disposable PostgreSQL evidence and production boundary. PR #298 remains open/draft/unmerged and untouched. The feature branch is 91 commits ahead and 0 behind `main` at inspection; changed file set remains 20 intended files.
 
 No production migration, manual cutover, Render database mutation, Gateway production deployment or paid resource creation occurred. The Cloudflare Pages branch preview is an automatic PR preview only, not production. Keep PR #300 draft/unmerged and do not deploy or apply the manual cutover without separate owner-directed authorization and its documented preconditions.
+
+
+## 21 November 2026 — post-merge column-level Business Capability privilege correction
+
+PR #300 was rechecked and is now merged into `main`; PR #298 and PR #297 remain separate open draft PRs. The signed Business Capability create implementation is therefore maintained on the default branch, not added to the production migration batching PR.
+
+A source review found that the manual create cutover revoked table-level INSERT but did not revoke the historical column-level INSERT grant from migration `20260916213000_narrow_business_capability_runtime_insert.sql`. Table-level REVOKE does not remove a separately granted column privilege. The cutover now explicitly revokes INSERT on all eight historically granted columns from PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway`, in addition to its existing table and sequence revocations. Its comment now describes signed Gateway operations as the only intended mutation paths, covering both signed create and signed replacement.
+
+The Actor Gateway database privilege audit now checks column-level INSERT across `ghm` relations for both `session_user` and `ghm_runtime`, so a column-only grant cannot evade the direct-relation boundary. Static tests assert these checks. The disposable PostgreSQL cutover qualification now probes direct INSERT as runtime, Gateway, and migrator and asserts `has_any_column_privilege` is false for all three principals in its final matrix.
+
+This is a source-only correction on branch `fix/business-capability-column-privilege-audit`. It has not yet been committed, CI-qualified, or applied to any database. The manual cutover remains excluded from automatic migrations and must not be applied to production as part of this task. No production DB, Render service, deployment, credentials, roles, ACLs, secrets, or settings were changed. PR #298/#297 remain untouched.
+
+Next: sync the follow-up branch locally, run focused TypeScript build/tests and the guarded disposable-local PostgreSQL qualification only when three distinct localhost disposable principal URLs are available. Inspect CI after pushing; update this handover with exact commit and qualification results. Keep the manual production cutover gated on its documented deployment, principal, role-model and verified-backup prerequisites.
