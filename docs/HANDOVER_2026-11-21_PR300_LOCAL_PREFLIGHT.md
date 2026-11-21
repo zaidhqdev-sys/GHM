@@ -806,3 +806,32 @@ Next: run `npm run build`, then rerun the same five offline tests from `dist/db`
 `capability-governance-migration-contract.test.js`,
 `actor-gateway-capability-assertion-migration-contract.test.js`.
 If tests pass, review the entire staged diff and exact PR head. Preserve untracked files. No database qualification, migration execution, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+
+## 21 November 2026 — second PR #300 contract-test run: regex still too strict
+
+User supplied the full output of the rebuild and five targeted offline test files from C:\GHM-main.
+
+Results:
+- `npm run build` succeeded.
+- 21 tests ran: 20 passed, 1 failed.
+- The same test still fails: `capability cutover continues to require schema-owner SECURITY DEFINER functions`.
+- The first regex correction allowed optional whitespace after the first comma but still required a literal space after the second comma:
+  `/has_function_privilege\(v_gateway_role,\s*v_function, 'EXECUTE'\)/`
+  and
+  `/has_function_privilege\(v_runtime_role,\s*v_function, 'EXECUTE'\)/`.
+- The migration actually formats calls as `has_function_privilege(v_gateway_role,v_function,'EXECUTE')` and `has_function_privilege(v_runtime_role,v_function,'EXECUTE')`, with no whitespace after either comma.
+- Exact narrow fix: allow optional whitespace after BOTH commas in each regex:
+  `/has_function_privilege\(v_gateway_role,\s*v_function,\s*'EXECUTE'\)/`
+  `/has_function_privilege\(v_runtime_role,\s*v_function,\s*'EXECUTE'\)/`.
+- Keep both positive Gateway and negative runtime assertions. Do not change migration SQL or relax the actual semantic checks.
+- No DB qualification, migration execution, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+Remote review refreshed before this task:
+- PR #300 open/non-draft/unmerged, mergeable=false.
+- PR #298 open/draft/unmerged, mergeable=true.
+- PR #297 open/draft/unmerged, mergeable=false.
+- Feature and migration-batches branches remain present.
+- Pre-task handover read at `5b4107adcb31393fb2e9f8c91817681e2f7c0dab`.
+
+Next: correct only the two regexes in C:\GHM-main to allow optional whitespace after both commas; stage only that test file; rebuild and rerun the same five targeted offline test files. Preserve untracked files. No database mutation or production action.
