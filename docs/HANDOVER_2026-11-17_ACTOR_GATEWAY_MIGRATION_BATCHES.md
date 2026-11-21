@@ -6915,3 +6915,25 @@ All six batches completed successfully. The two skips are the known database-bac
 - Do not merge PR #298 or combine it with PR #297 absent an explicit instruction.
 
 This entry records the completed qualification work so far; subsequent batches and final verification must be appended with their exact observed results.
+
+## 21 November 2026 — PR #298 offline qualification progress (Batch 7)
+
+PR #298 remains open, draft, and unmerged. This handover update is written to its current head branch, `feat/actor-gateway-production-migration-batches`; the fetched PR head at update time was `a61d1a9680da5776d91dbaa563256d97503206ca`.
+
+Batch 7 was run locally from `C:\GHM-main` using the original package test-file ordering, files 121–140 of 174, with `--require ./scripts/test-env.cjs`.
+
+| Batch | Compiled test files | Tests | Passed | Failed | Skipped |
+|---|---:|---:|---:|---:|---:|
+| 7 | 121–140 | 84 | 84 | 0 | 0 |
+
+Batch 7 passed. Cumulative observed results for Batches 1–7:
+
+- Compiled test files completed: 140 of 174.
+- Tests: 952.
+- Passed: 950.
+- Failed: 0.
+- Skipped: 2.
+
+The two skips remain database-backed qualification cases requiring separate runtime and migrator database URLs. They were not run against production, Render, or any live database. These results do not establish completion of database-backed qualification.
+
+Next: Batch 8 (files 141–160) and Batch 9 (files 161–174), then the remaining offline security-definer, worker, syntax, and final repository/manifest/inventory checks. Keep the production migration batch manifest empty; do not execute production migrations, use production DB/Render, deploy, or change credentials, roles, ACLs, secrets, or settings. Keep PR #298 draft and separate from PR #297. Preserve the two known untracked local files.
