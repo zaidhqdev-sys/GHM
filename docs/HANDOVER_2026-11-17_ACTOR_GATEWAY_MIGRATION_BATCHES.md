@@ -6838,3 +6838,46 @@ User-confirmed local operation in `C:\GHM-main`:
   - `picomatch-reachability-scan.txt`
 
 No mainline merge has yet been started. The next distinct task is to begin a no-commit/no-ff merge of `origin/main` into the synchronized PR #298 branch, inspect conflict/unmerged paths, and preserve the untracked files. Stop after merge staging/conflict detection; do not commit or push until the overlapping package/test/runtime privilege changes have been reviewed.
+
+
+## 21 November 2026 — PR #298 mainline merge conflict analysis
+
+Mandatory review repeated before this task:
+- Re-read this handover at `bded9fb741ff8aa86827db4de7c9a29fe717a9ac`, refreshed PR #298/#297 metadata, confirmed the PR #298 branch and current main.
+- PR #298 remains open/draft/unmerged at `fd381a4c7324aa11fe53f4eceb15017a91882969`; PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- Current main is `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+
+User ran the planned no-commit/no-ff merge of `origin/main` into PR #298 after fast-forwarding to `fd381a4c7324aa11fe53f4eceb15017a91882969`.
+- The merge staged 14 paths and produced exactly two content conflicts: `package.json` and `src/db/revoke-runtime-capability-governance-migration-contract.test.ts`.
+- `git ls-files -u` confirms both conflict paths have base/ours/theirs stages. No other unmerged path was reported.
+- Main's signed Business Capability migrations, cutover, Gateway routes/readers/tests and qualification script changes are staged as part of the merge.
+- Both known untracked preservation files remain untouched:
+  `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` and `picomatch-reachability-scan.txt`.
+- No merge commit or push has been made.
+
+### Reviewed conflict content
+
+`package.json`:
+- Current main and PR #298 share package identity, dependencies and devDependencies.
+- PR #298 adds five qualification scripts absent from main:
+  `qualify:security-definer-search-path`,
+  `qualify:migration-plan-only`,
+  `qualify:commercial-document-consent`,
+  `qualify:commercial-workflow`,
+  `qualify:security-definer-search-path-migration`.
+- Both sides have a different `test` script list. Main contains the PR #300 signed Business Capability test coverage; PR #298 contains migration-batch and migration-runner plan-mode coverage plus PR #298 Gateway cutover tests. The resolution must preserve the current main `test` command and union all distinct compiled test paths from both lists, without dropping either side's trailing qualification commands.
+- There are no other script-value differences besides `test`; dependencies and devDependencies match. Build the resolution from main's package manifest, add the five PR-only scripts, and merge the test-file lists preserving main order followed by PR-only entries.
+
+`src/db/revoke-runtime-capability-governance-migration-contract.test.ts`:
+- Main has the corrected flexible-whitespace assertions for Gateway/runtime EXECUTE privilege checks.
+- PR #298 has stronger assertions for the generic SECURITY DEFINER search-path migration, including procedure handling (`prokind`) as well as function handling.
+- Resolution must retain PR #298's generic FUNCTION/PROCEDURE search-path assertions and main's whitespace-tolerant Gateway/runtime EXECUTE checks. Keep all existing schema-owner, pinned search_path, and negative assertions.
+
+Runtime privilege inventory:
+- Main currently has 43 baseline SECURITY DEFINER functions and 10 manual cutover groups (1,024 states).
+- PR #298 has 45 functions and 12 groups (4,096 states), adding the independently qualified `businessProfile` and `supplierClassification` groups.
+- These runtime inventory files did not appear as conflicted paths in the merge result. Preserve the PR #298 45/12/4,096 model; do not overwrite it with main's older 43/10/1,024 state. Verify after conflict resolution and tests.
+
+### Next task
+
+Resolve only the two identified conflicts using the above source-derived rules. Before staging, inspect both current conflict markers and ensure no conflict markers remain. Then stage only those two resolved paths and verify `git ls-files -u` is empty, while retaining all merge-staged mainline paths and both untracked files. Do not commit/push until the complete merged diff and qualification results are reviewed.
