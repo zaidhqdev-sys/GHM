@@ -671,3 +671,36 @@ Remote review refreshed for this task:
 - The current handover branch was re-read before this update.
 
 Next safe operation: change directory explicitly to `C:\GHM-main` and run only `Get-Location`, `git status --short --branch`, `git rev-parse -q --verify MERGE_HEAD`, `git diff --cached --name-status`, `git diff --name-status`, and `git diff --name-only --diff-filter=U`. Do not run any Git mutation until that exact checkout's state is known. If the merge is still present, continue its review there. If it is absent, inspect branch/ref state before deciding whether to restart the merge. The local database snapshots remain read-only and unsuitable for PR #300 qualification; no DB/production/Render/PayFast changes were made.
+
+
+## 21 November 2026 — correct C:\GHM-main merge state confirmed
+
+The user supplied the requested inspection from the correct checkout, `C:\GHM-main`.
+
+Observed:
+- Branch: `feat/signed-business-capability-create`, tracking `origin/feat/signed-business-capability-create`.
+- `MERGE_HEAD` exists and equals `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, the expected mainline commit.
+- Six intended merge-result paths are staged:
+  - `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+  - `scripts/qualify-capability-catalogue-governance.mjs`
+  - `src/actor-gateway/server.ts`
+  - `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` (added)
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/runtime-database-privileges.ts`
+- No unstaged tracked changes were reported.
+- Two known untracked files remain in C:\GHM-main:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- `git status --short --branch` showed no UU conflict status.
+- The PowerShell-rendered output under `git diff --name-only --diff-filter=U` unexpectedly showed `C:\GHM-main`; therefore use `git ls-files -u` as the definitive index-conflict check next. Do not infer a conflict from the path display alone.
+
+Remote review refreshed before this update:
+- PR #300 remains open, not draft, unmerged, GitHub `mergeable=false`.
+- PR #298 remains open/draft/unmerged, GitHub `mergeable=true`.
+- PR #297 remains open/draft/unmerged, GitHub `mergeable=false`.
+- Both the signed Business Capability feature branch and Actor Gateway migration-batches branch remain present.
+- Re-read the current PR #300 preflight handover and canonical Actor Gateway migration-batches handover.
+
+Interpretation: the previously started no-commit merge is still active and its six intended results are staged. Do not abort/restart it and do not commit/push yet. Existing local DB snapshots were assessed as unsuitable for mutation-based qualification; no database was modified.
+
+Next operation: read-only verification in C:\GHM-main using `git ls-files -u`, staged diff summary, `git diff --cached --check`, JavaScript syntax check for the merged qualification script, and inspect package scripts / relevant test file names to select the targeted offline tests. Preserve both untracked files. If the index has no unmerged entries and syntax/whitespace checks pass, proceed to targeted tests that do not require a database; do not run the mutation-based PostgreSQL qualification until an isolated disposable DB is available. No merge commit, push, PR merge, production change, Render change, or deployment occurred.
