@@ -969,3 +969,20 @@ The local merge commit is ready to publish. In `C:\GHM-main`, run:
 Do not force-push. After the push, refresh PR #300 and verify the remote head equals `f9e207fb88b1e93b3eca7e7562a11518b52075e8`; inspect fresh exact-head CI and GitHub mergeability before considering a PR merge. If GitHub still reports unmergeable, stop and inspect the updated comparison; do not bypass branch protection.
 
 Qualification boundary remains unchanged: build and 21 targeted offline tests passed, but mutation-based live disposable PostgreSQL 18 qualification has not been performed. Do not claim it passed. No production DB, Render, deployment, PayFast, or payment state changed.
+
+
+## 21 November 2026 — PR #300 merge commit pushed; GitHub mergeability restored
+
+Mandatory review completed:
+- Re-read this preflight handover at `2616231eb22679a95d34dfbe316a73204e7a9874` and refreshed PR #300/#298/#297 metadata and relevant branch existence.
+- PR #300 push output confirms normal fast-forward update of `feat/signed-business-capability-create` from `6ea0df06` to merge commit `f9e207fb88b1e93b3eca7e7562a11518b52075e8`. No force-push.
+- GitHub PR #300 now points to exact head `f9e207fb88b1e93b3eca7e7562a11518b52075e8`, remains open/non-draft/unmerged, and reports `mergeable=true`.
+- Current main is `0dc1b27c2b7de71c77d071966a9f374e13075e2b`; compare is cleanly `ahead 93 / behind 0`, merge base equals current main. The 93 commits include the feature history and merge synchronization.
+- Exact-head GitHub Actions CI run #5594, run ID `44850842154`, is `in_progress`. No completion result is available yet. Combined commit status endpoint currently returns no status entries; do not interpret that as CI success.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. Their migration-batch work remains separate.
+
+### Next action
+
+Wait for exact-head CI run #5594 to complete, then inspect its jobs and result. Do not merge PR #300 while CI is in progress. If CI succeeds, re-fetch PR metadata and exact head once more, review required checks/branch protection if accessible, and then proceed with the normal PR merge only if all required checks are green and GitHub still reports mergeable. If CI fails, inspect failing job logs and fix only the actual failure.
+
+Qualification boundary: TypeScript build and five targeted offline tests passed 21/21 before the merge commit. Mutation-based capability catalogue qualification against a valid disposable PostgreSQL 18 database remains unperformed; do not claim it passed. No production database, Render service, deployment, PayFast, or payment state changed.
