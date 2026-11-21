@@ -11,6 +11,7 @@ on:
       - construction/auth-issuer-stacked-on-pr272-20261113
       - security/actor-gateway-worker-body-limit-20261114
       - feat/actor-gateway-production-migration-batches
+      - feat/pr298-github-continuation-20261122
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
