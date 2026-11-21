@@ -24,7 +24,7 @@ const validateCreate = (context: AuthContext, input: CreateBusinessCapabilityInp
     const value = input.sourceReference.trim();
     if (value.length < 1 || value.length > 500) throw new Error('Source reference must contain between 1 and 500 characters');
   }
-  if (input.effectiveFrom !== undefined && !(input.effectiveFrom instanceof Date) || input.effectiveFrom instanceof Date && Number.isNaN(input.effectiveFrom.getTime())) {
+  if (input.effectiveFrom !== undefined && input.effectiveFrom !== null && (!(input.effectiveFrom instanceof Date) || Number.isNaN(input.effectiveFrom.getTime()))) {
     throw new Error('Invalid effective-from date');
   }
   if (input.effectiveUntil !== undefined && input.effectiveUntil !== null && (!(input.effectiveUntil instanceof Date) || Number.isNaN(input.effectiveUntil.getTime()))) {
