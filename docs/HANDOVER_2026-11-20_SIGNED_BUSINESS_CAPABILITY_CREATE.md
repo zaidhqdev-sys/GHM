@@ -347,3 +347,14 @@ Local validation completed:
 - `node --check scripts/qualify-business-capability-gateway-cutover-postgres.mjs`: PASS (syntax only; script not executed).
 
 GitHub CI run #5600 (ID `44922957860`) is in progress for the latest handover commit. No CI pass is claimed yet. Disposable PostgreSQL qualification remains outstanding; do not execute it until its runtime, Gateway and migrator URLs are verified as distinct disposable localhost targets. The manual cutover has not been applied to any live database. PR #303 remains open/draft; PR #298 and PR #297 remain separate and untouched.
+
+
+## PR #303 CI #5600 diagnosis — pre-cutover runtime INSERT boundary — 2026-11-21
+
+CI run #5600 (ID `44922957860`) completed with `web-quality` successful and `quality` failing at step 32, `Qualify isolated actor gateway database principal`. Build, Worker bundle, automatic migrations and isolated Auth Issuer principal qualification passed. All later database qualification steps were skipped. The diagnostic reported `direct_relation_privileges: true` and the Actor Gateway least-privilege assertion stopped the workflow.
+
+The regression is in how the new audit combined two different lifecycle boundaries. Migration `20260916213000_narrow_business_capability_runtime_insert.sql` intentionally leaves a narrowly scoped column-level INSERT grant to `ghm_runtime` for the legacy Resource API path until the separate manual create cutover is applied. The generic Actor Gateway principal qualification runs before the manual cutover qualification. Therefore treating that known pre-cutover runtime grant as a direct privilege of the Actor Gateway session incorrectly fails the pre-cutover principal check. This does not justify removing the audit or weakening the post-cutover requirement.
+
+Correction in progress: keep Gateway session-user table/column privileges in the fail-closed `direct_relation_privileges` check, but report the legacy runtime column-level INSERT state separately as `runtime_column_insert_privileges`. The dedicated disposable PostgreSQL cutover qualification continues to require runtime, migrator and Gateway column-level INSERT privileges all false after applying the manual cutover. This preserves detection and the strict post-cutover assertion without making the pre-cutover qualification impossible.
+
+The correction has not yet been committed or CI-validated. No production database, Render service, migration, ACL, role, secret, deployment or setting was changed. PR #303 remains draft/open; PR #298 and PR #297 remain separate.
