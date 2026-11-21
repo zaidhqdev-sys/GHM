@@ -481,6 +481,45 @@ export const createActorGatewayApp = (
 
   const mutationReader = dependencies.businessCapabilityMutationReader;
   const positiveId = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0;
+  app.post('/v1/business-capabilities', async (req: Request, res: Response) => {
+    const body = req.body as Record<string, unknown> | null;
+    const allowed = ['businessId','capabilityId','proficiencyLevel','description','effectiveFrom','effectiveUntil','sourceReference'];
+    const parseDate = (value: unknown): Date | null | undefined => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      if (typeof value !== 'string') return null;
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+    const effectiveFrom = body && parseDate(body.effectiveFrom);
+    const effectiveUntil = body && parseDate(body.effectiveUntil);
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).some(key => !allowed.includes(key))
+      || !positiveId(body.businessId)
+      || typeof body.capabilityId !== 'string'
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.capabilityId)
+      || (body.proficiencyLevel !== undefined && body.proficiencyLevel !== null && !['foundational','proficient','advanced','expert'].includes(String(body.proficiencyLevel)))
+      || (body.description !== undefined && body.description !== null && typeof body.description !== 'string')
+      || (body.sourceReference !== undefined && body.sourceReference !== null && typeof body.sourceReference !== 'string')
+      || (body.effectiveFrom !== undefined && body.effectiveFrom !== null && !(effectiveFrom instanceof Date))
+      || (body.effectiveUntil !== undefined && body.effectiveUntil !== null && !(effectiveUntil instanceof Date))
+      || (effectiveFrom instanceof Date && effectiveUntil instanceof Date && effectiveUntil <= effectiveFrom)) {
+      res.status(400).json({ error: 'invalid_request' }); return;
+    }
+    if (!mutationReader) { res.status(503).json({ error: 'service_unavailable' }); return; }
+    try {
+      const capability = await mutationReader.create(res.locals.actorAccountId as number, {
+        businessId: body.businessId,
+        capabilityId: body.capabilityId,
+        proficiencyLevel: body.proficiencyLevel as never,
+        description: body.description as string | null | undefined,
+        effectiveFrom: effectiveFrom as Date | undefined,
+        effectiveUntil: effectiveUntil as Date | null | undefined,
+        sourceReference: body.sourceReference as string | null | undefined,
+      });
+      res.status(201).json({ capability });
+    } catch (error) { capabilityFailure(error, res); }
+  });
   app.put('/v1/businesses/:businessId/capabilities', async (req: Request, res: Response) => {
     const raw=req.params.businessId; const businessId=typeof raw==='string'&&/^[1-9][0-9]*$/.test(raw)?Number(raw):NaN;
     const body=req.body as Record<string,unknown>|null;

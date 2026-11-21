@@ -20,6 +20,6 @@ test('capability cutover guard matches the repository-wide pinned SECURITY DEFIN
 test('capability cutover continues to require schema-owner SECURITY DEFINER functions', () => {
   assert.match(cutover, /p\.prosecdef\s*=\s*true/);
   assert.match(cutover, /p\.proowner\s*=\s*v_schema_owner/);
-  assert.match(cutover, /has_function_privilege\(v_gateway_role, v_function, 'EXECUTE'\)/);
-  assert.match(cutover, /has_function_privilege\(v_runtime_role, v_function, 'EXECUTE'\)/);
+  assert.match(cutover, /has_function_privilege\(v_gateway_role,\s*v_function,\s*'EXECUTE'\)/);
+  assert.match(cutover, /has_function_privilege\(v_runtime_role,\s*v_function,\s*'EXECUTE'\)/);
 });

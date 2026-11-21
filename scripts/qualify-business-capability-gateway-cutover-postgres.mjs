@@ -22,12 +22,75 @@ try{
  const owner=Number(accounts.rows[0].id),member=Number(accounts.rows[1].id),outsider=Number(accounts.rows[2].id),admin=Number(accounts.rows[3].id);ids.accounts.push(owner,member,outsider,admin);
  const b=await setup("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id",[marker,marker]);const business=Number(b.rows[0].id);ids.businesses.push(business);
  await setup("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($1,$3,'member','active',$2)",[business,owner,member]);
+ const inactiveBusinessResult=await setup("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,false) RETURNING id",[marker+' inactive',marker+'-inactive']);
+ const inactiveBusiness=Number(inactiveBusinessResult.rows[0].id);ids.businesses.push(inactiveBusiness);
+ await setup("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2)",[inactiveBusiness,owner]);
  const capId=randomUUID();ids.capabilities.push(capId);
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[capId,marker,marker]);
  const bc=await setup("INSERT INTO ghm.business_capability(business_id,capability_id,assertion_status,assertion_basis,verification_status,created_by) VALUES($1,$2,'active','self_declared','unverified',$3) RETURNING id",[business,capId,owner]);const bcId=Number(bc.rows[0].id);ids.assertions.push(bcId);
+ const inactiveCapId=randomUUID();ids.capabilities.push(inactiveCapId);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'deprecated',1,'gateway qualification',false)",[inactiveCapId,marker+' deprecated',marker+'-deprecated-cap']);
+ const unselectableCapId=randomUUID();ids.capabilities.push(unselectableCapId);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',false)",[unselectableCapId,marker+' unselectable',marker+'-unselectable']);
+ const createCapId=randomUUID();ids.capabilities.push(createCapId);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[createCapId,marker+' create',marker+'-create']);
+ // The CI workflow applies every database/migrations/*.sql file before
+ // running qualification. These append-only CREATE FUNCTION migrations must
+ // not be applied a second time by this harness.
+ console.log('SIGNED BUSINESS CAPABILITY CREATE MIGRATIONS PRESENT FROM CI MIGRATION PHASE: PASS');
  const cutover=await readFile(fileURLToPath(new URL('../database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql',import.meta.url)),'utf8');
  await setup(cutover);
- console.log('MANUAL BUSINESS CAPABILITY CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS');
+ const createCutover=await readFile(fileURLToPath(new URL('../database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql',import.meta.url)),'utf8');
+ await setup(createCutover);
+ console.log('MANUAL BUSINESS CAPABILITY MUTATION AND CREATE CUTOVERS APPLIED TO DISPOSABLE POSTGRESQL: PASS');
+
+ const createInput={businessId:business,capabilityId:createCapId,proficiencyLevel:'advanced',description:'  signed create qualification  ',effectiveFrom:'2026-01-01T00:00:00.000Z',effectiveUntil:'2027-01-01T00:00:00.000Z',sourceReference:'  '+marker+'  '};
+ const created=await call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput);
+ assert.equal(created.rowCount,1);
+ const createdId=Number(created.rows[0].id);ids.assertions.push(createdId);
+ assert.equal(Number(created.rows[0].created_by),owner);
+ assert.equal(created.rows[0].proficiency_level,'advanced');
+ assert.equal(created.rows[0].description,'signed create qualification');
+ assert.equal(created.rows[0].source_reference,marker);
+ assert.equal(created.rows[0].assertion_status,'active');
+ assert.equal(created.rows[0].assertion_basis,'self_declared');
+ assert.equal(created.rows[0].verification_status,'unverified');
+ console.log('SIGNED APPEND-ONLY CAPABILITY CREATE AND ACTOR PROVENANCE: PASS');
+
+ const inactiveBusinessInput={...createInput,businessId:inactiveBusiness,capabilityId:randomUUID()};
+ const inactiveBusinessError=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(inactiveBusinessInput)],inactiveBusinessInput),'INACTIVE BUSINESS CAPABILITY CREATE DENIED');assert.equal(inactiveBusinessError.code,'42501');assert.match(inactiveBusinessError.message,/Business not found or inactive/);
+ const inactiveCapabilityInput={...createInput,capabilityId:inactiveCapId};
+ const inactiveCapabilityError=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(inactiveCapabilityInput)],inactiveCapabilityInput),'INACTIVE CATALOGUE CAPABILITY CREATE DENIED');assert.equal(inactiveCapabilityError.code,'42501');assert.match(inactiveCapabilityError.message,/Capability not found or not selectable/);
+ const unselectableCapabilityInput={...createInput,capabilityId:unselectableCapId};
+ const unselectableCapabilityError=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(unselectableCapabilityInput)],unselectableCapabilityInput),'NON-SELECTABLE CATALOGUE CAPABILITY CREATE DENIED');assert.equal(unselectableCapabilityError.code,'42501');assert.match(unselectableCapabilityError.message,/Capability not found or not selectable/);
+ const activeDuplicate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput),'ACTIVE CAPABILITY DUPLICATE DENIED');assert.equal(activeDuplicate.code,'23505');
+
+ const expiredIssued=Math.floor(Date.now()/1000)-120,expiredNonce=randomUUID(),expiredContext=JSON.stringify(createInput);
+ const expiredPayload='ghm-actor-gateway:v2|'+owner+'|business.capability.create|'+expiredIssued+'|'+expiredNonce+'|'+Buffer.from(expiredContext,'utf8').toString('hex');
+ const expiredSignature=createHmac('sha256',key).update(expiredPayload,'utf8').digest('hex');
+ const expired=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',[owner,expiredIssued,expiredNonce,expiredContext,expiredSignature,expiredContext]),'EXPIRED SIGNED CAPABILITY CREATE ASSERTION DENIED');assert.equal(expired.code,'42501');assert.match(expired.message,/expired/i);
+ // Reuse one assertion and its exact payload: the second attempt must fail at nonce replay protection.
+ const replayCapId=randomUUID();ids.capabilities.push(replayCapId);
+ await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[replayCapId,marker+' replay',marker+'-replay']);
+ const replayContext={...createInput,capabilityId:replayCapId,description:'replay-probe'};
+ const replaySigned=sign(owner,'business.capability.create',replayContext);
+ const replayArgs=[owner,replaySigned.issuedAt,replaySigned.nonce,replaySigned.context,replaySigned.signature,JSON.stringify(replayContext)];
+ const replayFirst=await gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',replayArgs);assert.equal(replayFirst.rowCount,1);ids.assertions.push(Number(replayFirst.rows[0].id));
+ const replaySecond=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',replayArgs),'SIGNED CAPABILITY CREATE ASSERTION REPLAY DENIED');assert.equal(replaySecond.code,'42501');assert.match(replaySecond.message,/replay/i);
+ const invalidDates={...createInput,capabilityId:randomUUID(),effectiveFrom:'2027-01-01T00:00:00.000Z',effectiveUntil:'2026-01-01T00:00:00.000Z'};
+ const invalidDate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(invalidDates)],invalidDates),'INVALID CAPABILITY EFFECTIVE PERIOD DENIED');assert.equal(invalidDate.code,'22023');
+ const invalidDateCount=await setup('SELECT count(*)::int AS count FROM ghm.business_capability WHERE business_id=$1 AND capability_id=$2',[business,invalidDates.capabilityId]);assert.equal(invalidDateCount.rows[0].count,0);
+ await setup("UPDATE ghm.business_capability SET assertion_status='withdrawn' WHERE id=$1",[createdId]);
+ const withdrawnDuplicate=await denied(()=>call(owner,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput),'WITHDRAWN CAPABILITY DUPLICATE DENIED');assert.equal(withdrawnDuplicate.code,'23505');
+ const memberCreate=await denied(()=>call(member,'business.capability.create','gateway_create_business_capability',[JSON.stringify(createInput)],createInput),'NON-ADMIN MEMBER CANNOT CREATE BUSINESS CAPABILITY');assert.match(memberCreate.message,/Business management permission required/);
+ const tampered=sign(owner,'business.capability.create',createInput);
+ const tamperError=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',[owner,tampered.issuedAt,tampered.nonce,tampered.context,tampered.signature,JSON.stringify({...createInput,description:'tampered'})]),'SIGNED CAPABILITY CREATE PAYLOAD TAMPERING DENIED');assert.equal(tamperError.code,'42501');
+ const forged=sign(owner,'business.capability.create',createInput);
+ const forgedError=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_create_business_capability($1,$2,$3,$4,$5,$6::jsonb)',[owner,forged.issuedAt,forged.nonce,forged.context,'0'.repeat(64),JSON.stringify(createInput)]),'FORGED CAPABILITY CREATE ASSERTION DENIED');assert.equal(forgedError.code,'42501');
+ const deniedCreateWrapper=await denied(()=>runtime.query("SELECT * FROM ghm.gateway_create_business_capability(1,1,'00000000-0000-4000-8000-000000000099'::uuid,'{}','0000000000000000000000000000000000000000000000000000000000000000','{}'::jsonb)"),'RUNTIME CANNOT EXECUTE SIGNED CAPABILITY CREATE WRAPPER');assert.equal(deniedCreateWrapper.code,'42501');
+ const deniedCreateInsert=await denied(()=>runtime.query("INSERT INTO ghm.business_capability(business_id,capability_id,created_by) VALUES($1,$2,$3)",[business,capId,owner]),'RUNTIME DIRECT BUSINESS CAPABILITY INSERT DENIED');assert.equal(deniedCreateInsert.code,'42501');
+ const deniedCreateSequence=await denied(()=>runtime.query("SELECT nextval('ghm.business_capability_id_seq')"),'RUNTIME BUSINESS CAPABILITY SEQUENCE ACCESS DENIED');assert.equal(deniedCreateSequence.code,'42501');
+ const deniedGatewayDirectInsert=await denied(()=>gateway.query("INSERT INTO ghm.business_capability(business_id,capability_id,created_by) VALUES($1,$2,$3)",[business,capId,owner]),'GATEWAY DIRECT BUSINESS CAPABILITY INSERT DENIED');assert.equal(deniedGatewayDirectInsert.code,'42501');
  const deniedReplace=await denied(()=>runtime.query('SELECT * FROM ghm.replace_business_capability_assertions($1,$2,$3::jsonb)',[business,owner,'[]']),'RUNTIME LEGACY ASSERTION REPLACEMENT DENIED');
  assert.equal(deniedReplace.code,'42501');
  const deniedVerify=await denied(()=>runtime.query('SELECT * FROM ghm.transition_business_capability_verification($1,$2,$3,$4,$5)',[bcId,'unverified','pending',admin,null]),'RUNTIME LEGACY CAPABILITY VERIFICATION DENIED');assert.equal(deniedVerify.code,'42501');
@@ -49,8 +112,8 @@ try{
 
  const altered=sign(owner,'business.capability.evidence.submit',context);
  const tamper=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',[owner,altered.issuedAt,altered.nonce,altered.context,altered.signature,bcId,'certification','Tampered title',null,'Qualification',marker,null,null,null,'private']),'SIGNED EVIDENCE PAYLOAD TAMPERING DENIED');assert.equal(tamper.code,'42501');
- const replayContext={...input,referenceNumber:null};
- const replay=sign(owner,'business.capability.evidence.submit',replayContext);
+ const evidenceReplayContext={...input,referenceNumber:null};
+ const replay=sign(owner,'business.capability.evidence.submit',evidenceReplayContext);
  const submitArgs=[owner,replay.issuedAt,replay.nonce,replay.context,replay.signature,bcId,input.evidenceType,input.title,null,input.issuerName,null,null,null,null,'private'];
  const replayInserted=await gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs);ids.evidence.push(Number(replayInserted.rows[0].id));
  const replayError=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs),'SIGNED EVIDENCE ASSERTION REPLAY DENIED');assert.equal(replayError.code,'42501');
@@ -74,8 +137,8 @@ try{
  const reviewed=await call(admin,'business.capability.evidence.review','gateway_transition_business_capability_evidence',[evidenceId,'verified',null],reviewContext);assert.equal(reviewed.rowCount,1);assert.equal(Number(reviewed.rows[0].verified_by),admin);assert.equal(reviewed.rows[0].verification_status,'verified');assert.equal(Number(reviewed.rows[0].submitted_by),owner);
  console.log('SIGNED ADMIN EVIDENCE REVIEW AND DTO COMPATIBILITY AFTER CUTOVER: PASS');
 
- const privilege=await runtime.query("SELECT has_function_privilege('ghm_runtime','ghm.gateway_replace_business_capability_assertions(bigint,bigint,uuid,text,text,bigint,jsonb)','EXECUTE') AS runtime_replace,has_function_privilege('ghm_actor_gateway','ghm.gateway_replace_business_capability_assertions(bigint,bigint,uuid,text,text,bigint,jsonb)','EXECUTE') AS gateway_replace,has_function_privilege('ghm_runtime','ghm.gateway_transition_business_capability_verification(bigint,bigint,uuid,text,text,bigint,text,text,text)','EXECUTE') AS runtime_verify,has_function_privilege('ghm_actor_gateway','ghm.gateway_transition_business_capability_verification(bigint,bigint,uuid,text,text,bigint,text,text,text)','EXECUTE') AS gateway_verify,has_function_privilege('ghm_runtime','ghm.gateway_transition_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text)','EXECUTE') AS runtime_review,has_function_privilege('ghm_actor_gateway','ghm.gateway_transition_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text)','EXECUTE') AS gateway_review,has_function_privilege('ghm_runtime','ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text)','EXECUTE') AS runtime_submit,has_function_privilege('ghm_actor_gateway','ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text)','EXECUTE') AS gateway_submit,has_table_privilege('ghm_runtime','ghm.business_capability_evidence','INSERT') AS runtime_can_insert");
- assert.deepEqual(privilege.rows[0],{runtime_replace:false,gateway_replace:true,runtime_verify:false,gateway_verify:true,runtime_review:false,gateway_review:true,runtime_submit:false,gateway_submit:true,runtime_can_insert:false});
+ const privilege=await runtime.query("SELECT has_table_privilege('ghm_runtime','ghm.business_capability','INSERT') AS runtime_can_create,has_table_privilege('ghm_actor_gateway','ghm.business_capability','INSERT') AS gateway_can_direct_insert,has_sequence_privilege('ghm_runtime','ghm.business_capability_id_seq','USAGE') AS runtime_sequence_usage,has_sequence_privilege('ghm_actor_gateway','ghm.business_capability_id_seq','USAGE') AS gateway_sequence_usage,has_function_privilege('ghm_runtime','ghm.gateway_replace_business_capability_assertions(bigint,bigint,uuid,text,text,bigint,jsonb)','EXECUTE') AS runtime_replace,has_function_privilege('ghm_actor_gateway','ghm.gateway_replace_business_capability_assertions(bigint,bigint,uuid,text,text,bigint,jsonb)','EXECUTE') AS gateway_replace,has_function_privilege('ghm_runtime','ghm.gateway_transition_business_capability_verification(bigint,bigint,uuid,text,text,bigint,text,text,text)','EXECUTE') AS runtime_verify,has_function_privilege('ghm_actor_gateway','ghm.gateway_transition_business_capability_verification(bigint,bigint,uuid,text,text,bigint,text,text,text)','EXECUTE') AS gateway_verify,has_function_privilege('ghm_runtime','ghm.gateway_transition_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text)','EXECUTE') AS runtime_review,has_function_privilege('ghm_actor_gateway','ghm.gateway_transition_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text)','EXECUTE') AS gateway_review,has_function_privilege('ghm_runtime','ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text)','EXECUTE') AS runtime_submit,has_function_privilege('ghm_actor_gateway','ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text)','EXECUTE') AS gateway_submit,has_table_privilege('ghm_runtime','ghm.business_capability_evidence','INSERT') AS runtime_can_insert");
+ assert.deepEqual(privilege.rows[0],{runtime_can_create:false,gateway_can_direct_insert:false,runtime_sequence_usage:false,gateway_sequence_usage:false,runtime_replace:false,gateway_replace:true,runtime_verify:false,gateway_verify:true,runtime_review:false,gateway_review:true,runtime_submit:false,gateway_submit:true,runtime_can_insert:false});
  console.log('POST-CUTOVER ROLE PRIVILEGE MATRIX: PASS');
  console.log('GHM BUSINESS CAPABILITY SIGNED GATEWAY CUTOVER QUALIFICATION: PASS');
 }finally{

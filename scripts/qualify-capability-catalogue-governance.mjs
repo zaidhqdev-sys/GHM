@@ -40,6 +40,48 @@ const gatewayCall = (accountId, operation, sql, args = []) => {
   const shiftedSql = sql.replace(/\$(\d+)/g, (_match, n) => '$' + (Number(n) >= 4 ? Number(n) + 1 : Number(n))).replace(/\(\$1,\$2,\$3,\$5/, () => '($1,$2,$3,$4,$5');
   return gatewayPool.query(shiftedSql, [accountId, a.issuedAt, a.nonce, a.context, a.signature, ...args]);
 };
+const mapGatewayCapability = (row) => ({
+  id: String(row.id),
+  parentId: row.parent_id === null ? null : String(row.parent_id),
+  name: String(row.name),
+  slug: String(row.slug),
+  description: row.description === null ? null : String(row.description),
+  sortOrder: Number(row.sort_order),
+  lifecycleStatus: row.lifecycle_status,
+  taxonomyVersion: Number(row.taxonomy_version),
+  effectiveFrom: row.effective_from === null ? null : new Date(String(row.effective_from)),
+  effectiveTo: row.effective_to === null ? null : new Date(String(row.effective_to)),
+  sourceAuthority: String(row.source_authority),
+  sourceReference: row.source_reference === null ? null : String(row.source_reference),
+  replacedByCapabilityId: row.replaced_by_capability_id === null ? null : String(row.replaced_by_capability_id),
+  isSelectable: Boolean(row.is_selectable),
+  createdAt: new Date(String(row.created_at)),
+  updatedAt: new Date(String(row.updated_at)),
+});
+const gatewayCreateDraft = async (accountId, input) => {
+  const args = [input.name, input.slug, input.description ?? null, input.parentId ?? null, input.sortOrder ?? 0, input.sourceReference ?? null, 1];
+  const result = await gatewayCall(accountId, 'capability.create',
+    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+    args);
+  if (!result.rows[0]) throw new Error('Gateway draft creation returned no capability');
+  return mapGatewayCapability(result.rows[0]);
+};
+const gatewayUpdateDraft = async (accountId, capabilityId, input) => {
+  const args = [capabilityId, input.name, input.slug, input.description ?? null, input.parentId ?? null, input.sortOrder ?? 0, input.sourceReference ?? null, 1];
+  const result = await gatewayCall(accountId, 'capability.update',
+    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
+    args);
+  if (!result.rows[0]) throw new Error('Gateway draft update returned no capability');
+  return mapGatewayCapability(result.rows[0]);
+};
+const gatewayTransition = async (accountId, capabilityId, targetStatus, replacedByCapabilityId = null) => {
+  const args = [capabilityId, targetStatus, replacedByCapabilityId, 1];
+  const result = await gatewayCall(accountId, 'capability.transition',
+    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
+    args);
+  if (!result.rows[0]) throw new Error('Gateway lifecycle transition returned no capability');
+  return mapGatewayCapability(result.rows[0]);
+};
 
 const expectReject = async (work, label, expectedText) => {
   try { await work(); }
@@ -145,10 +187,9 @@ try {
   capabilityIds.push(gatewayDraft.id);
   console.log('GATEWAY ADMIN DRAFT CREATE POSITIVE PASS');
 
-  const substitutionTargetResult = await gatewayCall(adminId, 'capability.create',
-    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
-    [`${marker} Substitution Target`, `${marker}-substitution-target`, null, null, 0, null, 1]);
-  const substitutionTarget = substitutionTargetResult.rows[0];
+  const substitutionTarget = await gatewayCreateDraft(adminId, {
+    name: `${marker} Substitution Target`, slug: `${marker}-substitution-target`,
+  });
   capabilityIds.push(substitutionTarget.id);
 
   const updateContextArgs = [gatewayDraft.id, `${marker} Bound Update`, `${marker}-bound-update`, 'Bound update payload', null, 30, 'gateway-update-context-qualification', 1];
@@ -195,37 +236,42 @@ try {
   if (gatewayUpdated.rows[0]?.name !== `${marker} Gateway Draft Updated`) throw new Error('Gateway draft update failed');
   console.log('GATEWAY ADMIN DRAFT UPDATE POSITIVE PASS');
 
-  const gatewayTransition = await gatewayCall(adminId, 'capability.transition',
+  const gatewayTransitionResult = await gatewayCall(adminId, 'capability.transition',
     'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
     [gatewayDraft.id, 'active', null, 1]);
-  if (gatewayTransition.rows[0]?.lifecycle_status !== 'active') throw new Error('Gateway lifecycle transition failed');
+  if (gatewayTransitionResult.rows[0]?.lifecycle_status !== 'active') throw new Error('Gateway lifecycle transition failed');
   console.log('GATEWAY ADMIN LIFECYCLE TRANSITION POSITIVE PASS');
 
-  const replacementResult = await gatewayCall(adminId, 'capability.create',
-    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
-    [`${marker} Replacement`, `${marker}-replacement`, null, null, 0, 'runtime-qualification', 1]);
-  const replacement = replacementResult.rows[0];
+  const replacement = await gatewayCreateDraft(adminId, {
+    name: `${marker} Replacement`, slug: `${marker}-replacement`,
+    sourceReference: 'runtime-qualification',
+  });
   capabilityIds.push(replacement.id);
-  if (replacement.lifecycle_status !== 'draft' || replacement.is_selectable || replacement.source_authority !== 'GHM System Administration') {
+  if (replacement.lifecycleStatus !== 'draft' || replacement.isSelectable || replacement.sourceAuthority !== 'GHM System Administration') {
     throw new Error(`Capability draft authority/state mismatch: ${JSON.stringify(replacement)}`);
   }
   console.log('ADMIN DRAFT CREATE + SERVER AUTHORITY PASS');
 
   await expectReject(
+    () => service.createDraft(business, { name: `${marker} Forbidden`, slug: `${marker}-forbidden` }),
+    'SERVICE NON-ADMIN DRAFT DENIAL PASS',
+    'Insufficient role',
+  );
+
+  await expectReject(
     () => gatewayCall(businessId, 'capability.create',
       'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
-      [`${marker} Forbidden`, `${marker}-forbidden`, null, null, 0, null, 1]),
+      [`${marker} Gateway Forbidden`, `${marker}-gateway-forbidden`, null, null, 0, null, 1]),
     'GATEWAY NON-ADMIN DRAFT DENIAL PASS',
     'System administrator permission required',
   );
-
   await expectReject(
     () => runtimePool.query(
       'SELECT * FROM ghm.create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
       [businessId, `${marker} Direct`, `${marker}-direct`, null, null, 0, null, 1],
     ),
-    'RUNTIME LEGACY CREATE RPC DENIAL PASS',
-    'permission denied',
+    'RUNTIME LEGACY CREATE FUNCTION DENIAL PASS',
+    'permission denied for function create_capability_draft',
   );
 
   await expectReject(
@@ -233,44 +279,35 @@ try {
       'SELECT * FROM ghm.create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
       [adminId, `${marker} Unsupported`, `${marker}-unsupported`, null, null, 0, null, 2],
     ),
-    'RUNTIME LEGACY CREATE RPC VERSION-BYPASS DENIAL PASS',
-    'permission denied',
+    'RUNTIME LEGACY CREATE VERSION-PROBE DENIAL PASS',
+    'permission denied for function create_capability_draft',
   );
 
-  const updatedResult = await gatewayCall(adminId, 'capability.update',
-    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
-    [replacement.id, `${marker} Replacement Updated`, `${marker}-replacement`,
-      'Updated through GHM governance API', null, 20, 'runtime-qualification-updated', 1]);
-  const updated = updatedResult.rows[0];
-  if (updated.name !== `${marker} Replacement Updated` || updated.sort_order !== 20) {
+  const updated = await gatewayUpdateDraft(adminId, replacement.id, {
+    name: `${marker} Replacement Updated`, slug: `${marker}-replacement`,
+    description: 'Updated through GHM governance API', sortOrder: 20,
+    sourceReference: 'runtime-qualification-updated',
+  });
+  if (updated.name !== `${marker} Replacement Updated` || updated.sortOrder !== 20) {
     throw new Error(`Capability draft update did not persist: ${JSON.stringify(updated)}`);
   }
   console.log('ADMIN DRAFT UPDATE PASS');
 
-  const parentResult = await gatewayCall(adminId, 'capability.create',
-    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
-    [`${marker} Parent`, `${marker}-parent`, null, null, 0, null, 1]);
-  const parent = parentResult.rows[0];
+  const parent = await gatewayCreateDraft(adminId, {
+    name: `${marker} Parent`, slug: `${marker}-parent`,
+  });
   capabilityIds.push(parent.id);
-  const childResult = await gatewayCall(adminId, 'capability.create',
-    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
-    [`${marker} Child`, `${marker}-child`, null, parent.id, 0, null, 1]);
-  const child = childResult.rows[0];
+  const child = await gatewayCreateDraft(adminId, {
+    name: `${marker} Child`, slug: `${marker}-child`, parentId: parent.id,
+  });
   capabilityIds.push(child.id);
 
-  const activeReplacementResult = await gatewayCall(adminId, 'capability.transition',
-    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
-    [replacement.id, 'active', null, 1]);
-  const activeReplacement = activeReplacementResult.rows[0];
-  if (activeReplacement.lifecycle_status !== 'active' || !activeReplacement.is_selectable) {
+  const activeReplacement = await gatewayTransition(adminId, replacement.id, 'active');
+  if (activeReplacement.lifecycleStatus !== 'active' || !activeReplacement.isSelectable) {
     throw new Error(`Draft activation failed: ${JSON.stringify(activeReplacement)}`);
   }
-  await gatewayCall(adminId, 'capability.transition',
-    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
-    [parent.id, 'active', null, 1]);
-  await gatewayCall(adminId, 'capability.transition',
-    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
-    [child.id, 'active', null, 1]);
+  await gatewayTransition(adminId, parent.id, 'active');
+  await gatewayTransition(adminId, child.id, 'active');
   console.log('DRAFT TO ACTIVE LIFECYCLE PASS');
 
   await expectReject(async () => {
@@ -304,25 +341,22 @@ try {
 
 
   await expectReject(
-    () => gatewayCall(adminId, 'capability.transition', 'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)', [parent.id, 'retired', replacement.id, 1]),
+    () => gatewayTransition(adminId, parent.id, 'retired', replacement.id),
     'PARENT RETIREMENT CHILD GUARD PASS',
     'non-retired children',
   );
 
-  await gatewayCall(adminId, 'capability.transition', 'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)', [child.id, 'retired', replacement.id, 1]);
-  const deprecatedResult = await gatewayCall(adminId, 'capability.transition', 'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)', [parent.id, 'deprecated', replacement.id, 1]);
-  const deprecated = deprecatedResult.rows[0];
-  if (deprecated.lifecycle_status !== 'deprecated' || deprecated.replaced_by_capability_id !== replacement.id || deprecated.is_selectable) {
+  await gatewayTransition(adminId, child.id, 'retired', replacement.id);
+  const deprecated = await gatewayTransition(adminId, parent.id, 'deprecated', replacement.id);
+  if (deprecated.lifecycleStatus !== 'deprecated' || deprecated.replacedByCapabilityId !== replacement.id || deprecated.isSelectable) {
     throw new Error(`Capability deprecation/replacement mismatch: ${JSON.stringify(deprecated)}`);
   }
-  const reactivatedResult = await gatewayCall(adminId, 'capability.transition', 'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)', [parent.id, 'active', null, 1]);
-  const reactivated = reactivatedResult.rows[0];
-  if (reactivated.lifecycle_status !== 'active' || reactivated.replaced_by_capability_id !== null || !reactivated.is_selectable) {
+  const reactivated = await gatewayTransition(adminId, parent.id, 'active');
+  if (reactivated.lifecycleStatus !== 'active' || reactivated.replacedByCapabilityId !== null || !reactivated.isSelectable) {
     throw new Error(`Capability reactivation mismatch: ${JSON.stringify(reactivated)}`);
   }
-  const retiredResult = await gatewayCall(adminId, 'capability.transition', 'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)', [parent.id, 'retired', replacement.id, 1]);
-  const retired = retiredResult.rows[0];
-  if (retired.lifecycle_status !== 'retired' || retired.replaced_by_capability_id !== replacement.id || retired.is_selectable) {
+  const retired = await gatewayTransition(adminId, parent.id, 'retired', replacement.id);
+  if (retired.lifecycleStatus !== 'retired' || retired.replacedByCapabilityId !== replacement.id || retired.isSelectable) {
     throw new Error(`Capability retirement mismatch: ${JSON.stringify(retired)}`);
   }
   console.log('DEPRECATE, REACTIVATE, RETIRE + REPLACEMENT PASS');
@@ -342,7 +376,7 @@ try {
 
 
   await expectReject(
-    () => gatewayCall(adminId, 'capability.transition', 'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)', [parent.id, 'active', null, 1]),
+    () => gatewayTransition(adminId, parent.id, 'active'),
     'RETIRED CAPABILITY TERMINAL STATE PASS',
     'Invalid Capability lifecycle transition',
   );
@@ -382,6 +416,20 @@ try {
   const p = privilege.rows[0];
   if (p.can_insert || p.can_update || p.can_delete || p.can_create || p.can_update_draft || p.can_transition || p.can_gateway_list || p.can_gateway_create || p.can_gateway_update || p.can_gateway_transition) {
     throw new Error(`Unexpected capability catalogue runtime privileges: ${JSON.stringify(p)}`);
+  }
+  const gatewayPrivileges = await gatewayPool.query(
+    `SELECT has_function_privilege(current_user, 'ghm.gateway_list_capabilities(bigint,bigint,uuid,text,text)', 'EXECUTE') AS can_gateway_list,
+            has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,bigint,uuid,text,text,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_create,
+            has_function_privilege(current_user, 'ghm.gateway_update_capability_draft(bigint,bigint,uuid,text,text,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_update,
+            has_function_privilege(current_user, 'ghm.gateway_transition_capability_lifecycle(bigint,bigint,uuid,text,text,uuid,text,uuid,integer)', 'EXECUTE') AS can_gateway_transition,
+            has_function_privilege(current_user, 'ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_legacy_create,
+            has_function_privilege(current_user, 'ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_legacy_update,
+            has_function_privilege(current_user, 'ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS can_legacy_transition`,
+  );
+  const g = gatewayPrivileges.rows[0];
+  if (!g.can_gateway_list || !g.can_gateway_create || !g.can_gateway_update || !g.can_gateway_transition ||
+      g.can_legacy_create || g.can_legacy_update || g.can_legacy_transition) {
+    throw new Error(`Unexpected Actor Gateway capability governance privileges: ${JSON.stringify(g)}`);
   }
   console.log('RUNTIME CAPABILITY GOVERNANCE PRIVILEGE BOUNDARY PASS');
   console.log('GHM CAPABILITY CATALOGUE GOVERNANCE RUNTIME QUALIFICATION: PASS');

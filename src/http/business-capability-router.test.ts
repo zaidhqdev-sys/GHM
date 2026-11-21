@@ -159,6 +159,39 @@ test('business capability create binds authenticated context and canonical input
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
+test('business capability create forwards verified bearer token to signed Gateway when required', async () => {
+  const token = tokenFor({ userId: 42, role: 'business' });
+  let received: unknown;
+  const service = { createBusinessCapability: async () => { throw new Error('legacy runtime create must not run'); } } as unknown as BusinessCapabilityService;
+  const gateway = { create: async (bearer: string, input: unknown) => { received = { bearer, input }; return { capability: fixture({ userId: 42, role: 'business' }) }; } };
+  const { server, baseUrl } = await startServer(service, gateway, true);
+  try {
+    const input = { businessId: 55, capabilityId: '550e8400-e29b-41d4-a716-446655440000', proficiencyLevel: 'advanced', description: 'Electrical installation', effectiveFrom: '2026-09-01T00:00:00.000Z' };
+    const response = await fetch(`${baseUrl}/api/v1/business-capabilities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(received, { bearer: token, input: { ...input, effectiveFrom: new Date(input.effectiveFrom) } });
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+test('business capability create fails closed when Gateway is required but unavailable', async () => {
+  let called = false;
+  const service = { createBusinessCapability: async () => { called = true; return fixture({ userId: 42, role: 'business' }); } } as unknown as BusinessCapabilityService;
+  const { server, baseUrl } = await startServer(service, undefined, true);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/business-capabilities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ businessId: 55, capabilityId: '550e8400-e29b-41d4-a716-446655440000' }),
+    });
+    assert.equal(response.status, 503);
+    assert.equal(called, false);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
 test('business capability create rejects malformed canonical input', async () => {
   let called = false;
   const service = { createBusinessCapability: async () => { called = true; return {} as BusinessCapability; } } as unknown as BusinessCapabilityService;

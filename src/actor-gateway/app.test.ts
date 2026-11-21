@@ -563,7 +563,7 @@ test('actor gateway derives evidence submitter from verified bearer token',async
  let received:any;
  const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
  const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
-  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},
+  async create(){throw new Error('unused')},async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},
   async submitEvidence(actor,input){received={actor,input};return{} as never;}
  };
  await withServer(identity,async baseUrl=>{
@@ -576,7 +576,7 @@ test('actor gateway rejects evidence submitter identity and unknown fields from 
  let called=false;
  const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
  const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
-  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},async submitEvidence(){called=true;return{} as never;}
+  async create(){throw new Error('unused')},async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},async submitEvidence(){called=true;return{} as never;}
  };
  await withServer(identity,async baseUrl=>{
   const response=await fetch(`${baseUrl}/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${sign(42)}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate',submittedBy:999})});
@@ -928,4 +928,51 @@ test('actor gateway accepts an injected Worker-compatible JSON body parser', asy
     },
   });
   assert.equal(parserCalls, 1);
+});
+
+
+test('actor gateway routes signed Business Capability create using verified actor identity', async () => {
+  let received: unknown;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const mutations = {
+    create: async (actor: number, input: unknown) => {
+      received = { actor, input };
+      return { id: 101, businessId: 55, capabilityId: '550e8400-e29b-41d4-a716-446655440000', createdBy: actor };
+    },
+  } as unknown as import('./business-capability-mutation-reader').GatewayCapabilityMutationReader;
+  await withServer(reader, async (baseUrl) => {
+    const input = { businessId: 55, capabilityId: '550e8400-e29b-41d4-a716-446655440000', proficiencyLevel: 'advanced', effectiveFrom: null, effectiveUntil: null };
+    const response = await fetch(`${baseUrl}/v1/business-capabilities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(received, { actor: 42, input: { ...input, description: undefined, sourceReference: undefined } });
+  }, undefined, undefined, undefined, undefined, {}, verifier, mutations);
+});
+
+test('actor gateway Business Capability create rejects invalid payload before reader execution', async () => {
+  let called = false;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const mutations = {
+    create: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as import('./business-capability-mutation-reader').GatewayCapabilityMutationReader;
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/business-capabilities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ businessId: -1, capabilityId: 'bad', createdBy: 99 }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal(called, false);
+  }, undefined, undefined, undefined, undefined, {}, verifier, mutations);
 });
