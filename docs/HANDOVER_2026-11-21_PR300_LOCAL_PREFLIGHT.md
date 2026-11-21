@@ -427,3 +427,25 @@ Remote review repeated before this task:
 ### Next action — inspect the actual local .env safely
 
 From `PS C:\GHM-main>`, check the current directory and `.env` existence, then parse `.env` directly without loading or printing secret values. Report only presence, hostname, port, database name, and whether a username/password is set for each required URL; report assertion-secret presence and decoded byte length only. Also inspect whether `DOTENV_CONFIG_PATH` is set, but do not print any value that could contain a secret. No edits, staging, database connections, qualification, commit, or push in this inspection step.
+
+
+## 21 November 2026 — confirmed no dotenv files in C:\\GHM-main
+
+The user supplied the requested safe filesystem inspection:
+- Working directory is `C:\\GHM-main`.
+- `.env`, `.env.local`, `.env.development`, and `.env.production` are all absent in this checkout.
+- `DOTENV_CONFIG_PATH` is not set.
+- No credentials or secret values were printed.
+- No database connection or qualification command was run.
+
+This establishes that this checkout has no default dotenv file under those four names. It does **not** establish whether a separate `C:\\GHM\\.env` exists in the other known local checkout. Since the user specifically asked to check the .env, inspect that sibling checkout next without copying secrets into this checkout or displaying values. Do not search the whole disk or create a replacement .env. If the sibling file exists, report only the same redacted connection metadata and secret-presence checks; then assess whether those credentials are actually intended for local disposable qualification. A file's existence or distinct URLs still do not prove the database target is safe.
+
+Remote review before this handover update:
+- Re-read this preflight handover.
+- PR #300 remains open/not draft with mergeable=false; PR #298 remains open/draft with mergeable=true; PR #297 remains open/draft with mergeable=false.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` remain present.
+- No source changes, local Git changes, database connections, qualification, merge commit, push, production operation, or deployment occurred.
+
+### Next local inspection
+
+From PowerShell, inspect only `C:\\GHM\\.env` existence and parse the exact five relevant variables safely (three database URLs, assertion secret, DATABASE_SSL). Never print raw values, usernames, passwords, or secret material. If no file exists, stop and report it. If it exists, report hostname, port, database name, and boolean credential presence only. Do not copy the file or point qualification at it until target identity is proven disposable/local.
