@@ -7039,3 +7039,28 @@ The final local review has not yet been reported complete. It must include:
 - Preserve the two known untracked local files; do not stage or delete them.
 
 The two database-backed qualification skips remain outstanding because they require separate runtime and migrator database URLs. No live database or Render qualification was performed. Do not execute the DB qualification script, production migrations, deployments, or credential/role/ACL/secret/settings changes. Keep PR #298 draft and separate from PR #297; do not merge absent explicit instruction.
+
+
+## 22 November 2026 — Business Capability null effective-from contract correction
+
+A separate continuation branch, `feat/pr298-github-continuation-20261122`, was created from the latest pushed PR #298 branch head (`b6b96c44ac26544156e099373d3185a965b880fd`). The original local `C:\GHM-main` worktree and its staged, unstaged, merge, and untracked state were not modified.
+
+Remote source review found a mismatch in the Business Capability create contract:
+- The PostgreSQL repository already passes `input.effectiveFrom ?? null` to SQL, where `COALESCE($5, now())` deliberately delegates a missing/null value to the database default.
+- The public `CreateBusinessCapabilityInput` type allowed only `Date`, not explicit `null`.
+- The service validator rejected `null` even though the repository and SQL path support it.
+- The existing service test suite did not contain a null regression case.
+
+Applied directly to the continuation branch:
+- Widened `effectiveFrom` to `Date | null` in `src/resources/business-capability/contracts.ts`.
+- Updated `src/resources/business-capability/service.ts` to accept `undefined` and `null`, while continuing to reject non-Date values and invalid Date instances.
+- Added a focused service test asserting that explicit `null` reaches the repository unchanged, allowing the SQL `COALESCE` default to apply.
+
+Commits, in order:
+- `a4d7cf5ef07ec6dd2d64e228490f830742ea42ba` — contract type.
+- `b2ecb4b4315273859b0cead372aa89d6b6b532f0` — service validation.
+- `6725932ba431b718e48c15f700c937b17c480cfb` — regression test.
+
+Remote read-back confirmed the nullable contract, validator, and seventh service test are present. This is source-only work; no local PowerShell/Node execution or GitHub Actions run has yet validated these commits. The CI workflow's push branch allowlist names the original PR #298 branch, not this continuation branch; the continuation branch has not been merged, and no duplicate PR was opened merely to trigger CI.
+
+Production migration batch manifest remains exactly `[]`. No production database, Render service, migration, deployment, credential, role, ACL, secret, payment, or hosting state was changed. PR #298 remains draft and unmerged; PR #297 remains separate.
