@@ -835,3 +835,27 @@ Remote review refreshed before this task:
 - Pre-task handover read at `5b4107adcb31393fb2e9f8c91817681e2f7c0dab`.
 
 Next: correct only the two regexes in C:\GHM-main to allow optional whitespace after both commas; stage only that test file; rebuild and rerun the same five targeted offline test files. Preserve untracked files. No database mutation or production action.
+
+
+## 21 November 2026 — PR #300 final regex correction staged
+
+User supplied the output confirming the second narrow regex adjustment in C:\GHM-main.
+
+Confirmed:
+- Only `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` was changed/staged by this step.
+- Both Gateway positive and runtime negative privilege assertions now allow optional whitespace after BOTH SQL argument commas:
+  - `/has_function_privilege\(v_gateway_role,\s*v_function,\s*'EXECUTE'\)/`
+  - `/has_function_privilege\(v_runtime_role,\s*v_function,\s*'EXECUTE'\)/`
+- The source assertions still require Gateway EXECUTE and runtime non-EXECUTE; no semantic security assertion was removed.
+- The migration SQL was not changed.
+- `git diff --cached --check` returned no error.
+- Rebuild and five-test rerun are still pending after this final correction.
+
+Remote review refreshed before this task:
+- PR #300 open, non-draft, unmerged, GitHub reports `mergeable=false`.
+- PR #298 open/draft/unmerged, `mergeable=true`.
+- PR #297 open/draft/unmerged, `mergeable=false`.
+- Both relevant feature and migration-batches branches still exist.
+- Current handover read at `f4971d6d7137496ef43ab49cb2012655cf396ca9`.
+
+Next: run `npm run build`, then rerun the same five targeted offline test files. If they pass, proceed to final staged-diff and PR-head review. Preserve all untracked files. No database mutation, merge commit, push, PR merge, production/Render/PayFast action occurred.
