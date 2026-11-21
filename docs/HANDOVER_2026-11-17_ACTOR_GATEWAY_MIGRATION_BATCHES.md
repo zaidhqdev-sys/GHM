@@ -7073,3 +7073,13 @@ Production migration batch manifest remains exactly `[]`. No production database
 - The workflow-run lookup available during this update did not return runs for this push; therefore no CI execution or test result is claimed. The workflow trigger must still be confirmed from GitHub Actions.
 - The nullable Business Capability contract/service/test changes remain source-reviewed only until CI completes. Production migration batch manifest remains exactly `[]`; no production DB, Render, migration, credential, ACL, or deployment operation was performed.
 - Original PR #298 remains draft and unmerged. The original PR branch and local `C:\GHM-main` worktree were not changed by this continuation-branch update.
+
+## Business Capability nullable effective-from route correction — 22 November 2026
+
+- Cross-layer review found that the earlier service-layer fix was incomplete: `parseCreateInput` in `src/http/business-capability-router.ts` still treated an explicit JSON `null` for `effectiveFrom` as invalid and returned HTTP 400 before the service was reached.
+- Updated the route parser to distinguish explicit `null` (valid and preserved) from malformed date values (still rejected). The resulting service input retains `effectiveFrom: null`, and the existing repository SQL uses `COALESCE($5, now())` so PostgreSQL supplies the default.
+- Added a route regression test that POSTs `effectiveFrom: null`, expects HTTP 201, and verifies the service receives the explicit null unchanged.
+- Source commits: `c36642e4e239cc6668f3ea709a9d69067ac7b98a` (route parser) and `f4aefd511e36f306cb2b317b4b7c804f9338223a` (route regression test).
+- The service-level null regression test remains in place. TypeScript build, targeted tests, and full CI have not yet been executed on this branch; no execution result is claimed.
+- The repository insert path was inspected and confirmed to bind `input.effectiveFrom ?? null` into `COALESCE($5, now())`. No SQL change is needed for this nullable input.
+- CI push-branch enablement is recorded above. The production migration batch manifest remains exactly `[]`; no production database, Render service, migration, deployment, credential, role, ACL, or payment state was changed.
