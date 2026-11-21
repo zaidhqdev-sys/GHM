@@ -887,3 +887,30 @@ Remote review refreshed before this handover update:
 - Current preflight handover was re-read at `f919053ee18ab0a4be404924bfa14b28717616b3`.
 
 Next: final review of the six staged merge-result files, test coverage, and repository state in C:\GHM-main; confirm no conflict entries, inspect complete staged diff, verify no accidental changes/untracked files were staged, and compare local feature HEAD / merge parents with live PR #300 metadata. Because GitHub still reports mergeability false, do not attempt a PR merge or push until the local merge result is committed/pushed as appropriate and remote base/branch state is reconciled. User is fatigued by loops; once final review is clean, recommend completing the merge workflow rather than inventing further qualification requirements. Mutation-based live DB qualification remains explicitly unperformed and must be clearly disclosed; do not claim it passed.
+
+
+## 21 November 2026 — PR #300 final staged merge-result review
+
+Mandatory review completed before this task:
+- Re-read this PR #300 preflight handover and the canonical Actor Gateway migration-batches handover.
+- Refreshed PR #300, #298 and #297 metadata and checked both relevant branches.
+- PR #300 remains open, non-draft, unmerged; exact remote head is `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`, base ref is `main`, historical base SHA is `ddb31ff59ab470973edf60a5078a75e5f962f803`, and GitHub still reports `mergeable=false`.
+- PR #298 remains open/draft/unmerged and GitHub reports mergeable; PR #297 remains open/draft/unmerged and GitHub reports not mergeable. Both `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches` branches remain present.
+
+The user supplied the final local review output from `C:\GHM-main`. It confirms:
+- Local `HEAD` is exactly the PR #300 feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- `git log -1` still shows the original single-parent feature commit `15ad9ae0f421d6c169b7e1264e34a93da6f63e99`; this is expected while the no-commit merge is staged and before a merge commit is created. It does not itself identify the pending merge parent.
+- `git ls-files -u` produced no output: no unmerged index entries.
+- The complete staged result contains exactly six paths: governance revocation migration, capability catalogue qualification script, Actor Gateway server diagnostics, new governance migration contract test, runtime privilege test, and runtime privilege inventory implementation. Summary: 122 insertions, 40 deletions.
+- The reviewed patch preserves the mainline 43-function / ten-group / 1,024-state runtime privilege model, separates registration read and write transitions, adds the capability governance function group, retains the Gateway non-admin draft denial qualification, and preserves startup-stage diagnostics and the migration search_path contract.
+- Two unrelated untracked files remain unstaged: `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` and `picomatch-reachability-scan.txt`.
+- `git diff --cached --check` reported no whitespace errors.
+- Earlier user-supplied validation remains green: TypeScript build passed and five targeted offline test files passed 21/21.
+
+Qualification boundary: the mutation-based capability catalogue script has NOT been run against a valid disposable PostgreSQL 18 database. The old restore snapshot is behind and lacks required Actor Gateway assertion objects. Do not describe live DB qualification as passed, and do not run the script against production. No database, production, Render, deployment, PayFast, or payment state was changed.
+
+### Next safe operation
+
+Before creating the merge commit, run one final read-only confirmation in `C:\GHM-main`:
+`git rev-parse -q --verify MERGE_HEAD`, `git status --short --branch`, and `git ls-files -u`.
+The expected `MERGE_HEAD` is current `origin/main` `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, as previously confirmed during merge-state recovery. If it still matches, the index has no unmerged entries, and status contains only the six intended staged paths plus the two known untracked preservation files, create the local merge commit (do not amend the feature commit), then push the feature branch normally. Do not force-push. After push, refresh PR #300 exact head, mergeability and exact-head CI; only consider GitHub merge once those checks are current and green. The remaining live-DB qualification limitation must be explicitly recorded and must not be represented as completed.
