@@ -159,6 +159,37 @@ test('business capability create binds authenticated context and canonical input
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
+test('business capability create preserves explicit null effectiveFrom for database default', async () => {
+  let receivedInput: unknown;
+  const service = {
+    createBusinessCapability: async (context: AuthContext, input: unknown) => {
+      receivedInput = input;
+      return fixture(context);
+    },
+  } as unknown as BusinessCapabilityService;
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/business-capabilities`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        businessId: 55,
+        capabilityId: '550e8400-e29b-41d4-a716-446655440000',
+        effectiveFrom: null,
+      }),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(receivedInput, {
+      businessId: 55,
+      capabilityId: '550e8400-e29b-41d4-a716-446655440000',
+      effectiveFrom: null,
+    });
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
 test('business capability create rejects malformed canonical input', async () => {
   let called = false;
   const service = { createBusinessCapability: async () => { called = true; return {} as BusinessCapability; } } as unknown as BusinessCapabilityService;
