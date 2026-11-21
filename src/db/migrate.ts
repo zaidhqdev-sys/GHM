@@ -7,9 +7,11 @@ import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSq
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
-import { findOutOfOrderPendingMigration } from './migration-order';
+import { assertAppliedMigrationNames, findOutOfOrderPendingMigration } from './migration-order';
 import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
+import productionMigrationBatches from '../../config/production-migration-batches.json';
+import { selectProductionMigrationBatch, type MigrationBatch } from './migration-batches';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -18,8 +20,12 @@ const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
   label: 'GHM migration target',
 });
 
+const planOnlyQualification = process.env.GHM_MIGRATION_PLAN_QUALIFICATION === 'true' &&
+  process.env.NODE_ENV === 'test' &&
+  approvedTarget.databaseName === 'ghm_db' &&
+  ['localhost', '127.0.0.1'].includes(approvedTarget.host);
 const databaseSsl = process.env.DATABASE_SSL === 'true';
-if (approvedTarget.databaseName === 'ghm_db' && !databaseSsl) {
+if (approvedTarget.databaseName === 'ghm_db' && !databaseSsl && !planOnlyQualification) {
   throw new Error('Production migrations require DATABASE_SSL=true with certificate verification enabled');
 }
 
@@ -190,8 +196,9 @@ const migrate = async (): Promise<void> => {
     }
 
     const applied = ledgerTable
-      ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
-      : { rows: [] as Array<{ version: string; checksum: string }> };
+      ? await client.query<{ version: string; name: string; checksum: string }>(`SELECT version, name, checksum FROM ${ledgerTable}`)
+      : { rows: [] as Array<{ version: string; name: string; checksum: string }> };
+    assertAppliedMigrationNames(migrations, applied.rows);
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
     if (approvedTarget.databaseName === 'ghm_db') {
       assertProductionPendingMigrationAllowlist(
@@ -210,6 +217,22 @@ const migrate = async (): Promise<void> => {
       );
     }
 
+    const pendingMigrations = migrations.filter((migration) => !appliedByVersion.has(migration.version));
+    const planOnly = approvedTarget.databaseName === 'ghm_db' &&
+      process.env.GHM_MIGRATION_PLAN_ONLY === 'true';
+    const executionMigrations = planOnly
+      ? pendingMigrations
+      : approvedTarget.databaseName === 'ghm_db'
+        ? selectProductionMigrationBatch(
+          migrations,
+          new Set(appliedByVersion.keys()),
+          productionMigrationBatches as MigrationBatch[],
+          process.env.GHM_MIGRATION_BATCH_ID,
+        )
+        : pendingMigrations;
+
+    const executionVersions = new Set(executionMigrations.map((migration) => migration.version));
+    const plannedMigrations: Migration[] = [];
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
@@ -224,6 +247,11 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
+      if (!executionVersions.has(migration.version)) continue;
+      if (planOnly) {
+        plannedMigrations.push(migration);
+        continue;
+      }
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
       await client.query(normalizeMigrationSqlForExecution(migration.sql));
@@ -231,6 +259,15 @@ const migrate = async (): Promise<void> => {
       if (!ledgerTable) throw new Error(`Migration ${migration.filename} completed but the migration ledger cannot be resolved`);
       await client.query(`INSERT INTO ${ledgerTable} (version, name, checksum) VALUES ($1, $2, $3)`, [migration.version, migration.name, migration.checksum]);
       appliedByVersion.set(migration.version, migration.checksum);
+    }
+    if (planOnly) {
+      console.log('Production migration plan (no SQL executed):');
+      if (plannedMigrations.length === 0) console.log('  No pending migrations.');
+      for (const migration of plannedMigrations) {
+        console.log(`  ${migration.version}_${migration.name} — ${migration.filename} — SHA-256 ${migration.checksum}`);
+      }
+      await client.query('ROLLBACK');
+      return;
     }
     await client.query('COMMIT');
   } catch (error) {

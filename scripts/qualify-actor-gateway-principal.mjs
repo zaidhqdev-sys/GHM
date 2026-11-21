@@ -213,6 +213,14 @@ try {
   await identity(runtimePool, 'ghm_runtime');
   await identity(gatewayPool, 'ghm_actor_gateway');
   await identity(cleanupPool, 'ghm_migrator');
+  // Provision the disposable database verifier before exercising signed
+  // Actor Gateway assertions. This fixture key comes only from CI env.
+  await cleanupPool.query('SET ROLE ghm_schema_owner');
+  await cleanupPool.query(
+    'INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton, secret) VALUES (true, $1) ON CONFLICT (singleton) DO UPDATE SET secret = EXCLUDED.secret',
+    [Buffer.from(assertionSecret, 'base64')],
+  );
+  await cleanupPool.query('RESET ROLE');
   assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtimePool));
   console.log('RESOURCE API RUNTIME EXACT FUNCTION EXECUTE ALLOW-LIST: PASS');
   const mappingLookupAcl = await gatewayPool.query(`

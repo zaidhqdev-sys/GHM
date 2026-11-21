@@ -1,0 +1,1021 @@
+# PR #300 local continuation preflight — 21 November 2026
+
+**Related canonical handover:** `docs/HANDOVER_2026-11-17_ACTOR_GATEWAY_MIGRATION_BATCHES.md`  
+**Task:** Review the user's local PR #300 preflight and establish the safe next operation.  
+**Result:** Read-only review; no local files, refs, PR state, production resources, or deployments changed.
+
+## Preflight evidence supplied from `C:\GHM-main`
+
+The user ran the preflight in the established local checkout. Before switching, Git reported:
+
+- Current branch: `feat/signed-business-capability-create`.
+- Two untracked files:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+
+The fetch completed and updated remote-tracking refs:
+
+- `origin/main`: `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- `origin/feat/signed-business-capability-create`: `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- Migration-batch handover branch: `origin/feat/actor-gateway-production-migration-batches` advanced to `5a9446f6`.
+- The two untracked files remained visible after switching; no evidence they were modified or deleted.
+
+The local feature branch remained at `32c7681ec8ffeb00764ca304a1952638a0fd7898` and Git reported it was **64 commits behind** its remote-tracking branch. The local comparison `git rev-list --left-right --count origin/main...HEAD` returned `2 28`; this compares main with the stale local feature branch and must not be represented as the remote PR comparison.
+
+## Fresh remote PR comparison
+
+Compared the fetched remote refs by exact SHA:
+
+- Main: `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- PR #300 head: `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- Merge base: `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- PR branch: **92 commits ahead / 2 commits behind** main.
+- Compare status: diverged.
+
+PR #300 remains open, ready for review (not draft), and GitHub reports `mergeable=false`. Its latest PR update observed in this review was 2026-11-20T23:33:55Z. Its description still reports disposable PostgreSQL CI run #5449 successful and explicitly states no production migration/manual cutover was run. This does not replace a fresh exact-head run after synchronization.
+
+The two-commit mainline delta and semantic conflict findings in the canonical handover's preceding section remain applicable. In particular, preserve mainline startup diagnostics, the corrected governance migration and contract test, the mainline catalogue route checks, and the 43-function / 1,024-stage runtime privilege model. Do not substitute PR #300's stale 39-function / 256-stage model.
+
+## Safe next operation
+
+**Stop before any branch synchronization.** Do not pull, merge, rebase, reset, stash, clean, or delete files while the two untracked files remain unclassified. The user must first preserve both files outside the working tree or otherwise confirm their intended disposition. Do not add either file to the PR.
+
+After preservation is confirmed:
+
+1. Reconfirm `git status --short --branch` and verify the two files are safely preserved.
+2. Fast-forward the local feature branch to `origin/feat/signed-business-capability-create` (the local branch is 64 commits behind; do not merge its stale 32c7681 state).
+3. Recheck exact local HEAD and origin refs.
+4. Merge `origin/main` into the up-to-date feature branch with a normal merge (no rebase, no force-push).
+5. Resolve the documented semantic conflicts and run targeted tests plus full disposable PostgreSQL 18 qualification before pushing.
+6. Recheck exact-head CI and GitHub mergeability. Merge only when all required checks pass and GitHub reports mergeable.
+
+The existing Actor Gateway Render service and deployment remain downstream of the qualified code merge sequence. Do not create another service or divert into a separate deployment-debugging task. PRs #297 and #298 remain separate migration-batch work; production manifest stays empty and no production migration is authorized by this preflight.
+
+## Explicit non-changes
+
+No local branch update, branch switch beyond the user's reported switch, merge, rebase, reset, stash, cleanup, push, PR edit/merge, source modification, migration execution, production database/ACL/role change, secret/environment change, Render configuration/deployment, backup, payment activation, or paid resource change was performed by the assistant.
+
+
+## 21 November 2026 — preservation verification
+
+The user completed the requested preservation-copy step in `C:\GHM-main`.
+
+Verified output:
+- `C:\GHM-preflight-preservation-20261121\20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` — 881 bytes.
+- `C:\GHM-preflight-preservation-20261121\picomatch-reachability-scan.txt` — 369 bytes.
+- The original working-tree copies remain present as untracked files:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- Git status still shows branch `feat/signed-business-capability-create`, no tracked modifications, and `[behind 64]` relative to `origin/feat/signed-business-capability-create`.
+
+The copies are confirmed present; originals were not deleted or modified. The user has not yet run the local branch fast-forward. Remote PR review repeated: #300 open/not draft/mergeable=false; #298 open/draft/mergeable=true; #297 open/draft/mergeable=false. These remain separate workstreams.
+
+### Next local operation — fast-forward only
+
+The preservation gate is satisfied. In `C:\GHM-main`, first check that the current branch and status still match the above. Then fast-forward the local PR branch to the already-fetched remote feature ref using `git merge --ff-only origin/feat/signed-business-capability-create`. This is intentionally **not** the merge of `origin/main`; do not use pull, rebase, reset, stash, clean, or force-push. After the fast-forward, capture status, HEAD, origin feature SHA, origin main SHA, and `git rev-list --left-right --count origin/main...HEAD`. Stop if Git refuses the fast-forward or if any unexpected working-tree state appears.
+
+No production or Render changes were made. No migration was executed. No PR was merged.
+
+
+## 21 November 2026 — PR #300 local feature fast-forward verified
+
+The user ran the approved local fast-forward in `C:\GHM-main`.
+
+Verified terminal evidence:
+- Before operation, local feature HEAD was `32c7681ec8ffeb00764ca304a1952638a0fd7898`.
+- Fetched remote feature ref was `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- `git merge --ff-only origin/feat/signed-business-capability-create` completed successfully as a fast-forward (20 files changed; no conflict).
+- After operation, local HEAD and `origin/feat/signed-business-capability-create` both equal `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- `origin/main` remains `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- `git rev-list --left-right --count origin/main...HEAD` now returns `2 92`, confirming the local branch is synchronized with the PR head and is 92 commits ahead / 2 behind main.
+- The two untracked original files remain present and unchanged in the working tree. Their preservation copies were verified in `C:\GHM-preflight-preservation-20261121` (881 bytes and 369 bytes respectively). No tracked modifications were reported.
+
+Mandatory remote review repeated before proposing the next operation:
+- Re-read this preflight handover and the canonical Actor Gateway migration-batches handover.
+- PR #300 remains open, ready for review (not draft), at head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; GitHub still reports `mergeable=false`.
+- Remote comparison remains 92 ahead / 2 behind, merge base `ddb31ff59ab470973edf60a5078a75e5f962f803`.
+- Exact-head CI run #5451 / workflow run `44779726228` completed successfully on the pre-synchronization head. It is not a qualification of a newly synchronized merge result.
+- PR #301 and #302 are closed/merged. PR #298 remains open/draft and separate; PR #297 remains open/draft and separate. No migration-batch or production authorization follows from PR #300.
+- PR #300 description confirms no production migration/manual cutover has been run; PayFast remains out of scope.
+
+### Next local operation
+
+The local feature branch is now safely synchronized to its remote head. The next step is to merge current `origin/main` into this feature branch using a normal merge, preserving the two untracked files. Do not rebase, reset, stash, clean, or force-push. Before merging, recheck status and exact refs. If the working tree still contains only the two known untracked preserved originals, run `git merge --no-commit --no-ff origin/main` so the merge can be inspected and semantic conflicts resolved before creating the merge commit. If any unexpected state exists, stop.
+
+Expected semantic conflict areas remain:
+- Preserve mainline Actor Gateway startup-stage diagnostics while retaining the signed Business Capability route.
+- Preserve mainline's corrected capability governance migration and its migration contract test.
+- Reconcile the catalogue governance qualification script to retain mainline Gateway route checks and least-privilege legacy EXECUTE denial checks.
+- Preserve mainline's 43-function / 1,024-stage runtime privilege model; do not regress to the PR branch's 39-function / 256-stage model. Integrate signed-create permission/cutover behavior into the mainline model and verify all relevant cutover combinations.
+- Run targeted tests and full disposable PostgreSQL 18 qualification after resolving conflicts; then push normally and require fresh exact-head CI plus GitHub mergeability before considering merge.
+
+No source changes, merge of main, push, PR merge, production migration/cutover, production database/ACL/role change, secret/environment change, Render configuration/deployment, backup operation, payment activation, or paid resource change was performed in this fast-forward task.
+
+
+## 21 November 2026 — PR #300 mainline merge started; semantic conflicts isolated
+
+The user ran the approved `git merge --no-commit --no-ff origin/main` from the synchronized feature branch.
+
+Terminal evidence:
+- Pre-merge feature HEAD: `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- `origin/main`: `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- Git auto-merged:
+  - `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+  - `scripts/qualify-capability-catalogue-governance.mjs` (then reported content conflict)
+  - `src/db/runtime-database-privileges.test.ts` (then reported content conflict)
+  - `src/db/runtime-database-privileges.ts` (then reported content conflict)
+- Explicit content conflicts:
+  - `scripts/qualify-capability-catalogue-governance.mjs`
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/runtime-database-privileges.ts`
+- Git reports merge failed pending conflict resolution; no merge commit has been created.
+
+The migration file was auto-merged, but it must still be inspected to ensure mainline's `pg_temp` SECURITY DEFINER search_path guard and signed-create migration changes are both retained. The mainline contract test `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` must also exist in the merge result.
+
+Remote review for this task:
+- Re-read this handover and the canonical migration-batches handover; rechecked PR #300 metadata and current branch comparison.
+- PR #300 remains open/not draft and GitHub reports `mergeable=false`.
+- Mainline #301/#302 are closed/merged; PRs #297/#298 remain separate draft migration workstreams.
+- No production migration, manual cutover, production DB/ACL/role change, Render setting/deployment, secret, or payment state was changed.
+
+### Immediate next action — inspect, do not resolve blindly
+
+The assistant cannot inspect the user's in-progress local index/worktree directly. Before proposing conflict edits, collect the exact unmerged paths, conflict-marker locations, and combined diffs from the local checkout. Do not run `git add`, `git checkout --ours/theirs`, `git restore`, `git merge --abort`, or commit yet. Keep the merge paused and preserve the two known untracked files.
+
+Use:
+```powershell
+git status --short
+git diff --name-only --diff-filter=U
+Select-String -Path "scripts\qualify-capability-catalogue-governance.mjs","src\db\runtime-database-privileges.test.ts","src\db\runtime-database-privileges.ts" -Pattern '^(<<<<<<<|=======|>>>>>>>)'
+git diff --cc -- "src/db/runtime-database-privileges.ts"
+git diff --cc -- "src/db/runtime-database-privileges.test.ts"
+git diff --cc -- "scripts/qualify-capability-catalogue-governance.mjs"
+```
+Return the complete output. Then reconcile semantics using the actual stage definitions and qualification checks. Preserve mainline's 43-function baseline and 1,024-stage state model; do not choose either side wholesale. Ensure the merged script retains signed Gateway catalogue route checks and legacy EXECUTE denial assertions. Verify the auto-merged migration and mainline migration contract test before staging.
+
+No conflict resolution, staging, merge commit, push, CI rerun, PR merge, production operation, or deployment was performed in this task.
+
+
+## 21 November 2026 — PR #300 conflict evidence reviewed against both remote source branches
+
+The user supplied the complete read-only local conflict report. Confirmed:
+- Three unresolved files only: catalogue qualification script, runtime privilege implementation, runtime privilege tests.
+- The mainline governance migration is staged as modified, Actor Gateway server is staged as modified, and the mainline governance migration contract test is staged as added.
+- The contract test exists locally (`Test-Path=True`).
+- Both known untracked files remain present.
+- No conflict markers were reported outside the three expected files.
+
+Remote source review confirmed:
+- Main's `src/db/runtime-database-privileges.ts` defines a 43-function baseline and ten independent cutover groups, yielding 1,024 reviewed states. It explicitly separates registration read, registration write, and capability governance groups. Its complete implementation also keeps the thirteen-function fully cut-over state.
+- Feature branch implementation defines a 39-function baseline and eight groups / 256 states. It combines registration read/write into one group and lacks the three-function capability-governance group. It must not replace main's ten-group/1,024-state model.
+- Main's runtime privilege test has the ten-group expectations and asserts that registration write is removed by the automatic migration while registration read is removed by the separate manual cutover. This test expectation is the authoritative mainline direction to preserve; review the merged migration content against it before claiming consistency.
+- Feature branch's added manual cutover SQL `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql` revokes direct INSERT and sequence privileges on `ghm.business_capability`; it is not a SECURITY DEFINER function EXECUTE cutover and does not add an eleventh runtime function group.
+- Feature branch's signed Business Capability SQL function is `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)`, with SECURITY DEFINER search_path `pg_catalog, ghm, pg_temp`, signed actor assertion, active business/membership/capability checks, and append-only insert. This feature is distinct from the Capability Catalogue governance functions `create_capability_draft`, `update_capability_draft`, and `transition_capability_lifecycle`.
+- The feature's catalogue qualification script contains both the signed Gateway catalogue route checks and legacy EXECUTE denial/version-probe checks. Main's version contains the current Gateway route checks and direct gateway SQL calls. Reconcile without losing either the current route coverage or the legacy denial assertions; do not copy older helper/API-shape code over main wholesale.
+- The feature's registration group conflation and reduced inventory are stale relative to main. The feature's capability-create table/sequence cutover is a separate permission dimension and must remain covered by its own cutover qualification, not misrepresented as a SECURITY DEFINER EXECUTE stage.
+
+### Next resolution preparation
+
+Before editing local conflict files, inspect the merged governance migration and contract test together, and capture the exact current mainline migration content. Also inspect the full catalogue script on both sides around setup helpers, Gateway create/update/transition calls, legacy denial assertions, and cleanup. No blind `ours/theirs` resolution.
+
+Local commands to collect exact merge-stage content without changing the index:
+```powershell
+Write-Host "=== Governance migration in merge worktree ===" -ForegroundColor Cyan
+Get-Content "database\migrations\20261117020000_revoke_runtime_capability_governance.sql"
+Write-Host "=== Migration contract test ===" -ForegroundColor Cyan
+Get-Content "src\db\revoke-runtime-capability-governance-migration-contract.test.ts"
+Write-Host "=== Catalogue qualification script, current conflict worktree ===" -ForegroundColor Cyan
+Get-Content "scripts\qualify-capability-catalogue-governance.mjs"
+```
+Do not stage, commit, abort, push, or alter production. After this inspection, prepare precise merged file contents that preserve main's 43/10/1,024 runtime function state model, signed Business Capability route coverage, and the feature's legacy denial/version-probe assertions.
+
+## 21 November 2026 — user supplied full merged-file inspection output
+
+Read the user's uploaded 670-line PowerShell transcript. It confirms:
+- The merged governance migration content is complete and retains the required search_path=pg_catalog, ghm, pg_temp guard, schema-owner SECURITY DEFINER checks, Actor Gateway EXECUTE requirement, runtime EXECUTE denial, and revocation/verification of the three legacy capability-governance functions.
+- The mainline migration contract test is present and asserts the pg_temp-last pinned search_path plus schema-owner SECURITY DEFINER and privilege checks.
+- Merge worktree status at capture: staged/merged governance migration SQL, Actor Gateway server, migration contract test; unresolved catalogue qualification script, runtime privilege test, runtime privilege implementation; untracked preserved originals: storage metadata backup (881 bytes) and picomatch scan output (369 bytes).
+- The catalogue script conflict has multiple blocks, not just the first displayed conflict. The feature side has typed helper wrappers gatewayCreateDraft, gatewayUpdateDraft, and gatewayTransition that return normalized camelCase records; main side uses raw gatewayCall and PostgreSQL snake_case rows. A safe resolution must use one representation consistently in each block. The feature helper wrappers are assertion-bound and should be retained where used; raw gatewayCall calls also remain assertion-bound. Do not mix lifecycleStatus/isSelectable with lifecycle_status/is_selectable for the same returned object.
+- Preserve both runtime legacy create denial checks: ordinary call denial and unsupported-version/version-bypass denial. Tighten expected error only if actual PostgreSQL error behavior is stable; the feature's exact permission denied for function create_capability_draft expectation is more specific than main's generic permission denied.
+- Preserve Gateway signed assertion substitution tests (create, update target/payload, transition target/payload), Gateway admin list/create/update/transition positives, non-admin denial, lifecycle hierarchy/replacement/terminal-state tests, runtime direct table/function denial, and final runtime-vs-gateway privilege boundary assertions.
+- The runtime privilege source conflict must resolve to main's 43-function / 10-group / 1,024-stage model. Main's group list independently models registrationIdentityWrite, registrationIdentityRead, and capabilityGovernance. Feature's 39-function / 8-group / 256-stage model is stale and cannot be retained.
+- Correcting an earlier shorthand: main's runtime stage test includes both registration read and write in the pre-manual-cutover inventory, then models the write-only and read/write cutover groups separately. Do not claim registration write is already excluded from main's pre-cutover baseline. The exact mainline test assertions define the intended stage behavior.
+- Feature's separate Business Capability direct INSERT/sequence revoke migration is a distinct table/sequence permission cutover and is not an additional function group. Keep it separate from the runtime function-stage inventory and ensure its own SQL/migration contract qualification remains present.
+- No conflict file has been resolved or staged by the user in the supplied transcript; merge remains paused.
+
+No merge commit, push, PR merge, production DB migration, manual production cutover, ACL/role/secret/Render configuration change, deployment, or payment activation occurred.
+## 21 November 2026 — PR #300 concrete conflict-resolution plan prepared
+
+Fresh source review repeated before this task: re-read both PR #300 preflight and canonical migration-batches handovers; re-fetched PR #300/#298/#297 metadata and the exact current main and feature source files. PR #300 remains open/unmerged at feature head 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700; local merge is still paused with three unresolved files.
+
+Confirmed source-side resolutions:
+- src/db/runtime-database-privileges.ts: use exact current main version (43 baseline functions, 10 independent groups, 1,024 states). Feature version is stale (39 / 8 / 256) and has removed the capabilityGovernance group and split registration write/read incorrectly.
+- src/db/runtime-database-privileges.test.ts: use exact current main test as the base (43 / 10 / 1,024 and separate registration write/read stage tests). Feature's assertion that capability-governance legacy functions are absent from the pre-cutover baseline is not compatible with main's current baseline. If adding a specific assertion, assert these three functions are in the baseline and are absent only after the capabilityGovernance group is cut over.
+- scripts/qualify-capability-catalogue-governance.mjs: main is the correct base for the latest route and Resource API/service contract. Feature adds useful typed gateway row mapping/helpers, both legacy create denial/version-probe checks, and explicit gateway-vs-runtime privilege assertions. Reconcile those additions onto main rather than taking either side wholesale. Preserve main's Gateway non-admin create denial; feature's service-layer non-admin denial may also be retained as additional coverage. Use one return shape consistently: helper-mapped camelCase objects or raw PostgreSQL snake_case rows.
+
+Recommended safe local sequence: resolve the two TypeScript files to origin/main in the working tree without staging, inspect the diff, then reconcile the script. Use git restore --source=origin/main --worktree -- <two TypeScript paths>; this writes main's exact versions to the worktree but does not stage. Do not use git restore on the script. After verifying all three files contain no conflict markers, run focused unit tests. Stage only after review.
+
+No local worktree edits have been made by the assistant. No merge commit, push, PR merge, production operation, deployment, or paid resource change occurred.
+## 21 November 2026 — runtime privilege conflict worktree restored; index still unresolved
+
+The user ran `git restore --source=origin/main --worktree --` for the runtime privilege implementation and test. The output confirms the worktree implementation contains the 43-function guard, 1,024-stage guard, and independent registrationIdentityWrite, registrationIdentityRead, and capabilityGovernance groups.
+
+Important Git index detail: `git restore --worktree` changes only the working-tree copy. `git status` still reports both files as `UU`, and `git diff --name-only --diff-filter=U` still lists them. This is expected until the chosen resolution is staged. The current intended resolution for these two files is exactly `origin/main`; verify `git diff --exit-code origin/main -- <paths>` returns zero before staging them. Then stage only these two paths with `git add -- <paths>` to mark those conflicts resolved. Do not stage the catalogue script or any untracked file.
+
+PR #300 remains open, not draft, and GitHub reports `mergeable=false`; no source branch refs have been pushed or PR merged. Both runtime files are the only conflicts being resolved in this step; the catalogue script remains unresolved and must be reconciled separately. No tests, merge commit, push, production operation, or deployment have been performed yet.
+## 21 November 2026 — runtime privilege conflicts resolved in index; catalogue script reconciliation prepared
+
+User terminal confirms both runtime privilege files were verified byte-for-byte against origin/main in the working tree and staged. `git status` now shows them as staged `M`, and the only unresolved path reported by `git diff --name-only --diff-filter=U` is `scripts/qualify-capability-catalogue-governance.mjs`. The two preserved untracked files remain untouched.
+
+Fresh remote source review: PR #300 remains open, not draft, head 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700; GitHub reports mergeable=false. Re-read both PR #300 preflight and canonical migration-batches handovers. PRs #297/#298 remain separate migration-batch workstreams; no production changes authorized.
+
+Compared exact main script (blob b53ddc1875186202307bfe5c96d233de665db906) with feature script (blob d90148189ae683ef1ec1605cd9b4f1733f433ab3). The feature script is the appropriate integration base: it retains main's Gateway list non-admin denial, admin Gateway route tests, lifecycle coverage, and mainline qualification structure, while adding typed Gateway row mapping/helpers, signed substitution tests, both explicit legacy create EXECUTE/version-probe denials, and the runtime-vs-Gateway privilege boundary query. It also adds service-layer non-admin create denial. One mainline check absent from feature script is the direct Gateway non-admin draft-create denial; preserve it as an additional check rather than dropping the service-layer denial.
+
+Prepared resolution: restore the conflicted script worktree from the current feature HEAD (not the index), then insert main's missing Gateway non-admin draft-create denial immediately after the feature's service-layer non-admin draft-create denial. Keep helper-mapped camelCase values in helper-based calls and raw snake_case values only for raw gatewayCall result rows. Then syntax-check and verify no conflict markers. This avoids manually stitching dozens of repeated lifecycle call blocks.
+
+Do not stage the script until the local insertion, syntax check, conflict-marker check, and diff review pass. No merge commit, push, tests, production operation, or deployment performed in this task.
+## 21 November 2026 — catalogue script insertion guard correctly stopped; pattern corrected
+
+The user attempted the prior PowerShell insertion after restoring the script from origin/feat/signed-business-capability-create. The script restore succeeded, but the exact-text guard found zero matches and threw before writing. Therefore no catalogue script edit occurred. This is a safe no-change outcome.
+
+Re-inspected exact feature-branch script blob d90148189ae683ef1ec1605cd9b4f1733f433ab3. The service denial block is formatted as a four-line expectReject call (not the five-line shape used by the previous needle). Immediately afterward, the script begins the runtime direct legacy-create denial. The Gateway non-admin list denial exists earlier, but a direct Gateway non-admin draft-create denial is absent.
+
+PR #300 remains open/not draft at head 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700 and GitHub still reports mergeable=false. Runtime implementation and test are staged as resolved mainline files; catalogue script remains the sole unresolved path. Do not stage the script or create a merge commit until corrected insertion, node --check, conflict-marker scan, and diff review pass.
+
+Next local command should use a whitespace-tolerant regex anchored to the literal service.createDraft call and exact service denial marker, require exactly one match, then insert a gatewayCall(businessId, 'capability.create', 'SELECT * FROM ghm.gateway_create_capability_draft($1,...,$11)', [marker-derived values]) expectReject with marker GATEWAY NON-ADMIN DRAFT DENIAL PASS and expected 'System administrator permission required'. No edits made by assistant.
+## 21 November 2026 — catalogue script syntax passes; conflict-marker check used stale PowerShell exit code
+
+User's latest terminal output confirms the feature script restore and Gateway non-admin denial insertion succeeded, `node --check` passed, and all four expected denial markers are present (service non-admin, Gateway non-admin, legacy function EXECUTE denial, legacy version-probe denial).
+
+The subsequent conflict-marker check threw. Diagnosis: the command tested `$LASTEXITCODE` after invoking PowerShell's `Select-String` cmdlet. `$LASTEXITCODE` is set by native executables (here `node --check`) and is not a reliable result indicator for `Select-String`; it remained 0 from the successful Node syntax check, causing a false positive even if Select-String found no markers. The next check must capture cmdlet output and test `$null -ne $hits`, or use `git diff --check`/`git grep` appropriately. The remote main and feature script blobs were checked and contain no conflict-marker lines. Local script still needs an explicit accurate scan before staging.
+
+Do not stage script yet. Current index conflict must be marked resolved only after local scan and diff review. PR #300 remains open/not draft at head 6ea0df0610441a54e0f5f55b51a9ca5f13dc4700; GitHub reports mergeable=false. No merge commit, push, tests beyond node syntax check, production operation, or deployment performed.
+## 21 November 2026 — local catalogue script clean scan and diff review
+
+User's latest terminal confirms the local catalogue script has no conflict-marker lines and `node --check` passes. Typed Gateway helpers, signed substitution flows, Gateway non-admin create denial, service non-admin denial, legacy create EXECUTE denial, and legacy version-probe denial are present.
+
+Combined diff review exposed only indentation cleanup needed around the newly inserted Gateway denial and following runtime direct-create denial: Gateway `await expectReject` currently has four leading spaces instead of two; following runtime `await expectReject` currently has zero leading spaces instead of two. Syntax remains valid, but normalize before staging. Git warns LF will be replaced by CRLF on next touch; this is a line-ending warning, not a syntax/conflict failure.
+
+After indentation normalization, re-run node --check, exact conflict-marker scan using `$null -ne $markers`, inspect `git diff -- scripts/qualify-capability-catalogue-governance.mjs`, then stage only this script with `git add -- scripts/qualify-capability-catalogue-governance.mjs`. Verify `git diff --name-only --diff-filter=U` is empty. Keep the two untracked files untracked. Then run targeted qualification and inspect the exact SQL signature/error behavior. No merge commit or push yet.
+
+## 21 November 2026 — catalogue qualification script indentation corrected
+
+The user supplied the latest local terminal output from `C:\GHM-main` during the paused PR #300 mainline merge.
+
+Verified:
+- Both exact formatting targets matched once each: the Gateway non-admin draft-create assertion and the following runtime legacy-create denial assertion.
+- The formatting-only corrections were applied. Both `await expectReject(` statements now use the intended two-space indentation.
+- `node --check scripts\qualify-capability-catalogue-governance.mjs` passed.
+- The conflict-marker scan returned no markers.
+- `git diff --check` reported no whitespace errors. Git emitted only the standard working-copy LF-to-CRLF conversion warning.
+- The displayed source lines confirm the Gateway non-admin create probe and runtime legacy create denial probe are properly nested and followed by the separate version-probe denial.
+
+Current local merge state at the user's capture:
+- `scripts/qualify-capability-catalogue-governance.mjs` remains the only unresolved path (`UU`).
+- The governance migration, Actor Gateway server, mainline migration contract test, and both mainline runtime privilege files are staged as the intended merge resolutions.
+- The two preserved untracked originals remain present:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- No merge commit or push has occurred.
+
+Remote review repeated before this continuation:
+- Re-read this local preflight handover and the canonical Actor Gateway migration-batches handover.
+- PR #300 remains open, ready for review (not draft), at feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; GitHub reports `mergeable=false` because the local merge has not been pushed.
+- PR #298 remains open/draft and separate; PR #297 remains open/draft and separate. Neither authorizes production migration execution.
+
+### Next local operation
+
+Before staging the script, inspect its complete diff against the merge base/stages and review that the reconciliation retains mainline Gateway catalogue route checks, typed feature helper usage consistently, signed assertion substitution checks, service- and Gateway-level non-admin denials, both legacy runtime EXECUTE denial probes, lifecycle checks, and runtime-versus-Gateway privilege boundary assertions. Then stage **only** `scripts/qualify-capability-catalogue-governance.mjs`; verify `git diff --name-only --diff-filter=U` is empty and that the two untracked files remain untouched. Do not commit or push until targeted tests and disposable PostgreSQL qualification pass.
+
+No production database, migration ledger, ACL/role, secret/environment, Render configuration/deployment, backup, payment state, or paid resource was changed in this task.
+
+
+## 21 November 2026 — user's combined-diff review output examined; Gateway bind arity requires verification
+
+The user supplied the read-only review output from `C:\GHM-main`.
+
+Confirmed from the transcript:
+- The only unresolved path remains `scripts/qualify-capability-catalogue-governance.mjs`.
+- The mainline runtime implementation and test are staged as resolved; their staged diff retains the 43-function / ten-transition / 1,024-stage model and separately represents registration read, registration write, and capability-governance transitions.
+- The mainline governance migration, Actor Gateway server, and migration contract test are staged.
+- The two preserved untracked originals remain present and untracked.
+- The catalogue script combined diff shows the service-layer non-admin denial plus the added Gateway non-admin create denial, followed by the two runtime legacy create denial probes. No conflict marker or whitespace failure was reported in the immediately preceding user output.
+
+A concrete correctness check remains before staging:
+- The newly inserted Gateway denial call text contains placeholders `$1` through `$11`, while the visible supplied argument array contains seven values.
+- This is not yet confirmed to be a defect because the `gatewayCall` helper may inject signed-assertion bind values. Inspect the helper definition and its argument transformation before deciding. If it does not append four values, the SQL bind arity is inconsistent and must be fixed before qualification.
+- The user's combined diff excerpt is not a complete review of every conflict hunk; inspect the helper and the exact Gateway denial call in context, then review the complete script diff/stage content before staging.
+
+Next local read-only inspection:
+```powershell
+Write-Host "=== Gateway helper definition and bind handling ===" -ForegroundColor Cyan
+Select-String -Path "scripts\qualify-capability-catalogue-governance.mjs" -Pattern "gatewayCall|gatewayCreateDraft|gatewayUpdateDraft|gatewayTransition|gateway_create_capability_draft" -Context 8,18
+Write-Host "=== Exact Gateway non-admin assertion ===" -ForegroundColor Cyan
+$lines = Get-Content "scripts\qualify-capability-catalogue-governance.mjs"
+for ($i = 245; $i -le 280; $i++) { "{0,4}: {1}" -f ($i + 1), $lines[$i] }
+Write-Host "=== Current unresolved paths and status ===" -ForegroundColor Cyan
+git diff --name-only --diff-filter=U
+git status --short
+```
+
+Do not stage the script until the helper's bind behavior and complete script reconciliation are verified. No local files or Git state were changed by this review; no merge commit, push, production operation, or deployment occurred.
+
+
+## 21 November 2026 — Gateway non-admin create bind arity verified
+
+The user supplied the requested helper inspection and merge-state output from `C:\GHM-main`.
+
+Verified directly from the displayed `gatewayCall` helper:
+- It creates the signed assertion from the original operation arguments.
+- It sends five leading values to PostgreSQL: `accountId`, assertion issue time, nonce, context, and signature, followed by the original operation arguments.
+- It shifts the original SQL placeholders from position 4 onward by one and inserts the assertion-context bind at position 4.
+- Therefore the Gateway non-admin create assertion's seven original capability arguments correctly become twelve total bind values, matching the transformed SQL placeholders `$1` through `$12`. The apparent 11-placeholder/seven-value mismatch is not a defect; no code change is required for this concern.
+- The Gateway helper and existing positive create call use the same binding convention. The service-layer and Gateway-level non-admin denial probes remain distinct.
+
+Current state in the user's output:
+- `scripts/qualify-capability-catalogue-governance.mjs` remains the only unresolved path (`UU`).
+- Mainline runtime privilege implementation/test, governance migration, Actor Gateway server and migration contract test remain staged.
+- The two preservation files remain untracked and must not be staged.
+- No commit, push, production DB operation or deployment occurred.
+
+PR #300 was rechecked while recording this result. Continue with local conflict resolution only after reviewing the complete combined script diff and final file content. Then stage only the script, verify the unresolved-path list is empty and the preservation files remain untracked. Do not commit/push until targeted tests and disposable PostgreSQL qualification pass.
+
+
+## 21 November 2026 — catalogue script staged; all merge conflicts resolved in index
+
+The user supplied the final local staging/verification output from `C:\GHM-main`.
+
+Verified:
+- `node --check scripts\qualify-capability-catalogue-governance.mjs` passed (the command proceeded to the required-marker checks).
+- All eleven required qualification markers were present:
+  - Gateway admin list and draft-create positive checks.
+  - Gateway non-admin list and draft-create denials.
+  - Service non-admin draft denial.
+  - Capability request substitution rejection.
+  - Forged and replayed actor assertion rejection.
+  - Runtime legacy create EXECUTE denial and unsupported-version/version-probe denial.
+  - Runtime capability-governance privilege-boundary check.
+- Only `scripts/qualify-capability-catalogue-governance.mjs` was staged in this operation.
+- `git diff --name-only --diff-filter=U` returned no paths: all merge conflicts are now resolved in the index.
+- Staged merge paths now are:
+  - `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+  - `scripts/qualify-capability-catalogue-governance.mjs`
+  - `src/actor-gateway/server.ts`
+  - `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` (added)
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/runtime-database-privileges.ts`
+- The two preservation originals remain untracked and were not staged:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- The signed Gateway bind helper was separately reviewed: it adds five assertion/context values and shifts original operation placeholders, so the seven capability arguments become twelve binds; the inserted denial call's apparent arity mismatch is not a defect.
+
+Remote review repeated before this continuation:
+- Re-read this preflight handover; refreshed PR #300/#298/#297 metadata and the relevant feature/handover branch listings.
+- PR #300 remains open/not draft at remote head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`, GitHub mergeable=false pending the local merge result being pushed.
+- PR #298 remains open/draft and separate; PR #297 remains open/draft and separate. No production migration execution is authorized by these PRs.
+
+### Next operation
+
+The merge is now conflict-free in the index but remains uncommitted and unpushed. Before commit, inspect the **entire staged merge diff** and confirm only the six intended tracked paths are staged; keep the two preservation files untracked. Inspect `package.json` and the qualification script's environment/connection-target guard to identify the exact test commands and prove the PostgreSQL target is disposable/local before executing it. Run targeted unit/contract tests and the complete disposable PostgreSQL qualification; do not run against Render `ghm_db`. Do not create the merge commit or push until those checks pass. No production database, migration ledger, ACL/role, secrets, Render configuration/deployment, backup, payment state, or paid resource was changed.
+
+
+## 21 November 2026 — staged diff reviewed; disposable-database target not yet proven
+
+The user supplied the staged summary, package scripts, qualification connection setup, and final status from `C:\GHM-main`.
+
+Confirmed:
+- Exactly six intended tracked files are staged; the path-set comparison emitted no differences.
+- Staged summary: 6 files changed, 122 insertions, 40 deletions.
+- The two preserved originals remain untracked and excluded.
+- The intended qualification entry point is `npm run qualify:capability-catalogue-governance`, which builds and runs `scripts/qualify-capability-catalogue-governance.mjs`.
+- The script loads `dotenv/config`, then selects runtime connection from `GHM_RUNTIME_DATABASE_URL ?? DATABASE_URL`, Gateway from `GHM_ACTOR_GATEWAY_DATABASE_URL`, and cleanup/migrator from `GHM_MIGRATOR_DATABASE_URL`. It requires all three and requires them to be distinct, plus a 32-byte assertion test key.
+- The inspected preflight does **not** establish that these URLs are local/disposable or reject production hosts. Distinct URLs alone do not establish safe targets. The qualification script creates test accounts/capabilities and performs cleanup through the migrator connection; therefore it must not be run until the actual resolved host/database/user identity for all three connections is independently confirmed as the disposable local qualification database and not Render `ghm_db`.
+- No qualification command was run, and no database was touched.
+
+Remote review before this update:
+- PR #300 is still open, ready for review (not draft), GitHub mergeable=false pending the local conflict-resolution merge being published.
+- PR #298 remains open/draft and separate; PR #297 remains open/draft and separate.
+- Relevant feature branch and migration-batches handover branch still exist.
+- The canonical preflight handover was re-read before appending this update.
+
+### Next safe operation
+
+Inspect the full script's connection setup and its query/identity checks, and inspect the local environment variable **names and safely redacted host/database components only**. Do not print credentials, passwords, full connection strings, or secrets. Use `new URL(connectionString)` locally to report hostname, port, database pathname, and username only; redact username if it embeds sensitive identifying data. Then establish that all three connections point to the same disposable local PostgreSQL instance (with separate intended roles), preferably by querying `current_database()`, `current_user`, `session_user`, `inet_server_addr()`, and `inet_server_port()` through each connection. Do not execute the qualification script until those checks confirm the target is local/disposable. If no safe disposable target is configured, stop and report that limitation rather than substituting production.
+
+
+## 21 November 2026 — local dotenv probe found no qualification variables in process environment
+
+The user supplied the connection-setup inspection and redacted environment probe from `C:\GHM-main`.
+
+Verified:
+- The qualification script imports `dotenv/config` and reads:
+  - `GHM_RUNTIME_DATABASE_URL`, falling back to `DATABASE_URL`
+  - `GHM_ACTOR_GATEWAY_DATABASE_URL`
+  - `GHM_MIGRATOR_DATABASE_URL`
+  - `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`
+  - `DATABASE_SSL`
+- The user's separate Node probe using `require('dotenv').config()` reported all four database URL variables as NOT SET. The probe did not report the assertion secret or DATABASE_SSL.
+- Local Windows services `postgresql-x64-17` and `postgresql-x64-18` are both running.
+- This does not prove the `.env` file is absent: the probe was run from the current working directory and only loaded the default `.env` path. It does establish that the expected variables were not loaded by that invocation. Need inspect the actual `C:\GHM-main\.env` file's existence and parse only the relevant variable names and redacted connection metadata. Do not print secrets or full connection strings.
+- The qualification script's three database pools remain unverified. Do not run qualification until the three target identities are confirmed local/disposable and separate roles on the intended local PostgreSQL instance. Never substitute Render `ghm_db`.
+
+Remote review repeated before this task:
+- Re-read this preflight handover.
+- PR #300 remains open/not draft and GitHub mergeable=false; PR #298 remains open/draft and mergeable=true; PR #297 remains open/draft and mergeable=false.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` both still exist.
+
+### Next action — inspect the actual local .env safely
+
+From `PS C:\GHM-main>`, check the current directory and `.env` existence, then parse `.env` directly without loading or printing secret values. Report only presence, hostname, port, database name, and whether a username/password is set for each required URL; report assertion-secret presence and decoded byte length only. Also inspect whether `DOTENV_CONFIG_PATH` is set, but do not print any value that could contain a secret. No edits, staging, database connections, qualification, commit, or push in this inspection step.
+
+
+## 21 November 2026 — confirmed no dotenv files in C:\\GHM-main
+
+The user supplied the requested safe filesystem inspection:
+- Working directory is `C:\\GHM-main`.
+- `.env`, `.env.local`, `.env.development`, and `.env.production` are all absent in this checkout.
+- `DOTENV_CONFIG_PATH` is not set.
+- No credentials or secret values were printed.
+- No database connection or qualification command was run.
+
+This establishes that this checkout has no default dotenv file under those four names. It does **not** establish whether a separate `C:\\GHM\\.env` exists in the other known local checkout. Since the user specifically asked to check the .env, inspect that sibling checkout next without copying secrets into this checkout or displaying values. Do not search the whole disk or create a replacement .env. If the sibling file exists, report only the same redacted connection metadata and secret-presence checks; then assess whether those credentials are actually intended for local disposable qualification. A file's existence or distinct URLs still do not prove the database target is safe.
+
+Remote review before this handover update:
+- Re-read this preflight handover.
+- PR #300 remains open/not draft with mergeable=false; PR #298 remains open/draft with mergeable=true; PR #297 remains open/draft with mergeable=false.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` remain present.
+- No source changes, local Git changes, database connections, qualification, merge commit, push, production operation, or deployment occurred.
+
+### Next local inspection
+
+From PowerShell, inspect only `C:\\GHM\\.env` existence and parse the exact five relevant variables safely (three database URLs, assertion secret, DATABASE_SSL). Never print raw values, usernames, passwords, or secret material. If no file exists, stop and report it. If it exists, report hostname, port, database name, and boolean credential presence only. Do not copy the file or point qualification at it until target identity is proven disposable/local.
+
+
+## 21 November 2026 — STOP: C:\\GHM .env points all qualification pools at production ghm_db
+
+The user supplied redacted connection metadata from `C:\\GHM\\.env` and clarified that `DATABASE_SSL` is distinct from an Actor Gateway database SSL-mode setting, which has not been entered into this .env.
+
+Observed metadata:
+- `GHM_RUNTIME_DATABASE_URL`: Render host `dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com`, database `ghm_db`.
+- `DATABASE_URL`: same Render host and database `ghm_db`.
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`: host `dpg-dag0sdtbedkc7389vi2g-a`, database `ghm_db`.
+- `GHM_MIGRATOR_DATABASE_URL`: same Render host and database `ghm_db`.
+- The assertion secret is present and decodes to 32 bytes.
+- `DATABASE_SSL` is present.
+- No raw URLs, usernames, passwords, or secret material were exposed in the transcript.
+
+Critical conclusion:
+- All three qualification pools point to the same **Render production database `ghm_db`**, despite different URL strings / host representations. This is not a disposable local qualification target.
+- The qualification script provisions/updates the actor gateway assertion secret row, creates test accounts/capabilities, executes privileged operations, and attempts cleanup. Running it with these values would mutate production.
+- **DO NOT RUN** `npm run qualify:capability-catalogue-governance` with this .env. Do not load these variables into `C:\\GHM-main`, do not change the URLs to make them appear distinct, and do not run the script against Render `ghm_db`.
+- The user notes that Actor Gateway database SSL mode is separate and has not been configured in this .env. The qualification script itself uses `DATABASE_SSL === 'true'` to construct the pg TLS option for all three pools. This SSL distinction does not change the fact that the URLs target production. Do not guess or add an SSL mode setting.
+
+Remote review repeated before recording:
+- Re-read this PR #300 preflight handover.
+- PR #300 remains open/not draft and not yet mergeable at the remote feature head; PR #298 and #297 remain separate draft PRs.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` remain present.
+
+Current task outcome:
+- The local .env check is complete.
+- No DB connection was made, no qualification ran, no production rows/secrets/ACLs were changed, and no merge commit/push/deployment occurred.
+- The staged conflict-free merge state is unchanged; six intended tracked paths are staged and the two preservation files remain untracked.
+
+Next safe direction:
+- Do not proceed with live qualification. Continue with non-mutating checks that do not use database credentials: full staged diff review, package/unit/contract tests that do not connect to PostgreSQL, and static review of migration/script contracts.
+- If disposable PostgreSQL qualification is essential, it requires an already-existing local disposable database with the required schema/migrations and separate runtime, Gateway, and migrator roles. Do not create a new paid DB/service, revive the sandbox, or use production as a substitute. If no such local database is available, record the qualification as unavailable and keep the PR unmerged until the owner chooses an acceptable safe path.
+
+
+## 21 November 2026 — renewed PR/branch/handover review; local PostgreSQL route
+
+Before proceeding, re-read this handover and refreshed PR metadata and branch listings.
+
+Current GitHub state:
+- PR #300 remains open, ready-for-review (not draft), unmerged, `mergeable=false`, head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700` on `feat/signed-business-capability-create`.
+- PR #298 remains open/draft, unmerged, `mergeable=true`, head `3f76225331c0199ab72b86d268857735b32a8123` on `feat/actor-gateway-production-migration-batches`.
+- PR #297 remains open/draft, unmerged, `mergeable=false`, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245` on `feature/explicit-production-migration-batches`.
+- The signed capability feature branch and actor-gateway migration-batches/handover branch both remain present. The broader Actor Gateway branch search also shows the expected production migration, capability-governance and recent startup/search-path branches; no branch was changed or deleted.
+
+Clarification for the next step:
+- The user's Windows machine has local PostgreSQL 17 and 18 Windows services running. These are existing local resources, not a new paid Render database/service and not the suspended sandbox.
+- `C:\GHM-main` has no dotenv file; `C:\GHM\.env` points all three qualification URLs to Render production `ghm_db` and must not be used for qualification.
+- Proceed by inventorying the already-running local PostgreSQL listeners and databases (including the previously used local `ghm_payfast_qualification` candidate if it still exists), without connecting to or mutating Render. Then verify database identity and role availability locally before considering any qualification setup. Do not create paid infrastructure, revive sandbox, or reuse production credentials.
+- The current local merge remains six staged intended paths, conflict-free, with the two preservation files untracked. No merge commit/push/deployment has occurred.
+
+Next operation: run read-only local PostgreSQL discovery on the existing Windows services (ports/readiness and database names only), plus non-DB static/unit checks. Do not execute the mutating qualification script until its three pools are explicitly bound to verified local disposable DB roles.
+
+
+## 21 November 2026 — local PostgreSQL services discovered
+
+The user inspected the existing Windows PostgreSQL services and listeners:
+- PostgreSQL 17 service `postgresql-x64-17` is Running, data directory `C:\Program Files\PostgreSQL\17\data`, configured port 5432, listener is accepting connections.
+- PostgreSQL 18 service `postgresql-x64-18` is Running, data directory `C:\Program Files\PostgreSQL\18\data`, configured port 5433, listener is accepting connections.
+- Ports 5434–5440 have no response.
+- PostgreSQL 18.6 / port 5433 was previously used for local `ghm_payfast_qualification`; this database's current existence and schema/roles are not yet verified.
+
+Safety:
+- No database connection or mutation was made in this discovery step. `C:\GHM\.env` remains production-only and must not be sourced for local qualification.
+- Next: read-only inventory of database names and local current-user/role availability on ports 5432 and 5433. Prefer PostgreSQL 18 / 5433 if the prior disposable qualification database exists. Do not assume a DB or roles exist; do not create/drop databases or alter roles at this stage.
+
+PR/branch/handover review repeated before this task:
+- PR #300 open, not draft, unmerged, `mergeable=false`, head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- PR #298 open/draft, unmerged, `mergeable=true`, head `946690a031082145955640c3634ed2898d107d8c`.
+- PR #297 open/draft, unmerged, `mergeable=false`, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` remain present; the Actor Gateway branch inventory was reviewed. No branch changed.
+- No source changes, database connections, qualification, merge commit, push, or deployment occurred.
+
+
+## 21 November 2026 — PostgreSQL 18 local qualification database found
+
+Read-only inventory on `127.0.0.1:5433` (PostgreSQL 18) returned:
+- Databases: `ghm_payfast_qualification`, `ghm_restore_20261116`, and `postgres`; all UTF8 and accepting connections, all owned by local `postgres`.
+- The named local `ghm_payfast_qualification` database definitely exists.
+- Role query for the expected names returned only `postgres` (superuser) and `ghm_schema_owner` (NOLOGIN, non-superuser, no create-db/role, no replication, no bypass-RLS). It did not return `ghm_app_user`, `ghm_db_user`, or `ghm_actor_gateway`.
+- The previous output does not establish whether other runtime/migrator login roles exist under different names, nor whether the qualification database has the current schema/migrations. No role or DB was changed.
+
+Next: connect only to the local `ghm_payfast_qualification` on 127.0.0.1:5433 and run SELECT-only introspection: current database/user, complete role names and attributes, schemas, and migration-ledger/table inventory. Do not create roles, change passwords, grant privileges, or execute migrations until we know the current state and can map the exact role model. `C:\GHM\.env` remains production-only and is prohibited for this work.
+
+PR/handover review refreshed immediately before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `687e78cc2d86fce67da60fe33f897781e1a09618`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. No source changes, DB mutation, qualification, merge commit, push or deployment occurred.
+
+
+## 21 November 2026 — local qualification database identity and role inventory
+
+On `127.0.0.1:5433`, database `ghm_payfast_qualification` was confirmed to be local PostgreSQL 18.6 on Windows; current database/user were `ghm_payfast_qualification` / `postgres`.
+
+Read-only role inventory in that local database found:
+- `ghm_runtime`: LOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, NOINHERIT.
+- `ghm_migrator`: LOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, NOINHERIT.
+- `ghm_payment_provider`: LOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, NOINHERIT.
+- `ghm_schema_owner`: NOLOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, INHERIT.
+- `postgres`: local superuser.
+- `ghm_actor_gateway` was not present in the role inventory.
+
+The initial database identity and role queries succeeded. The separate schema and table/ledger queries failed because the later `psql` invocations had no password supplied (`fe_sendauth: no password supplied`). Thus schema inventory and migration ledger are still unknown. No database objects or roles were changed. Do not infer the database is ready based on existence alone.
+
+Next read-only inspection: issue the schema, table and migration-ledger SELECT queries in a single `psql` invocation so the local postgres password is entered once interactively. Also inspect `pg_auth_members` membership and schema/table/function privileges relevant to `ghm_runtime`, `ghm_migrator`, `ghm_schema_owner` and prospective Actor Gateway. Do not create or alter roles or run migrations until schema and repo requirements are compared.
+
+PR/handover review refreshed before recording: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `ecc83c057941db56400e6d546c29518ed556b244`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. No local source changes, qualification run, merge commit, push, production mutation or deployment occurred.
+
+
+## 21 November 2026 — local schema, migration table and privileges inspected
+
+The user supplied the complete output of the combined read-only inspection on local PostgreSQL 18.6 at `127.0.0.1:5433/ghm_payfast_qualification`.
+
+Observed:
+- The `ghm` schema exists and is owned by `ghm_schema_owner`.
+- The query returned 62 `ghm` base tables, including `ghm.ghm_schema_migrations`, capability tables (`ghm.capability`, `ghm.business_capability`), and many other domain tables. This is a populated local GHM schema, not an empty database.
+- The listed table inventory did not show `ghm.actor_gateway_capability_assertion_secret`; the listing should be checked explicitly because the current qualification script expects that table. It also did not show an obvious dedicated migration-ledger table other than `ghm.ghm_schema_migrations`.
+- Membership output showed `ghm_migrator -> ghm_schema_owner` with NO ADMIN OPTION. No `ghm_actor_gateway` role was found in the earlier complete role inventory.
+- The role privilege query returned 507 rows, mostly repeated per-table grants for `ghm_migrator` and `ghm_schema_owner`. The output was large/truncated in chat; no complete per-function or sequence privilege assessment can be inferred from it. It did not demonstrate the runtime role's effective permissions.
+- All inspection was SELECT-only; no DB object, role, grant, secret, or migration was changed.
+
+Important correction: prior handover wording that schema and migration-ledger inventory were still unknown is superseded by this result. The schema and table inventory are now known at a high level; the precise migration rows, presence of the assertion secret table, Gateway role, and function/sequence privileges remain to be checked.
+
+Next task: use concise read-only SQL against this local database to (1) count/list migration ledger rows and latest versions, (2) test existence of `ghm.actor_gateway_capability_assertion_secret`, Gateway wrapper functions, and required capability objects, (3) summarize effective role memberships and schema/table/sequence/function grants without hundreds of repeated rows. Compare local schema to the migration(s) required by PR #300 before any mutation. Do not run the qualification script yet.
+
+PR/branch/handover review refreshed before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `2c1a1dd8e0519985ab8c5a7c1915ee4a76e5e821`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. The signed Business Capability feature branch remains present. No branch changed; no qualification, merge commit, push, production mutation or deployment occurred.
+
+
+## 21 November 2026 — PR #300 qualification requirements compared with local inventory
+
+Before this task, refreshed PR #300/#298/#297 metadata, the current handover, and the Actor Gateway branch inventory. PR #300 remains open/not draft/unmerged/mergeable=false at head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 is open/draft/unmerged/mergeable=true at `106b097d45eda77b1641cc38b66ebc4af0c33561`; PR #297 is open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. Both the signed Business Capability feature branch and production-migration branch remain present.
+
+Reviewed PR #300 patch and its exact source migrations. The feature's local qualification script requires three distinct connection URLs (runtime, Gateway, migrator) and a base64-encoded 32-byte assertion secret. It uses `DATABASE_SSL === 'true'` for its three pools; this is a shared node-postgres SSL toggle, distinct from any Render Actor Gateway-specific database SSL mode. The script writes the secret row, creates test account identities, exercises Gateway and runtime boundaries, and cleans up. Therefore it must only run against the isolated local database, never the Render production URLs.
+
+Source review confirms:
+- `ghm.actor_gateway_capability_assertion_secret` is created by migration `20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql` (not by the new PR #300 migration); it is expected to be schema-owned and inaccessible directly to PUBLIC/runtime/Gateway/migrator.
+- The same migration establishes signed capability list/create/update/transition wrapper functions. Migration `20261111060000_bind_gateway_assertions_to_request_context.sql` pins request-context signatures and creates the signed verifier/wrappers.
+- Migration `20261111070000_add_signed_business_capability_mutations.sql` establishes the existing signed Business Capability mutation functions and uses the same secret table.
+- PR #300 adds `20261120010000_add_signed_business_capability_create.sql` and `20261120011000_allow_signed_business_capability_create_assertion.sql`, extending the signed Gateway to create a Business Capability and allowing the operation in the assertion verifier.
+- PR #300's `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql` is explicitly MANUAL CUTOVER ONLY and is not an automatic migration. It revokes direct INSERT/sequence privileges only after the signed create route is deployed and qualified, Gateway principal provisioned, Render role model resolved, and fresh verified backup exists. Do not apply it during this local qualification task.
+- Migration `20261110210000_add_actor_gateway_principal_guard.sql` expects a dedicated `ghm_actor_gateway` LOGIN NOINHERIT principal with tightly bounded attributes/membership. The earlier local role inventory did not find that role. This local absence blocks use of a Gateway connection until we verify the exact role contract and decide how to provision an isolated local principal; it does not justify changing production or assuming a Render role fix.
+
+Next read-only local inspection will report the migration ledger rows/count, presence of the assertion secret table and signed wrapper functions, relevant role attributes/memberships, and effective table/sequence/function privileges. No local database objects or roles were changed; no qualification run, merge, push, production mutation or deployment occurred.
+
+
+## 21 November 2026 — local qualification prerequisite query results
+
+The user supplied the complete read-only output from local PostgreSQL 18.6 (`127.0.0.1:5433/ghm_payfast_qualification`). Findings:
+
+- Migration ledger `ghm.ghm_schema_migrations` has exactly 92 rows and columns `version`, `name`, `checksum`, `applied_at`. The displayed first 20 rows were not ordered by version, so they do not establish the latest applied version. The shown timestamps are all on 2026-11-04.
+- The required signed-Gateway objects are absent: `ghm.actor_gateway_capability_assertion_secret` and `ghm.actor_gateway_capability_assertion_nonce` both MISSING.
+- The queried signed-Gateway functions are absent: `ghm.assert_actor_gateway_capability(...)`, `ghm.gateway_create_business_capability(...)`, `ghm.gateway_create_capability_draft(...)`, and `ghm.gateway_list_capabilities(...)` all MISSING.
+- Core objects (`ghm.business_capability`, `ghm.capability`, `ghm.business_membership`, `ghm.account_identity`) are PRESENT.
+- `ghm_runtime` and `ghm_migrator` are LOGIN NOINHERIT and have no elevated role flags; `ghm_schema_owner` is NOLOGIN. `ghm_actor_gateway` and `ghm_db_user` are absent from the role output.
+- `ghm_migrator -> ghm_schema_owner` membership is non-admin, non-inheriting, SET=true. Runtime has schema USAGE, SELECT on the business capability table, no INSERT or DELETE on it, sequence USAGE/SELECT and 52 executable `ghm` functions. Migrator has no schema USAGE and no business-capability table SELECT/INSERT/DELETE, but has sequence USAGE/SELECT and 14 executable functions. Schema owner has broad schema/table/sequence privileges and 66 executable functions.
+- The ledger row query selected 20 rows without `ORDER BY version`; its displayed subset is not a reliable latest-version view. A follow-up read-only query must return `max(version)`, latest 20 ledger rows ordered descending, and the exact PR #300 migration versions.
+
+Conclusion: this local database is a populated older GHM snapshot, but it is NOT currently a valid PR #300 qualification target. It lacks the signed Actor Gateway migration layer and dedicated Gateway database principal. The qualification script must not be run against it yet. No role or database changes, migrations, or tests were executed. Production and Render remain untouched.
+
+Before this task, refreshed PR #300/#298/#297 metadata, current handover, and Actor Gateway branches. PR #300 remains open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 remains open/draft/unmerged/mergeable=true at `bc2b418e877da3bb9fd91689e5fd8d29727cfa42`; PR #297 remains open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. Branch inventory still contains `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches`. No merge, push, deployment, or production operation occurred.
+
+Next step: one read-only query to obtain the maximum migration version, latest 20 rows ordered descending, and exact presence of the two PR #300 migration versions. Then compare the local ledger to the repository migration sequence and decide whether a safe local-only migration qualification path is feasible. Do not provision roles or apply migrations until the migration order and role bootstrap requirements are confirmed.
+
+
+## 21 November 2026 — local migration position and runner safety review
+
+The user supplied the exact local migration-position output for `ghm_payfast_qualification`:
+- Highest applied migration version is `20261104130000` (`isolate_payfast_settlement_identity`).
+- The two PR #300 migrations `20261120010000` and `20261120011000` are both NOT APPLIED.
+- The repository feature branch currently contains 147 timestamped migration files; 66 are newer than the local database's highest version, including the entire 2026-11-05 through 2026-11-20 sequence and both PR #300 migrations. This is a broad historical gap, not a two-migration-only update.
+
+Reviewed `src/db/migrate.ts` and `src/db/migrator-principal.ts` on the feature branch. The migration runner:
+- Requires explicit `GHM_MIGRATION_DATABASE_NAME` and `GHM_MIGRATION_DATABASE_HOST` allowlisted target configuration, connects as `ghm_migrator`, verifies the exact least-privilege identity, locks and applies all pending migrations in one transaction, checks checksums, and refuses out-of-order history.
+- Requires migrator to have no direct privileges on any `ghm` table, view, or sequence; no `ghm` schema USAGE/CREATE; exactly one non-inheritable SET membership to `ghm_schema_owner`; schema owner NOLOGIN and sole member of no other roles; and schema owner owns the `ghm` schema with database CREATE privilege.
+- The prior local privilege output showed `ghm_migrator` has sequence USAGE/SELECT privileges. This violates the runner's `direct_relation_privileges=false` requirement, so the existing `ghm_payfast_qualification` database is not a safe migration target even aside from its missing Gateway objects/role.
+- Migration `20261110210000_add_actor_gateway_principal_guard.sql` requires a pre-provisioned `ghm_actor_gateway` login and specific membership/role attributes before the Gateway migration sequence can proceed. That role is absent locally.
+- The repository's local init script is explicitly for disposable local-only roles but provisions only `ghm_schema_owner`, `ghm_migrator`, `ghm_runtime`, and `ghm_payment_provider`; it does not provision the dedicated Gateway principal or production-like `ghm_db_user` relationship.
+
+Conclusion: do NOT run `npm run migrate` or the PR #300 qualification script against `ghm_payfast_qualification`. Do not try to repair it by adding/revoking grants or roles; it is the wrong qualification target and already violates the migrator principal contract. No database mutation occurred.
+
+Next step: inspect the existing local `ghm_restore_20261116` database read-only to determine whether it is a more recent, suitable isolated snapshot. Verify its max migration version, role attributes/memberships, required Gateway objects, and migrator direct privileges before selecting any target. If it is also unsuitable, stop and use source-level/CI qualification rather than improvising database setup. No new database, Render service, paid resource, production mutation, deployment, or PayFast work is authorized by this task.
+
+PR/branch/handover review was refreshed before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `9858e62e8e8c7e677f803002c6aceed13b6690a1`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. Feature branch and migration-batch branch remain present. No branch changes, merge, push, deploy or production operation occurred.
+
+
+## 21 November 2026 — restore snapshot suitability check
+
+The user supplied read-only inspection output from local PostgreSQL 18.6 database `ghm_restore_20261116`.
+
+Observed:
+- Maximum applied migration version: `20261109210000` (later than `ghm_payfast_qualification`'s `20261104130000`, but still before the Actor Gateway migration sequence).
+- Core `ghm.business_capability` and `ghm.capability` objects are present.
+- Actor Gateway assertion secret/nonce tables and the queried signed assertion/create functions are missing.
+- Roles `ghm_migrator`, `ghm_runtime`, and `ghm_schema_owner` exist with expected basic role flags; `ghm_actor_gateway` and `ghm_db_user` are absent.
+- `ghm_migrator -> ghm_schema_owner` membership has `ADMIN=false, INHERIT=false, SET=true`.
+- Migrator has database CONNECT, no database CREATE, no `ghm` schema USAGE/CREATE, and no direct table/sequence privileges. This satisfies the core direct-privilege portion of the current migration runner's principal contract.
+
+Assessment: `ghm_restore_20261116` is structurally closer to the migration runner's required least-privilege migrator setup than `ghm_payfast_qualification`. It is nevertheless NOT currently a PR #300 qualification target: it lacks the Gateway schema/function migrations and both required Gateway/admin roles. The first Actor Gateway principal guard migration explicitly requires a pre-provisioned `ghm_actor_gateway` LOGIN NOINHERIT principal and `ghm_db_user` administrator membership with ADMIN=true, INHERIT=false, SET=false. The repository handover says the Render-managed default administrator must be retained for controlled administration and must not be used for normal app execution. We must not casually fabricate production-role semantics on the restore snapshot.
+
+Safety decision: do not mutate `ghm_restore_20261116` either. Its name and role as an existing restore snapshot make it inappropriate to repurpose as a disposable qualification target without an explicit recovery/retention decision. No roles, grants, migrations, data, or other database objects were changed.
+
+The two existing local databases therefore both remain read-only evidence sources, not qualification targets. This task has ruled out both for mutation-based qualification under the current constraints. Continue with source-level and exact-head CI qualification for PR #300, and complete review of the in-progress local merge resolution in `C:\GHM-main` without connecting either local snapshot or production. The local merge must still be tested before any merge commit/push. If a dedicated disposable DB is unavailable and no new paid DB is permitted, do not create one; do not silently convert the restore snapshot.
+
+Before this task, refreshed PR #300/#298/#297 metadata, handover, and Actor Gateway branches. PR #300 remains open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 is open/draft/unmerged/mergeable=true at `788c4097c8ed484dc9a164895c99bc4858370d40`; PR #297 is open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. The feature branch and production migration batch branch remain present. No branch change, merge, push, deploy, or production operation occurred.
+
+
+## 21 November 2026 — checkout-path mismatch in merge-state inspection
+
+The user supplied the result of the requested PR #300 merge-state inspection. The PowerShell prompt was `PS C:\GHM>`, not the intended `PS C:\GHM-main>`. The inspected checkout reported:
+- `git status --short --branch`: detached HEAD (`## HEAD (no branch)`).
+- `git rev-parse -q --verify MERGE_HEAD`: no merge in this checkout.
+- No staged files, unstaged tracked changes, unresolved conflict entries, or staged-file conflict markers.
+- Six untracked files: `.env.before-cleanup-20261114-214134.bak`, `.env.before-jwt-secret-removal-20261114-214300.bak`, `.ghm-quoteflow-readonly-preflight.mjs`, `.ghm-storage-acl-readonly.mjs`, `production-ledger-20261116.csv`, and `production-migration-audit-20261116.txt`. The subsequent `Get-Item` check for the two earlier C:\GHM-main preservation files returned no rows in this checkout; that does not establish they are absent from C:\GHM-main.
+
+Important interpretation: this output describes C:\GHM only. It does NOT establish whether the paused no-commit merge in C:\GHM-main remains active or what its current index/worktree contains. Preserve all six untracked files in C:\GHM; do not clean, stash, delete, overwrite, or stage them. Do not run merge/restore/checkout commands in C:\GHM.
+
+Remote review refreshed for this task:
+- PR #300 remains open, not draft, unmerged; GitHub currently reports `mergeable=false`.
+- PR #298 remains open/draft/unmerged; GitHub reports `mergeable=true`.
+- PR #297 remains open/draft/unmerged; GitHub reports `mergeable=false`.
+- Both `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches` branches remain present.
+- The current handover branch was re-read before this update.
+
+Next safe operation: change directory explicitly to `C:\GHM-main` and run only `Get-Location`, `git status --short --branch`, `git rev-parse -q --verify MERGE_HEAD`, `git diff --cached --name-status`, `git diff --name-status`, and `git diff --name-only --diff-filter=U`. Do not run any Git mutation until that exact checkout's state is known. If the merge is still present, continue its review there. If it is absent, inspect branch/ref state before deciding whether to restart the merge. The local database snapshots remain read-only and unsuitable for PR #300 qualification; no DB/production/Render/PayFast changes were made.
+
+
+## 21 November 2026 — correct C:\GHM-main merge state confirmed
+
+The user supplied the requested inspection from the correct checkout, `C:\GHM-main`.
+
+Observed:
+- Branch: `feat/signed-business-capability-create`, tracking `origin/feat/signed-business-capability-create`.
+- `MERGE_HEAD` exists and equals `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, the expected mainline commit.
+- Six intended merge-result paths are staged:
+  - `database/migrations/20261117020000_revoke_runtime_capability_governance.sql`
+  - `scripts/qualify-capability-catalogue-governance.mjs`
+  - `src/actor-gateway/server.ts`
+  - `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` (added)
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/runtime-database-privileges.ts`
+- No unstaged tracked changes were reported.
+- Two known untracked files remain in C:\GHM-main:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- `git status --short --branch` showed no UU conflict status.
+- The PowerShell-rendered output under `git diff --name-only --diff-filter=U` unexpectedly showed `C:\GHM-main`; therefore use `git ls-files -u` as the definitive index-conflict check next. Do not infer a conflict from the path display alone.
+
+Remote review refreshed before this update:
+- PR #300 remains open, not draft, unmerged, GitHub `mergeable=false`.
+- PR #298 remains open/draft/unmerged, GitHub `mergeable=true`.
+- PR #297 remains open/draft/unmerged, GitHub `mergeable=false`.
+- Both the signed Business Capability feature branch and Actor Gateway migration-batches branch remain present.
+- Re-read the current PR #300 preflight handover and canonical Actor Gateway migration-batches handover.
+
+Interpretation: the previously started no-commit merge is still active and its six intended results are staged. Do not abort/restart it and do not commit/push yet. Existing local DB snapshots were assessed as unsuitable for mutation-based qualification; no database was modified.
+
+Next operation: read-only verification in C:\GHM-main using `git ls-files -u`, staged diff summary, `git diff --cached --check`, JavaScript syntax check for the merged qualification script, and inspect package scripts / relevant test file names to select the targeted offline tests. Preserve both untracked files. If the index has no unmerged entries and syntax/whitespace checks pass, proceed to targeted tests that do not require a database; do not run the mutation-based PostgreSQL qualification until an isolated disposable DB is available. No merge commit, push, PR merge, production change, Render change, or deployment occurred.
+
+
+## 21 November 2026 — PR #300 staged merge validation
+
+The user supplied the definitive inspection from `C:\GHM-main` after the merge-state recovery.
+
+Validation results:
+- `git ls-files -u` produced no output: no unmerged index entries.
+- Staged diff summary: 6 files, 122 insertions, 40 deletions.
+- `git diff --cached --check` passed with no reported whitespace errors.
+- `node --check scripts/qualify-capability-catalogue-governance.mjs` passed.
+- Package scripts were inspected. `npm run build` is the repository TypeScript build; the full `npm test`/test script includes broad suite and database-oriented qualification commands, so avoid using it as a first targeted check.
+- Relevant contract tests include:
+  - `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` (newly staged)
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/actor-gateway-business-capability-create-migration-contract.test.ts`
+  - `src/db/capability-governance-migration-contract.test.ts`
+  - `src/db/actor-gateway-capability-assertion-migration-contract.test.ts`
+- Existing untracked preservation files remain in C:\GHM-main: the storage metadata .bak and `picomatch-reachability-scan.txt`. Do not stage or remove them.
+
+Remote review refreshed before the task: PR #300 remains open/not draft/unmerged and GitHub reports `mergeable=false`; PR #298 remains open/draft/unmerged and reports mergeable; PR #297 remains open/draft/unmerged and reports not mergeable. Both relevant branches remain present. Current PR #300 local preflight handover and canonical migration-batches handover were re-read.
+
+Next: run `npm run build` in C:\GHM-main, then run only the compiled offline contract/unit tests for the five files listed above using `node --test`. These tests must be checked for database connectivity before invocation; contract tests should be source/DDL assertions, not live database qualification. Do not run `npm run qualify:capability-catalogue-governance`, `npm run migrate`, or any PostgreSQL-mutating qualification command against the old local snapshots. No merge commit, push, PR merge, production/Render/PayFast change, or database change occurred.
+
+
+## 21 November 2026 — PR #300 targeted offline test result
+
+User supplied full output from the TypeScript build and five targeted Node test files in C:\GHM-main.
+
+Results:
+- `npm run build` succeeded (`tsc` exited successfully).
+- Targeted tests: 21 total, 20 passed, 1 failed.
+- The sole failure is in the newly staged `src/db/revoke-runtime-capability-governance-migration-contract.test.ts`, test title: `capability cutover continues to require schema-owner SECURITY DEFINER functions`.
+- Assertion expected regex `/has_function_privilege\(v_gateway_role, v_function, 'EXECUTE'\)/`.
+- Actual staged migration uses valid equivalent SQL formatting `has_function_privilege(v_gateway_role,v_function,'EXECUTE')` (no spaces after commas). It also checks runtime EXECUTE is absent and verifies owner, SECURITY DEFINER, and pinned search_path for the five signed Gateway functions.
+- Therefore the observed failure is a whitespace-sensitive source-contract assertion, not evidence of a PostgreSQL privilege failure. Do not alter the migration merely to add cosmetic whitespace. Adjust the test to accept optional whitespace around SQL arguments while preserving checks for Gateway EXECUTE and runtime non-EXECUTE; inspect the complete local test file before editing to ensure other assertions remain meaningful.
+- No DB qualification, migration execution, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+Remote review refreshed:
+- PR #300 open, non-draft, unmerged, `mergeable=false`.
+- PR #298 open/draft/unmerged, `mergeable=true`.
+- PR #297 open/draft/unmerged, `mergeable=false`.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` both still exist.
+- Re-read current PR #300 local preflight handover before recording this result.
+- Attempt to fetch the new staged contract test from the remote feature branch returned 404 because the file is part of the local staged merge result and is not present on that remote branch yet. The user's local test failure output provides the failing assertion and actual migration text; inspect local source in C:\GHM-main next.
+
+Next action: in C:\GHM-main, inspect the complete staged test file (e.g. `Get-Content src/db/revoke-runtime-capability-governance-migration-contract.test.ts`) and its staged diff, then make only the narrow regex whitespace-tolerance correction. Rebuild and rerun the five targeted tests. Preserve both untracked files. No production/database changes.
+
+
+## 21 November 2026 — inspected failing PR #300 contract assertion
+
+User supplied the complete local test source, staged diff, and migration privilege-check lines from C:\GHM-main.
+
+Confirmed test source contains two whitespace-sensitive regex assertions:
+- Gateway positive grant: `/has_function_privilege\(v_gateway_role, v_function, 'EXECUTE'\)/`
+- Runtime negative check: `/has_function_privilege\(v_runtime_role, v_function, 'EXECUTE'\)/`
+
+The migration's corresponding valid SQL calls are formatted without spaces after commas:
+- `has_function_privilege(v_gateway_role,v_function,'EXECUTE')`
+- `has_function_privilege(v_runtime_role,v_function,'EXECUTE')`
+
+The migration separately enforces:
+- `p.prosecdef=true`
+- `p.proowner=v_schema_owner`
+- pinned `search_path=pg_catalog, ghm, pg_temp`
+- Gateway role EXECUTE privilege is present
+- runtime role EXECUTE privilege is absent
+
+The narrow correction is confined to the test regexes: allow optional whitespace after the comma, e.g. `v_gateway_role,\s*v_function` and `v_runtime_role,\s*v_function`. Keep all assertions, including both positive and negative privilege checks, intact. Do not change migration SQL.
+
+Remote review before this task:
+- PR #300 open/non-draft/unmerged, mergeable=false.
+- PR #298 open/draft/unmerged, mergeable=true.
+- PR #297 open/draft/unmerged, mergeable=false.
+- Both feature and migration-batches branches exist.
+- Current handover read at `3f030ce22c1f94e5497441598bbec28b0cb6006e`.
+
+Next: apply only the two regex whitespace-tolerance changes in C:\GHM-main, stage the corrected test, rebuild, and rerun the same five offline test files. Preserve the migration and all untracked files. No DB/production/Render/PayFast change, merge commit, push, or PR merge.
+
+
+## 21 November 2026 — PR #300 contract-test regex correction staged
+
+User supplied the PowerShell result after applying the narrow correction in C:\GHM-main.
+
+Confirmed:
+- Only `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` was staged by this operation.
+- Gateway positive privilege assertion now tolerates optional whitespace after the first argument comma: `/has_function_privilege\(v_gateway_role,\s*v_function, 'EXECUTE'\)/`.
+- Runtime negative privilege assertion likewise tolerates optional whitespace: `/has_function_privilege\(v_runtime_role,\s*v_function, 'EXECUTE'\)/`.
+- Both assertions remain present; no migration SQL was changed.
+- The staged diff shows the new test file still contains its original two contract tests and both owner/SECURITY DEFINER/search_path assertions.
+- `git diff --check` and `git diff --cached --check` returned no errors.
+- Build and five targeted test rerun have NOT yet occurred after this correction.
+
+Remote PR/branch/handover review was performed immediately before this correction task: PR #300 open/non-draft/unmerged and mergeable=false; PR #298 open/draft/unmerged and mergeable=true; PR #297 open/draft/unmerged and mergeable=false; both feature and migration-batches branches exist; the current handover was re-read.
+
+Next: run `npm run build`, then rerun the same five offline tests from `dist/db`:
+`revoke-runtime-capability-governance-migration-contract.test.js`,
+`runtime-database-privileges.test.js`,
+`actor-gateway-business-capability-create-migration-contract.test.js`,
+`capability-governance-migration-contract.test.js`,
+`actor-gateway-capability-assertion-migration-contract.test.js`.
+If tests pass, review the entire staged diff and exact PR head. Preserve untracked files. No database qualification, migration execution, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+
+## 21 November 2026 — second PR #300 contract-test run: regex still too strict
+
+User supplied the full output of the rebuild and five targeted offline test files from C:\GHM-main.
+
+Results:
+- `npm run build` succeeded.
+- 21 tests ran: 20 passed, 1 failed.
+- The same test still fails: `capability cutover continues to require schema-owner SECURITY DEFINER functions`.
+- The first regex correction allowed optional whitespace after the first comma but still required a literal space after the second comma:
+  `/has_function_privilege\(v_gateway_role,\s*v_function, 'EXECUTE'\)/`
+  and
+  `/has_function_privilege\(v_runtime_role,\s*v_function, 'EXECUTE'\)/`.
+- The migration actually formats calls as `has_function_privilege(v_gateway_role,v_function,'EXECUTE')` and `has_function_privilege(v_runtime_role,v_function,'EXECUTE')`, with no whitespace after either comma.
+- Exact narrow fix: allow optional whitespace after BOTH commas in each regex:
+  `/has_function_privilege\(v_gateway_role,\s*v_function,\s*'EXECUTE'\)/`
+  `/has_function_privilege\(v_runtime_role,\s*v_function,\s*'EXECUTE'\)/`.
+- Keep both positive Gateway and negative runtime assertions. Do not change migration SQL or relax the actual semantic checks.
+- No DB qualification, migration execution, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+Remote review refreshed before this task:
+- PR #300 open/non-draft/unmerged, mergeable=false.
+- PR #298 open/draft/unmerged, mergeable=true.
+- PR #297 open/draft/unmerged, mergeable=false.
+- Feature and migration-batches branches remain present.
+- Pre-task handover read at `5b4107adcb31393fb2e9f8c91817681e2f7c0dab`.
+
+Next: correct only the two regexes in C:\GHM-main to allow optional whitespace after both commas; stage only that test file; rebuild and rerun the same five targeted offline test files. Preserve untracked files. No database mutation or production action.
+
+
+## 21 November 2026 — PR #300 final regex correction staged
+
+User supplied the output confirming the second narrow regex adjustment in C:\GHM-main.
+
+Confirmed:
+- Only `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` was changed/staged by this step.
+- Both Gateway positive and runtime negative privilege assertions now allow optional whitespace after BOTH SQL argument commas:
+  - `/has_function_privilege\(v_gateway_role,\s*v_function,\s*'EXECUTE'\)/`
+  - `/has_function_privilege\(v_runtime_role,\s*v_function,\s*'EXECUTE'\)/`
+- The source assertions still require Gateway EXECUTE and runtime non-EXECUTE; no semantic security assertion was removed.
+- The migration SQL was not changed.
+- `git diff --cached --check` returned no error.
+- Rebuild and five-test rerun are still pending after this final correction.
+
+Remote review refreshed before this task:
+- PR #300 open, non-draft, unmerged, GitHub reports `mergeable=false`.
+- PR #298 open/draft/unmerged, `mergeable=true`.
+- PR #297 open/draft/unmerged, `mergeable=false`.
+- Both relevant feature and migration-batches branches still exist.
+- Current handover read at `f4971d6d7137496ef43ab49cb2012655cf396ca9`.
+
+Next: run `npm run build`, then rerun the same five targeted offline test files. If they pass, proceed to final staged-diff and PR-head review. Preserve all untracked files. No database mutation, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+
+## 21 November 2026 — PR #300 targeted offline validation passed
+
+User supplied the final rebuild and targeted test output from C:\GHM-main.
+
+Results:
+- `npm run build` succeeded (`tsc` completed without errors).
+- Five targeted offline test files ran successfully.
+- 21 tests total: 21 passed, 0 failed, 0 skipped, 0 cancelled.
+- Coverage shown in the output includes:
+  - signed Business Capability canonical relation, payload binding, create assertion operation, business authority/catalogue state, lifecycle/verification/provenance, and Actor Gateway-only execution;
+  - forward-only signed assertion allowlist and manual create privilege cutover;
+  - HMAC-bound one-use actor assertion and operation binding;
+  - capability catalogue governance SECURITY DEFINER/admin authority and runtime table-DML boundary;
+  - the newly staged revocation migration contract: pinned search_path, schema-owner SECURITY DEFINER functions, Gateway EXECUTE and runtime non-EXECUTE;
+  - all 1,024 reviewed combinations of ten independent privilege transitions and startup rejection of added/missing grants;
+  - separate registration read/write cutovers, SECURITY DEFINER-only startup inventory, and Campaign/directory-review legacy signature state.
+- This is strong offline code/contract validation. It is NOT live PostgreSQL qualification of the mutation-based capability catalogue script. The old local restore DB was already shown to be behind and missing Gateway assertion objects, so it is not a valid qualification target. No database was changed.
+
+Remote review refreshed before this handover update:
+- PR #300 open, non-draft, unmerged; GitHub still reports `mergeable=false`.
+- PR #298 open/draft/unmerged; GitHub reports `mergeable=true`.
+- PR #297 open/draft/unmerged; GitHub reports `mergeable=false`.
+- `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches` both remain present.
+- Current preflight handover was re-read at `f919053ee18ab0a4be404924bfa14b28717616b3`.
+
+Next: final review of the six staged merge-result files, test coverage, and repository state in C:\GHM-main; confirm no conflict entries, inspect complete staged diff, verify no accidental changes/untracked files were staged, and compare local feature HEAD / merge parents with live PR #300 metadata. Because GitHub still reports mergeability false, do not attempt a PR merge or push until the local merge result is committed/pushed as appropriate and remote base/branch state is reconciled. User is fatigued by loops; once final review is clean, recommend completing the merge workflow rather than inventing further qualification requirements. Mutation-based live DB qualification remains explicitly unperformed and must be clearly disclosed; do not claim it passed.
+
+
+## 21 November 2026 — PR #300 final staged merge-result review
+
+Mandatory review completed before this task:
+- Re-read this PR #300 preflight handover and the canonical Actor Gateway migration-batches handover.
+- Refreshed PR #300, #298 and #297 metadata and checked both relevant branches.
+- PR #300 remains open, non-draft, unmerged; exact remote head is `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`, base ref is `main`, historical base SHA is `ddb31ff59ab470973edf60a5078a75e5f962f803`, and GitHub still reports `mergeable=false`.
+- PR #298 remains open/draft/unmerged and GitHub reports mergeable; PR #297 remains open/draft/unmerged and GitHub reports not mergeable. Both `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches` branches remain present.
+
+The user supplied the final local review output from `C:\GHM-main`. It confirms:
+- Local `HEAD` is exactly the PR #300 feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- `git log -1` still shows the original single-parent feature commit `15ad9ae0f421d6c169b7e1264e34a93da6f63e99`; this is expected while the no-commit merge is staged and before a merge commit is created. It does not itself identify the pending merge parent.
+- `git ls-files -u` produced no output: no unmerged index entries.
+- The complete staged result contains exactly six paths: governance revocation migration, capability catalogue qualification script, Actor Gateway server diagnostics, new governance migration contract test, runtime privilege test, and runtime privilege inventory implementation. Summary: 122 insertions, 40 deletions.
+- The reviewed patch preserves the mainline 43-function / ten-group / 1,024-state runtime privilege model, separates registration read and write transitions, adds the capability governance function group, retains the Gateway non-admin draft denial qualification, and preserves startup-stage diagnostics and the migration search_path contract.
+- Two unrelated untracked files remain unstaged: `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` and `picomatch-reachability-scan.txt`.
+- `git diff --cached --check` reported no whitespace errors.
+- Earlier user-supplied validation remains green: TypeScript build passed and five targeted offline test files passed 21/21.
+
+Qualification boundary: the mutation-based capability catalogue script has NOT been run against a valid disposable PostgreSQL 18 database. The old restore snapshot is behind and lacks required Actor Gateway assertion objects. Do not describe live DB qualification as passed, and do not run the script against production. No database, production, Render, deployment, PayFast, or payment state was changed.
+
+### Next safe operation
+
+Before creating the merge commit, run one final read-only confirmation in `C:\GHM-main`:
+`git rev-parse -q --verify MERGE_HEAD`, `git status --short --branch`, and `git ls-files -u`.
+The expected `MERGE_HEAD` is current `origin/main` `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, as previously confirmed during merge-state recovery. If it still matches, the index has no unmerged entries, and status contains only the six intended staged paths plus the two known untracked preservation files, create the local merge commit (do not amend the feature commit), then push the feature branch normally. Do not force-push. After push, refresh PR #300 exact head, mergeability and exact-head CI; only consider GitHub merge once those checks are current and green. The remaining live-DB qualification limitation must be explicitly recorded and must not be represented as completed.
+
+
+## 21 November 2026 — pending PR #300 merge parent and index confirmed
+
+Mandatory pre-task review repeated:
+- Re-read this preflight handover at `a7e9e39a1fa5910777ea5547b29196e1c63293e3` and refreshed PR #300/#298/#297 metadata.
+- Confirmed both relevant feature branches still exist.
+- PR #300 remains open, non-draft, unmerged, at feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; GitHub reports `mergeable=false`.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. These are separate workstreams.
+
+The user supplied the final read-only verification from `C:\GHM-main`:
+- `git rev-parse -q --verify MERGE_HEAD` returned `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, exactly the expected mainline merge parent.
+- `git status --short --branch` shows the six reviewed merge-result files staged, and only the two previously preserved untracked files:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- `git ls-files -u` produced no output: no unresolved index entries.
+- No unanticipated tracked or untracked paths are present in the supplied status.
+
+The no-commit merge is therefore ready for its local merge commit. The staged patch was already reviewed (six files, 122 insertions / 40 deletions); TypeScript build and targeted offline tests passed 21/21. The two untracked preservation files must remain unstaged.
+
+### Next action — create the local merge commit
+
+In `C:\GHM-main`, create a normal merge commit (do not amend, do not stage anything else, and do not include the untracked files):
+`git commit -m "Merge main into signed Business Capability create"`
+
+Then capture `git status --short --branch`, `git log -1 --format="HEAD %H%nPARENTS %P%nSUBJECT %s"`, and `git rev-parse HEAD`. Stop before pushing until the resulting commit has exactly two parents: feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700` and mainline `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. Push normally only after confirming that merge commit and the two known untracked files remain untouched.
+
+The live disposable PostgreSQL qualification limitation remains: the mutation-based capability catalogue qualification script has not been run against a valid disposable PostgreSQL 18 database. No production database, Render service, deployment, PayFast, or payment state was changed.
+
+
+## 21 November 2026 — PR #300 local merge commit created and verified
+
+Mandatory pre-task review completed:
+- Re-read this PR #300 preflight handover at `dce9d583c1759bc008170b6e555870b8317a5adb`.
+- Refreshed PR #300/#298/#297 and checked the signed-create and migration-batches branches.
+- PR #300 remains open/non-draft/unmerged at remote feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; GitHub still reports `mergeable=false` because the merge commit has not yet been pushed.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. Keep both separate.
+
+User supplied local commit output from `C:\GHM-main`:
+- Created normal merge commit `f9e207fb88b1e93b3eca7e7562a11518b52075e8`.
+- Exact parents, in order:
+  1. Feature PR head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+  2. Mainline `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- Subject: `Merge main into signed Business Capability create`.
+- Working tree status: branch `feat/signed-business-capability-create`, ahead 3 of its remote-tracking branch; only the two known untracked preservation files remain. No staged or unstaged tracked changes are shown.
+- The merge commit has the exact two expected parents; no amend or force operation was used.
+
+### Next action — normal push only
+
+The local merge commit is ready to publish. In `C:\GHM-main`, run:
+`git push origin feat/signed-business-capability-create`
+
+Do not force-push. After the push, refresh PR #300 and verify the remote head equals `f9e207fb88b1e93b3eca7e7562a11518b52075e8`; inspect fresh exact-head CI and GitHub mergeability before considering a PR merge. If GitHub still reports unmergeable, stop and inspect the updated comparison; do not bypass branch protection.
+
+Qualification boundary remains unchanged: build and 21 targeted offline tests passed, but mutation-based live disposable PostgreSQL 18 qualification has not been performed. Do not claim it passed. No production DB, Render, deployment, PayFast, or payment state changed.
+
+
+## 21 November 2026 — PR #300 merge commit pushed; GitHub mergeability restored
+
+Mandatory review completed:
+- Re-read this preflight handover at `2616231eb22679a95d34dfbe316a73204e7a9874` and refreshed PR #300/#298/#297 metadata and relevant branch existence.
+- PR #300 push output confirms normal fast-forward update of `feat/signed-business-capability-create` from `6ea0df06` to merge commit `f9e207fb88b1e93b3eca7e7562a11518b52075e8`. No force-push.
+- GitHub PR #300 now points to exact head `f9e207fb88b1e93b3eca7e7562a11518b52075e8`, remains open/non-draft/unmerged, and reports `mergeable=true`.
+- Current main is `0dc1b27c2b7de71c77d071966a9f374e13075e2b`; compare is cleanly `ahead 93 / behind 0`, merge base equals current main. The 93 commits include the feature history and merge synchronization.
+- Exact-head GitHub Actions CI run #5594, run ID `44850842154`, is `in_progress`. No completion result is available yet. Combined commit status endpoint currently returns no status entries; do not interpret that as CI success.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. Their migration-batch work remains separate.
+
+### Next action
+
+Wait for exact-head CI run #5594 to complete, then inspect its jobs and result. Do not merge PR #300 while CI is in progress. If CI succeeds, re-fetch PR metadata and exact head once more, review required checks/branch protection if accessible, and then proceed with the normal PR merge only if all required checks are green and GitHub still reports mergeable. If CI fails, inspect failing job logs and fix only the actual failure.
+
+Qualification boundary: TypeScript build and five targeted offline tests passed 21/21 before the merge commit. Mutation-based capability catalogue qualification against a valid disposable PostgreSQL 18 database remains unperformed; do not claim it passed. No production database, Render service, deployment, PayFast, or payment state changed.
+
+
+### CI progress update — exact merge commit #5594
+
+A fresh job-level poll of exact-head CI run `44850842154` on `f9e207fb88b1e93b3eca7e7562a11518b52075e8` shows:
+- `web-quality`: completed successfully, including web build, web tests, dependency audit and security-sensitive toolchain verification.
+- `quality`: still in progress. Completed successfully so far: isolated least-privilege database-role setup; PostgreSQL 18 delegated CREATEROLE membership reproduction; all qualification-script syntax checks (including signed capability and capability governance); TypeScript build; Cloudflare Worker bundle without deployment; and bundle diagnostics preservation.
+- Current in-progress step at the latest poll: **Apply all migrations to disposable PostgreSQL**. Subsequent PostgreSQL qualification and full test steps have not yet completed.
+- PR #300 remains open/non-draft/unmerged, exact head still matches the merge commit, and GitHub reports `mergeable=true`.
+
+This CI run is now performing disposable PostgreSQL qualification in the GitHub Actions environment. Do not equate the still-running migration step with successful live qualification. Wait for the complete `quality` job and workflow conclusion before making the merge decision. No Render deployment or production database change is part of this CI run.
+
+
+## 21 November 2026 — PR #300 exact-head CI fully green; merge review
+
+Mandatory pre-task review:
+- Re-read this handover at `bbf54b1c6cfe73f00882b24a209f968fbc9eda75` and the canonical Actor Gateway migration-batches handover.
+- Refreshed PR #300/#298/#297 metadata and verified both relevant feature branches still exist.
+- PR #300 remains open, non-draft, unmerged, exact head `f9e207fb88b1e93b3eca7e7562a11518b52075e8`, base `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, and GitHub reports mergeable=true.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. Separate streams remain untouched.
+
+Exact-head CI run #5594 (run ID `44850842154`) has completed with workflow conclusion `success`. Both jobs completed successfully:
+- `web-quality`: web build, web tests, dependency audit, and security-sensitive toolchain verification all passed.
+- `quality`: complete job passed, including applying all migrations to disposable PostgreSQL; isolated least-privilege DB roles; PostgreSQL 18 delegated CREATEROLE behavior; signed Business Capability lifecycle and two-session assertion replacement; system-admin capability catalogue governance; capability legacy RPC cutover and gateway-only access; signed Business Capability gateway cutover; all related gateway cutovers; full test suite; migration audit policy tests; runtime boundary verification; and before/after SECURITY DEFINER authority inventory comparison.
+- Separate exact-head Cloudflare Pages check run completed successfully and reports a successful **preview deployment** for commit `f9e207f`. This is a preview, not a production deployment.
+- No PR review submissions or inline review threads are present.
+- Attempted read-only branch-protection lookup returned HTTP 403 (resource not accessible to this integration). Do not claim branch-protection rules were inspected; GitHub's merge endpoint remains authoritative for whether configured merge requirements permit the merge.
+
+Qualification correction: CI has now performed the full disposable PostgreSQL migration and qualification suite successfully, including the PR #300 signed capability and catalogue governance paths. The earlier local limitation (no suitable local disposable DB) is superseded by this exact-head CI evidence. No production database was used by these CI qualification steps.
+
+### Merge decision
+
+All visible exact-head CI jobs/checks are green, PR head is unchanged, no unresolved review threads exist, and GitHub reports mergeable=true. Proceed with a normal GitHub merge of PR #300 using the merge-commit method and expected head SHA `f9e207fb88b1e93b3eca7e7562a11518b52075e8`. Do not squash/rebase, do not force-push, and do not deploy production services as part of this merge.

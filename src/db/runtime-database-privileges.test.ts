@@ -27,11 +27,11 @@ const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) 
 
 const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 
-test('runtime startup accepts all 1024 reviewed combinations of the ten independently qualified privilege transitions', () => {
-  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
-  assert.equal(CUTOVER_GROUPS.length, 10);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 1, 3, 3, 2, 1, 1, 1]);
-  assert.equal(ALL_STAGES.length, 1024);
+test('runtime startup accepts all 4096 reviewed combinations of the twelve independently qualified privilege transitions', () => {
+  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 45);
+  assert.equal(CUTOVER_GROUPS.length, 12);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 1, 3, 3, 2, 1, 1, 1, 1, 1]);
+  assert.equal(ALL_STAGES.length, 4096);
   assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
 
   for (const functions of ALL_STAGES) {
@@ -151,4 +151,16 @@ test('Campaign and directory-review legacy signatures are absent only from state
     assert.ok((RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS as readonly string[]).includes(signature));
   }
+});
+
+
+test('Business profile and supplier classification legacy functions remain accepted until their separate manual Gateway cutovers', () => {
+  const profile = 'ghm.update_business_profile(bigint, bigint, jsonb)';
+  const supplier = 'ghm.update_business_supplier_classification(bigint, bigint, boolean)';
+  assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(profile));
+  assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(supplier));
+  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.businessProfile, [profile]);
+  assert.deepEqual(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS.supplierClassification, [supplier]);
+  assert.ok(!(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS as readonly string[]).includes(profile));
+  assert.ok(!(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS as readonly string[]).includes(supplier));
 });

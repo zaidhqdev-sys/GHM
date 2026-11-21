@@ -32,7 +32,15 @@ const ciWorkflow = fs.readFileSync(path.resolve(process.cwd(), '.github/workflow
 test('future GHM functions created by the schema owner do not inherit PUBLIC EXECUTE', () => {
   assert.ok(migration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner'));
   assert.ok(migration.includes('REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC'));
-  assert.doesNotMatch(migration, /IN SCHEMA ghm/);
+  assert.ok(migration.includes('IN SCHEMA ghm'));
+  assert.ok(migration.includes('REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime'));
+  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner\s+REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime/);
+});
+
+test('legacy runtime function defaults are revoked globally and in the GHM schema without changing current function grants', () => {
+  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner\s+REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime/);
+  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm\s+REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime/);
+  assert.doesNotMatch(migration, /REVOKE ALL PRIVILEGES ON ALL FUNCTIONS/);
 });
 
 test('issuer allow-list is applied after clearing current function grants', () => {
@@ -63,8 +71,10 @@ test('issuer default ACL verifier rejects EXECUTE granted to any non-owner role'
 
 
 test('disposable qualification exercises and cleans up schema-scoped unexpected EXECUTE defaults', () => {
-  assert.ok(qualification.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO postgres'));
-  assert.ok(qualification.includes('IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM postgres'));
+  assert.ok(qualification.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner GRANT EXECUTE ON FUNCTIONS TO ghm_runtime'));
+  assert.ok(qualification.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO ghm_runtime'));
+  assert.ok(qualification.includes('IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime'));
+  assert.ok(qualification.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime'));
   assert.ok(qualification.includes('issuerWithUnexpectedDefault.unsafe_function_defaults'));
   assert.ok(qualification.includes('actorWithUnexpectedDefault.unsafe_function_defaults'));
 });

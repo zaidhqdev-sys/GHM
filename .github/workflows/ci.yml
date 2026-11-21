@@ -10,6 +10,7 @@ on:
       - construction/auth-issuer-isolation-20261112
       - construction/auth-issuer-stacked-on-pr272-20261113
       - security/actor-gateway-worker-body-limit-20261114
+      - feat/actor-gateway-production-migration-batches
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
@@ -246,6 +247,20 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Qualify SECURITY DEFINER temporary-object shadowing on disposable PostgreSQL
+        run: npm run qualify:security-definer-search-path
+      - name: Compare SECURITY DEFINER migration authority before and after on disposable PostgreSQL
+        run: npm run qualify:security-definer-search-path-migration
+
+      - name: Qualify production migration plan-only mode on isolated ghm_db fixture
+        env:
+          PGPASSWORD: postgres
+          GHM_QUALIFICATION_DATABASE_NAME: ghm_disposable_test
+        run: npm run build && npm run qualify:migration-plan-only
+
+      - name: Qualify commercial document authority, approval and payment-consent schema
+        run: npm run qualify:commercial-document-consent
+
       - name: Check whole-database SECURITY DEFINER inventory script syntax
         run: node --check scripts/audit-security-definer-authority.mjs
 
@@ -255,6 +270,8 @@ jobs:
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
 
+      - name: Qualify founder authority, document approval and payment consent end-to-end
+        run: npm run qualify:commercial-workflow
       - name: Smoke-test Actor Gateway in local Cloudflare Workers runtime
         env:
           GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET: ${{ env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET }}

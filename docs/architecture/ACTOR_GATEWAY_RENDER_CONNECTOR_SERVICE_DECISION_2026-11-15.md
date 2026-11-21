@@ -153,3 +153,61 @@ The exact production DB login credential and assertion secret have not been prov
 8. Only after all gates pass, separately authorize the production migration execution, service deploy, setting `GHM_ACTOR_GATEWAY_URL` on `GHM-Internal-Runtime`, and controlled production smoke/cutover.
 
 **No Render service, Cloudflare resource, database role, grant, migration, secret, environment variable, deployment, or production data was changed during this follow-up.**
+
+## 18 November 2026 — owner-shared Render creation-form review (not submitted)
+
+The owner shared the Render New Web Service form for ghm-actor-gateway. This is a configuration review only; the form was not submitted and no Render service was created.
+
+### Form values checked against current main source and architecture
+
+- Repository: zaidhqdev-sys/GHM; branch: main — correct.
+- Runtime: Node — correct.
+- Region: Frankfurt — correct; same region as ghm-db.
+- Root directory: blank — correct for repository-root package.json.
+- Build command: npm ci --include=dev && npm run build — correct and fixes the previously observed missing development type declarations.
+- Start command: npm run start:actor-gateway — exists in current main package.json and launches dist/actor-gateway/server.js.
+- Required variable names shown: NODE_ENV, DATABASE_SSL_MODE, GHM_ACTOR_GATEWAY_DATABASE_URL, GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET, GHM_JWT_ES256_PUBLIC_KEY_PEM, GHM_JWT_ES256_KID. These names match the Node gateway source's configuration contract. NODE_ENV must be production; DATABASE_SSL_MODE must be internal for the same-region Render internal DB URL. The screenshot masks values, so their correctness, provenance and validity are not verified. Never copy secret values into Git, chat or handovers.
+- Server binds Render's PORT and exposes /healthz; set the service health-check path to /healthz in Advanced settings before a future deployment.
+- Keep auto-deploy OFF for initial controlled deployment.
+
+### Plan decision
+
+The form's selected $7/month paid Web Service is the previously documented always-on HTTP gateway architecture. The displayed Free plan is not acceptable: Render Free Web Services spin down after 15 minutes idle, may restart, and can wake too slowly for the Resource API's five-second gateway timeout. Do not select Free as a production workaround.
+
+The $7/month recurring cost remains outside the user's standing approved budget unless the owner explicitly changes that decision. Merely opening or filling the form does not authorize the recurring charge. Do not submit it on the basis of this review.
+
+### Independent production readiness blockers — service must not be submitted/deployed yet
+
+Even if the owner later approves the $7/month charge, this form is not deployment-ready:
+1. Production ghm_actor_gateway has not been provisioned with schema ghm USAGE or its exact gateway function EXECUTE allowlist; the last verified catalogue review found no gateway functions installed.
+2. The latest supplied production migration reconciliation recorded 42 pending migrations and an allowlist mismatch; the ordered gateway migration chain and safe staged runner boundary are not qualified.
+3. A fresh verified production backup/recovery point remains outstanding.
+4. The production role-administration/Render support remediation remains open.
+5. The masked GHM_ACTOR_GATEWAY_DATABASE_URL and capability assertion secret cannot be assumed valid or provisioned merely because fields are populated in the UI. They must be established through the approved administrator/secret workflow, with no values disclosed.
+6. After those gates pass, qualify session_user=current_user=ghm_actor_gateway, the exact database privilege allowlist, /healthz, authenticated positive/negative routes, restart behavior and API timeout behavior before configuring GHM_ACTOR_GATEWAY_URL on the Resource API.
+
+**Disposition:** configuration values are mostly aligned with source, but do not submit, deploy, select Free, or incur cost now. Keep the form unsubmitted, keep existing production untouched, and preserve the current architecture/cost decision.
+
+No Render service, plan, environment variable, secret, deployment, database role/grant/migration, backup, payment state, CI or schedule was changed. No cost incurred.
+
+## 19 November 2026 — owner decision supersedes prior plan selection
+
+The owner has explicitly selected Render **Free** for the initial Node Actor Gateway early-access/free-directory stage. This supersedes earlier text stating that Free must not be selected or that a paid $7/month Web Service is a prerequisite. Paid always-on hosting/provider requirements will be reviewed before paid-live launch.
+
+The owner-provided form is filled but not submitted; preserve it for the owner. Free may sleep and cold-start beyond the Resource API's 5-second client timeout. The current gateway clients do not automatically retry; define bounded recovery or an explicit early-access retry experience before routing traffic. Do not weaken security or fail-closed behaviour.
+
+This does not clear production database prerequisites, exact migration/ledger reconciliation, recovery-point, role/ACL authority or gateway credential qualification gates. No service has been created or deployed by this assistant.
+
+## 19 November 2026 — owner clarification: one continuous Render service
+
+The owner clarified the intended lifecycle for the already-filled, not-yet-submitted `ghm-actor-gateway` Render form:
+
+- Create **one** dedicated Node Render Web Service named `ghm-actor-gateway` on the **Free** plan for now.
+- That same service is used for early access and the initial free-directory users. “Early access” is not a separate service, environment, deployment, or architecture from the later paid/upgrade instance.
+- When revenue and operational needs justify paid compute, upgrade the **existing Free service in place** to the appropriate paid plan. Keep the same Render service, repository/branch, service identity, configuration, secrets, database identity, and endpoint. This is a compute-plan change, not a second service, parallel deployment, or infrastructure migration.
+- Do not create a second paid gateway or duplicate the service for a later launch.
+- Free sleep/cold-start and the existing five-second Resource API client timeout remain real reliability constraints. Address them with a bounded, secure recovery/retry or early-access availability contract; do not weaken authentication, authorization, or fail-closed checks. These constraints do not change the one-service lifecycle decision.
+- The owner-provided form remains **unsubmitted**. This clarification does not authorize the assistant to create, submit, configure, or deploy anything in Render.
+- All production database, migration/ledger, backup/recovery, role/ACL authority, credential, and endpoint cutover gates remain independently outstanding. The plan upgrade does not clear those gates.
+
+This section supersedes any wording elsewhere in this document that could imply a separate paid-stage service, a second deployment, or a migration from a Free service to a different paid instance.

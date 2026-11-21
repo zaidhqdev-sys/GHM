@@ -186,7 +186,10 @@ try {
     await schemaDefaultAclProbe.query('BEGIN');
     await schemaDefaultAclProbe.query('SET LOCAL ROLE ghm_schema_owner');
     await schemaDefaultAclProbe.query(
-      'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO postgres',
+      'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner GRANT EXECUTE ON FUNCTIONS TO ghm_runtime',
+    );
+    await schemaDefaultAclProbe.query(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO ghm_runtime',
     );
     await schemaDefaultAclProbe.query('COMMIT');
     schemaDefaultAclProbeInstalled = true;
@@ -210,7 +213,10 @@ try {
       await schemaDefaultAclProbe.query('BEGIN');
       await schemaDefaultAclProbe.query('SET LOCAL ROLE ghm_schema_owner');
       await schemaDefaultAclProbe.query(
-        'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM postgres',
+        'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime',
+      );
+      await schemaDefaultAclProbe.query(
+        'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner REVOKE EXECUTE ON FUNCTIONS FROM ghm_runtime',
       );
       await schemaDefaultAclProbe.query('COMMIT');
     } else {

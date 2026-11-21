@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { readFile } from 'node:fs/promises';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
@@ -8,11 +9,31 @@ const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
 const assertionSecret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
 if (!assertionSecret || Buffer.from(assertionSecret, 'base64').length !== 32) throw new Error('A 32-byte gateway assertion test key is required');
 if (!runtimeUrl || !migratorUrl || !gatewayUrl || new Set([runtimeUrl, migratorUrl, gatewayUrl]).size !== 3) throw new Error('Distinct runtime, migrator and actor gateway database URLs are required');
+const expectedDatabase = 'ghm_disposable_test';
+if (process.env.GHM_QUALIFICATION_DATABASE_NAME !== expectedDatabase) throw new Error('Business profile cutover rehearsal is restricted to ghm_disposable_test');
+for (const [label, value] of [['runtime', runtimeUrl], ['migrator', migratorUrl], ['Actor Gateway', gatewayUrl]]) {
+  const parsed = new URL(value);
+  if (!['localhost', '127.0.0.1'].includes(parsed.hostname) || parsed.pathname !== `/${expectedDatabase}`) {
+    throw new Error(`Business profile qualification ${label} URL must target local ${expectedDatabase}`);
+  }
+}
 
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
+const profileCutoverSql = await readFile(new URL('../database/cutovers/20261120020000_revoke_legacy_business_profile_runtime.sql', import.meta.url), 'utf8');
+const profileRollbackSql = await readFile(new URL('../database/cutovers/20261120020000_revoke_legacy_business_profile_runtime_rollback.sql', import.meta.url), 'utf8');
+const applySchemaOwnerSql = async (sql) => {
+  const client = await migratorPool.connect();
+  try {
+    await client.query('SET ROLE ghm_schema_owner');
+    await client.query(sql);
+    await client.query('RESET ROLE');
+  } finally {
+    client.release();
+  }
+};
 const marker = `ghm-profile-contract-${randomUUID()}`;
 let accountId;
 let memberAccountId;
@@ -96,15 +117,6 @@ try {
     schemaOwner.release();
   }
   console.log('LEGACY PROFILE COLUMN SIMULATION PASS');
-
-  await assert.rejects(
-    () => runtimePool.query(
-      'SELECT * FROM ghm.update_business_profile($1, $2, $3::jsonb)',
-      [accountId, businessId, JSON.stringify({ description: 'Direct runtime spoof attempt' })],
-    ),
-    /permission denied/,
-  );
-  console.log('RUNTIME DIRECT BUSINESS PROFILE RPC DENIAL PASS');
 
   await assert.rejects(
     () => runtimePool.query(
@@ -237,6 +249,40 @@ try {
     /Active actor account required/,
   );
   console.log('GATEWAY DISABLED ACTOR AUTHORIZATION ENFORCEMENT PASS');
+
+  const preCutoverAcl = await runtimePool.query(
+    "SELECT has_function_privilege(session_user, 'ghm.update_business_profile(bigint,bigint,jsonb)', 'EXECUTE') AS can_execute",
+  );
+  assert.equal(preCutoverAcl.rows[0].can_execute, true, 'legacy runtime grant must remain before the separately gated manual cutover');
+
+  await applySchemaOwnerSql(profileCutoverSql);
+  await assert.rejects(
+    () => runtimePool.query(
+      'SELECT * FROM ghm.update_business_profile($1,$2,$3::jsonb)',
+      [accountId,businessId,JSON.stringify({description:'Direct runtime spoof attempt'})],
+    ),
+    /permission denied/,
+  );
+  console.log('BUSINESS PROFILE LEGACY RUNTIME MANUAL CUTOVER DENIAL PASS');
+
+  await applySchemaOwnerSql(profileRollbackSql);
+  const rollbackCall = await runtimePool.query(
+    'SELECT * FROM ghm.update_business_profile($1,$2,$3::jsonb)',
+    [accountId,businessId,JSON.stringify({description:'Disposable rollback rehearsal'})],
+  );
+  assert.equal(rollbackCall.rowCount, 1);
+  assert.equal(rollbackCall.rows[0].description, 'Disposable rollback rehearsal');
+  console.log('BUSINESS PROFILE LEGACY RUNTIME ROLLBACK REHEARSAL PASS');
+
+  await applySchemaOwnerSql(profileCutoverSql);
+  await assert.rejects(
+    () => runtimePool.query(
+      'SELECT * FROM ghm.update_business_profile($1,$2,$3::jsonb)',
+      [accountId,businessId,JSON.stringify({description:'Direct runtime spoof after recutover'})],
+    ),
+    /permission denied/,
+  );
+  console.log('BUSINESS PROFILE LEGACY RUNTIME RECUTOVER PASS');
 
   console.log('GHM BUSINESS PROFILE CONTRACT POSTGRES QUALIFICATION: PASS');
 } finally {

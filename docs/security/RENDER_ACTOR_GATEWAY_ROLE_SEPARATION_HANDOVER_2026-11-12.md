@@ -3295,3 +3295,118 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 The missing URL is not a typo or a Render variable that can be guessed. It is missing because the Actor Gateway has not been deployed and does not yet have a valid database connection binding. The correct resolution is to create and qualify the gateway's real Cloudflare deployment and only then configure the exact hostname in Render. Under the currently verified no-cost/host constraints, the network-host prerequisite remains unresolved, so keep the startup gate intact and the production deployment/cutover blocked.
 
 No Cloudflare resource, route, tunnel, Hyperdrive config, secret, Render variable, database role/grant, deployment, or product cutover was created or changed while documenting this resolution.
+
+
+## 18 November 2026 — fresh live Render role and ledger-access evidence
+
+Before this inspection, the current Actor Gateway role-separation handover, production migration reconciliation handover, PR #298 migration-batch handover and PR #298 status were re-read. This section records a fresh read-only catalogue check against the existing Render PostgreSQL service `ghm-db` / database `ghm_db` (PostgreSQL 18, Frankfurt; Render service ID `dpg-dag0sdtbedkc7389vi2g-a`).
+
+**Connection identity**
+- Render's available query interface connected with `session_user=ghm_app_user`, `current_user=ghm_db_user`.
+- This is the application/admin-derived connection, not a dedicated `ghm_migrator` audit login.
+
+**Role catalogue**
+- `ghm_db_user` is LOGIN, non-superuser, and retains `CREATEROLE=true`, `CREATEDB=true`, `INHERIT=true`.
+- `ghm_app_user` is a member of `ghm_db_user` with INHERIT and SET enabled; the live query session operates as `ghm_db_user`.
+- The live membership catalogue showed ADMIN OPTION memberships from `ghm_db_user` over `ghm_actor_gateway`, `ghm_auditor`, `ghm_migrator`, `ghm_payment_provider` and `ghm_schema_owner`. It also showed multiple `ghm_runtime` membership rows with different SET/INHERIT/ADMIN OPTION attributes.
+- Effective membership checks showed `ghm_app_user` can SET ROLE `ghm_db_user` and `ghm_runtime`, but cannot directly SET ROLE `ghm_actor_gateway`, `ghm_migrator`, `ghm_schema_owner` or `ghm_payment_provider`.
+- This confirms the role-administration boundary remains unresolved. It does not authorize an improvised REVOKE/GRANT or credential change.
+
+**Ledger access**
+- Direct SELECT from `ghm.ghm_schema_migrations` failed with PostgreSQL SQLSTATE 42501 (permission denied).
+- The table is owned by `ghm_schema_owner`; the observed ACL grants SELECT to `ghm_auditor`, not the active `ghm_db_user` session.
+- The active session cannot SET ROLE `ghm_schema_owner`; no bypass was attempted.
+- `pg_stat_user_tables.n_live_tup=105` was visible, but its last auto-analyze was 2026-09-21. This is stale approximate table statistics, **not** a current exact ledger row count. Do not cite 105 as a verified live ledger count.
+- Catalog search returned zero `ghm.gateway_%` and zero `ghm.assert_actor_gateway%` routines in schema `ghm`. This is a direct catalogue observation; it is not a substitute for exact ledger/checksum reconciliation.
+
+**Disposition**
+- Exact production migration versions, checksums, row count and pending prefix remain unknown because the ledger could not be read.
+- The forensic audit must be run only with the intended dedicated `ghm_migrator` login over verified TLS, with its documented schema-owner SET path. Do not grant ledger SELECT to `ghm_app_user` as a workaround.
+- Preserve the existing Render support escalation for administrator/application role separation and obtain a fresh verified backup/recovery point before any role or ACL remediation.
+- No production data, role, membership, grant, ACL, migration, secret, Render setting, deployment or paid service was changed during this read-only inspection. No CI was run.
+
+
+## 18 November 2026 — dedicated migrator contract rechecked against live Render ACLs
+
+This is a follow-up read-only check against the existing Render `ghm-db` / `ghm_db` service. The current role-separation, migration-reconciliation and PR #298 handovers plus PR metadata and the exact migration-runner principal contract were reviewed first.
+
+**Important correction:** the dedicated `ghm_migrator` LOGIN role does exist in production. It is not absent. Its observed attributes are LOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION and NOBYPASSRLS. Its one direct membership is `ghm_schema_owner` with ADMIN OPTION=false, INHERIT=false, SET=true. That matches the intended migrator-to-owner SET edge.
+
+**The full current runner principal contract nevertheless fails on other live memberships and object ACLs:**
+- `ghm_db_user` remains a member of `ghm_migrator` with ADMIN OPTION=true, INHERIT=false, SET=false. The runner contract requires `migrator_member_count=0`.
+- `ghm_db_user` remains a member of `ghm_schema_owner` with ADMIN OPTION=true, INHERIT=false, SET=false, in addition to the intended `ghm_migrator -> ghm_schema_owner` edge. The runner contract requires exactly one member of `ghm_schema_owner`; live count is 2.
+- The exact `has_table_privilege` / `has_sequence_privilege` predicate used by `src/db/migrate.ts` returns `direct_relation_privileges=true` for `ghm_migrator`, while the contract requires false.
+- An `aclexplode` inspection confirms explicit ACL entries naming `ghm_migrator` (granted by `ghm_schema_owner`): SELECT/INSERT/UPDATE/DELETE on 16 relations (`commercial_event`, `commercial_founding_allocation`, `commercial_payment_attempt`, `commercial_payment_transaction`, `commercial_plan`, `commercial_plan_entitlement`, `commercial_plan_price`, `commercial_plan_version`, `commercial_provider_event`, `commercial_subscription`, `commercial_trial`, `country`, `currency`, `opportunity`, `opportunity_participant`, `opportunity_type`); SELECT/USAGE on 23 sequences. The ledger ACL remains SELECT for `ghm_auditor`, not `ghm_migrator`.
+- No `pg_default_acl` entry granting privileges to `ghm_migrator` was found. The per-object ACL entries are explicit; their originating migration/operation has not yet been identified. Do not guess their source.
+- The current Render query connector still authenticates as `ghm_app_user` / `ghm_db_user` (the Render Postgres metadata lists `databaseUser=ghm_app_user`). This session cannot SET ROLE to `ghm_migrator` or `ghm_schema_owner`, so it cannot execute the intended forensic audit as the dedicated login.
+
+**Disposition:** the role exists and its one intended owner SET edge is correct, but the complete production migrator principal does not satisfy the current runner contract. Do not run the predeploy audit through the app/admin connector, and do not revoke these grants or memberships without a complete source/ownership/backup review and the provider/bootstrap authority path. The live migration ledger remains unreadable through this connector; exact production ledger rows/checksums/pending prefix remain unknown.
+
+No production grant, role, ACL, migration, credential, Render setting, deployment, data or payment state was changed. No CI was run.
+
+
+## 18 November 2026 — source trace of live migrator ACLs
+
+Before tracing, the current three handovers, PR #298 metadata, migration runner contract, historical PostgreSQL role-separation runbook/SQL plan, and relevant migration source files were re-read.
+
+**Source attribution — table grants**
+- `database/migrations/20260914100000_create_opportunity_core.sql` explicitly grants `SELECT, INSERT, UPDATE, DELETE` on `ghm.opportunity`, `ghm.opportunity_type`, `ghm.country`, and `ghm.currency` to `ghm_migrator`.
+- `database/migrations/20260916010000_create_opportunity_participant.sql` explicitly grants the same four table privileges on `ghm.opportunity_participant` to `ghm_migrator`.
+- `database/migrations/20260915150000_create_commercial_schema.sql` explicitly grants the same four table privileges on 11 Commercial tables: `commercial_plan`, `commercial_plan_version`, `commercial_plan_entitlement`, `commercial_plan_price`, `commercial_trial`, `commercial_subscription`, `commercial_payment_attempt`, `commercial_payment_transaction`, `commercial_provider_event`, `commercial_event`, and `commercial_founding_allocation`.
+- These three source migrations account for all 16 table names observed in the live explicit ACL expansion. Live ACLs identify `ghm_schema_owner` as grantor, consistent with execution under the migration owner; the original migration statements identify the source intent. The grants are explicit legacy migration-authority grants, not default ACL entries.
+
+**Source attribution — sequence grants**
+- The Opportunity Core migration grants `USAGE, SELECT ON ALL SEQUENCES IN SCHEMA ghm TO ghm_migrator`.
+- The Commercial schema migration repeats the same broad all-sequences grant.
+- The Opportunity Participant migration adds explicit `USAGE, SELECT` on `ghm.opportunity_participant_id_seq`.
+- Current live ACL expansion now counted **24 distinct sequences** (not 23): account_identity, business, business_membership, commercial_event, commercial_founding_allocation, commercial_payment_attempt, commercial_payment_transaction, commercial_plan_entitlement, commercial_plan, commercial_plan_price, commercial_plan_version, commercial_provider_event, commercial_subscription, commercial_trial, country, currency, enquiry, opportunity_capability_requirement, opportunity, opportunity_participant, opportunity_type, project, project_quote, and review identity sequences. Each has explicit `SELECT` and `USAGE` entries granted by `ghm_schema_owner`.
+- The two historical `ON ALL SEQUENCES` statements explain the broad grant pattern, but exact per-sequence provenance cannot be proven from the current ACL alone: each all-sequences statement affects only sequences existing at its execution time, and the later participant migration adds one named sequence. Do not claim the two statements alone prove the origin of every one of the 24 current entries without exact production ledger chronology or a historical ACL snapshot.
+
+**Why the current runner rejects this state**
+- Current `src/db/migrator-principal.ts` explicitly requires `direct_relation_privileges=false`.
+- Current `src/db/migrate.ts` computes that flag using effective `has_table_privilege` / `has_sequence_privilege` checks across every relation in schema `ghm`; the observed explicit grants cause the predicate to fail.
+- The same source contract requires zero members of `ghm_migrator` (live count 1) and exactly one member of `ghm_schema_owner` (live count 2). The extra memberships are documented in the historical role-separation runbook as bootstrap-`postgres` grants with ADMIN OPTION. That handover says `ghm_db_user` cannot revoke them and an independent provider/bootstrap-authority path is required.
+- The current `20261112170000_revoke_redundant_migrator_business_mapping_lookup.sql` removes one redundant function EXECUTE grant only; it does not remove relation/sequence ACLs or the bootstrap memberships.
+- The current forensic connection still cannot authenticate as `ghm_migrator`; therefore no exact live ledger/checksum audit has been completed.
+
+**Disposition and correction**
+- Correct the prior 23-sequence statement: current live explicit ACL expansion reports **24 sequences**. The previous count omitted one sequence and must not be repeated.
+- The source of all 16 table grants is now attributed to three named migrations. The broad sequence-grant policy is attributed to the Opportunity Core and Commercial schema migrations, with the Participant migration's named sequence grant also identified; exact historical per-sequence application chronology remains unproven.
+- Do not add speculative revoke migrations or alter production grants. Any cleanup must be designed against the exact approved migration history, dependency checks, recovery plan, and provider/bootstrap authority path. In particular, do not remove migration-owner privileges merely to make the current preflight pass.
+- No production role, membership, grant, ACL, data, migration, credential, Render setting, deployment, payment state, or paid resource was changed. No CI was run.
+
+
+## 18 November 2026 — gated remediation plan created
+
+A separate design-only plan was added at `docs/security/PRODUCTION_MIGRATOR_AUTHORITY_REMEDIATION_PLAN_2026-11-18.md` (commit `6f1a7808e3372ddd6e89b7a06713c6b74f146d89`). It sequences the work into: preserve evidence and verify backup; provider/bootstrap-owned removal of the two unintended membership edges; narrowly scoped removal of the 16 table and 24 sequence ACL entries while preserving ownership and the intended migrator SET edge; dedicated migrator read-only preflight and exact ledger export; then exact migration reconciliation before any separately approved execution plan.
+
+This is explicitly a design, not an authorization. No production SQL, role/ACL changes, backup operation, secret access, deployment, migration or CI occurred. PR #298 remains draft and its execution manifest remains empty.
+
+
+## 18 November 2026 — complete live bootstrap membership inventory correction
+
+A fresh read-only production query of `pg_auth_members` and `pg_roles`, checked against the 12 November database grant-authority handover and PostgreSQL role-separation runbook, establishes **six** bootstrap-`postgres` ADMIN OPTION memberships held by `ghm_db_user`: `ghm_actor_gateway`, `ghm_auditor`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime`, and `ghm_schema_owner`. Each has ADMIN=true, INHERIT=false, SET=false. Earlier remediation wording that only identified migrator and schema owner was incomplete.
+
+There is a separate non-admin `ghm_db_user -> ghm_runtime` edge granted by `ghm_db_user` (ADMIN=false, INHERIT=true, SET=true). Preserve that runtime SET edge until the separately gated runtime credential cutover is qualified; do not conflate it with the bootstrap ADMIN OPTION edge. `ghm_app_user -> ghm_db_user` remains grantor postgres, ADMIN=false, INHERIT=true, SET=true. `ghm_db_user` remains LOGIN/INHERIT with CREATEDB=true and CREATEROLE=true, so the legacy application authority chain remains a critical isolation issue.
+
+Live role flags show the target actor-gateway, auditor, migrator, payment-provider and runtime roles are non-elevated; auditor and schema owner are NOLOGIN. Those target flags do not neutralize `ghm_db_user`'s admin-option membership authority. Each of the six edges needs purpose-specific dependency and recovery analysis; do not bulk revoke them. The detailed remediation plan now contains the corrected complete inventory (commit `8994a57dc974690473725bed0792189423443fcb`).
+
+No production membership, role attribute, grant, ACL, data, credential, service, setting, deployment, migration, backup or payment state was changed. No CI was run. PR #298 remains draft and its execution manifest remains empty.
+
+
+## 18 November 2026 — production role/service dependency map
+
+Added `docs/security/PRODUCTION_ROLE_SERVICE_DEPENDENCY_MAP_2026-11-18.md` (commit `f455277958d96783f235a2928073d95a3494c848`). This was preceded by re-reading the existing remediation plan, role/migration/hosting/Auth Issuer/PayFast handovers, relevant PR states, source principal contracts and live Render/DB inventory.
+
+The map distinguishes:
+- `ghm_runtime`: intended active Resource API identity; service is GHM-Internal-Runtime. The actual secret value was not read, so the configured identity remains to be independently verified without disclosing the credential.
+- `ghm_migrator`: operator-controlled standalone migration identity; no Render service. Current live direct ACL and bootstrap membership contract still fails.
+- `ghm_schema_owner`: NOLOGIN schema/ledger ownership identity; preserve its ownership and the one intended migrator SET edge.
+- `ghm_actor_gateway`: role exists but has no gateway functions/grants or dedicated production service. The always-on Render host is explicitly cost-blocked; do not use the Resource API or a sandbox service as substitute.
+- `ghm_auditor`: NOLOGIN audit privilege role with ledger SELECT; only observed member is legacy `ghm_db_user` via bootstrap ADMIN OPTION, so it is not an independent usable audit login.
+- `ghm_payment_provider`: correct production LOGIN role and two PayFast settlement functions now exist; provider can execute both while runtime cannot. This corrects stale older PayFast handovers, but does not mean PayFast is activated or a production callback service exists. PayFast remains paused.
+- `ghm_auth_issuer`: source implementation exists, but production role and dedicated service are absent.
+
+Fresh role/privilege checks also reconfirmed six bootstrap-`postgres` ADMIN OPTION memberships held by `ghm_db_user`, plus the separate non-admin runtime SET edge and the app-user-to-db-user legacy edge. A point-in-time `pg_stat_activity` sample showed only the current connector as `ghm_app_user`; it is not evidence that services never connect.
+
+No environment variable values or credentials were read. No role, ACL, service, secret, backup, deployment, migration, payment state or CI was changed. No additional cost.

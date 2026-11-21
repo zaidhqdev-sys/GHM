@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
-import { findOutOfOrderPendingMigration } from './migration-order';
+import { assertAppliedMigrationNames, findOutOfOrderPendingMigration } from './migration-order';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
 import {
   migrationSqlChecksum,
@@ -100,7 +100,7 @@ test('allows a fully applied migration history', () => {
 });
 
 
-test('production migration allowlist permits only its configured pending suffix', () => {
+test('production migration inventory rejects omitted pending entries and stale applied entries', () => {
   const migrations = [
     { version: '20261110100000', name: 'approved_first' },
     { version: '20261110120000', name: 'approved_second' },
@@ -110,16 +110,21 @@ test('production migration allowlist permits only its configured pending suffix'
     () => assertProductionPendingMigrationAllowlist(
       migrations,
       new Set(['20261110100000']),
-      [
-        { version: '20261110100000', name: 'approved_first' },
-        { version: '20261110120000', name: 'approved_second' },
-      ],
+      migrations.slice(0, 2),
     ),
-    /Production migration allowlist mismatch: refusing to execute 1 unapproved pending migration\(s\)/,
+    /inventory mismatch.*missing pending: 20261110140000_unapproved_third/,
+  );
+  assert.throws(
+    () => assertProductionPendingMigrationAllowlist(
+      migrations,
+      new Set(['20261110100000']),
+      migrations,
+    ),
+    /stale\/already-applied: 20261110100000_approved_first/,
   );
 });
 
-test('production migration allowlist accepts a pending subset after earlier entries were applied', () => {
+test('production migration inventory accepts only the exact pending suffix after earlier entries were applied', () => {
   const migrations = [
     { version: '20261110100000', name: 'approved_first' },
     { version: '20261110120000', name: 'approved_second' },
@@ -127,7 +132,7 @@ test('production migration allowlist accepts a pending subset after earlier entr
   assert.doesNotThrow(() => assertProductionPendingMigrationAllowlist(
     migrations,
     new Set(['20261110100000']),
-    migrations,
+    migrations.slice(1),
   ));
 });
 
@@ -152,4 +157,28 @@ test('production migration allowlist rejects duplicate versions', () => {
     ),
     /contains duplicate version/,
   );
+});
+
+
+test('applied migration ledger names must match the repository migration for that version', () => {
+  const migrations = [
+    { version: '20261110210000', name: 'actor_gateway_guard' },
+    { version: '20261110220000', name: 'actor_gateway_identity_read' },
+  ];
+  assert.doesNotThrow(() => assertAppliedMigrationNames(migrations, [
+    { version: '20261110210000', name: 'actor_gateway_guard' },
+  ]));
+  assert.throws(
+    () => assertAppliedMigrationNames(migrations, [
+      { version: '20261110210000', name: 'different_migration_name' },
+    ]),
+    /Migration ledger name mismatch for 20261110210000: database=different_migration_name, repository=actor_gateway_guard/,
+  );
+});
+
+test('applied historical ledger rows absent from the repository remain governed by retained-history audit', () => {
+  assert.doesNotThrow(() => assertAppliedMigrationNames(
+    [{ version: '20261110210000', name: 'current_migration' }],
+    [{ version: '20260901000000', name: 'retained_historical_migration' }],
+  ));
 });

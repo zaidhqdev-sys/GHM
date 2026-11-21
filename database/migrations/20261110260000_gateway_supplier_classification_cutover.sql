@@ -1,7 +1,6 @@
--- Move supplier classification writes behind the isolated actor gateway.
--- The gateway verifies the GHM ES256 access token and derives the account ID
--- from its signed subject. The database checks the gateway login independently.
--- Revoke the legacy direct runtime RPC so callers cannot supply another admin's ID.
+-- Prepare the signed Actor Gateway supplier-classification wrapper.
+-- Keep the legacy runtime RPC available during the additive migration phase.
+-- Its runtime revocation is a separate manual cutover after the signed route is live.
 
 CREATE OR REPLACE FUNCTION ghm.gateway_update_business_supplier_classification(
   p_actor_account_id bigint,
@@ -33,11 +32,10 @@ ALTER FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigin
 
 REVOKE ALL ON FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigint, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime;
-GRANT EXECUTE ON FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigint, boolean) TO ghm_actor_gateway;
 
--- The old function remains callable only by trusted schema-owner code.
+-- Remove PUBLIC access, but retain the explicit legacy runtime grant until the
+-- separately gated manual cutover after signed Gateway route verification.
 REVOKE ALL ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime;
 
 COMMENT ON FUNCTION ghm.gateway_update_business_supplier_classification(bigint, bigint, boolean) IS
-  'Supplier classification write available only to ghm_actor_gateway. Actor account ID is derived from the ES256 token subject by the isolated gateway; direct ghm_runtime execution is revoked.';
+  'Supplier classification write prepared for the isolated Actor Gateway; the legacy runtime route remains available until a separately approved manual cutover.';

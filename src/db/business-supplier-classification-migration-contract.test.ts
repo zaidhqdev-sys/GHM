@@ -4,6 +4,10 @@ import path from 'node:path';
 import test from 'node:test';
 
 const migration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql'), 'utf8');
+const legacyRuntimeCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime.sql'), 'utf8');
+const legacyRuntimeRollback = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261120010000_revoke_legacy_supplier_classification_runtime_rollback.sql'), 'utf8');
+const qualification = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-business-supplier-classification-postgres.mjs'), 'utf8');
+const signedGatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql'), 'utf8');
 const gatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110260000_gateway_supplier_classification_cutover.sql'), 'utf8');
 const repository = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/repository.ts'), 'utf8');
 const identityContracts = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/contracts.ts'), 'utf8');
@@ -20,18 +24,32 @@ test('supplier classification is a canonical GHM Business field with a determini
   assert.match(identityContracts, /isSupplier\?: boolean/);
 });
 
-test('supplier classification writes require active owner or administrator membership in a SECURITY DEFINER function', () => {
+test('supplier classification writes require active membership and signed Gateway authority with deferred legacy cutover', () => {
   assert.match(migration, /SECURITY DEFINER/);
   assert.match(migration, /membership_status = 'active'/);
   assert.match(migration, /membership_role IN \('owner', 'administrator'\)/);
   assert.match(migration, /SET search_path = pg_catalog, ghm/);
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM PUBLIC/);
-  assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
-  assert.match(gatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) TO ghm_actor_gateway/);
   assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
+  assert.match(signedGatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint,bigint,uuid,text,bigint,boolean\) TO ghm_actor_gateway/);
+  assert.match(signedGatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint,bigint,uuid,text,bigint,boolean\) FROM PUBLIC,ghm_runtime,ghm_migrator/);
+  assert.match(legacyRuntimeCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint,bigint,boolean\)\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
+  assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
   assert.doesNotMatch(repository, /ghm\.update_business_supplier_classification/);
   assert.match(repository, /must be updated through the authenticated actor gateway/);
   assert.match(http, /supplierClassificationGatewayClient\.update/);
+});
+
+test('supplier legacy runtime cutover has a narrow manual rollback and disposable rehearsal', () => {
+  assert.match(legacyRuntimeCutover, /MANUAL CUTOVER ONLY/);
+  assert.match(legacyRuntimeRollback, /MANUAL ROLLBACK ONLY/);
+  assert.match(legacyRuntimeRollback, /GRANT EXECUTE ON FUNCTION ghm\.update_business_supplier_classification\(bigint,bigint,boolean\)\s+TO ghm_runtime/);
+  assert.doesNotMatch(legacyRuntimeRollback, /TO PUBLIC|TO ghm_actor_gateway|TO ghm_migrator/);
+  assert.match(qualification, /ghm_disposable_test/);
+  assert.match(qualification, /supplierCutoverSql/);
+  assert.match(qualification, /supplierRollbackSql/);
+  assert.match(qualification, /SUPPLIER LEGACY RUNTIME ROLLBACK REHEARSAL PASS/);
+  assert.match(qualification, /SUPPLIER LEGACY RUNTIME RECUTOVER PASS/);
 });
 
 test('public profile and directory expose only the canonical supplier boolean', () => {

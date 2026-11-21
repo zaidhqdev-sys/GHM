@@ -4,7 +4,7 @@ export interface RuntimeDatabaseFunctionPrivileges {
   executable_functions: string[];
 }
 
-// Exact pre-migration baseline from the disposable PostgreSQL 18.6 whole-database
+// Exact post-migration, pre-manual-cutover baseline from the disposable PostgreSQL 18.6 whole-database
 // SECURITY DEFINER inventory. Production enforcement stays gated until its own
 // catalog is captured and reconciled. Do not add a signature without reviewing its
 // actor binding, tenant scope, lifecycle checks and owning service.
@@ -49,9 +49,11 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.transition_business_capability_evidence(bigint, text, bigint, text)',
   'ghm.transition_business_capability_verification(bigint, text, text, bigint, text)',
   'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
+  'ghm.update_business_profile(bigint, bigint, jsonb)',
   'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
+  'ghm.update_business_supplier_classification(bigint, bigint, boolean)',
   'ghm.update_campaign(bigint, bigint, text, text)',
-  'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)'
+  'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)',
 ] as const;
 
 const CAMPAIGN_REVIEW_LEGACY_FUNCTIONS = [
@@ -114,6 +116,14 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
 ] as const;
 
+const SUPPLIER_CLASSIFICATION_LEGACY_FUNCTIONS = [
+  'ghm.update_business_supplier_classification(bigint, bigint, boolean)',
+] as const;
+
+const BUSINESS_PROFILE_LEGACY_FUNCTIONS = [
+  'ghm.update_business_profile(bigint, bigint, jsonb)',
+] as const;
+
 // Every independently qualified runtime privilege transition is represented here.
 // Registration write is revoked by the automatic 2026-11-17 migration; registration
 // read is revoked only by the separate manual gateway cutover. Keep them independent.
@@ -128,6 +138,8 @@ export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   businessHours: BUSINESS_HOURS_LEGACY_FUNCTIONS,
   trustScore: TRUST_SCORE_LEGACY_FUNCTIONS,
   businessLogo: BUSINESS_LOGO_LEGACY_FUNCTIONS,
+  supplierClassification: SUPPLIER_CLASSIFICATION_LEGACY_FUNCTIONS,
+  businessProfile: BUSINESS_PROFILE_LEGACY_FUNCTIONS,
 } as const;
 
 const normalizeSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
@@ -171,7 +183,7 @@ if (duplicateCutoverSignatures.length > 0 || cutoverSignaturesOutsideBaseline.le
   throw new Error('Runtime manual cutover groups overlap or contain signatures outside the reviewed baseline');
 }
 
-// There are 2^10 independently qualified runtime privilege-transition combinations.
+// There are 2^12 independently qualified runtime privilege-transition combinations.
 // The guard accepts only an exact combination of these reviewed revocations.
 const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
   { length: 2 ** cutoverGroups.length },
@@ -179,6 +191,12 @@ const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
     !cutoverGroups.some((group, index) =>
       (mask & (1 << index)) !== 0 && (group as readonly string[]).includes(signature),
     ),
+  ),
+);
+
+const REVIEWED_RUNTIME_FUNCTION_STAGE_KEYS = new Set(
+  REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
+    JSON.stringify(stage.map(normalizeSignature).sort()),
   ),
 );
 
@@ -201,21 +219,21 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   privileges: RuntimeDatabaseFunctionPrivileges,
 ): void => {
   const actual = privileges.executable_functions.map(normalizeSignature).sort();
-  const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
-    stage.map(normalizeSignature).sort(),
-  );
-  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
+  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 45
       || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
-      || stages.length !== 1024) {
+      || REVIEWED_RUNTIME_FUNCTION_STAGE_KEYS.size !== 4096) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
-  if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
-    const diagnostics = stages.map((expected, index) => ({
-      stage: index,
-      count: expected.length,
-      missing: expected.filter(signature => !actual.includes(signature)),
-      unexpected: actual.filter(signature => !expected.includes(signature)),
-    }));
+  if (!REVIEWED_RUNTIME_FUNCTION_STAGE_KEYS.has(JSON.stringify(actual))) {
+    const diagnostics = REVIEWED_RUNTIME_FUNCTION_STAGES.map((stage, index) => {
+      const expected = stage.map(normalizeSignature).sort();
+      return {
+        stage: index,
+        count: expected.length,
+        missing: expected.filter(signature => !actual.includes(signature)),
+        unexpected: actual.filter(signature => !expected.includes(signature)),
+      };
+    });
     throw new Error(
       `Runtime database function EXECUTE allow-list mismatch: actual=${JSON.stringify(actual)}, stages=${JSON.stringify(diagnostics)}`,
     );
