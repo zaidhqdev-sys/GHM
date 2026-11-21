@@ -47,7 +47,7 @@ export interface CreateBusinessCapabilityInput {
   readonly capabilityId: CapabilityId;
   readonly proficiencyLevel?: BusinessCapabilityProficiency | null;
   readonly description?: string | null;
-  readonly effectiveFrom?: Date;
+  readonly effectiveFrom?: Date | null;
   readonly effectiveUntil?: Date | null;
   readonly sourceReference?: string | null;
 }
