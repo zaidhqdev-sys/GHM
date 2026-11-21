@@ -358,3 +358,14 @@ The regression is in how the new audit combined two different lifecycle boundari
 Correction in progress: keep Gateway session-user table/column privileges in the fail-closed `direct_relation_privileges` check, but report the legacy runtime column-level INSERT state separately as `runtime_column_insert_privileges`. The dedicated disposable PostgreSQL cutover qualification continues to require runtime, migrator and Gateway column-level INSERT privileges all false after applying the manual cutover. This preserves detection and the strict post-cutover assertion without making the pre-cutover qualification impossible.
 
 The correction has not yet been committed or CI-validated. No production database, Render service, migration, ACL, role, secret, deployment or setting was changed. PR #303 remains draft/open; PR #298 and PR #297 remain separate.
+
+
+## PR #303 CI #5603 — full qualification passed — 2026-11-21
+
+GitHub Actions CI run #5603 (run ID `44923297235`) completed successfully for PR #303 head `9bb3a45266d51e60d9a08d26ca804d218e4a71e1`. Both workflow jobs passed: `quality` and `web-quality`.
+
+The completed `quality` job confirms success for the whole-database SECURITY DEFINER inventory script syntax check, isolated Actor Gateway database-principal qualification, pre-cutover issuer authority inventory, disposable issuer cutover, post-cutover authority inventory, and the pre/post authority-inventory comparison. This supersedes the earlier CI #5600 failure diagnosis: the column-level INSERT audit now distinguishes the pre-cutover `ghm_runtime` column grant from direct Actor Gateway session privileges while retaining the post-cutover fail-closed checks.
+
+Local focused validation on the same branch also passed: TypeScript build; Actor Gateway database-privilege tests (12/12); signed Business Capability create migration-contract tests (7/7); and Node syntax check of the guarded PostgreSQL qualification script (syntax only).
+
+PR #303 remains open and draft; it has not been merged. This CI qualification does not apply the manual cutover to production. No production database, Render service, deployment, credentials, roles, ACLs, secrets, or settings were changed. The manual cutover remains separately gated by its documented deployment, principal, role-model and verified-backup prerequisites. PR #298/#297 remain separate and untouched.
