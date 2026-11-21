@@ -257,3 +257,34 @@ User's latest terminal confirms the local catalogue script has no conflict-marke
 Combined diff review exposed only indentation cleanup needed around the newly inserted Gateway denial and following runtime direct-create denial: Gateway `await expectReject` currently has four leading spaces instead of two; following runtime `await expectReject` currently has zero leading spaces instead of two. Syntax remains valid, but normalize before staging. Git warns LF will be replaced by CRLF on next touch; this is a line-ending warning, not a syntax/conflict failure.
 
 After indentation normalization, re-run node --check, exact conflict-marker scan using `$null -ne $markers`, inspect `git diff -- scripts/qualify-capability-catalogue-governance.mjs`, then stage only this script with `git add -- scripts/qualify-capability-catalogue-governance.mjs`. Verify `git diff --name-only --diff-filter=U` is empty. Keep the two untracked files untracked. Then run targeted qualification and inspect the exact SQL signature/error behavior. No merge commit or push yet.
+
+## 21 November 2026 — catalogue qualification script indentation corrected
+
+The user supplied the latest local terminal output from `C:\GHM-main` during the paused PR #300 mainline merge.
+
+Verified:
+- Both exact formatting targets matched once each: the Gateway non-admin draft-create assertion and the following runtime legacy-create denial assertion.
+- The formatting-only corrections were applied. Both `await expectReject(` statements now use the intended two-space indentation.
+- `node --check scripts\qualify-capability-catalogue-governance.mjs` passed.
+- The conflict-marker scan returned no markers.
+- `git diff --check` reported no whitespace errors. Git emitted only the standard working-copy LF-to-CRLF conversion warning.
+- The displayed source lines confirm the Gateway non-admin create probe and runtime legacy create denial probe are properly nested and followed by the separate version-probe denial.
+
+Current local merge state at the user's capture:
+- `scripts/qualify-capability-catalogue-governance.mjs` remains the only unresolved path (`UU`).
+- The governance migration, Actor Gateway server, mainline migration contract test, and both mainline runtime privilege files are staged as the intended merge resolutions.
+- The two preserved untracked originals remain present:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- No merge commit or push has occurred.
+
+Remote review repeated before this continuation:
+- Re-read this local preflight handover and the canonical Actor Gateway migration-batches handover.
+- PR #300 remains open, ready for review (not draft), at feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; GitHub reports `mergeable=false` because the local merge has not been pushed.
+- PR #298 remains open/draft and separate; PR #297 remains open/draft and separate. Neither authorizes production migration execution.
+
+### Next local operation
+
+Before staging the script, inspect its complete diff against the merge base/stages and review that the reconciliation retains mainline Gateway catalogue route checks, typed feature helper usage consistently, signed assertion substitution checks, service- and Gateway-level non-admin denials, both legacy runtime EXECUTE denial probes, lifecycle checks, and runtime-versus-Gateway privilege boundary assertions. Then stage **only** `scripts/qualify-capability-catalogue-governance.mjs`; verify `git diff --name-only --diff-filter=U` is empty and that the two untracked files remain untouched. Do not commit or push until targeted tests and disposable PostgreSQL qualification pass.
+
+No production database, migration ledger, ACL/role, secret/environment, Render configuration/deployment, backup, payment state, or paid resource was changed in this task.
