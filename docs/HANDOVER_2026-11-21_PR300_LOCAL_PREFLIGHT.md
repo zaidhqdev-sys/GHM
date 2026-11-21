@@ -401,3 +401,29 @@ Remote review before this update:
 ### Next safe operation
 
 Inspect the full script's connection setup and its query/identity checks, and inspect the local environment variable **names and safely redacted host/database components only**. Do not print credentials, passwords, full connection strings, or secrets. Use `new URL(connectionString)` locally to report hostname, port, database pathname, and username only; redact username if it embeds sensitive identifying data. Then establish that all three connections point to the same disposable local PostgreSQL instance (with separate intended roles), preferably by querying `current_database()`, `current_user`, `session_user`, `inet_server_addr()`, and `inet_server_port()` through each connection. Do not execute the qualification script until those checks confirm the target is local/disposable. If no safe disposable target is configured, stop and report that limitation rather than substituting production.
+
+
+## 21 November 2026 — local dotenv probe found no qualification variables in process environment
+
+The user supplied the connection-setup inspection and redacted environment probe from `C:\GHM-main`.
+
+Verified:
+- The qualification script imports `dotenv/config` and reads:
+  - `GHM_RUNTIME_DATABASE_URL`, falling back to `DATABASE_URL`
+  - `GHM_ACTOR_GATEWAY_DATABASE_URL`
+  - `GHM_MIGRATOR_DATABASE_URL`
+  - `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`
+  - `DATABASE_SSL`
+- The user's separate Node probe using `require('dotenv').config()` reported all four database URL variables as NOT SET. The probe did not report the assertion secret or DATABASE_SSL.
+- Local Windows services `postgresql-x64-17` and `postgresql-x64-18` are both running.
+- This does not prove the `.env` file is absent: the probe was run from the current working directory and only loaded the default `.env` path. It does establish that the expected variables were not loaded by that invocation. Need inspect the actual `C:\GHM-main\.env` file's existence and parse only the relevant variable names and redacted connection metadata. Do not print secrets or full connection strings.
+- The qualification script's three database pools remain unverified. Do not run qualification until the three target identities are confirmed local/disposable and separate roles on the intended local PostgreSQL instance. Never substitute Render `ghm_db`.
+
+Remote review repeated before this task:
+- Re-read this preflight handover.
+- PR #300 remains open/not draft and GitHub mergeable=false; PR #298 remains open/draft and mergeable=true; PR #297 remains open/draft and mergeable=false.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` both still exist.
+
+### Next action — inspect the actual local .env safely
+
+From `PS C:\GHM-main>`, check the current directory and `.env` existence, then parse `.env` directly without loading or printing secret values. Report only presence, hostname, port, database name, and whether a username/password is set for each required URL; report assertion-secret presence and decoded byte length only. Also inspect whether `DOTENV_CONFIG_PATH` is set, but do not print any value that could contain a secret. No edits, staging, database connections, qualification, commit, or push in this inspection step.
