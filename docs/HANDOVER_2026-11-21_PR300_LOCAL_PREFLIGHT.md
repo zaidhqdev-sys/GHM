@@ -704,3 +704,26 @@ Remote review refreshed before this update:
 Interpretation: the previously started no-commit merge is still active and its six intended results are staged. Do not abort/restart it and do not commit/push yet. Existing local DB snapshots were assessed as unsuitable for mutation-based qualification; no database was modified.
 
 Next operation: read-only verification in C:\GHM-main using `git ls-files -u`, staged diff summary, `git diff --cached --check`, JavaScript syntax check for the merged qualification script, and inspect package scripts / relevant test file names to select the targeted offline tests. Preserve both untracked files. If the index has no unmerged entries and syntax/whitespace checks pass, proceed to targeted tests that do not require a database; do not run the mutation-based PostgreSQL qualification until an isolated disposable DB is available. No merge commit, push, PR merge, production change, Render change, or deployment occurred.
+
+
+## 21 November 2026 — PR #300 staged merge validation
+
+The user supplied the definitive inspection from `C:\GHM-main` after the merge-state recovery.
+
+Validation results:
+- `git ls-files -u` produced no output: no unmerged index entries.
+- Staged diff summary: 6 files, 122 insertions, 40 deletions.
+- `git diff --cached --check` passed with no reported whitespace errors.
+- `node --check scripts/qualify-capability-catalogue-governance.mjs` passed.
+- Package scripts were inspected. `npm run build` is the repository TypeScript build; the full `npm test`/test script includes broad suite and database-oriented qualification commands, so avoid using it as a first targeted check.
+- Relevant contract tests include:
+  - `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` (newly staged)
+  - `src/db/runtime-database-privileges.test.ts`
+  - `src/db/actor-gateway-business-capability-create-migration-contract.test.ts`
+  - `src/db/capability-governance-migration-contract.test.ts`
+  - `src/db/actor-gateway-capability-assertion-migration-contract.test.ts`
+- Existing untracked preservation files remain in C:\GHM-main: the storage metadata .bak and `picomatch-reachability-scan.txt`. Do not stage or remove them.
+
+Remote review refreshed before the task: PR #300 remains open/not draft/unmerged and GitHub reports `mergeable=false`; PR #298 remains open/draft/unmerged and reports mergeable; PR #297 remains open/draft/unmerged and reports not mergeable. Both relevant branches remain present. Current PR #300 local preflight handover and canonical migration-batches handover were re-read.
+
+Next: run `npm run build` in C:\GHM-main, then run only the compiled offline contract/unit tests for the five files listed above using `node --test`. These tests must be checked for database connectivity before invocation; contract tests should be source/DDL assertions, not live database qualification. Do not run `npm run qualify:capability-catalogue-governance`, `npm run migrate`, or any PostgreSQL-mutating qualification command against the old local snapshots. No merge commit, push, PR merge, production/Render/PayFast change, or database change occurred.
