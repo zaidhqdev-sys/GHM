@@ -7064,3 +7064,12 @@ Commits, in order:
 Remote read-back confirmed the nullable contract, validator, and seventh service test are present. This is source-only work; no local PowerShell/Node execution or GitHub Actions run has yet validated these commits. The CI workflow's push branch allowlist names the original PR #298 branch, not this continuation branch; the continuation branch has not been merged, and no duplicate PR was opened merely to trigger CI.
 
 Production migration batch manifest remains exactly `[]`. No production database, Render service, migration, deployment, credential, role, ACL, secret, payment, or hosting state was changed. PR #298 remains draft and unmerged; PR #297 remains separate.
+
+## Continuation branch CI enablement — 22 November 2026
+
+- The isolated continuation branch `feat/pr298-github-continuation-20261122` initially was not included in the CI workflow's push branch allow-list. This meant the source-only nullable Business Capability fix could not receive the normal push-triggered CI qualification.
+- Added the continuation branch to `.github/workflows/ci.yml` under the existing `push.branches` list. Existing path filters, jobs, disposable PostgreSQL safeguards, and all qualification steps are unchanged.
+- Workflow change committed as `cfd8d5625f89b00071b8f24cfd7b3ee42c0ce897`.
+- The workflow-run lookup available during this update did not return runs for this push; therefore no CI execution or test result is claimed. The workflow trigger must still be confirmed from GitHub Actions.
+- The nullable Business Capability contract/service/test changes remain source-reviewed only until CI completes. Production migration batch manifest remains exactly `[]`; no production DB, Render, migration, credential, ACL, or deployment operation was performed.
+- Original PR #298 remains draft and unmerged. The original PR branch and local `C:\GHM-main` worktree were not changed by this continuation-branch update.
