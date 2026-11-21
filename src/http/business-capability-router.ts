@@ -61,7 +61,7 @@ const parseCreateInput = (body: unknown): CreateBusinessCapabilityInput | null =
 
   const effectiveFrom = parseDate(input.effectiveFrom);
   const effectiveUntil = parseDate(input.effectiveUntil);
-  if (effectiveFrom === null || effectiveUntil === null && input.effectiveUntil !== null && input.effectiveUntil !== undefined) {
+  if (effectiveFrom === null && input.effectiveFrom !== null || effectiveUntil === null && input.effectiveUntil !== null && input.effectiveUntil !== undefined) {
     return null;
   }
 
@@ -70,7 +70,7 @@ const parseCreateInput = (body: unknown): CreateBusinessCapabilityInput | null =
     capabilityId: input.capabilityId as string,
     ...(Object.hasOwn(input, 'proficiencyLevel') ? { proficiencyLevel: input.proficiencyLevel as CreateBusinessCapabilityInput['proficiencyLevel'] } : {}),
     ...(Object.hasOwn(input, 'description') ? { description: input.description as string | null } : {}),
-    ...(effectiveFrom !== undefined ? { effectiveFrom: effectiveFrom as Date } : {}),
+    ...(effectiveFrom !== undefined ? { effectiveFrom: effectiveFrom as Date | null } : {}),
     ...(Object.hasOwn(input, 'effectiveUntil') ? { effectiveUntil: effectiveUntil as Date | null } : {}),
     ...(Object.hasOwn(input, 'sourceReference') ? { sourceReference: input.sourceReference as string | null } : {}),
   };
