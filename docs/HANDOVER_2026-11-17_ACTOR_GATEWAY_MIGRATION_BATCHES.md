@@ -7008,3 +7008,34 @@ Next validation still required:
 - The two database-backed qualification skips remain outstanding; do not run against production or Render.
 
 No production database, Render service, deployment, migration, credential, role, ACL, secret, or settings change was made by this validation. Preserve both known untracked local files and keep PR #298 draft and separate from PR #297.
+
+
+## 21 November 2026 — PR #298 Actor Gateway worker validation
+
+PR #298 was rechecked before this handover update and remains open, draft, and unmerged. Target branch: `feat/actor-gateway-production-migration-batches`; PR head at review time: `e027fe78ade006ab7a40e02f7e8f47a31e86249e`. PR #297 remains a separate open/draft stream; PR #300 remains closed/merged.
+
+Additional local validation completed from `C:\\GHM-main`:
+
+- `npm run typecheck:worker:actor-gateway`: passed (TypeScript worker project compilation; no errors).
+- `npm run test:worker:actor-gateway`: 8 tests, 8 passed, 0 failed, 0 skipped.
+- Worker contract coverage confirms the Cloudflare Node HTTP adapter, required Hyperdrive binding and isolated capability secret, public ES256 verification material only, database identity/ACL checks before HTTP listener startup, fail-closed startup/default-disabled public routes, no paid Cloudflare product provisioning, oversized JSON rejection/draining, and retryable initialization after transient startup errors.
+
+The previous full offline validation remains:
+- 174/174 compiled test files exercised across nine batches: 1,109 tests, 1,107 passed, 0 failed, 2 skipped.
+- Database qualification script syntax-only check passed; the script was not executed.
+- Offline SECURITY DEFINER authority tests: 4/4 passed.
+
+Combined observed test totals across the nine compiled-test batches, four SECURITY DEFINER tests, and eight worker contract tests: 1,121 tests; 1,119 passed; 0 failed; 2 skipped. Worker typecheck is a separate successful compilation check, not included in test counts.
+
+### Final repository review still outstanding
+
+The final local review has not yet been reported complete. It must include:
+- `git ls-files -u` (must be empty).
+- `git diff --cached --check` and `git diff --check`.
+- `git status --short --branch`.
+- Review staged and unstaged diffs, including `scripts/test-env.cjs` and the merged signed Business Capability changes.
+- Verify `config/production-migration-batches.json` remains exactly empty (`[]`).
+- Verify the reviewed runtime privilege model remains 45 functions, 12 groups, and 4,096 combinations.
+- Preserve the two known untracked local files; do not stage or delete them.
+
+The two database-backed qualification skips remain outstanding because they require separate runtime and migrator database URLs. No live database or Render qualification was performed. Do not execute the DB qualification script, production migrations, deployments, or credential/role/ACL/secret/settings changes. Keep PR #298 draft and separate from PR #297; do not merge absent explicit instruction.
