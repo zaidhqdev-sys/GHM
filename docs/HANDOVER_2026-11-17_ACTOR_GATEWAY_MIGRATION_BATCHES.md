@@ -6795,3 +6795,17 @@ User ran the read-only preflight in `C:\GHM-main`:
   - `picomatch-reachability-scan.txt`
 
 No branch switch or merge has yet been performed. The next safe operation is to check for path collisions between those two untracked files and the remote PR #298 tree, then create a local tracking branch from `origin/feat/actor-gateway-production-migration-batches`. Do not merge main until that checkout and its status are verified.
+
+
+## 21 November 2026 — PR #298 local tracking branch created
+
+Mandatory review repeated:
+- Re-read this handover at `ddb59ef634338bdadbb3cd85efce8a1a84654736`; refreshed PR #298/#297 and verified the PR #298 branch.
+- PR #298 remains open/draft/unmerged; PR #297 remains open/draft/unmerged.
+- User confirmed the two untracked files do not collide with any path in the PR #298 tree.
+- Local tracking branch `feat/actor-gateway-production-migration-batches` was created successfully from `origin/feat/actor-gateway-production-migration-batches`.
+- User's checkout output showed local HEAD `58b159be4b414efbf9ea29bf7347c766342b125d`, clean tracked state, and exactly the two known untracked preservation files.
+- The handover update that records the preceding preflight has since advanced the remote PR #298 branch to `10a072bf236b3971068d49a97bbd41dcd8b81b1`; local checkout has not yet fetched that documentation-only commit. Therefore the local branch is now one commit behind remote and must be fast-forwarded before merging main.
+- Current main remains `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+
+Next safe step: fetch and fast-forward the local PR #298 branch to its exact remote head (no merge of main yet), then verify HEAD/status and preservation of both untracked files. After that, begin the mainline merge as a separate task.
