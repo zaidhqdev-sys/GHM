@@ -630,3 +630,24 @@ Conclusion: do NOT run `npm run migrate` or the PR #300 qualification script aga
 Next step: inspect the existing local `ghm_restore_20261116` database read-only to determine whether it is a more recent, suitable isolated snapshot. Verify its max migration version, role attributes/memberships, required Gateway objects, and migrator direct privileges before selecting any target. If it is also unsuitable, stop and use source-level/CI qualification rather than improvising database setup. No new database, Render service, paid resource, production mutation, deployment, or PayFast work is authorized by this task.
 
 PR/branch/handover review was refreshed before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `9858e62e8e8c7e677f803002c6aceed13b6690a1`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. Feature branch and migration-batch branch remain present. No branch changes, merge, push, deploy or production operation occurred.
+
+
+## 21 November 2026 — restore snapshot suitability check
+
+The user supplied read-only inspection output from local PostgreSQL 18.6 database `ghm_restore_20261116`.
+
+Observed:
+- Maximum applied migration version: `20261109210000` (later than `ghm_payfast_qualification`'s `20261104130000`, but still before the Actor Gateway migration sequence).
+- Core `ghm.business_capability` and `ghm.capability` objects are present.
+- Actor Gateway assertion secret/nonce tables and the queried signed assertion/create functions are missing.
+- Roles `ghm_migrator`, `ghm_runtime`, and `ghm_schema_owner` exist with expected basic role flags; `ghm_actor_gateway` and `ghm_db_user` are absent.
+- `ghm_migrator -> ghm_schema_owner` membership has `ADMIN=false, INHERIT=false, SET=true`.
+- Migrator has database CONNECT, no database CREATE, no `ghm` schema USAGE/CREATE, and no direct table/sequence privileges. This satisfies the core direct-privilege portion of the current migration runner's principal contract.
+
+Assessment: `ghm_restore_20261116` is structurally closer to the migration runner's required least-privilege migrator setup than `ghm_payfast_qualification`. It is nevertheless NOT currently a PR #300 qualification target: it lacks the Gateway schema/function migrations and both required Gateway/admin roles. The first Actor Gateway principal guard migration explicitly requires a pre-provisioned `ghm_actor_gateway` LOGIN NOINHERIT principal and `ghm_db_user` administrator membership with ADMIN=true, INHERIT=false, SET=false. The repository handover says the Render-managed default administrator must be retained for controlled administration and must not be used for normal app execution. We must not casually fabricate production-role semantics on the restore snapshot.
+
+Safety decision: do not mutate `ghm_restore_20261116` either. Its name and role as an existing restore snapshot make it inappropriate to repurpose as a disposable qualification target without an explicit recovery/retention decision. No roles, grants, migrations, data, or other database objects were changed.
+
+The two existing local databases therefore both remain read-only evidence sources, not qualification targets. This task has ruled out both for mutation-based qualification under the current constraints. Continue with source-level and exact-head CI qualification for PR #300, and complete review of the in-progress local merge resolution in `C:\GHM-main` without connecting either local snapshot or production. The local merge must still be tested before any merge commit/push. If a dedicated disposable DB is unavailable and no new paid DB is permitted, do not create one; do not silently convert the restore snapshot.
+
+Before this task, refreshed PR #300/#298/#297 metadata, handover, and Actor Gateway branches. PR #300 remains open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 is open/draft/unmerged/mergeable=true at `788c4097c8ed484dc9a164895c99bc4858370d40`; PR #297 is open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. The feature branch and production migration batch branch remain present. No branch change, merge, push, deploy, or production operation occurred.
