@@ -6,6 +6,7 @@ import {
   RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
   RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
   RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+  RUNTIME_POST_REGISTRATION_IDENTITY_WRITE_FUNCTIONS,
   RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
   RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
   RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
@@ -26,11 +27,11 @@ const ALL_STAGES = Array.from({ length: 2 ** CUTOVER_GROUPS.length }, (_, mask) 
 
 const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 
-test('runtime startup accepts all 256 reviewed combinations of the eight remaining manual cutovers', () => {
-  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 39);
-  assert.equal(CUTOVER_GROUPS.length, 8);
-  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 3, 2, 1, 1, 1]);
-  assert.equal(ALL_STAGES.length, 256);
+test('runtime startup accepts all 1024 reviewed combinations of the ten independently qualified privilege transitions', () => {
+  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
+  assert.equal(CUTOVER_GROUPS.length, 10);
+  assert.deepEqual(CUTOVER_GROUPS.map(group => group.length), [3, 14, 1, 1, 3, 3, 2, 1, 1, 1]);
+  assert.equal(ALL_STAGES.length, 1024);
   assert.equal(RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length, 13);
 
   for (const functions of ALL_STAGES) {
@@ -103,27 +104,33 @@ test('runtime startup rejects added and missing grants in every reviewed cutover
   }
 });
 
-test('registration write is migration-revoked and the remaining legacy read is removed by manual gateway cutover', () => {
-  const registrationRead = 'ghm.read_business_registration_identity(bigint, bigint)';
-  const registrationWrite = 'ghm.update_business_registration_identity(bigint, bigint, text, text, text)';
-  assert.ok(!(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(registrationWrite));
-  assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(registrationRead));
-  for (const functions of [RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS, RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS, RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS, RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS]) {
-    assert.ok(!(functions as readonly string[]).includes(registrationWrite));
-    assert.ok(!(functions as readonly string[]).includes(registrationRead));
+test('automatic registration write-only migration and later manual read/write cutover are represented separately', () => {
+  const registration = [
+    'ghm.read_business_registration_identity(bigint, bigint)',
+    'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
+  ];
+  for (const signature of registration) {
+    assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
+  }
+
+  const read = registration[0];
+  const write = registration[1];
+  assert.ok((RUNTIME_POST_REGISTRATION_IDENTITY_WRITE_FUNCTIONS as readonly string[]).includes(read));
+  assert.ok(!(RUNTIME_POST_REGISTRATION_IDENTITY_WRITE_FUNCTIONS as readonly string[]).includes(write));
+  for (const functions of [
+    RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  ]) {
+    assert.ok(!(functions as readonly string[]).includes(read), read);
+    assert.ok(!(functions as readonly string[]).includes(write), write);
   }
 });
 
-test('migration-revoked capability governance signatures are absent from every manual-cutover stage', () => {
-  for (const signature of [
-    'ghm.create_capability_draft(bigint, text, text, text, uuid, integer, text, integer)',
-    'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)',
-    'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
-  ]) {
-    assert.ok(!(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
-    for (const functions of ALL_STAGES) assert.ok(!(functions as readonly string[]).includes(signature));
-  }
-});
 test('startup inventory measures only SECURITY DEFINER EXECUTE privileges', () => {
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /p\.prosecdef/);
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /has_function_privilege\(session_user, p\.oid, 'EXECUTE'\)/);

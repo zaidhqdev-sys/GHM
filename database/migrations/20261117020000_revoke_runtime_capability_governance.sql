@@ -1,4 +1,5 @@
 -- Close the legacy caller-supplied account-ID capability governance RPCs
+-- The required pg_temp-last path matches 20261112090000_pin_security_definer_search_path.
 -- only after the signed-assertion Actor Gateway replacements are installed.
 --
 -- This is a post-deployment cutover migration. Do not execute it until the

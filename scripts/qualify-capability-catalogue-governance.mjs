@@ -259,6 +259,13 @@ try {
   );
 
   await expectReject(
+    () => gatewayCall(businessId, 'capability.create',
+      'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+      [`${marker} Gateway Forbidden`, `${marker}-gateway-forbidden`, null, null, 0, null, 1]),
+    'GATEWAY NON-ADMIN DRAFT DENIAL PASS',
+    'System administrator permission required',
+  );
+  await expectReject(
     () => runtimePool.query(
       'SELECT * FROM ghm.create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
       [businessId, `${marker} Direct`, `${marker}-direct`, null, null, 0, null, 1],

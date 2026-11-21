@@ -4,7 +4,7 @@ export interface RuntimeDatabaseFunctionPrivileges {
   executable_functions: string[];
 }
 
-// Exact post-migration, pre-manual-cutover baseline from the disposable PostgreSQL 18.6 whole-database
+// Exact pre-migration baseline from the disposable PostgreSQL 18.6 whole-database
 // SECURITY DEFINER inventory. Production enforcement stays gated until its own
 // catalog is captured and reconciled. Do not add a signature without reviewing its
 // actor binding, tenant scope, lifecycle checks and owning service.
@@ -28,6 +28,7 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.calculate_business_trust_score(bigint, bigint)',
   'ghm.connect_service_assertion_consume(text, text, timestamp with time zone)',
   'ghm.create_campaign(bigint, bigint, text)',
+  'ghm.create_capability_draft(bigint, text, text, text, uuid, integer, text, integer)',
   'ghm.create_saved_business(bigint, bigint)',
   'ghm.delete_saved_business(bigint, bigint)',
   'ghm.get_business_directory_review_presentation(bigint, bigint)',
@@ -47,7 +48,10 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.storage_mark_deletion_pending(bigint)',
   'ghm.transition_business_capability_evidence(bigint, text, bigint, text)',
   'ghm.transition_business_capability_verification(bigint, text, text, bigint, text)',
+  'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
+  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
   'ghm.update_campaign(bigint, bigint, text, text)',
+  'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)'
 ] as const;
 
 const CAMPAIGN_REVIEW_LEGACY_FUNCTIONS = [
@@ -73,9 +77,18 @@ const AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS = [
   'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
 ] as const;
 
-const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
-  // The migration already revoked registration writes; manual cutover removes the remaining read.
+const REGISTRATION_IDENTITY_READ_LEGACY_FUNCTIONS = [
   'ghm.read_business_registration_identity(bigint, bigint)',
+] as const;
+
+const REGISTRATION_IDENTITY_WRITE_LEGACY_FUNCTIONS = [
+  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
+] as const;
+
+const CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS = [
+  'ghm.create_capability_draft(bigint, text, text, text, uuid, integer, text, integer)',
+  'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)',
+  'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
 ] as const;
 
 const BUSINESS_CAPABILITY_LEGACY_FUNCTIONS = [
@@ -101,13 +114,15 @@ const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
 ] as const;
 
-// Every independently qualified manual runtime cutover is represented here.
-// These are exact legacy signatures revoked by the corresponding SQL files in
-// database/cutovers/. No unrelated function is accepted as a stage transition.
+// Every independently qualified runtime privilege transition is represented here.
+// Registration write is revoked by the automatic 2026-11-17 migration; registration
+// read is revoked only by the separate manual gateway cutover. Keep them independent.
 export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
   campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
   authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
-  registrationIdentity: REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+  registrationIdentityWrite: REGISTRATION_IDENTITY_WRITE_LEGACY_FUNCTIONS,
+  registrationIdentityRead: REGISTRATION_IDENTITY_READ_LEGACY_FUNCTIONS,
+  capabilityGovernance: CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS,
   businessCapabilityMutations: BUSINESS_CAPABILITY_LEGACY_FUNCTIONS,
   savedBusiness: SAVED_BUSINESS_LEGACY_FUNCTIONS,
   businessHours: BUSINESS_HOURS_LEGACY_FUNCTIONS,
@@ -128,17 +143,20 @@ export const RUNTIME_POST_AUTH_ISSUER_FUNCTIONS = without(
 export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS = without(
   RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
 );
+export const RUNTIME_POST_REGISTRATION_IDENTITY_WRITE_FUNCTIONS = without(
+  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_WRITE_LEGACY_FUNCTIONS,
+);
 export const RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+  RUNTIME_POST_REGISTRATION_IDENTITY_WRITE_FUNCTIONS, REGISTRATION_IDENTITY_READ_LEGACY_FUNCTIONS,
 );
 export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, [...REGISTRATION_IDENTITY_READ_LEGACY_FUNCTIONS, ...REGISTRATION_IDENTITY_WRITE_LEGACY_FUNCTIONS],
 );
 export const RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS, [...REGISTRATION_IDENTITY_READ_LEGACY_FUNCTIONS, ...REGISTRATION_IDENTITY_WRITE_LEGACY_FUNCTIONS],
 );
 export const RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
-  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS, [...REGISTRATION_IDENTITY_READ_LEGACY_FUNCTIONS, ...REGISTRATION_IDENTITY_WRITE_LEGACY_FUNCTIONS],
 );
 
 const cutoverGroups = Object.values(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS);
@@ -153,8 +171,8 @@ if (duplicateCutoverSignatures.length > 0 || cutoverSignaturesOutsideBaseline.le
   throw new Error('Runtime manual cutover groups overlap or contain signatures outside the reviewed baseline');
 }
 
-// There are 2^9 independently qualified manual cutover combinations. The
-// guard accepts only an exact combination of these reviewed revocations.
+// There are 2^10 independently qualified runtime privilege-transition combinations.
+// The guard accepts only an exact combination of these reviewed revocations.
 const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
   { length: 2 ** cutoverGroups.length },
   (_, mask) => RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.filter(signature =>
@@ -186,9 +204,9 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
     stage.map(normalizeSignature).sort(),
   );
-  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 39
+  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
       || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
-      || stages.length !== 256) {
+      || stages.length !== 1024) {
     throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
