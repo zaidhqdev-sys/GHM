@@ -12,6 +12,7 @@ const leastPrivilege: ActorGatewayDatabasePrivileges = {
   schema_usage: true,
   schema_create: false,
   direct_relation_privileges: false,
+  runtime_column_insert_privileges: false,
   executable_functions: ['ghm.assert_actor_gateway_capability(bigint, text, bigint, uuid, text, text)'],
   expected_functions: ['ghm.assert_actor_gateway_capability(bigint, text, bigint, uuid, text, text)'],
   public_executable_functions: [],
@@ -131,9 +132,17 @@ test('requires every reviewed gateway signature even when a required function is
 });
 
 
-test('detects table and column-level INSERT grants for the session and runtime principals', () => {
+test('detects Gateway column INSERT as a direct privilege and reports pre-cutover runtime column INSERT separately', () => {
   assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /has_any_column_privilege\(session_user, c\.oid, 'INSERT'\)/);
-  assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /has_any_column_privilege\('ghm_runtime', c\.oid, 'INSERT'\)/);
+  assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /has_any_column_privilege\('ghm_runtime', c\.oid, 'INSERT'\)\s*\) AS runtime_column_insert_privileges/);
+  assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    runtime_column_insert_privileges: true,
+  }));
+  assert.throws(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    direct_relation_privileges: true,
+  }), /direct_relation_privileges/);
 });
 
 test('rejects EXECUTE grant option on Actor Gateway functions', () => {
