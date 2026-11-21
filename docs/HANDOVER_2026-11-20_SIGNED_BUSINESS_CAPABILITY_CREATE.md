@@ -333,3 +333,17 @@ The Actor Gateway database privilege audit now checks column-level INSERT across
 This source correction was committed on branch `fix/business-capability-column-privilege-audit` as `b4dad739d36383bc541cdc69e3b3a5d2c5ece364` and opened as draft PR #303. CI run #5599 (ID `44922904969`) is in progress; no CI pass is claimed yet. It has not been applied to any database. The manual cutover remains excluded from automatic migrations and must not be applied to production as part of this task. No production DB, Render service, deployment, credentials, roles, ACLs, secrets, or settings were changed. PR #298/#297 remain untouched.
 
 Next: sync the follow-up branch locally, run focused TypeScript build/tests and the guarded disposable-local PostgreSQL qualification only when three distinct localhost disposable principal URLs are available. Inspect CI after pushing; update this handover with exact commit and qualification results. Keep the manual production cutover gated on its documented deployment, principal, role-model and verified-backup prerequisites.
+
+
+## PR #303 local focused validation — 2026-11-21
+
+The PR #303 correction was synced into an isolated worktree at `C:\\GHM-pr303`, preserving the separate staged/unstaged/untracked work in `C:\\GHM-main`. The worktree is clean and tracks `origin/fix/business-capability-column-privilege-audit`.
+
+Local validation completed:
+- `npm ci`: PASS; zero vulnerabilities reported. npm emitted an approval warning for the `argon2` install script, but installation completed successfully.
+- `npm run build`: PASS.
+- `node --test dist/actor-gateway/database-privileges.test.js`: 12/12 PASS, including detection of table- and column-level INSERT grants for the session and runtime principals.
+- `node --test dist/db/actor-gateway-business-capability-create-migration-contract.test.js`: 7/7 PASS, including the manual create cutover contract.
+- `node --check scripts/qualify-business-capability-gateway-cutover-postgres.mjs`: PASS (syntax only; script not executed).
+
+GitHub CI run #5600 (ID `44922957860`) is in progress for the latest handover commit. No CI pass is claimed yet. Disposable PostgreSQL qualification remains outstanding; do not execute it until its runtime, Gateway and migrator URLs are verified as distinct disposable localhost targets. The manual cutover has not been applied to any live database. PR #303 remains open/draft; PR #298 and PR #297 remain separate and untouched.
