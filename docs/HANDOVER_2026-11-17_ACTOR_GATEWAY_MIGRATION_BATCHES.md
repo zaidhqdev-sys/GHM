@@ -6819,3 +6819,22 @@ After the tracking-branch creation, this handover was updated again, advancing t
 - Local branch was last reported at `58b159be4b414efbf9ea29bf7347c766342b125d`; it must be fast-forwarded to the current remote head before the mainline merge.
 - PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
 - No PR #298 source changes or mainline merge have been performed in this synchronization step.
+
+
+## 21 November 2026 — PR #298 local branch fast-forward verified
+
+Mandatory review before this task:
+- Refreshed PR #298 and #297 metadata, verified the PR #298 remote branch, refreshed current main SHA, and re-read this handover at `63d994f6de5d48f7b0d4891631513bbda7599051`.
+- PR #298 remains open/draft/unmerged at remote head `b2d399b9c03a876e2351b015263c83006f55976c`; PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- Current main remains `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+
+User-confirmed local operation in `C:\GHM-main`:
+- `git fetch origin --prune` succeeded.
+- `git merge --ff-only origin/feat/actor-gateway-production-migration-batches` succeeded.
+- Local HEAD and remote PR #298 branch both equal `b2d399b9c03a876e2351b015263c83006f55976c`.
+- Tracked working tree is clean.
+- The two known untracked files remain present and preserved:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+
+No mainline merge has yet been started. The next distinct task is to begin a no-commit/no-ff merge of `origin/main` into the synchronized PR #298 branch, inspect conflict/unmerged paths, and preserve the untracked files. Stop after merge staging/conflict detection; do not commit or push until the overlapping package/test/runtime privilege changes have been reviewed.
