@@ -1019,3 +1019,25 @@ Qualification correction: CI has now performed the full disposable PostgreSQL mi
 ### Merge decision
 
 All visible exact-head CI jobs/checks are green, PR head is unchanged, no unresolved review threads exist, and GitHub reports mergeable=true. Proceed with a normal GitHub merge of PR #300 using the merge-commit method and expected head SHA `f9e207fb88b1e93b3eca7e7562a11518b52075e8`. Do not squash/rebase, do not force-push, and do not deploy production services as part of this merge.
+
+
+## 21 November 2026 — PR #300 successfully merged into main
+
+Following the complete exact-head CI success and final metadata refresh, PR #300 was merged using GitHub's normal merge method with expected head SHA `f9e207fb88b1e93b3eca7e7562a11518b52075e8`.
+
+Verified GitHub merge result:
+- PR #300 state: closed; `merged=true`; merged at `2026-11-21T01:37:48Z`.
+- GitHub merge commit: `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+- Main branch now resolves to that exact merge commit.
+- Merge commit has the expected parents: mainline `0dc1b27c2b7de71c77d071966a9f374e13075e2b` and reviewed PR head `f9e207fb88b1e93b3eca7e7562a11518b52075e8`.
+- GitHub reports the merge commit signature as verified.
+- No squash, rebase, force-push, production database change, Render deployment, or payment activation was performed.
+- Exact-head CI #5594 passed both `web-quality` and `quality`, including all migrations applied to disposable PostgreSQL and the signed Business Capability lifecycle, assertion replacement, capability catalogue governance, gateway-only cutover, full test suite, migration policy tests, runtime boundary verification and SECURITY DEFINER inventory comparison.
+- Cloudflare Pages reported a successful branch preview for the PR head; this is not a production deployment.
+- No review submissions or inline review threads were present. Branch protection read was unavailable to this integration (HTTP 403); GitHub accepted the merge and the PR is confirmed merged.
+
+### Follow-on state
+
+PR #300 is complete. Do not repeat its qualification loop or reopen it absent a concrete defect. Continue with the separate PR #298 / #297 migration-batch workstreams only after their own handover/branch/PR reviews. Keep the corrected 50-entry repository inventory comparison distinct from a fresh live production migration-ledger audit. Production database migration execution, Render deployment, PayFast, and payment activation remain outside this completed PR #300 merge task.
+
+The user’s required operating protocol remains: review handovers, PRs, and branches before each next task, and update the relevant handover after each completed task.
