@@ -522,3 +522,16 @@ PR/branch/handover review repeated before this task:
 - PR #297 open/draft, unmerged, `mergeable=false`, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
 - Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` remain present; the Actor Gateway branch inventory was reviewed. No branch changed.
 - No source changes, database connections, qualification, merge commit, push, or deployment occurred.
+
+
+## 21 November 2026 — PostgreSQL 18 local qualification database found
+
+Read-only inventory on `127.0.0.1:5433` (PostgreSQL 18) returned:
+- Databases: `ghm_payfast_qualification`, `ghm_restore_20261116`, and `postgres`; all UTF8 and accepting connections, all owned by local `postgres`.
+- The named local `ghm_payfast_qualification` database definitely exists.
+- Role query for the expected names returned only `postgres` (superuser) and `ghm_schema_owner` (NOLOGIN, non-superuser, no create-db/role, no replication, no bypass-RLS). It did not return `ghm_app_user`, `ghm_db_user`, or `ghm_actor_gateway`.
+- The previous output does not establish whether other runtime/migrator login roles exist under different names, nor whether the qualification database has the current schema/migrations. No role or DB was changed.
+
+Next: connect only to the local `ghm_payfast_qualification` on 127.0.0.1:5433 and run SELECT-only introspection: current database/user, complete role names and attributes, schemas, and migration-ledger/table inventory. Do not create roles, change passwords, grant privileges, or execute migrations until we know the current state and can map the exact role model. `C:\GHM\.env` remains production-only and is prohibited for this work.
+
+PR/handover review refreshed immediately before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `687e78cc2d86fce67da60fe33f897781e1a09618`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. No source changes, DB mutation, qualification, merge commit, push or deployment occurred.
