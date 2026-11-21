@@ -6991,3 +6991,20 @@ Run the previously planned:
 - Review all changes including the test-only `GHM_AUTH_TOKEN_PEPPER` preload correction.
 
 Do not run database-backed qualification against production or Render. Do not execute production migrations, deploy, or change credentials, roles, ACLs, secrets, or settings. Preserve both known untracked local files. Keep PR #298 draft and separate from PR #297; do not merge absent explicit instruction.
+
+## 21 November 2026 — PR #298 final offline validation checkpoint
+
+PR #298 remains open, draft, and unmerged on `feat/actor-gateway-production-migration-batches`; fetched head at update time: `2efe0fa0ea737a3d8fe47cc78b0fa2022b589526`.
+
+Completed locally from `C:\GHM-main`:
+- Syntax-only validation passed: `node --check scripts/qualify-quoteflow-migration-account-provisioning-db.mjs`. The database qualification script was not executed.
+- Offline security-definer authority tests passed: 4 tests, 4 passed, 0 failed, 0 skipped.
+- The complete 174-file compiled test sweep remains recorded above: 1,109 tests, 1,107 passed, 0 failed, 2 skipped.
+
+Next validation still required:
+- `npm run typecheck:worker:actor-gateway`.
+- `npm run test:worker:actor-gateway`.
+- Final repository review: `git ls-files -u`, `git diff --cached --check`, `git diff --check`, `git status --short --branch`, inspect staged and unstaged diffs, verify `config/production-migration-batches.json` remains `[]`, and verify 45 runtime functions / 12 groups / 4,096 reviewed combinations.
+- The two database-backed qualification skips remain outstanding; do not run against production or Render.
+
+No production database, Render service, deployment, migration, credential, role, ACL, secret, or settings change was made by this validation. Preserve both known untracked local files and keep PR #298 draft and separate from PR #297.
