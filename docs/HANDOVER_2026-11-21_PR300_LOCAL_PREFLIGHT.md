@@ -727,3 +727,27 @@ Validation results:
 Remote review refreshed before the task: PR #300 remains open/not draft/unmerged and GitHub reports `mergeable=false`; PR #298 remains open/draft/unmerged and reports mergeable; PR #297 remains open/draft/unmerged and reports not mergeable. Both relevant branches remain present. Current PR #300 local preflight handover and canonical migration-batches handover were re-read.
 
 Next: run `npm run build` in C:\GHM-main, then run only the compiled offline contract/unit tests for the five files listed above using `node --test`. These tests must be checked for database connectivity before invocation; contract tests should be source/DDL assertions, not live database qualification. Do not run `npm run qualify:capability-catalogue-governance`, `npm run migrate`, or any PostgreSQL-mutating qualification command against the old local snapshots. No merge commit, push, PR merge, production/Render/PayFast change, or database change occurred.
+
+
+## 21 November 2026 — PR #300 targeted offline test result
+
+User supplied full output from the TypeScript build and five targeted Node test files in C:\GHM-main.
+
+Results:
+- `npm run build` succeeded (`tsc` exited successfully).
+- Targeted tests: 21 total, 20 passed, 1 failed.
+- The sole failure is in the newly staged `src/db/revoke-runtime-capability-governance-migration-contract.test.ts`, test title: `capability cutover continues to require schema-owner SECURITY DEFINER functions`.
+- Assertion expected regex `/has_function_privilege\(v_gateway_role, v_function, 'EXECUTE'\)/`.
+- Actual staged migration uses valid equivalent SQL formatting `has_function_privilege(v_gateway_role,v_function,'EXECUTE')` (no spaces after commas). It also checks runtime EXECUTE is absent and verifies owner, SECURITY DEFINER, and pinned search_path for the five signed Gateway functions.
+- Therefore the observed failure is a whitespace-sensitive source-contract assertion, not evidence of a PostgreSQL privilege failure. Do not alter the migration merely to add cosmetic whitespace. Adjust the test to accept optional whitespace around SQL arguments while preserving checks for Gateway EXECUTE and runtime non-EXECUTE; inspect the complete local test file before editing to ensure other assertions remain meaningful.
+- No DB qualification, migration execution, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+Remote review refreshed:
+- PR #300 open, non-draft, unmerged, `mergeable=false`.
+- PR #298 open/draft/unmerged, `mergeable=true`.
+- PR #297 open/draft/unmerged, `mergeable=false`.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` both still exist.
+- Re-read current PR #300 local preflight handover before recording this result.
+- Attempt to fetch the new staged contract test from the remote feature branch returned 404 because the file is part of the local staged merge result and is not present on that remote branch yet. The user's local test failure output provides the failing assertion and actual migration text; inspect local source in C:\GHM-main next.
+
+Next action: in C:\GHM-main, inspect the complete staged test file (e.g. `Get-Content src/db/revoke-runtime-capability-governance-migration-contract.test.ts`) and its staged diff, then make only the narrow regex whitespace-tolerance correction. Rebuild and rerun the five targeted tests. Preserve both untracked files. No production/database changes.
