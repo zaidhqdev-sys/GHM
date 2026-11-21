@@ -319,3 +319,23 @@ git status --short
 ```
 
 Do not stage the script until the helper's bind behavior and complete script reconciliation are verified. No local files or Git state were changed by this review; no merge commit, push, production operation, or deployment occurred.
+
+
+## 21 November 2026 — Gateway non-admin create bind arity verified
+
+The user supplied the requested helper inspection and merge-state output from `C:\GHM-main`.
+
+Verified directly from the displayed `gatewayCall` helper:
+- It creates the signed assertion from the original operation arguments.
+- It sends five leading values to PostgreSQL: `accountId`, assertion issue time, nonce, context, and signature, followed by the original operation arguments.
+- It shifts the original SQL placeholders from position 4 onward by one and inserts the assertion-context bind at position 4.
+- Therefore the Gateway non-admin create assertion's seven original capability arguments correctly become twelve total bind values, matching the transformed SQL placeholders `$1` through `$12`. The apparent 11-placeholder/seven-value mismatch is not a defect; no code change is required for this concern.
+- The Gateway helper and existing positive create call use the same binding convention. The service-layer and Gateway-level non-admin denial probes remain distinct.
+
+Current state in the user's output:
+- `scripts/qualify-capability-catalogue-governance.mjs` remains the only unresolved path (`UU`).
+- Mainline runtime privilege implementation/test, governance migration, Actor Gateway server and migration contract test remain staged.
+- The two preservation files remain untracked and must not be staged.
+- No commit, push, production DB operation or deployment occurred.
+
+PR #300 was rechecked while recording this result. Continue with local conflict resolution only after reviewing the complete combined script diff and final file content. Then stage only the script, verify the unresolved-path list is empty and the preservation files remain untracked. Do not commit/push until targeted tests and disposable PostgreSQL qualification pass.
