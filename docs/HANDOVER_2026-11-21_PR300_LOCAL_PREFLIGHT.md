@@ -377,3 +377,27 @@ Remote review repeated before this continuation:
 ### Next operation
 
 The merge is now conflict-free in the index but remains uncommitted and unpushed. Before commit, inspect the **entire staged merge diff** and confirm only the six intended tracked paths are staged; keep the two preservation files untracked. Inspect `package.json` and the qualification script's environment/connection-target guard to identify the exact test commands and prove the PostgreSQL target is disposable/local before executing it. Run targeted unit/contract tests and the complete disposable PostgreSQL qualification; do not run against Render `ghm_db`. Do not create the merge commit or push until those checks pass. No production database, migration ledger, ACL/role, secrets, Render configuration/deployment, backup, payment state, or paid resource was changed.
+
+
+## 21 November 2026 — staged diff reviewed; disposable-database target not yet proven
+
+The user supplied the staged summary, package scripts, qualification connection setup, and final status from `C:\GHM-main`.
+
+Confirmed:
+- Exactly six intended tracked files are staged; the path-set comparison emitted no differences.
+- Staged summary: 6 files changed, 122 insertions, 40 deletions.
+- The two preserved originals remain untracked and excluded.
+- The intended qualification entry point is `npm run qualify:capability-catalogue-governance`, which builds and runs `scripts/qualify-capability-catalogue-governance.mjs`.
+- The script loads `dotenv/config`, then selects runtime connection from `GHM_RUNTIME_DATABASE_URL ?? DATABASE_URL`, Gateway from `GHM_ACTOR_GATEWAY_DATABASE_URL`, and cleanup/migrator from `GHM_MIGRATOR_DATABASE_URL`. It requires all three and requires them to be distinct, plus a 32-byte assertion test key.
+- The inspected preflight does **not** establish that these URLs are local/disposable or reject production hosts. Distinct URLs alone do not establish safe targets. The qualification script creates test accounts/capabilities and performs cleanup through the migrator connection; therefore it must not be run until the actual resolved host/database/user identity for all three connections is independently confirmed as the disposable local qualification database and not Render `ghm_db`.
+- No qualification command was run, and no database was touched.
+
+Remote review before this update:
+- PR #300 is still open, ready for review (not draft), GitHub mergeable=false pending the local conflict-resolution merge being published.
+- PR #298 remains open/draft and separate; PR #297 remains open/draft and separate.
+- Relevant feature branch and migration-batches handover branch still exist.
+- The canonical preflight handover was re-read before appending this update.
+
+### Next safe operation
+
+Inspect the full script's connection setup and its query/identity checks, and inspect the local environment variable **names and safely redacted host/database components only**. Do not print credentials, passwords, full connection strings, or secrets. Use `new URL(connectionString)` locally to report hostname, port, database pathname, and username only; redact username if it embeds sensitive identifying data. Then establish that all three connections point to the same disposable local PostgreSQL instance (with separate intended roles), preferably by querying `current_database()`, `current_user`, `session_user`, `inet_server_addr()`, and `inet_server_port()` through each connection. Do not execute the qualification script until those checks confirm the target is local/disposable. If no safe disposable target is configured, stop and report that limitation rather than substituting production.
