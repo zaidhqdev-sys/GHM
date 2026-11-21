@@ -859,3 +859,31 @@ Remote review refreshed before this task:
 - Current handover read at `f4971d6d7137496ef43ab49cb2012655cf396ca9`.
 
 Next: run `npm run build`, then rerun the same five targeted offline test files. If they pass, proceed to final staged-diff and PR-head review. Preserve all untracked files. No database mutation, merge commit, push, PR merge, production/Render/PayFast action occurred.
+
+
+## 21 November 2026 — PR #300 targeted offline validation passed
+
+User supplied the final rebuild and targeted test output from C:\GHM-main.
+
+Results:
+- `npm run build` succeeded (`tsc` completed without errors).
+- Five targeted offline test files ran successfully.
+- 21 tests total: 21 passed, 0 failed, 0 skipped, 0 cancelled.
+- Coverage shown in the output includes:
+  - signed Business Capability canonical relation, payload binding, create assertion operation, business authority/catalogue state, lifecycle/verification/provenance, and Actor Gateway-only execution;
+  - forward-only signed assertion allowlist and manual create privilege cutover;
+  - HMAC-bound one-use actor assertion and operation binding;
+  - capability catalogue governance SECURITY DEFINER/admin authority and runtime table-DML boundary;
+  - the newly staged revocation migration contract: pinned search_path, schema-owner SECURITY DEFINER functions, Gateway EXECUTE and runtime non-EXECUTE;
+  - all 1,024 reviewed combinations of ten independent privilege transitions and startup rejection of added/missing grants;
+  - separate registration read/write cutovers, SECURITY DEFINER-only startup inventory, and Campaign/directory-review legacy signature state.
+- This is strong offline code/contract validation. It is NOT live PostgreSQL qualification of the mutation-based capability catalogue script. The old local restore DB was already shown to be behind and missing Gateway assertion objects, so it is not a valid qualification target. No database was changed.
+
+Remote review refreshed before this handover update:
+- PR #300 open, non-draft, unmerged; GitHub still reports `mergeable=false`.
+- PR #298 open/draft/unmerged; GitHub reports `mergeable=true`.
+- PR #297 open/draft/unmerged; GitHub reports `mergeable=false`.
+- `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches` both remain present.
+- Current preflight handover was re-read at `f919053ee18ab0a4be404924bfa14b28717616b3`.
+
+Next: final review of the six staged merge-result files, test coverage, and repository state in C:\GHM-main; confirm no conflict entries, inspect complete staged diff, verify no accidental changes/untracked files were staged, and compare local feature HEAD / merge parents with live PR #300 metadata. Because GitHub still reports mergeability false, do not attempt a PR merge or push until the local merge result is committed/pushed as appropriate and remote base/branch state is reconciled. User is fatigued by loops; once final review is clean, recommend completing the merge workflow rather than inventing further qualification requirements. Mutation-based live DB qualification remains explicitly unperformed and must be clearly disclosed; do not claim it passed.
