@@ -6881,3 +6881,37 @@ Runtime privilege inventory:
 ### Next task
 
 Resolve only the two identified conflicts using the above source-derived rules. Before staging, inspect both current conflict markers and ensure no conflict markers remain. Then stage only those two resolved paths and verify `git ls-files -u` is empty, while retaining all merge-staged mainline paths and both untracked files. Do not commit/push until the complete merged diff and qualification results are reviewed.
+
+## 21 November 2026 — PR #298 offline qualification progress (Batches 1–6)
+
+PR / branch checkpoint refreshed before recording this update:
+- PR #298 remains open, draft, and unmerged.
+- PR #298 head branch: `feat/actor-gateway-production-migration-batches`; head commit: `69e1e03b138fb9749f3eaf633201e7558fa9405e`; base: `main` at `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- PR #297 remains a separate open/draft stream; PR #300 is closed/merged.
+- The PR #298 branch remains the target for this handover. No production migration batch has been approved or executed.
+
+### Offline test batch results
+
+The original package test-file list contains 174 compiled test files. The safe-sized Node test runner is used because invoking the complete npm test command exceeds the Windows command-line limit. Each batch uses `--require ./scripts/test-env.cjs`; that preload now supplies a deterministic test-only `GHM_AUTH_TOKEN_PEPPER` so tests can exercise the auth-token code without weakening the production fail-closed pepper requirement.
+
+| Batch | Compiled test files | Tests | Passed | Failed | Skipped |
+|---|---:|---:|---:|---:|---:|
+| 1 | 1–20 | 107 | 106 | 0 | 1 |
+| 2 | 21–40 | 168 | 168 | 0 | 0 |
+| 3 | 41–60 | 105 | 104 | 0 | 1 |
+| 4 | 61–80 | 208 | 208 | 0 | 0 |
+| 5 | 81–100 | 160 | 160 | 0 | 0 |
+| 6 | 101–120 | 120 | 120 | 0 | 0 |
+| **Total** | **120 / 174** | **868** | **866** | **0** | **2** |
+
+All six batches completed successfully. The two skips are the known database-backed qualification cases that require separate runtime and migrator database URLs; they were not run against production, Render, or any other live database. This is offline qualification evidence only, not a claim that database-backed qualification is complete.
+
+### Remaining work
+
+- Continue with Batch 7 (files 121–140), Batch 8 (141–160), and Batch 9 (161–174).
+- Then run the previously specified offline security-definer tests, worker typecheck/tests, syntax-only check for the database qualification script, and final conflict/diff/manifest/45-function/12-group/4,096-state verification.
+- Preserve both known untracked local files; do not stage or delete them.
+- Keep `config/production-migration-batches.json` empty. No production DB, Render, deployment, credential, role, ACL, secret, or migration execution is authorized by these tests.
+- Do not merge PR #298 or combine it with PR #297 absent an explicit instruction.
+
+This entry records the completed qualification work so far; subsequent batches and final verification must be appended with their exact observed results.
