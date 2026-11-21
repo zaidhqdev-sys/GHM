@@ -449,3 +449,37 @@ Remote review before this handover update:
 ### Next local inspection
 
 From PowerShell, inspect only `C:\\GHM\\.env` existence and parse the exact five relevant variables safely (three database URLs, assertion secret, DATABASE_SSL). Never print raw values, usernames, passwords, or secret material. If no file exists, stop and report it. If it exists, report hostname, port, database name, and boolean credential presence only. Do not copy the file or point qualification at it until target identity is proven disposable/local.
+
+
+## 21 November 2026 — STOP: C:\\GHM .env points all qualification pools at production ghm_db
+
+The user supplied redacted connection metadata from `C:\\GHM\\.env` and clarified that `DATABASE_SSL` is distinct from an Actor Gateway database SSL-mode setting, which has not been entered into this .env.
+
+Observed metadata:
+- `GHM_RUNTIME_DATABASE_URL`: Render host `dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com`, database `ghm_db`.
+- `DATABASE_URL`: same Render host and database `ghm_db`.
+- `GHM_ACTOR_GATEWAY_DATABASE_URL`: host `dpg-dag0sdtbedkc7389vi2g-a`, database `ghm_db`.
+- `GHM_MIGRATOR_DATABASE_URL`: same Render host and database `ghm_db`.
+- The assertion secret is present and decodes to 32 bytes.
+- `DATABASE_SSL` is present.
+- No raw URLs, usernames, passwords, or secret material were exposed in the transcript.
+
+Critical conclusion:
+- All three qualification pools point to the same **Render production database `ghm_db`**, despite different URL strings / host representations. This is not a disposable local qualification target.
+- The qualification script provisions/updates the actor gateway assertion secret row, creates test accounts/capabilities, executes privileged operations, and attempts cleanup. Running it with these values would mutate production.
+- **DO NOT RUN** `npm run qualify:capability-catalogue-governance` with this .env. Do not load these variables into `C:\\GHM-main`, do not change the URLs to make them appear distinct, and do not run the script against Render `ghm_db`.
+- The user notes that Actor Gateway database SSL mode is separate and has not been configured in this .env. The qualification script itself uses `DATABASE_SSL === 'true'` to construct the pg TLS option for all three pools. This SSL distinction does not change the fact that the URLs target production. Do not guess or add an SSL mode setting.
+
+Remote review repeated before recording:
+- Re-read this PR #300 preflight handover.
+- PR #300 remains open/not draft and not yet mergeable at the remote feature head; PR #298 and #297 remain separate draft PRs.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` remain present.
+
+Current task outcome:
+- The local .env check is complete.
+- No DB connection was made, no qualification ran, no production rows/secrets/ACLs were changed, and no merge commit/push/deployment occurred.
+- The staged conflict-free merge state is unchanged; six intended tracked paths are staged and the two preservation files remain untracked.
+
+Next safe direction:
+- Do not proceed with live qualification. Continue with non-mutating checks that do not use database credentials: full staged diff review, package/unit/contract tests that do not connect to PostgreSQL, and static review of migration/script contracts.
+- If disposable PostgreSQL qualification is essential, it requires an already-existing local disposable database with the required schema/migrations and separate runtime, Gateway, and migrator roles. Do not create a new paid DB/service, revive the sandbox, or use production as a substitute. If no such local database is available, record the qualification as unavailable and keep the PR unmerged until the owner chooses an acceptable safe path.
