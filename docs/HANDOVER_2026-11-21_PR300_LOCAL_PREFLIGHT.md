@@ -751,3 +751,34 @@ Remote review refreshed:
 - Attempt to fetch the new staged contract test from the remote feature branch returned 404 because the file is part of the local staged merge result and is not present on that remote branch yet. The user's local test failure output provides the failing assertion and actual migration text; inspect local source in C:\GHM-main next.
 
 Next action: in C:\GHM-main, inspect the complete staged test file (e.g. `Get-Content src/db/revoke-runtime-capability-governance-migration-contract.test.ts`) and its staged diff, then make only the narrow regex whitespace-tolerance correction. Rebuild and rerun the five targeted tests. Preserve both untracked files. No production/database changes.
+
+
+## 21 November 2026 — inspected failing PR #300 contract assertion
+
+User supplied the complete local test source, staged diff, and migration privilege-check lines from C:\GHM-main.
+
+Confirmed test source contains two whitespace-sensitive regex assertions:
+- Gateway positive grant: `/has_function_privilege\(v_gateway_role, v_function, 'EXECUTE'\)/`
+- Runtime negative check: `/has_function_privilege\(v_runtime_role, v_function, 'EXECUTE'\)/`
+
+The migration's corresponding valid SQL calls are formatted without spaces after commas:
+- `has_function_privilege(v_gateway_role,v_function,'EXECUTE')`
+- `has_function_privilege(v_runtime_role,v_function,'EXECUTE')`
+
+The migration separately enforces:
+- `p.prosecdef=true`
+- `p.proowner=v_schema_owner`
+- pinned `search_path=pg_catalog, ghm, pg_temp`
+- Gateway role EXECUTE privilege is present
+- runtime role EXECUTE privilege is absent
+
+The narrow correction is confined to the test regexes: allow optional whitespace after the comma, e.g. `v_gateway_role,\s*v_function` and `v_runtime_role,\s*v_function`. Keep all assertions, including both positive and negative privilege checks, intact. Do not change migration SQL.
+
+Remote review before this task:
+- PR #300 open/non-draft/unmerged, mergeable=false.
+- PR #298 open/draft/unmerged, mergeable=true.
+- PR #297 open/draft/unmerged, mergeable=false.
+- Both feature and migration-batches branches exist.
+- Current handover read at `3f030ce22c1f94e5497441598bbec28b0cb6006e`.
+
+Next: apply only the two regex whitespace-tolerance changes in C:\GHM-main, stage the corrected test, rebuild, and rerun the same five offline test files. Preserve the migration and all untracked files. No DB/production/Render/PayFast change, merge commit, push, or PR merge.
