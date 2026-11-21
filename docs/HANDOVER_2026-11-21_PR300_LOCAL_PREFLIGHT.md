@@ -590,3 +590,22 @@ Source review confirms:
 - Migration `20261110210000_add_actor_gateway_principal_guard.sql` expects a dedicated `ghm_actor_gateway` LOGIN NOINHERIT principal with tightly bounded attributes/membership. The earlier local role inventory did not find that role. This local absence blocks use of a Gateway connection until we verify the exact role contract and decide how to provision an isolated local principal; it does not justify changing production or assuming a Render role fix.
 
 Next read-only local inspection will report the migration ledger rows/count, presence of the assertion secret table and signed wrapper functions, relevant role attributes/memberships, and effective table/sequence/function privileges. No local database objects or roles were changed; no qualification run, merge, push, production mutation or deployment occurred.
+
+
+## 21 November 2026 — local qualification prerequisite query results
+
+The user supplied the complete read-only output from local PostgreSQL 18.6 (`127.0.0.1:5433/ghm_payfast_qualification`). Findings:
+
+- Migration ledger `ghm.ghm_schema_migrations` has exactly 92 rows and columns `version`, `name`, `checksum`, `applied_at`. The displayed first 20 rows were not ordered by version, so they do not establish the latest applied version. The shown timestamps are all on 2026-11-04.
+- The required signed-Gateway objects are absent: `ghm.actor_gateway_capability_assertion_secret` and `ghm.actor_gateway_capability_assertion_nonce` both MISSING.
+- The queried signed-Gateway functions are absent: `ghm.assert_actor_gateway_capability(...)`, `ghm.gateway_create_business_capability(...)`, `ghm.gateway_create_capability_draft(...)`, and `ghm.gateway_list_capabilities(...)` all MISSING.
+- Core objects (`ghm.business_capability`, `ghm.capability`, `ghm.business_membership`, `ghm.account_identity`) are PRESENT.
+- `ghm_runtime` and `ghm_migrator` are LOGIN NOINHERIT and have no elevated role flags; `ghm_schema_owner` is NOLOGIN. `ghm_actor_gateway` and `ghm_db_user` are absent from the role output.
+- `ghm_migrator -> ghm_schema_owner` membership is non-admin, non-inheriting, SET=true. Runtime has schema USAGE, SELECT on the business capability table, no INSERT or DELETE on it, sequence USAGE/SELECT and 52 executable `ghm` functions. Migrator has no schema USAGE and no business-capability table SELECT/INSERT/DELETE, but has sequence USAGE/SELECT and 14 executable functions. Schema owner has broad schema/table/sequence privileges and 66 executable functions.
+- The ledger row query selected 20 rows without `ORDER BY version`; its displayed subset is not a reliable latest-version view. A follow-up read-only query must return `max(version)`, latest 20 ledger rows ordered descending, and the exact PR #300 migration versions.
+
+Conclusion: this local database is a populated older GHM snapshot, but it is NOT currently a valid PR #300 qualification target. It lacks the signed Actor Gateway migration layer and dedicated Gateway database principal. The qualification script must not be run against it yet. No role or database changes, migrations, or tests were executed. Production and Render remain untouched.
+
+Before this task, refreshed PR #300/#298/#297 metadata, current handover, and Actor Gateway branches. PR #300 remains open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 remains open/draft/unmerged/mergeable=true at `bc2b418e877da3bb9fd91689e5fd8d29727cfa42`; PR #297 remains open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. Branch inventory still contains `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches`. No merge, push, deployment, or production operation occurred.
+
+Next step: one read-only query to obtain the maximum migration version, latest 20 rows ordered descending, and exact presence of the two PR #300 migration versions. Then compare the local ledger to the repository migration sequence and decide whether a safe local-only migration qualification path is feasible. Do not provision roles or apply migrations until the migration order and role bootstrap requirements are confirmed.
