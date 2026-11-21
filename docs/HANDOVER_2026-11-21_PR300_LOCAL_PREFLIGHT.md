@@ -609,3 +609,24 @@ Conclusion: this local database is a populated older GHM snapshot, but it is NOT
 Before this task, refreshed PR #300/#298/#297 metadata, current handover, and Actor Gateway branches. PR #300 remains open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 remains open/draft/unmerged/mergeable=true at `bc2b418e877da3bb9fd91689e5fd8d29727cfa42`; PR #297 remains open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. Branch inventory still contains `feat/signed-business-capability-create` and `feat/actor-gateway-production-migration-batches`. No merge, push, deployment, or production operation occurred.
 
 Next step: one read-only query to obtain the maximum migration version, latest 20 rows ordered descending, and exact presence of the two PR #300 migration versions. Then compare the local ledger to the repository migration sequence and decide whether a safe local-only migration qualification path is feasible. Do not provision roles or apply migrations until the migration order and role bootstrap requirements are confirmed.
+
+
+## 21 November 2026 — local migration position and runner safety review
+
+The user supplied the exact local migration-position output for `ghm_payfast_qualification`:
+- Highest applied migration version is `20261104130000` (`isolate_payfast_settlement_identity`).
+- The two PR #300 migrations `20261120010000` and `20261120011000` are both NOT APPLIED.
+- The repository feature branch currently contains 147 timestamped migration files; 66 are newer than the local database's highest version, including the entire 2026-11-05 through 2026-11-20 sequence and both PR #300 migrations. This is a broad historical gap, not a two-migration-only update.
+
+Reviewed `src/db/migrate.ts` and `src/db/migrator-principal.ts` on the feature branch. The migration runner:
+- Requires explicit `GHM_MIGRATION_DATABASE_NAME` and `GHM_MIGRATION_DATABASE_HOST` allowlisted target configuration, connects as `ghm_migrator`, verifies the exact least-privilege identity, locks and applies all pending migrations in one transaction, checks checksums, and refuses out-of-order history.
+- Requires migrator to have no direct privileges on any `ghm` table, view, or sequence; no `ghm` schema USAGE/CREATE; exactly one non-inheritable SET membership to `ghm_schema_owner`; schema owner NOLOGIN and sole member of no other roles; and schema owner owns the `ghm` schema with database CREATE privilege.
+- The prior local privilege output showed `ghm_migrator` has sequence USAGE/SELECT privileges. This violates the runner's `direct_relation_privileges=false` requirement, so the existing `ghm_payfast_qualification` database is not a safe migration target even aside from its missing Gateway objects/role.
+- Migration `20261110210000_add_actor_gateway_principal_guard.sql` requires a pre-provisioned `ghm_actor_gateway` login and specific membership/role attributes before the Gateway migration sequence can proceed. That role is absent locally.
+- The repository's local init script is explicitly for disposable local-only roles but provisions only `ghm_schema_owner`, `ghm_migrator`, `ghm_runtime`, and `ghm_payment_provider`; it does not provision the dedicated Gateway principal or production-like `ghm_db_user` relationship.
+
+Conclusion: do NOT run `npm run migrate` or the PR #300 qualification script against `ghm_payfast_qualification`. Do not try to repair it by adding/revoking grants or roles; it is the wrong qualification target and already violates the migrator principal contract. No database mutation occurred.
+
+Next step: inspect the existing local `ghm_restore_20261116` database read-only to determine whether it is a more recent, suitable isolated snapshot. Verify its max migration version, role attributes/memberships, required Gateway objects, and migrator direct privileges before selecting any target. If it is also unsuitable, stop and use source-level/CI qualification rather than improvising database setup. No new database, Render service, paid resource, production mutation, deployment, or PayFast work is authorized by this task.
+
+PR/branch/handover review was refreshed before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `9858e62e8e8c7e677f803002c6aceed13b6690a1`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. Feature branch and migration-batch branch remain present. No branch changes, merge, push, deploy or production operation occurred.
