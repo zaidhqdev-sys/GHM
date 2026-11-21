@@ -6809,3 +6809,13 @@ Mandatory review repeated:
 - Current main remains `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
 
 Next safe step: fetch and fast-forward the local PR #298 branch to its exact remote head (no merge of main yet), then verify HEAD/status and preservation of both untracked files. After that, begin the mainline merge as a separate task.
+
+
+### PR #298 checkout synchronization — refreshed exact remote head
+
+After the tracking-branch creation, this handover was updated again, advancing the remote PR #298 branch. The latest refreshed GitHub PR metadata now confirms:
+- PR #298 exact remote head: `2411b51f099ea98ac495596589aa23fa04e5ec59`.
+- Current main remains `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+- Local branch was last reported at `58b159be4b414efbf9ea29bf7347c766342b125d`; it must be fast-forwarded to the current remote head before the mainline merge.
+- PR #297 remains open/draft/unmerged at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- No PR #298 source changes or mainline merge have been performed in this synchronization step.
