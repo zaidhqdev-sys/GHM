@@ -782,3 +782,27 @@ Remote review before this task:
 - Current handover read at `3f030ce22c1f94e5497441598bbec28b0cb6006e`.
 
 Next: apply only the two regex whitespace-tolerance changes in C:\GHM-main, stage the corrected test, rebuild, and rerun the same five offline test files. Preserve the migration and all untracked files. No DB/production/Render/PayFast change, merge commit, push, or PR merge.
+
+
+## 21 November 2026 — PR #300 contract-test regex correction staged
+
+User supplied the PowerShell result after applying the narrow correction in C:\GHM-main.
+
+Confirmed:
+- Only `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` was staged by this operation.
+- Gateway positive privilege assertion now tolerates optional whitespace after the first argument comma: `/has_function_privilege\(v_gateway_role,\s*v_function, 'EXECUTE'\)/`.
+- Runtime negative privilege assertion likewise tolerates optional whitespace: `/has_function_privilege\(v_runtime_role,\s*v_function, 'EXECUTE'\)/`.
+- Both assertions remain present; no migration SQL was changed.
+- The staged diff shows the new test file still contains its original two contract tests and both owner/SECURITY DEFINER/search_path assertions.
+- `git diff --check` and `git diff --cached --check` returned no errors.
+- Build and five targeted test rerun have NOT yet occurred after this correction.
+
+Remote PR/branch/handover review was performed immediately before this correction task: PR #300 open/non-draft/unmerged and mergeable=false; PR #298 open/draft/unmerged and mergeable=true; PR #297 open/draft/unmerged and mergeable=false; both feature and migration-batches branches exist; the current handover was re-read.
+
+Next: run `npm run build`, then rerun the same five offline tests from `dist/db`:
+`revoke-runtime-capability-governance-migration-contract.test.js`,
+`runtime-database-privileges.test.js`,
+`actor-gateway-business-capability-create-migration-contract.test.js`,
+`capability-governance-migration-contract.test.js`,
+`actor-gateway-capability-assertion-migration-contract.test.js`.
+If tests pass, review the entire staged diff and exact PR head. Preserve untracked files. No database qualification, migration execution, merge commit, push, PR merge, production/Render/PayFast action occurred.
