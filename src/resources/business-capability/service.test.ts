@@ -61,6 +61,16 @@ test('Business Capability creation passes authenticated context and narrowed inp
   assert.equal(created.businessId, 12); assert.equal(created.capabilityId, validInput.capabilityId);
 });
 
+test('Business Capability creation accepts null effective-from and forwards it for the database default', async () => {
+  const repository = new FakeRepository();
+  const service = new BusinessCapabilityServiceImpl(repository);
+  const input: CreateBusinessCapabilityInput = { ...validInput, effectiveFrom: null };
+
+  await service.createBusinessCapability(context, input);
+
+  assert.equal(repository.receivedCreate?.effectiveFrom, null);
+});
+
 test('Business Capability creation rejects invalid input before repository execution', async () => {
   const repository = new FakeRepository(); const service = new BusinessCapabilityServiceImpl(repository);
   await assert.rejects(() => service.createBusinessCapability(context, null as never), /input is required/);
