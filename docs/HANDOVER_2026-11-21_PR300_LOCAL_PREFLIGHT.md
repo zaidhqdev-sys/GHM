@@ -997,3 +997,25 @@ A fresh job-level poll of exact-head CI run `44850842154` on `f9e207fb88b1e93b3e
 - PR #300 remains open/non-draft/unmerged, exact head still matches the merge commit, and GitHub reports `mergeable=true`.
 
 This CI run is now performing disposable PostgreSQL qualification in the GitHub Actions environment. Do not equate the still-running migration step with successful live qualification. Wait for the complete `quality` job and workflow conclusion before making the merge decision. No Render deployment or production database change is part of this CI run.
+
+
+## 21 November 2026 — PR #300 exact-head CI fully green; merge review
+
+Mandatory pre-task review:
+- Re-read this handover at `bbf54b1c6cfe73f00882b24a209f968fbc9eda75` and the canonical Actor Gateway migration-batches handover.
+- Refreshed PR #300/#298/#297 metadata and verified both relevant feature branches still exist.
+- PR #300 remains open, non-draft, unmerged, exact head `f9e207fb88b1e93b3eca7e7562a11518b52075e8`, base `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, and GitHub reports mergeable=true.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. Separate streams remain untouched.
+
+Exact-head CI run #5594 (run ID `44850842154`) has completed with workflow conclusion `success`. Both jobs completed successfully:
+- `web-quality`: web build, web tests, dependency audit, and security-sensitive toolchain verification all passed.
+- `quality`: complete job passed, including applying all migrations to disposable PostgreSQL; isolated least-privilege DB roles; PostgreSQL 18 delegated CREATEROLE behavior; signed Business Capability lifecycle and two-session assertion replacement; system-admin capability catalogue governance; capability legacy RPC cutover and gateway-only access; signed Business Capability gateway cutover; all related gateway cutovers; full test suite; migration audit policy tests; runtime boundary verification; and before/after SECURITY DEFINER authority inventory comparison.
+- Separate exact-head Cloudflare Pages check run completed successfully and reports a successful **preview deployment** for commit `f9e207f`. This is a preview, not a production deployment.
+- No PR review submissions or inline review threads are present.
+- Attempted read-only branch-protection lookup returned HTTP 403 (resource not accessible to this integration). Do not claim branch-protection rules were inspected; GitHub's merge endpoint remains authoritative for whether configured merge requirements permit the merge.
+
+Qualification correction: CI has now performed the full disposable PostgreSQL migration and qualification suite successfully, including the PR #300 signed capability and catalogue governance paths. The earlier local limitation (no suitable local disposable DB) is superseded by this exact-head CI evidence. No production database was used by these CI qualification steps.
+
+### Merge decision
+
+All visible exact-head CI jobs/checks are green, PR head is unchanged, no unresolved review threads exist, and GitHub reports mergeable=true. Proceed with a normal GitHub merge of PR #300 using the merge-commit method and expected head SHA `f9e207fb88b1e93b3eca7e7562a11518b52075e8`. Do not squash/rebase, do not force-push, and do not deploy production services as part of this merge.
