@@ -986,3 +986,14 @@ Mandatory review completed:
 Wait for exact-head CI run #5594 to complete, then inspect its jobs and result. Do not merge PR #300 while CI is in progress. If CI succeeds, re-fetch PR metadata and exact head once more, review required checks/branch protection if accessible, and then proceed with the normal PR merge only if all required checks are green and GitHub still reports mergeable. If CI fails, inspect failing job logs and fix only the actual failure.
 
 Qualification boundary: TypeScript build and five targeted offline tests passed 21/21 before the merge commit. Mutation-based capability catalogue qualification against a valid disposable PostgreSQL 18 database remains unperformed; do not claim it passed. No production database, Render service, deployment, PayFast, or payment state changed.
+
+
+### CI progress update — exact merge commit #5594
+
+A fresh job-level poll of exact-head CI run `44850842154` on `f9e207fb88b1e93b3eca7e7562a11518b52075e8` shows:
+- `web-quality`: completed successfully, including web build, web tests, dependency audit and security-sensitive toolchain verification.
+- `quality`: still in progress. Completed successfully so far: isolated least-privilege database-role setup; PostgreSQL 18 delegated CREATEROLE membership reproduction; all qualification-script syntax checks (including signed capability and capability governance); TypeScript build; Cloudflare Worker bundle without deployment; and bundle diagnostics preservation.
+- Current in-progress step at the latest poll: **Apply all migrations to disposable PostgreSQL**. Subsequent PostgreSQL qualification and full test steps have not yet completed.
+- PR #300 remains open/non-draft/unmerged, exact head still matches the merge commit, and GitHub reports `mergeable=true`.
+
+This CI run is now performing disposable PostgreSQL qualification in the GitHub Actions environment. Do not equate the still-running migration step with successful live qualification. Wait for the complete `quality` job and workflow conclusion before making the merge decision. No Render deployment or production database change is part of this CI run.
