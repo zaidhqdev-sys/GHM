@@ -288,3 +288,34 @@ Remote review repeated before this continuation:
 Before staging the script, inspect its complete diff against the merge base/stages and review that the reconciliation retains mainline Gateway catalogue route checks, typed feature helper usage consistently, signed assertion substitution checks, service- and Gateway-level non-admin denials, both legacy runtime EXECUTE denial probes, lifecycle checks, and runtime-versus-Gateway privilege boundary assertions. Then stage **only** `scripts/qualify-capability-catalogue-governance.mjs`; verify `git diff --name-only --diff-filter=U` is empty and that the two untracked files remain untouched. Do not commit or push until targeted tests and disposable PostgreSQL qualification pass.
 
 No production database, migration ledger, ACL/role, secret/environment, Render configuration/deployment, backup, payment state, or paid resource was changed in this task.
+
+
+## 21 November 2026 — user's combined-diff review output examined; Gateway bind arity requires verification
+
+The user supplied the read-only review output from `C:\GHM-main`.
+
+Confirmed from the transcript:
+- The only unresolved path remains `scripts/qualify-capability-catalogue-governance.mjs`.
+- The mainline runtime implementation and test are staged as resolved; their staged diff retains the 43-function / ten-transition / 1,024-stage model and separately represents registration read, registration write, and capability-governance transitions.
+- The mainline governance migration, Actor Gateway server, and migration contract test are staged.
+- The two preserved untracked originals remain present and untracked.
+- The catalogue script combined diff shows the service-layer non-admin denial plus the added Gateway non-admin create denial, followed by the two runtime legacy create denial probes. No conflict marker or whitespace failure was reported in the immediately preceding user output.
+
+A concrete correctness check remains before staging:
+- The newly inserted Gateway denial call text contains placeholders `$1` through `$11`, while the visible supplied argument array contains seven values.
+- This is not yet confirmed to be a defect because the `gatewayCall` helper may inject signed-assertion bind values. Inspect the helper definition and its argument transformation before deciding. If it does not append four values, the SQL bind arity is inconsistent and must be fixed before qualification.
+- The user's combined diff excerpt is not a complete review of every conflict hunk; inspect the helper and the exact Gateway denial call in context, then review the complete script diff/stage content before staging.
+
+Next local read-only inspection:
+```powershell
+Write-Host "=== Gateway helper definition and bind handling ===" -ForegroundColor Cyan
+Select-String -Path "scripts\qualify-capability-catalogue-governance.mjs" -Pattern "gatewayCall|gatewayCreateDraft|gatewayUpdateDraft|gatewayTransition|gateway_create_capability_draft" -Context 8,18
+Write-Host "=== Exact Gateway non-admin assertion ===" -ForegroundColor Cyan
+$lines = Get-Content "scripts\qualify-capability-catalogue-governance.mjs"
+for ($i = 245; $i -le 280; $i++) { "{0,4}: {1}" -f ($i + 1), $lines[$i] }
+Write-Host "=== Current unresolved paths and status ===" -ForegroundColor Cyan
+git diff --name-only --diff-filter=U
+git status --short
+```
+
+Do not stage the script until the helper's bind behavior and complete script reconciliation are verified. No local files or Git state were changed by this review; no merge commit, push, production operation, or deployment occurred.
