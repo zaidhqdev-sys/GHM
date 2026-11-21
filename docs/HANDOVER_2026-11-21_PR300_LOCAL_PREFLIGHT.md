@@ -554,3 +554,22 @@ The initial database identity and role queries succeeded. The separate schema an
 Next read-only inspection: issue the schema, table and migration-ledger SELECT queries in a single `psql` invocation so the local postgres password is entered once interactively. Also inspect `pg_auth_members` membership and schema/table/function privileges relevant to `ghm_runtime`, `ghm_migrator`, `ghm_schema_owner` and prospective Actor Gateway. Do not create or alter roles or run migrations until schema and repo requirements are compared.
 
 PR/handover review refreshed before recording: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `ecc83c057941db56400e6d546c29518ed556b244`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. No local source changes, qualification run, merge commit, push, production mutation or deployment occurred.
+
+
+## 21 November 2026 — local schema, migration table and privileges inspected
+
+The user supplied the complete output of the combined read-only inspection on local PostgreSQL 18.6 at `127.0.0.1:5433/ghm_payfast_qualification`.
+
+Observed:
+- The `ghm` schema exists and is owned by `ghm_schema_owner`.
+- The query returned 62 `ghm` base tables, including `ghm.ghm_schema_migrations`, capability tables (`ghm.capability`, `ghm.business_capability`), and many other domain tables. This is a populated local GHM schema, not an empty database.
+- The listed table inventory did not show `ghm.actor_gateway_capability_assertion_secret`; the listing should be checked explicitly because the current qualification script expects that table. It also did not show an obvious dedicated migration-ledger table other than `ghm.ghm_schema_migrations`.
+- Membership output showed `ghm_migrator -> ghm_schema_owner` with NO ADMIN OPTION. No `ghm_actor_gateway` role was found in the earlier complete role inventory.
+- The role privilege query returned 507 rows, mostly repeated per-table grants for `ghm_migrator` and `ghm_schema_owner`. The output was large/truncated in chat; no complete per-function or sequence privilege assessment can be inferred from it. It did not demonstrate the runtime role's effective permissions.
+- All inspection was SELECT-only; no DB object, role, grant, secret, or migration was changed.
+
+Important correction: prior handover wording that schema and migration-ledger inventory were still unknown is superseded by this result. The schema and table inventory are now known at a high level; the precise migration rows, presence of the assertion secret table, Gateway role, and function/sequence privileges remain to be checked.
+
+Next task: use concise read-only SQL against this local database to (1) count/list migration ledger rows and latest versions, (2) test existence of `ghm.actor_gateway_capability_assertion_secret`, Gateway wrapper functions, and required capability objects, (3) summarize effective role memberships and schema/table/sequence/function grants without hundreds of repeated rows. Compare local schema to the migration(s) required by PR #300 before any mutation. Do not run the qualification script yet.
+
+PR/branch/handover review refreshed before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `2c1a1dd8e0519985ab8c5a7c1915ee4a76e5e821`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. The signed Business Capability feature branch remains present. No branch changed; no qualification, merge commit, push, production mutation or deployment occurred.
