@@ -7083,3 +7083,14 @@ Production migration batch manifest remains exactly `[]`. No production database
 - The service-level null regression test remains in place. TypeScript build, targeted tests, and full CI have not yet been executed on this branch; no execution result is claimed.
 - The repository insert path was inspected and confirmed to bind `input.effectiveFrom ?? null` into `COALESCE($5, now())`. No SQL change is needed for this nullable input.
 - CI push-branch enablement is recorded above. The production migration batch manifest remains exactly `[]`; no production database, Render service, migration, deployment, credential, role, ACL, or payment state was changed.
+
+## 22 November 2026 — continuation branch CI qualification in progress
+
+- Re-read PR #298, PR #297, the continuation and original PR branches, this migration-batches handover, the production migration dependency matrix, and the production migration reconciliation handover before continuing.
+- PR #298 remains open/draft/unmerged on `feat/actor-gateway-production-migration-batches` at `b6b96c44ac26544156e099373d3185a965b880fd`. PR #297 remains a separate open/draft PR at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. The continuation branch is separate and is not the head branch of PR #298; no PR retargeting or merge was performed.
+- Continuation branch head at this checkpoint: `f4aefd511e36f306cb2b317b4b7c804f9338223a`.
+- Push-triggered GitHub Actions CI run: [44963737631](https://github.com/zaidhqdev-sys/GHM/actions/runs/44963737631).
+- At the latest status inspection, the `web-quality` job had completed successfully. In the `quality` job, 51 steps had completed successfully with no failed steps; the main Test suite was still in progress. The subsequent database qualification, migration audit, runtime-boundary, and SECURITY DEFINER inventory steps were still pending. This is an in-progress checkpoint, not a passing CI result.
+- The workflow has already completed build, Worker bundle/smoke checks, disposable PostgreSQL migration application, SECURITY DEFINER shadowing/authority checks, plan-only production migration qualification against the isolated fixture, commercial consent/authority schema qualification, isolated principal checks, and several other disposable-PostgreSQL checks. Their individual step conclusions were successful in this run.
+- Next action is to inspect this exact run after completion, capture any failing step/log, correct only verified source defects on this continuation branch, and append a new handover checkpoint after each completed correction/qualification task. Do not run database-backed qualification against production or Render.
+- Production migration batch manifest was re-read and remains exactly `[]`. No production DB, Render service, migration, credential, role, ACL, deployment, payment state, or paid resource was changed. Preserve the original local worktree and keep PR #298 draft/unmerged.
