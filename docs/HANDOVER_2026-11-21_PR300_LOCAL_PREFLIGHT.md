@@ -535,3 +535,22 @@ Read-only inventory on `127.0.0.1:5433` (PostgreSQL 18) returned:
 Next: connect only to the local `ghm_payfast_qualification` on 127.0.0.1:5433 and run SELECT-only introspection: current database/user, complete role names and attributes, schemas, and migration-ledger/table inventory. Do not create roles, change passwords, grant privileges, or execute migrations until we know the current state and can map the exact role model. `C:\GHM\.env` remains production-only and is prohibited for this work.
 
 PR/handover review refreshed immediately before this task: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `687e78cc2d86fce67da60fe33f897781e1a09618`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. No source changes, DB mutation, qualification, merge commit, push or deployment occurred.
+
+
+## 21 November 2026 — local qualification database identity and role inventory
+
+On `127.0.0.1:5433`, database `ghm_payfast_qualification` was confirmed to be local PostgreSQL 18.6 on Windows; current database/user were `ghm_payfast_qualification` / `postgres`.
+
+Read-only role inventory in that local database found:
+- `ghm_runtime`: LOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, NOINHERIT.
+- `ghm_migrator`: LOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, NOINHERIT.
+- `ghm_payment_provider`: LOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, NOINHERIT.
+- `ghm_schema_owner`: NOLOGIN, non-superuser, no createdb/createrole/replication/bypass-RLS, INHERIT.
+- `postgres`: local superuser.
+- `ghm_actor_gateway` was not present in the role inventory.
+
+The initial database identity and role queries succeeded. The separate schema and table/ledger queries failed because the later `psql` invocations had no password supplied (`fe_sendauth: no password supplied`). Thus schema inventory and migration ledger are still unknown. No database objects or roles were changed. Do not infer the database is ready based on existence alone.
+
+Next read-only inspection: issue the schema, table and migration-ledger SELECT queries in a single `psql` invocation so the local postgres password is entered once interactively. Also inspect `pg_auth_members` membership and schema/table/function privileges relevant to `ghm_runtime`, `ghm_migrator`, `ghm_schema_owner` and prospective Actor Gateway. Do not create or alter roles or run migrations until schema and repo requirements are compared.
+
+PR/handover review refreshed before recording: PR #300 open/not draft/unmerged/mergeable=false at `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; PR #298 open/draft/unmerged/mergeable=true at `ecc83c057941db56400e6d546c29518ed556b244`; PR #297 open/draft/unmerged/mergeable=false at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`. No local source changes, qualification run, merge commit, push, production mutation or deployment occurred.
