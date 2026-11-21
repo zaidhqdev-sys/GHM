@@ -6717,3 +6717,59 @@ git rev-list --left-right --count origin/main...HEAD
 Stop if the working tree is not clean, the branch is missing, or local refs do not match the GitHub SHAs above. Do not run the merge until those checks are reviewed. Then use `git merge origin/main` (no rebase/force-push) and resolve the semantic conflicts; run qualification before pushing.
 
 No branch ref, PR state, source code, production migration/manifest, production database, role/ACL, credential, secret, Render setting/deployment, backup, payment state, or paid resource was changed in this task.
+
+
+## 21 November 2026 — post-PR #300 migration-batch continuation review
+
+Mandatory pre-task review completed:
+- Re-read this migration-batches handover (current pre-update blob `e08dd203f1b69658e48ca2863839c32f8751854e`) and the PR #300 local-preflight handover from its feature branch.
+- Refreshed PR #297 and #298 metadata, exact heads, changed-file inventories, branch existence, main comparisons, PR #298 comments and current migration inventory/manifest files.
+- PR #300 is now confirmed merged into main at `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; its exact PR head was `f9e207fb88b1e93b3eca7e7562a11518b52075e8`. Its exact-head CI passed, including disposable PostgreSQL qualification. Do not repeat its qualification loop.
+
+### Current PRs and branches
+
+- PR #298: open, draft, unmerged, GitHub `mergeable=false`.
+  - Branch: `feat/actor-gateway-production-migration-batches`.
+  - Exact head at this review: `3fc8786423f51a4809f22970d7ebe6ff219e2cf0`.
+  - Historical base/merge-base: `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+  - Current main: `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+  - Compare against current main: 431 ahead / 94 behind; 56 changed paths in PR diff.
+  - PR #298 has a successful Cloudflare Pages **preview** comment for commit `3fc8786`; this is not a production deployment. No GitHub Actions workflow run is attached to this docs-only exact head.
+- PR #297: open, draft, unmerged, GitHub `mergeable=false`.
+  - Branch: `feature/explicit-production-migration-batches`.
+  - Exact head: `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+  - Historical base/merge-base: `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`.
+  - Compare against current main: 119 ahead / 102 behind; 28 changed paths.
+- Both feature branches still exist. Keep PR #297 and #298 separate; do not merge either simply because PR #300 is complete. PR #298 is the current Actor Gateway migration-batch integration branch; PR #297 remains a separate earlier explicit-batch implementation/qualification stream and is not being selected for this next task.
+
+### PR #298 vs current main: synchronization impact
+
+Current main has 94 commits since PR #298's base. The 18 paths changed on main since that base overlap the 56 PR #298 paths in only two places:
+1. `package.json` — reconcile scripts/dependencies while retaining all current main scripts and PR #298's batch qualification scripts.
+2. `src/db/revoke-runtime-capability-governance-migration-contract.test.ts` — preserve main's PR #300-era corrected migration contract and test expectations while retaining PR #298's relevant assertions.
+
+Main's signed Business Capability integration added:
+- `database/migrations/20261120010000_add_signed_business_capability_create.sql`
+- `database/migrations/20261120011000_allow_signed_business_capability_create_assertion.sql`
+and the associated cutover, Gateway/Resource API and qualification paths. These are present on main after PR #300 and must be preserved during synchronization.
+
+PR #298 adds two independently reviewed manual runtime cutover groups:
+- `businessProfile`
+- `supplierClassification`
+
+Its runtime privilege inventory is 45 functions, 12 groups and 4,096 reviewed combinations, versus main's 43 functions, 10 groups and 1,024 combinations. The correct merge must preserve main's signed Business Capability implementation and add the two PR #298 transitions, resulting in a coherent 45/12/4,096 model. Do not overwrite either side's inventory or reduce it to the old 39/256 model.
+
+### Production inventory / manifest facts
+
+- PR #297 canonical inventory `config/production-pending-migration-inventory.json` and PR #298 inventory `config/pending-migrations.production.json` both contain the same 50 ordered version/name pairs (same blob SHA `d3ce0fa76fe7b6da2d627a3e06f94bd502b8efbe`).
+- PR #298 `config/production-migration-batches.json` is exactly an empty JSON array `[]`.
+- PR #297 `config/production-migration-batches.json` is an object with an empty `batches` array: `{"batches":[]}`. These are separate implementation formats; do not copy one manifest format into the other branch.
+- PR #298's 50-entry pending inventory ends at `20261117020000_revoke_runtime_capability_governance` and does not include the two new 2026-11-20 signed Business Capability migrations now on main. It is therefore stale relative to current repository migrations.
+- The 50-entry equality proves repository inventory agreement between PR #297 and #298 only. It is not a current live production ledger audit. No fresh authorized live production ledger export is available in this review.
+- Keep the PR #298 manifest empty and production execution fail-closed. Do not derive or add an executable production batch, and do not alter the inventory based on an assumed live ledger state. Refresh/reconcile the live ledger and then regenerate the exact pending inventory before any production batch is considered.
+
+### Next local task
+
+Synchronize PR #298 with current main in the established local `C:\GHM-main` checkout using a normal merge (no rebase, force-push, synthetic GitHub tree commit, or direct production operation). First perform a read-only local preflight: inspect working-tree status, fetch origin, verify exact remote SHAs for `main` and `feat/actor-gateway-production-migration-batches`, verify the local branch exists, and capture `git rev-list --left-right --count origin/main...origin/feat/actor-gateway-production-migration-batches`. Preserve the two previously known untracked files and stop if any tracked local changes or path collisions are found. Then switch to the PR #298 branch and merge `origin/main`; resolve only the reviewed overlapping paths, preserve the 45/12/4,096 privilege model, signed Business Capability implementation, and all mainline migration contracts. Run build, full tests, and the disposable PostgreSQL 18 batch-runner/cutover qualifications before pushing. Re-fetch exact-head CI and mergeability before considering any merge.
+
+No production migration/DDL/ACL/role/credential/secret, Render setting/deployment, backup, payment state, or paid resource was changed in this review. Existing `ghm-actor-gateway` remains the already-created Free Frankfurt service; deployment readiness remains downstream of the qualified code merge sequence.
