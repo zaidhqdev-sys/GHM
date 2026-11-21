@@ -6773,3 +6773,25 @@ Its runtime privilege inventory is 45 functions, 12 groups and 4,096 reviewed co
 Synchronize PR #298 with current main in the established local `C:\GHM-main` checkout using a normal merge (no rebase, force-push, synthetic GitHub tree commit, or direct production operation). First perform a read-only local preflight: inspect working-tree status, fetch origin, verify exact remote SHAs for `main` and `feat/actor-gateway-production-migration-batches`, verify the local branch exists, and capture `git rev-list --left-right --count origin/main...origin/feat/actor-gateway-production-migration-batches`. Preserve the two previously known untracked files and stop if any tracked local changes or path collisions are found. Then switch to the PR #298 branch and merge `origin/main`; resolve only the reviewed overlapping paths, preserve the 45/12/4,096 privilege model, signed Business Capability implementation, and all mainline migration contracts. Run build, full tests, and the disposable PostgreSQL 18 batch-runner/cutover qualifications before pushing. Re-fetch exact-head CI and mergeability before considering any merge.
 
 No production migration/DDL/ACL/role/credential/secret, Render setting/deployment, backup, payment state, or paid resource was changed in this review. Existing `ghm-actor-gateway` remains the already-created Free Frankfurt service; deployment readiness remains downstream of the qualified code merge sequence.
+
+
+## 21 November 2026 — PR #298 local checkout preflight completed
+
+Mandatory review repeated before this task:
+- Re-read the migration-batches handover at `2baed3077753b72a04f9bdc3acc5d83507a20bba`.
+- Refreshed PR #298 and PR #297, and checked the relevant remote branches.
+- PR #298 remains open/draft/unmerged, exact remote head `58b159be4b414efbf9ea29bf7347c766342b125d`, mergeability false.
+- PR #297 remains open/draft/unmerged, exact head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`, mergeability false.
+- Remote main is `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; PR #298 remote branch is `58b159be4b414efbf9ea29bf7347c766342b125d`.
+
+User ran the read-only preflight in `C:\GHM-main`:
+- `git fetch origin --prune` succeeded and refreshed main and PR #298 refs.
+- `git rev-list --left-right --count origin/main...origin/feat/actor-gateway-production-migration-batches` returned `94 432`.
+- Current local branch is `feat/signed-business-capability-create`.
+- `git branch --list feat/actor-gateway-production-migration-batches` returned no local branch, so PR #298 branch is remote-only in this checkout.
+- No tracked working-tree or staged changes were reported.
+- Exactly two known untracked files remain and must be preserved:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+
+No branch switch or merge has yet been performed. The next safe operation is to check for path collisions between those two untracked files and the remote PR #298 tree, then create a local tracking branch from `origin/feat/actor-gateway-production-migration-batches`. Do not merge main until that checkout and its status are verified.
