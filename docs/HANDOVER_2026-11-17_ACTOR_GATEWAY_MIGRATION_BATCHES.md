@@ -6937,3 +6937,25 @@ Batch 7 passed. Cumulative observed results for Batches 1–7:
 The two skips remain database-backed qualification cases requiring separate runtime and migrator database URLs. They were not run against production, Render, or any live database. These results do not establish completion of database-backed qualification.
 
 Next: Batch 8 (files 141–160) and Batch 9 (files 161–174), then the remaining offline security-definer, worker, syntax, and final repository/manifest/inventory checks. Keep the production migration batch manifest empty; do not execute production migrations, use production DB/Render, deploy, or change credentials, roles, ACLs, secrets, or settings. Keep PR #298 draft and separate from PR #297. Preserve the two known untracked local files.
+
+## 21 November 2026 — PR #298 offline qualification progress (Batch 8)
+
+PR #298 remains open, draft, and unmerged. This entry is recorded on its current head branch, `feat/actor-gateway-production-migration-batches`; fetched PR head at update time: `329249c714d0db89b0382c2846f0f40a41b7f2da`.
+
+Batch 8 was run locally from `C:\GHM-main` using the original package test-file ordering, files 141–160 of 174, with `--require ./scripts/test-env.cjs`.
+
+| Batch | Compiled test files | Tests | Passed | Failed | Skipped |
+|---|---:|---:|---:|---:|---:|
+| 8 | 141–160 | 80 | 80 | 0 | 0 |
+
+Batch 8 passed. Cumulative observed results for Batches 1–8:
+
+- Compiled test files completed: 160 of 174.
+- Tests: 1,032.
+- Passed: 1,030.
+- Failed: 0.
+- Skipped: 2.
+
+The two skips remain database-backed qualification cases requiring separate runtime and migrator database URLs. They were not run against production, Render, or any live database. These results do not establish completion of database-backed qualification.
+
+Next: Batch 9 (files 161–174), then the remaining offline security-definer, worker, syntax, and final repository/manifest/inventory checks. Keep the production migration batch manifest empty; do not execute production migrations, use production DB/Render, deploy, or change credentials, roles, ACLs, secrets, or settings. Keep PR #298 draft and separate from PR #297. Preserve the two known untracked local files.
