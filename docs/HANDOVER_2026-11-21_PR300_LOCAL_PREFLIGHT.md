@@ -942,3 +942,30 @@ In `C:\GHM-main`, create a normal merge commit (do not amend, do not stage anyth
 Then capture `git status --short --branch`, `git log -1 --format="HEAD %H%nPARENTS %P%nSUBJECT %s"`, and `git rev-parse HEAD`. Stop before pushing until the resulting commit has exactly two parents: feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700` and mainline `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. Push normally only after confirming that merge commit and the two known untracked files remain untouched.
 
 The live disposable PostgreSQL qualification limitation remains: the mutation-based capability catalogue qualification script has not been run against a valid disposable PostgreSQL 18 database. No production database, Render service, deployment, PayFast, or payment state was changed.
+
+
+## 21 November 2026 — PR #300 local merge commit created and verified
+
+Mandatory pre-task review completed:
+- Re-read this PR #300 preflight handover at `dce9d583c1759bc008170b6e555870b8317a5adb`.
+- Refreshed PR #300/#298/#297 and checked the signed-create and migration-batches branches.
+- PR #300 remains open/non-draft/unmerged at remote feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; GitHub still reports `mergeable=false` because the merge commit has not yet been pushed.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. Keep both separate.
+
+User supplied local commit output from `C:\GHM-main`:
+- Created normal merge commit `f9e207fb88b1e93b3eca7e7562a11518b52075e8`.
+- Exact parents, in order:
+  1. Feature PR head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+  2. Mainline `0dc1b27c2b7de71c77d071966a9f374e13075e2b`.
+- Subject: `Merge main into signed Business Capability create`.
+- Working tree status: branch `feat/signed-business-capability-create`, ahead 3 of its remote-tracking branch; only the two known untracked preservation files remain. No staged or unstaged tracked changes are shown.
+- The merge commit has the exact two expected parents; no amend or force operation was used.
+
+### Next action — normal push only
+
+The local merge commit is ready to publish. In `C:\GHM-main`, run:
+`git push origin feat/signed-business-capability-create`
+
+Do not force-push. After the push, refresh PR #300 and verify the remote head equals `f9e207fb88b1e93b3eca7e7562a11518b52075e8`; inspect fresh exact-head CI and GitHub mergeability before considering a PR merge. If GitHub still reports unmergeable, stop and inspect the updated comparison; do not bypass branch protection.
+
+Qualification boundary remains unchanged: build and 21 targeted offline tests passed, but mutation-based live disposable PostgreSQL 18 qualification has not been performed. Do not claim it passed. No production DB, Render, deployment, PayFast, or payment state changed.
