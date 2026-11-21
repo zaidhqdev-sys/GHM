@@ -502,3 +502,23 @@ Clarification for the next step:
 - The current local merge remains six staged intended paths, conflict-free, with the two preservation files untracked. No merge commit/push/deployment has occurred.
 
 Next operation: run read-only local PostgreSQL discovery on the existing Windows services (ports/readiness and database names only), plus non-DB static/unit checks. Do not execute the mutating qualification script until its three pools are explicitly bound to verified local disposable DB roles.
+
+
+## 21 November 2026 — local PostgreSQL services discovered
+
+The user inspected the existing Windows PostgreSQL services and listeners:
+- PostgreSQL 17 service `postgresql-x64-17` is Running, data directory `C:\Program Files\PostgreSQL\17\data`, configured port 5432, listener is accepting connections.
+- PostgreSQL 18 service `postgresql-x64-18` is Running, data directory `C:\Program Files\PostgreSQL\18\data`, configured port 5433, listener is accepting connections.
+- Ports 5434–5440 have no response.
+- PostgreSQL 18.6 / port 5433 was previously used for local `ghm_payfast_qualification`; this database's current existence and schema/roles are not yet verified.
+
+Safety:
+- No database connection or mutation was made in this discovery step. `C:\GHM\.env` remains production-only and must not be sourced for local qualification.
+- Next: read-only inventory of database names and local current-user/role availability on ports 5432 and 5433. Prefer PostgreSQL 18 / 5433 if the prior disposable qualification database exists. Do not assume a DB or roles exist; do not create/drop databases or alter roles at this stage.
+
+PR/branch/handover review repeated before this task:
+- PR #300 open, not draft, unmerged, `mergeable=false`, head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`.
+- PR #298 open/draft, unmerged, `mergeable=true`, head `946690a031082145955640c3634ed2898d107d8c`.
+- PR #297 open/draft, unmerged, `mergeable=false`, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`.
+- Feature branch `feat/signed-business-capability-create` and handover branch `feat/actor-gateway-production-migration-batches` remain present; the Actor Gateway branch inventory was reviewed. No branch changed.
+- No source changes, database connections, qualification, merge commit, push, or deployment occurred.
