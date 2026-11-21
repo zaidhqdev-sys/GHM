@@ -6959,3 +6959,35 @@ Batch 8 passed. Cumulative observed results for Batches 1–8:
 The two skips remain database-backed qualification cases requiring separate runtime and migrator database URLs. They were not run against production, Render, or any live database. These results do not establish completion of database-backed qualification.
 
 Next: Batch 9 (files 161–174), then the remaining offline security-definer, worker, syntax, and final repository/manifest/inventory checks. Keep the production migration batch manifest empty; do not execute production migrations, use production DB/Render, deploy, or change credentials, roles, ACLs, secrets, or settings. Keep PR #298 draft and separate from PR #297. Preserve the two known untracked local files.
+
+## 21 November 2026 — PR #298 offline qualification progress (Batch 9 complete)
+
+PR #298 remains open, draft, and unmerged. This entry is recorded on branch `feat/actor-gateway-production-migration-batches`; fetched PR head at update time: `e7c199e269d90f32677773dfc2db3b9f196966ab`.
+
+Batch 9 was run locally from `C:\GHM-main` using the original package test-file ordering, files 161–174 of 174 (14 files), with `--require ./scripts/test-env.cjs`.
+
+| Batch | Compiled test files | Tests | Passed | Failed | Skipped |
+|---|---:|---:|---:|---:|---:|
+| 9 | 161–174 | 77 | 77 | 0 | 0 |
+
+Batch 9 passed. All 174 compiled test files across Batches 1–9 have now been exercised. Cumulative observed results:
+
+- Compiled test files completed: 174 of 174.
+- Tests: 1,109.
+- Passed: 1,107.
+- Failed: 0.
+- Skipped: 2.
+
+The two skips remain database-backed qualification cases requiring separate runtime and migrator database URLs. They were not run against production, Render, or any live database. Therefore the complete offline compiled test-file sweep passed, but database-backed qualification remains outstanding and must not be represented as complete.
+
+### Remaining validation (not yet completed)
+
+Run the previously planned:
+- Syntax-only check: `node --check scripts/qualify-quoteflow-migration-account-provisioning-db.mjs` (do not execute the script).
+- Offline security-definer authority tests: `node --test scripts/audit-security-definer-authority.test.mjs`.
+- `npm run typecheck:worker:actor-gateway`.
+- `npm run test:worker:actor-gateway`.
+- Final conflict-marker / unmerged-index / staged and unstaged diff checks, production migration batch manifest check (must remain `[]`), and confirmation that the PR #298 runtime privilege model remains 45 functions, 12 groups, and 4,096 reviewed combinations.
+- Review all changes including the test-only `GHM_AUTH_TOKEN_PEPPER` preload correction.
+
+Do not run database-backed qualification against production or Render. Do not execute production migrations, deploy, or change credentials, roles, ACLs, secrets, or settings. Preserve both known untracked local files. Keep PR #298 draft and separate from PR #297; do not merge absent explicit instruction.
