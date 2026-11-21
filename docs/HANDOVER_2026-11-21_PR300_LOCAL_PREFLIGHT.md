@@ -914,3 +914,31 @@ Qualification boundary: the mutation-based capability catalogue script has NOT b
 Before creating the merge commit, run one final read-only confirmation in `C:\GHM-main`:
 `git rev-parse -q --verify MERGE_HEAD`, `git status --short --branch`, and `git ls-files -u`.
 The expected `MERGE_HEAD` is current `origin/main` `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, as previously confirmed during merge-state recovery. If it still matches, the index has no unmerged entries, and status contains only the six intended staged paths plus the two known untracked preservation files, create the local merge commit (do not amend the feature commit), then push the feature branch normally. Do not force-push. After push, refresh PR #300 exact head, mergeability and exact-head CI; only consider GitHub merge once those checks are current and green. The remaining live-DB qualification limitation must be explicitly recorded and must not be represented as completed.
+
+
+## 21 November 2026 — pending PR #300 merge parent and index confirmed
+
+Mandatory pre-task review repeated:
+- Re-read this preflight handover at `a7e9e39a1fa5910777ea5547b29196e1c63293e3` and refreshed PR #300/#298/#297 metadata.
+- Confirmed both relevant feature branches still exist.
+- PR #300 remains open, non-draft, unmerged, at feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700`; GitHub reports `mergeable=false`.
+- PR #298 remains open/draft/unmerged and mergeable; PR #297 remains open/draft/unmerged and not mergeable. These are separate workstreams.
+
+The user supplied the final read-only verification from `C:\GHM-main`:
+- `git rev-parse -q --verify MERGE_HEAD` returned `0dc1b27c2b7de71c77d071966a9f374e13075e2b`, exactly the expected mainline merge parent.
+- `git status --short --branch` shows the six reviewed merge-result files staged, and only the two previously preserved untracked files:
+  - `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+  - `picomatch-reachability-scan.txt`
+- `git ls-files -u` produced no output: no unresolved index entries.
+- No unanticipated tracked or untracked paths are present in the supplied status.
+
+The no-commit merge is therefore ready for its local merge commit. The staged patch was already reviewed (six files, 122 insertions / 40 deletions); TypeScript build and targeted offline tests passed 21/21. The two untracked preservation files must remain unstaged.
+
+### Next action — create the local merge commit
+
+In `C:\GHM-main`, create a normal merge commit (do not amend, do not stage anything else, and do not include the untracked files):
+`git commit -m "Merge main into signed Business Capability create"`
+
+Then capture `git status --short --branch`, `git log -1 --format="HEAD %H%nPARENTS %P%nSUBJECT %s"`, and `git rev-parse HEAD`. Stop before pushing until the resulting commit has exactly two parents: feature head `6ea0df0610441a54e0f5f55b51a9ca5f13dc4700` and mainline `0dc1b27c2b7de71c77d071966a9f374e13075e2b`. Push normally only after confirming that merge commit and the two known untracked files remain untouched.
+
+The live disposable PostgreSQL qualification limitation remains: the mutation-based capability catalogue qualification script has not been run against a valid disposable PostgreSQL 18 database. No production database, Render service, deployment, PayFast, or payment state was changed.
