@@ -15,6 +15,8 @@ test('migration runner verifies the dedicated migrator role before SET ROLE', ()
   assert.match(migrationRunner, /has_database_privilege\('ghm_migrator'/);
   assert.match(migrationRunner, /has_schema_privilege\('ghm_migrator'/);
   assert.match(migrationRunner, /has_table_privilege\('ghm_migrator'/);
+  assert.match(migrationRunner, /has_any_column_privilege\('ghm_migrator'/);
+  assert.match(migrationRunner, /VALUES \('SELECT'\), \('INSERT'\), \('UPDATE'\), \('REFERENCES'\)/);
   assert.match(migrationRunner, /has_sequence_privilege\('ghm_migrator'/);
   assert.match(migrationRunner, /direct_membership_count/);
   assert.match(migrationRunner, /migrator_member_count/);
