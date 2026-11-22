@@ -177,3 +177,46 @@ Render event/log evidence now establishes both November 15 failures:
 Therefore the build fix alone cannot make PR #275 deployable. Keep auto-deploy OFF; wait for an affordable/approved genuine gateway host, qualify its identity/credential/ACL/signed assertion contract, then prepare the runtime cutover. Do not deploy, edit environment variables, change roles/ACLs, or incur cost.
 
 No Render configuration, secrets, deployment, database, CI, payment state or hosting resource was changed.
+
+## 22 November 2026 — provider/bootstrap authority escalation brief (prepared, not sent)
+
+The source and handover review confirms that the next production-authority dependency is outside repository code. The following is a narrowly scoped support request prepared for the authorized owner/operator to send through the existing Render support channel. It has **not** been sent by this work and does not authorize a provider or database mutation.
+
+### Draft support request
+
+> We need guidance on the supported Render PostgreSQL administrator/bootstrap authority path for two specific role-membership rows in our production database `ghm_db` (PostgreSQL 18).
+>
+> Our read-only catalogue evidence shows `ghm_db_user` has two bootstrap-granted memberships created by `postgres`:
+>
+> - `ghm_db_user` is a member of `ghm_migrator`, with ADMIN OPTION=true, INHERIT=false, SET=false.
+> - `ghm_db_user` is a member of `ghm_schema_owner`, with ADMIN OPTION=true, INHERIT=false, SET=false.
+>
+> Our intended migration identity is the existing restricted LOGIN/NOINHERIT role `ghm_migrator`. Its intended sole membership is `ghm_migrator -> ghm_schema_owner`, with ADMIN OPTION=false, INHERIT=false, SET=true. The production migration runner explicitly checks that the first two `ghm_db_user` membership edges are absent and that the intended migrator-to-owner SET edge remains exactly as specified.
+>
+> We understand from the prior support conversation that Render's Dashboard-managed administrator has managed-role semantics and that ordinary application credentials must not be used as a substitute for provider/bootstrap authority. We are not asking for superuser credentials, a bypass, or a change to Render's managed credential model.
+>
+> Please confirm:
+>
+> 1. Whether Render support can perform, or authorize a provider-controlled procedure to remove, only the two identified `ghm_db_user` membership edges while preserving the existing `ghm_migrator -> ghm_schema_owner` edge and all unrelated role memberships, role attributes, ownership and ACLs.
+> 2. If support cannot perform that operation, what exact supported administrator/bootstrap mechanism is available to the database owner to make this narrowly scoped correction safely.
+> 3. What before/after catalogue evidence Render can provide so we can verify the exact membership options and grantor without exposing credentials.
+> 4. Whether this operation has any provider-managed side effects or restrictions that must be included in a rollback plan.
+>
+> Please do not change any role, membership, grant, ACL, credential, service setting, or database object until we have reviewed the proposed procedure and separately confirmed the required backup/recovery evidence and owner authorization.
+
+### Separate backup/recovery request
+
+Before any role or ACL mutation, obtain a fresh production recovery point and written confirmation of:
+- the exact database/service and snapshot/recovery-point timestamp;
+- the supported restore procedure and any restore limitations;
+- how recoverability can be verified without restoring over production;
+- the expected recovery-point and recovery-time objectives.
+
+A snapshot creation or restore test is not requested or performed by this document. Keep it separate from the role-membership support question so neither is mistaken for authorization to mutate production.
+
+### Scope guard
+
+- Do not ask support to remove the other four bootstrap ADMIN OPTION edges (`ghm_actor_gateway`, `ghm_auditor`, `ghm_payment_provider`, `ghm_runtime`) in this first request. Their dependencies are separate and they are not part of the two-edge migrator runner contract correction.
+- Preserve `ghm_db_user -> ghm_runtime` non-admin runtime SET membership and the existing `ghm_app_user -> ghm_db_user` relationship until the separately gated runtime credential transition is qualified.
+- Do not execute `REVOKE`, `GRANT`, `ALTER ROLE`, migrations, or a production audit through the current application/admin-derived connector as a workaround.
+- No support request was sent, no provider action was requested by the assistant, and no production database, backup, role, membership, ACL, credential, Render setting, deployment, payment state, or paid resource was changed.
