@@ -16,7 +16,7 @@ This is a repository and handover evidence audit. It is not a live production pe
 | Product | Source maturity | Mainline / integration state | Early-access decision |
 |---|---|---|---|
 | Zaid Connect | Broad product surface; directory and business workflows exist | Major GHM migration PRs #68 and #70 remain draft; current main still contains Supabase runtime/dependency surfaces | **Conditional candidate — directory-only pilot after GHM production cutover and smoke tests** |
-| QuoteFlow | Released Android workflow: customers, quotes, follow-ups, invoices, PDF sharing | Main still contains Supabase SDK; GHM identity cutover PR #25 is draft; Android preview workflow failed on latest checked head | **Conditional candidate — do not distribute the GHM cutover build until Android build/device acceptance and GHM/legal gates pass** |
+| QuoteFlow | Existing app was built and launched on its previous backend; current hosted APK stopped opening after the GHM backend switch and has been withdrawn from the website | Main still contains Supabase SDK; GHM identity cutover PR #25 is draft; GHM issuer and device-level GHM-native rebuild/acceptance remain outstanding | **Conditional candidate — no Android download until GHM-native rebuild, device testing, signing and upload** |
 | Tender AI | Analysis engine and web workflow exist on feature branches | No PRs; web app branch unmerged; no live GHM or real-model verification | **Not ready — internal/demo only** |
 | Zaid Wealth | Broad web UI and serverless functions exist | Main is still Supabase-backed; mock analysis; Stripe/Paystack provider logic; mock query-string subscription activation | **Not ready — rebuild/migrate before external early access** |
 | ZAID Legal OS | Legal practice workspace foundation with 32 API routes and document/AI pipeline | Main has own Prisma/Postgres and Better Auth; PayStack; no GHM integration verified; important UX/security gaps | **Not ready — narrow MVP and resolve high-risk gaps first** |
@@ -80,7 +80,7 @@ A **directory-only controlled pilot** is the smallest useful release: public dir
 ### Incomplete / launch blockers
 
 1. Main package still depends on `@supabase/supabase-js`; main README describes Supabase identity, legal acceptance, organization resolution and subscription context. Supabase is not removed from the current release branch.
-2. PR #25 is the GHM-native identity cutover and removes the Supabase SDK/client/RPC adapter on its feature branch. It remains draft. CI passed on exact head `6865048a...` (TypeScript/Jest), but the Android preview APK workflow failed on that same head. Therefore Android release qualification is not complete.
+2. PR #25 is the GHM-native identity cutover and removes the Supabase SDK/client/RPC adapter on its feature branch. It remains draft. CI passed on exact head `6865048a...` (TypeScript/Jest); Android Gradle assembly and package verification passed, but the final preview APK upload step failed. The original app had already been built and launched on its previous backend; the currently hosted legacy APK stopped opening after the backend switch and has since been withdrawn from the corporate website. Therefore the GHM-native Android release is not yet qualified.
 3. GHM live login/session/managed-Business flow still needs end-to-end qualification against deployed mainline. Profile API is contract-only/fail-closed pending live DB reconciliation.
 4. Business ownership/mapping and the legacy local-storage recovery lead remain unresolved. The known two bot identities are explicit exclusions; no inference from storage key names is permitted.
 5. Legal acceptance depends on GHM PR #201, still draft. It intentionally has an empty document catalogue and fails closed until owner-approved documents are supplied, versioned, deployed and seeded through reviewed migration.
@@ -100,7 +100,7 @@ Keep early access **Free and limited**: new GHM registration, explicit managed-B
 - Local storage scope activation remains explicit, conflict-first, resumable and verified; source namespace remains preserved.
 - Free entitlement behaviour is explicit and no unverified billing path is exposed.
 
-**Assessment:** The product workflow is already real and released, but the proposed GHM-native release is not ready to distribute. It is a strong near-term candidate after the identity, legal and Android build gates.
+**Assessment:** The original QuoteFlow product workflow was built and launched on its previous backend. The current public APK became non-functional after the GHM backend switch and has been removed from the website. The proposed GHM-native release is not ready to distribute; it remains a strong near-term candidate after the identity, legal and Android build gates.
 
 ## 4. ZAID Tender AI
 
@@ -386,3 +386,8 @@ Detailed evidence, release gates and recommended actions are in website repo `do
 Owner clarification: the original QuoteFlow Android app was built locally, downloaded locally and uploaded to the corporate website; it was previously launched against its earlier backend. After the database/backend switch to GHM, that hosted APK no longer opens. This is a confirmed current-release failure, not an unverified first-launch or provenance issue.
 
 Website PR #9 (fix/temporarily-remove-nonfunctional-quoteflow-apk-20261122) removed public/downloads/quoteflow.apk, both QuoteFlow download CTAs, and the claim in the Delivery page that the APK is available. PR #9 was squash-merged into website main at d318cabeb6ebab2312b115189b154429fe38bc49. The Vercel production deployment for that commit was still BUILDING at the last check (dpl_4CJZ6V5ZQ9o4BE2Qna5zP8V9mKzC); therefore public-site removal is pending deployment READY and URL verification. The next QuoteFlow Android download must remain withdrawn until the GHM-native app is rebuilt, installed/tested on a real Android device, signed and uploaded, with production issuer/API configuration verified. This withdrawal does not undo or negate the original QuoteFlow launch.
+
+
+## Corporate website QuoteFlow withdrawal — production deployment confirmed
+
+The website change is now merged and deployed. Website PR #9 was squash-merged at `d318cabeb6ebab2312b115189b154429fe38bc49`. Vercel production deployment `dpl_4CJZ6V5ZQ9o4BE2Qna5zP8V9mKzC` reached **READY** for that exact commit; the deployment build log reports successful build completion and includes the `/services/quoteflow` route. The deployment has the existing aliases `zaidtechnologies.co.za` and `www.zaidtechnologies.co.za` attached. The merged `main` tree no longer contains `public/downloads/quoteflow.apk`. Direct HTTP route verification was unavailable in this environment, so distinguish deployment readiness/source verification from an independently observed browser response. The website withdrawal is deployed; keep the APK withdrawn until the GHM-native rebuild is accepted.
