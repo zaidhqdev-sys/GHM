@@ -7147,3 +7147,15 @@ Production migration batch manifest remains exactly `[]`. No production database
 - No PR #303 files or branch were changed by this task. No PR retarget, merge, production DB operation, manual cutover, Render setting/deployment, credential, role, ACL, secret, payment state, or paid resource was changed.
 - PR #298 continuation remains separate; production batch manifest remains exactly `[]`. The local worktree remains untouched.
 - Next safe action: continue static review of the production migration runner's exact identity, checksum, batch and plan-only contracts; do not authorize or perform production execution based on CI results.
+
+## 22 November 2026 — migrator column-level privilege preflight closed
+
+- Before this task, re-read PR #298/#297/#303, the continuation/original PR #298 branches, the current migration-batches handover, production dependency matrix, migrator authority remediation plan, and the exact migrator principal/runtime privilege source and tests.
+- Found a concrete preflight gap in `src/db/migrate.ts`: the `ghm_migrator` direct relation privilege guard used `has_table_privilege` and `has_sequence_privilege`, but did not inspect PostgreSQL column-level privileges. A column-level SELECT/INSERT/UPDATE/REFERENCES grant could therefore evade the intended no-direct-relation-privilege check.
+- Added an explicit `has_any_column_privilege('ghm_migrator', relation.oid, privilege.name)` scan for SELECT, INSERT, UPDATE and REFERENCES on GHM tables, partitioned tables, views and foreign tables. This is combined with the existing table and sequence checks under the same fail-closed `direct_relation_privileges` assertion.
+- Extended `src/db/migrator-principal-contract.test.ts` to require the column-privilege guard and exact privilege set.
+- Source commits: `4ff367abd865ab60d4c22ddba44ed599211db0e9` (preflight guard) and `c0de94d1d1fae7a1062fed910138b47f327aacca` (contract test).
+- Remote read-back confirms both changes are present on the continuation branch. GitHub Actions run [44965647948](https://github.com/zaidhqdev-sys/GHM/actions/runs/44965647948) was queued for the latest exact head `c0de94d1d1fae7a1062fed910138b47f327aacca` at this checkpoint; no build/test/CI result is claimed yet.
+- The previous run on the intermediate runner-only commit was automatically cancelled by the newer push. This is expected concurrency behavior; qualification must be read from the latest exact-head run.
+- This is a static source/contract correction only. It does not establish the actual production migrator ACL state or repair the provider-owned bootstrap memberships. No production DB, Render service, migration, role, ACL, credential, secret, backup, deployment, payment state, or paid resource was changed.
+- Production batch manifest remains exactly `[]`; PR #298 remains draft/unmerged; PR #297 and PR #303 remain separate; original local worktree remains untouched.
