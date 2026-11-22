@@ -243,3 +243,112 @@ Legal: architecture decision for GHM integration and core MVP completion first; 
 - No live GHM production DB query, Render configuration mutation, deploy, environment change, Vercel deployment, Android installation, payment transaction or production user journey was performed.
 - Several historical documents contain stale launch-ready claims or stale PayFast pause statements. Use current owner direction and this audit for sequencing; re-verify live provider status when the payment workstream begins.
 - Next task should be a **Connect + QuoteFlow GHM launch-gate reconciliation**, not broad work across all five products at once. Inspect all related PR comments, latest branch heads and the product handovers before changing code.
+
+
+---
+
+## 10. Focused Connect + QuoteFlow launch-gate reconciliation — 2026-11-22
+
+This section supersedes any earlier preliminary statements in this audit about Connect PR #70 still running, QuoteFlow's Android APK build itself failing, or the current GHM Actor Gateway/issuer production state. It is based on the latest PR heads, exact-head workflow runs, compare results, branch handovers and GHM production-readiness documents inspected for this continuation.
+
+### 10.1 Connect — current branch and dependency reconciliation
+
+**Current main:** `84d7edb64346f1b698f9b76bcb54d2e653df1292`.
+
+| Item | Latest evidence | Disposition |
+|---|---|---|
+| PR #68 — broad core GHM migration | Draft; head `e0df7f84b10a54f94ff3a74086a87b98c9268102`; Connect quality run `43746448569` passed. Compare is 166 commits ahead / 1 behind and reported diverged. | Do not merge wholesale yet. Reconcile the one mainline commit and split/sequence the first-launch scope. |
+| PR #70 — Project/Opportunity GHM cutover | Draft; head `a9de3f88f1e0ad9e98d53e9c75493be384d520e7`; Connect quality run `44209066664` passed; Vercel preview status succeeded. Compare is 9 ahead / 0 behind. | Source-qualified for its client contracts/build, but not a directory launch dependency. Keep parked until Project/Opportunity release is needed and GHM #299 is fixed/deployed. |
+| PR #243 — supplier classification | Open/draft; exact-head CI previously passed, but PR itself records outstanding direct-RPC actor-binding / integration consolidation and production compatibility/featured-parity gates. | Optional for first directory launch. Hide supplier/contractor filters until the canonical contract is qualified and on deployed GHM. |
+| PR #244 — Business engagement/Analytics | Open/draft and stacked on #243. PR records unresolved Actor Gateway issuer separation, direct-write attribution and entitlement/metric semantics. | Exclude Analytics/engagement from the first directory release. |
+| GHM #299 — Project detail/update API | Open/draft; exact-head CI run `44228636216` failed. | Blocks PR #70, not the free directory-only scope. |
+| GHM #283 — admin commercial launch-state read | Merged to GHM main. Its runtime deployment is still not healthy/live because GHM startup requires the not-yet-deployed Actor Gateway URL. | Not a directory blocker if commercial admin UI is excluded; no production availability claim. |
+
+**Important branch overlap:** PR #68 and PR #70 both modify the Connect Project and Opportunity service/caller files, including `projectsService.js`, `opportunityService.js` and `OpportunityRequirementsEditor.jsx`. They are separate branches with overlapping implementation. Do not merge both independently or cherry-pick blindly. Reconcile the desired Project/Opportunity implementation once, after the directory launch slice is isolated.
+
+**Directory-only scope recommendation:** use the existing #68 work as source material, but do not merge all of #68 as the first launch unit. Create a narrow, main-based Connect release slice containing only:
+- GHM authentication/session path needed for directory-owner actions;
+- GHM business registration and owner membership;
+- Business profile/category/hours and public listing projection;
+- directory review/approve/publish authority;
+- logo upload only after its GHM Storage route is production-qualified;
+- public directory browse/search and safe public Business detail.
+
+Keep out of this slice: Projects/Quotes/Opportunities, Analytics/engagement, supplier/contractor filtering unless #243 is promoted, commercial/trial/checkout, referrals, push delivery and any non-directory Supabase callers. Preserve the broad PR #68 branch and its handover; do not discard its work.
+
+**Remaining Connect source/operational gates:**
+1. PR #68 branch is not a clean, narrow release unit (166 ahead / 1 behind, and overlaps #70).
+2. The branch handover records remaining Supabase relationships/outcomes, commercial/admin, AI proxy, push subscription/delivery, central facade/SDK/config and other active callers. A directory-only launch can defer unrelated callers, but selected directory routes must have zero Supabase fallback.
+3. The branch handover also records that Relationships/Outcomes historical data and old Supabase logo objects were not migrated. Exclude those functions/data from the first pilot rather than implying parity.
+4. Founder review, owner membership, inactive/unapproved listing exclusion, private/public field separation, storage authorization and abuse/rate limits require production end-to-end proof.
+5. No current production GHM route smoke test was performed during this reconciliation. Green Connect CI and Vercel previews are not live GHM production evidence.
+
+### 10.2 QuoteFlow — corrected exact-head status
+
+**Main:** `e4b39a8515177ed00791e6be5213765d3f054a7f`.  
+**PR #25:** draft, head `6865048a234d9700b700ea4b02c87ee4b810f9f3`.
+
+- Exact-head TypeScript/Jest CI run `44450679464` passed.
+- Exact-head Android preview run `44450679449` did **not** fail during Android compilation. Expo project generation, package-ID rewrite, Gradle `:app:assembleDebug`, and preview package-ID verification all passed. The final **Upload preview APK** step failed. Therefore the preview APK was built and package-verified but was not delivered as a GitHub Actions artifact. Do not describe this as a Gradle/build failure.
+- PR #25 removes the Supabase runtime SDK/client/RPC adapter and lockfile packages on its branch, moves auth to GHM registration/login/refresh and managed-Business membership, supports explicit multi-Business selection, and keeps legacy local namespaces untouched. The branch's own handover confirms no legacy business-data mapping/import is needed for a fresh GHM account path; the two known bot accounts remain excluded.
+- QuoteFlow remains draft/unmerged; no production issuer E2E, production APK distribution, installation/device acceptance or GHM production cutover is evidenced.
+
+**Critical shared GHM dependency discovered in QuoteFlow's latest handover:** PR #25 is configured for the isolated GHM Authentication Issuer contract, not merely an arbitrary GHM Resource API URL. The latest handover explicitly records:
+- no production `ghm_auth_issuer` PostgreSQL role provisioned;
+- no separate production Authentication Issuer service deployed;
+- no production issuer credentials/signing secrets/routing/cutover;
+- no verified public HTTPS issuer origin;
+- no complete approved no-additional-cost hosting/network/TLS topology;
+- password-recovery delivery adapter remains absent (recovery request routes fail closed with 503).
+
+Do not set `EXPO_PUBLIC_GHM_AUTH_ISSUER_BASE_URL` to a guessed Resource API or Render hostname. Do not co-host issuer-only signing secrets in the ordinary Resource API, repurpose sandbox services, weaken TLS, or create a new paid service. The no-cost topology must be reviewed and proven before production auth can be enabled.
+
+**Legal acceptance:** QuoteFlow PR #25 calls the proposed GHM legal endpoints in PR #201 and remains fail-closed until approved documents are published. GHM #201 is still draft, has a stale-base/security-boundary re-review requirement (caller-supplied account ID in SECURITY DEFINER functions), and the owner previously directed that legal-document work remain parked until core systems are stable. Do not revive or merge #201, draft legal wording, or seed documents as part of this task. This remains a launch gate if mandatory legal acceptance is required for the pilot; the owner must explicitly resume the legal publication decision after core systems are stable.
+
+**QuoteFlow next actions:**
+1. Preserve PR #25; do not merge until the production issuer topology and exact live identity flow are qualified.
+2. Resolve the Android artifact delivery failure using the existing workflow/local Windows Gradle delivery path without adding paid Actions storage or services. The actual Gradle build and package verification already pass.
+3. After the issuer is deployed under an approved no-cost secure topology, run fresh registration, login, refresh, logout, explicit Business create/select/switch, unauthorized Business denial and Free access end-to-end tests.
+4. Keep old local data untouched; no legacy data migration is a release prerequisite for fresh re-sign-up.
+5. Keep paid entitlements disabled until a provider-neutral GHM entitlement/payment lifecycle is approved.
+
+### 10.3 Shared GHM production gate — still the critical blocker
+
+The latest GHM source/handover review does not support a production cutover yet:
+
+- Production Actor Gateway Worker is not deployed. Its Wrangler configuration still has a placeholder Hyperdrive ID, disabled `workers_dev`, no production route/binding and no verified assertion secret/deployment.
+- The existing GHM runtime's attempted deployment built but failed startup because production storage requires `GHM_ACTOR_GATEWAY_URL`. The prior live deployment was recorded as `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`; this is historical evidence, not a fresh current health check.
+- The no-cost topology assessment found no existing always-on, adequately isolated, no-additional-cost host. Render Free sleep/ephemeral lifecycle and the tunnel sidecar proposal are not production-qualified; no keepalive schedule or extra paid service is approved.
+- Production Render role/ownership administration remains unresolved under Amanda's support guidance. Do not improvise grants or alter roles.
+- A fresh verified production backup/recovery point remains unconfirmed; the last identified archive was 4 November and predates later role work.
+- PR #298 remains draft and its reviewed execution-batch manifest is intentionally empty; no production migration batch is authorized. The PR head `b6b96c44...` has no completed exact-head status evidence in the inspected Actions/status snapshot.
+- PR #303 remains draft; its exact-head workflow run `44924040445` passed CI, but the PR body still called for focused qualification and review. A CI pass does not authorize production ACL changes.
+- GHM #299's exact-head CI failed; Project detail/update remains unavailable until corrected and requalified.
+
+**No-cost constraint:** do not resolve these gates by creating a paid Render Web Service, new database, separate paid database tool, keepalive schedule, or sandbox relaunch. The existing Worker/VPC/Hyperdrive/Tunnel candidate remains an architecture candidate, not an approved production topology.
+
+### 10.4 Revised execution order — least work before early access
+
+**P0 — shared GHM readiness, no product code shortcuts**
+1. Continue Amanda/Render role-authority resolution and obtain a fresh verified backup/recovery point.
+2. Complete a no-cost, isolated, strict-TLS production topology for the Actor Gateway and Authentication Issuer; prove each with the correct dedicated identities and no shared issuer secrets.
+3. Refresh the production migration ledger and reconcile the exact pending inventory. Qualify the PR #303 ACL correction and PR #298 batch runner on their exact current heads. Derive only the first dependency-safe contiguous migration batch; keep execution fail-closed until the live evidence and rollback gate pass.
+4. Deploy and smoke-test the exact GHM runtime/Actor Gateway/issuer route set only after the above gates. Auto-deploy remains OFF; no dummy URL or bypass of startup guards.
+
+**P1 — Connect directory-only pilot**
+1. From current Connect main, create a narrow directory-only integration slice. Use PR #68 as reference, but avoid pulling in its Projects/Opportunity and Analytics/Commercial changes.
+2. Do not require GHM #243/#244 for the first pilot if supplier filters and Analytics are disabled.
+3. Test registration → owner membership → profile completion → founder review → approved public listing → anonymous browse/search → public profile, including authorization denial and unpublished/inactive exclusion.
+4. Pilot with invited businesses; no payment, subscription or paid offer messaging.
+
+**P1 — QuoteFlow Free pilot**
+1. Retain PR #25; repair artifact delivery without extra spend.
+2. Wait for the shared production GHM issuer/Actor Gateway to be live and run the end-to-end GHM identity/multi-Business suite.
+3. Keep subscription/billing disabled. Do not migrate old device namespaces; preserve them.
+4. Do not bypass the legal acceptance fail-closed state. Resume legal publication only when the owner explicitly reopens it and approved content is available.
+
+**Deferred, not launch blockers for the first two products:** Connect Projects/Opportunities (#70/#299), supplier classification (#243), Analytics/engagement (#244), Wealth Supabase/provider migration, Tender AI live model/persistence qualification and Legal OS architecture/MVP work.
+
+### 10.5 Evidence boundary
+
+This continuation inspected GitHub PR metadata/comments, branch comparisons, handovers, source documentation and exact-head workflow/job metadata. It did not run local tests, inspect secrets, query production databases, inspect live Render/Cloudflare/Vercel settings, deploy services, install an APK, or execute a live product journey. The next task must begin with current branch/handovers and exact production evidence, not assume these gates have changed.
