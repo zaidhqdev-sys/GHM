@@ -352,3 +352,30 @@ The latest GHM source/handover review does not support a production cutover yet:
 ### 10.5 Evidence boundary
 
 This continuation inspected GitHub PR metadata/comments, branch comparisons, handovers, source documentation and exact-head workflow/job metadata. It did not run local tests, inspect secrets, query production databases, inspect live Render/Cloudflare/Vercel settings, deploy services, install an APK, or execute a live product journey. The next task must begin with current branch/handovers and exact production evidence, not assume these gates have changed.
+
+
+---
+
+## 11. ZAID Technologies corporate website — sixth launch workstream
+
+**Website repository:** `zaidhqdev-sys/zaid-technologies-website`  
+**Website audit PR:** [zaid-technologies-website#8](https://github.com/zaidhqdev-sys/zaid-technologies-website/pull/8)  
+**Website main:** `1d3770b4f287c78931a25cda56d77c1cc723b92e`  
+**Existing content-contract PR:** [website#3](https://github.com/zaidhqdev-sys/zaid-technologies-website/pull/3), draft.
+
+The corporate website is the public front door for ZAID Technologies (brand of ZM Projects (Pty) Ltd), not simply another product page. It has a substantial corporate identity, Connect and QuoteFlow pages, Guide, Company, Contact, Privacy, Terms, Refund, Cancellation and Delivery surfaces, SEO/OG foundations, and a direct QuoteFlow APK asset.
+
+**Readiness:** publicly accessible and structurally mature, but requires a coordinated content/release refresh before the product early-access launch.
+
+Key findings:
+- Existing website PR #3 contains the owner-directed free-directory adoption contract, but remains draft/unmerged. Current main and public crawl still show Connect 14-day trial, R199/R299 pricing and founding-offer messaging. Those must be suppressed during the free-directory adoption phase; online payments remain disabled.
+- Current home page lists Connect and QuoteFlow as current products. That is consistent with the first two product workstreams, but page metadata/navigation/service hierarchy should distinguish customer products from bespoke business services and avoid implying both are fully released before their own gates pass.
+- Tender AI, Wealth and Legal should not be advertised as available customer products yet. A future development/roadmap status disclosure needs owner approval first.
+- Public QuoteFlow page links a 67,588,404-byte APK. This audit did not download/install/hash it or verify backend configuration. Its version, source commit, package ID, signing identity, SHA-256 and GHM-native compatibility must be proven before continuing to describe it as the current early-access release.
+- The public privacy/terms pages primarily discuss Connect; they need a product-boundary review for QuoteFlow and the current early-access scope. Confirm that `hello@zaidtechnologies.co.za` is actively monitored before treating it as a reliable support route.
+- Vercel custom domains are recorded verified and www redirects to apex. The recorded latest production deployment is 4 September 2026 on website main; PR #3 has a READY preview from 10 November, not a production deployment. A deployment attempt hit the Vercel free-plan API deployment limit. No plan upgrade or new project is recommended.
+- Website audit PR #8 is documentation-only; no source code, DNS, Vercel settings or production deployment changed.
+
+Detailed evidence, release gates and recommended actions are in website repo `docs/HANDOVER_2026-11-22_WEBSITE_EARLY_ACCESS_READINESS_AUDIT.md` on PR #8.
+
+**Next website task:** complete the existing PR #3 content contract, reconcile public Home/Connect/Guide copy with free-directory adoption, verify the QuoteFlow APK provenance, run existing website tests/typecheck/build, and deploy through the existing Vercel project only after review. Do not add spend, activate payments, or create another project.
