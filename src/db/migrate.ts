@@ -105,7 +105,7 @@ const migrate = async (): Promise<void> => {
               FROM pg_class relation
               JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
               CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
-                                 ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) AS privilege(name)
+                                 ('TRUNCATE'), ('REFERENCES'), ('TRIGGER'), ('MAINTAIN')) AS privilege(name)
              WHERE namespace.nspname = 'ghm'
                AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
                AND has_table_privilege('ghm_migrator', relation.oid, privilege.name)
