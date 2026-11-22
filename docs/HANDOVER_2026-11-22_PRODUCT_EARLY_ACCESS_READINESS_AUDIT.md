@@ -379,3 +379,10 @@ Key findings:
 Detailed evidence, release gates and recommended actions are in website repo `docs/HANDOVER_2026-11-22_WEBSITE_EARLY_ACCESS_READINESS_AUDIT.md` on PR #8.
 
 **Next website task:** complete the existing PR #3 content contract, reconcile public Home/Connect/Guide copy with free-directory adoption, verify the QuoteFlow APK provenance, run existing website tests/typecheck/build, and deploy through the existing Vercel project only after review. Do not add spend, activate payments, or create another project.
+
+
+## QuoteFlow public APK withdrawal — 2026-11-22
+
+Owner clarification: the original QuoteFlow Android app was built locally, downloaded locally and uploaded to the corporate website; it was previously launched against its earlier backend. After the database/backend switch to GHM, that hosted APK no longer opens. This is a confirmed current-release failure, not an unverified first-launch or provenance issue.
+
+Website PR #9 (fix/temporarily-remove-nonfunctional-quoteflow-apk-20261122) removed public/downloads/quoteflow.apk, both QuoteFlow download CTAs, and the claim in the Delivery page that the APK is available. PR #9 was squash-merged into website main at d318cabeb6ebab2312b115189b154429fe38bc49. The Vercel production deployment for that commit was still BUILDING at the last check (dpl_4CJZ6V5ZQ9o4BE2Qna5zP8V9mKzC); therefore public-site removal is pending deployment READY and URL verification. The next QuoteFlow Android download must remain withdrawn until the GHM-native app is rebuilt, installed/tested on a real Android device, signed and uploaded, with production issuer/API configuration verified. This withdrawal does not undo or negate the original QuoteFlow launch.
