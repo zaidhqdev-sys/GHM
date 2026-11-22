@@ -114,6 +114,15 @@ const migrate = async (): Promise<void> => {
             SELECT 1
               FROM pg_class relation
               JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+              CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('REFERENCES')) AS privilege(name)
+             WHERE namespace.nspname = 'ghm'
+               AND relation.relkind IN ('r', 'p', 'v', 'f')
+               AND has_any_column_privilege('ghm_migrator', relation.oid, privilege.name)
+          )
+          OR EXISTS (
+            SELECT 1
+              FROM pg_class relation
+              JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
               CROSS JOIN (VALUES ('USAGE'), ('SELECT'), ('UPDATE')) AS privilege(name)
              WHERE namespace.nspname = 'ghm'
                AND relation.relkind = 'S'
