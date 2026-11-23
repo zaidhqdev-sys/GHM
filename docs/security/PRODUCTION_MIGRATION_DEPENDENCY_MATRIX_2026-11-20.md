@@ -213,3 +213,8 @@ Current main has the legacy full-queue production allowlist runner and seven-ent
 ## 23 November 2026 — isolated integration branch
 
 Created `feat/production-migration-batches-mainline-20261123` from exact current main `93ff3c774ce225760b0e3e2cf99a770b38e8a097` for a selective, mainline-based migration-batch integration. Branch creation only; no source changes yet. This branch avoids modifying PR #298/#297 and known local merge-in-progress state. Preserve current-main migration source and seven-entry pending inventory, do not guess production applied status, and keep manifest empty. No production or Render changes.
+
+
+## 23 November 2026 — selective batch selector foundation
+
+Created isolated branch from current main and added a checksum-bound exact contiguous-prefix migration batch selector with explicit batch ID, ordered/unique identity validation, checksum match and signed cutover/replacement dependency guards; added 14 focused unit tests and initialized `config/production-migration-batches.json` to exactly []. Commits: `1a7b5f7`, `c3423d4`, `199c130`. This is not yet wired into `migrate.ts`, and no CI/local test result is claimed. Current-main seven-entry pending inventory remains unchanged because live applied status of two newer Business Capability migrations is unknown. Next: integrate fail-closed into current-main runner, preserve existing target/SSL/role/checksum/name guards, wire test script, and verify no SQL execution without explicit batch. No production/Render/local worktree changes.
