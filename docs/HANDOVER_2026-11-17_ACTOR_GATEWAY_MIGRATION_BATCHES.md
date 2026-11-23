@@ -7474,3 +7474,16 @@ No source files, branches, PR metadata, migration manifest, production DB, Rende
 ## 23 November 2026 — isolated current-main integration branch created
 
 Created a single isolated integration branch `feat/production-migration-batches-mainline-20261123` directly from verified current main SHA `93ff3c774ce225760b0e3e2cf99a770b38e8a097`. The branch was created successfully and has not yet received source changes. It is distinct from PR #298, PR #297, PR #303, and the documentation continuation branch. This avoids altering the known local merge-in-progress worktree and preserves existing user changes. Next: selectively implement the PR #298 batch-selection design against current-main source, excluding PR #297's competing API; retain current-main migrations and seven-entry inventory unchanged until live ledger reconciliation; keep production execution manifest `[]`. No source, PR, production DB, Render service, credentials, roles, ACLs, deployment or local worktree changed during branch creation.
+
+
+## 23 November 2026 — mainline batch selector foundation committed
+
+On isolated branch `feat/production-migration-batches-mainline-20261123` (created from main `93ff3c774ce225760b0e3e2cf99a770b38e8a097`), selectively added the PR #298 batch-selection core without merging/cherry-picking its stale branch history or importing PR #297's competing API:
+
+- `src/db/migration-batches.ts`: checksum-bound, exact contiguous-prefix batch selector; strict identity/order/duplicate checks; explicit committed batch ID requirement; signed supplier-classification and Business Profile cutover/replacement dependency guard.
+- `src/db/migration-batches.test.ts`: 14 focused unit tests covering required/unknown IDs, contiguous prefix, already-applied/name mismatch, duplicates/order/format, manifest shape, checksum mismatch, signed replacement dependencies and completed-cutover handling.
+- `config/production-migration-batches.json`: initialized to exactly `[]`.
+
+GitHub commits on the isolated branch (sequential): `1a7b5f717309f5a1ae5a1ef3bb28595bd020d7af` (selector), `c3423d484472247d87c56efdbd0642bdd86d2830` (tests), `199c130a7380da16db3ae53f5822b4bfbcba0603` (empty manifest). No runner integration has been made yet; this is foundation only, not executable production batch support. No CI/local test result is claimed yet. Next task: wire the selector into current-main `src/db/migrate.ts` with fail-closed production behavior and preserve current-main migration-name/checksum/target/SSL/role guards; keep production inventory unchanged pending fresh live ledger. Add package test discovery and tests proving missing/unknown batch ID fails before SQL execution. Ensure plan-only, if retained, never executes SQL and has an explicit safe target guard.
+
+No PR was created or updated. PR #298/#297/#303 remain separate. No production SQL, migration, DB connection, role/ACL/credential change, Render change, deployment, or paid resource was used. Existing local worktrees were not touched.
