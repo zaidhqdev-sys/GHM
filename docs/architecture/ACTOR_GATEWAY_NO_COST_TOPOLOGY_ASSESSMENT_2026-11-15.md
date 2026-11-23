@@ -248,3 +248,37 @@ The no-go decision is unchanged. Do not create Cloudflare resources, set `GHM_AC
 - PR #284 remains open/draft at `4c5710f50bc61a611e07f5ef904d319019bf1782`; no merge or branch changes were made.
 - Existing role-separation handover continues to preserve Amanda/Render support guidance, unresolved production role-administration remediation, and the missing fresh verified production backup/recovery point. These remain independent production gates.
 - This update records account-wide Render inventory findings without copying any environment-variable values or secrets.
+
+
+## 2026-11-23 reassessment — direct public Hyperdrive as a no-host candidate
+
+The earlier statement that no direct public Hyperdrive path had a verified source range is superseded. Current Cloudflare documentation explicitly states that Hyperdrive connects to database origins from Cloudflare's published IP ranges and supports a database firewall allow-list containing those ranges. Cloudflare documents three supported patterns: public ingress from all IPs, public ingress restricted to Hyperdrive's Cloudflare ranges, or private ingress through a Cloudflare Tunnel. Hyperdrive is included on Workers Free with a documented limit of 100,000 database queries/day. Sources reviewed: Cloudflare Hyperdrive firewall/networking and pricing documentation; Cloudflare's published IP ranges; Render PostgreSQL external-connection and inbound-IP-rule documentation.
+
+### Candidate B — Hyperdrive direct to Render external PostgreSQL endpoint
+
+`Cloudflare Actor Gateway Worker → Hyperdrive → Render ghm-db external PostgreSQL hostname:5432`
+
+- No `cloudflared` host, Render compute service, Workers VPC Tunnel, VPC Service, or Cloudflare Mesh node is required for this public-endpoint pattern.
+- Hyperdrive's outbound source is the Cloudflare shared IP range set, rather than a dedicated per-Worker/per-account egress IP. The currently published Cloudflare list contains 15 IPv4 CIDRs and 7 IPv6 CIDRs. The IP ranges are shared with other Cloudflare products/customers; they are not a tenant-specific trust boundary.
+- Render supports PostgreSQL external access restricted by CIDR allow-list. The current live `ghm-db` allow-list was re-read on 23 Nov and remains exactly `0.0.0.0/0` ("everywhere"). This candidate would only be considered if the allow-list could be narrowed to the complete, maintained Hyperdrive source ranges without losing required owner/administration access. Do not change the current list as part of this assessment.
+- Render external PostgreSQL connections require TLS 1.2+ and reject `sslmode=disable`. Hyperdrive always uses TLS; its default PostgreSQL `require` mode validates certificates against WebPKI. Hyperdrive also supports `verify-ca` and `verify-full` with a configured CA. Prefer `verify-full` if the Render certificate chain/hostname can be validated using an appropriate CA bundle; do not weaken TLS verification to make a connection succeed.
+- The Hyperdrive database credential must be the dedicated `ghm_actor_gateway` login, never the Render-managed administrator, `ghm_app_user`, `ghm_db_user`, `ghm_runtime`, or `ghm_migrator`. The Worker must continue using the existing typed signed-assertion interface and exact function allow-list; Hyperdrive is only the transport/pool and must not introduce arbitrary SQL execution.
+- Cloudflare's shared IP ranges are large and shared. An allow-list of those ranges limits network ingress compared with `0.0.0.0/0`, but does not prove that the source is this account's Worker. Database credentials, TLS, role/function ACLs, signed assertions, replay controls and Worker route controls remain mandatory. The public PostgreSQL endpoint remains internet-routable, so this is a security trade-off against the private Tunnel/VPC path, not an equivalent private-network boundary.
+- Render's current public Postgres API exposes `ipAllowList` as an array of CIDR entries, but the reviewed API reference does not state an entry-count maximum or explicitly confirm IPv6 support for Postgres allow-list entries. Therefore the 15 IPv4 + 7 IPv6 range set's acceptance by this exact database remains unverified. Do not assume support or send an update request. Obtain a written Render support answer or an isolated non-production validation before proposing a production allow-list replacement.
+- Cloudflare Hyperdrive's account configuration, current plan/quota, actual external hostname and certificate chain were not independently inspected in this pass. The earlier Cloudflare dashboard inventory showed no Hyperdrive configurations, VPC Services or Tunnels; no Cloudflare connector is available in this workspace to refresh that inventory. The exact Hyperdrive Worker deployment route remains unprovisioned.
+
+### Decision and validation order
+
+**Promote direct Hyperdrive to the preferred no-additional-host candidate for design qualification, not to an approved production topology.** It avoids the unavailable always-on tunnel host and appears compatible with the existing no-new-paid-compute constraint, subject to the account's actual Cloudflare plan/quota. It does not close the production gates.
+
+Before any production setting or credential change, the following must be established read-only or with vendor support:
+
+1. Confirm Render accepts all required Cloudflare Hyperdrive CIDRs for this PostgreSQL instance, including the IPv4/IPv6 handling and any entry-count limits; confirm how to preserve required owner-controlled administration access without restoring `0.0.0.0/0`.
+2. Confirm the exact Render external hostname and obtain/validate the Render TLS certificate chain. Confirm Hyperdrive can use TLS with hostname verification (`verify-full`) or document the strongest supported WebPKI mode if Render's CA cannot be separately configured.
+3. Confirm Cloudflare Workers/Hyperdrive plan and daily query quota are sufficient without a paid upgrade; confirm the account's actual Worker/Hyperdrive resources and deployment permissions.
+4. Validate the Hyperdrive connection using a non-production database only if an already-authorized disposable database exists. Do not revive the suspended sandbox or repurpose the paid qualification database. If no permitted test database exists, keep the technical connection proof outstanding rather than testing against production.
+5. Separately resolve the production backup/recovery, Amanda/Render role-administration, exact production role membership, function ACL, migration ledger and deployment ordering gates. A successful network connection does not authorize migrations, role changes or legacy revocations.
+
+### No-change record
+
+This reassessment changes documentation only. No Render IP allow-list, database, role, grant, credential, environment variable, service, deployment, Cloudflare account resource, Hyperdrive configuration, VPC Service, Tunnel, Worker route, DNS record or production traffic was changed. The previous private Tunnel/VPC candidate remains the stronger isolation design if a qualified always-on host becomes available; Candidate B is a constrained alternative to avoid a new host, not a claim that the host prerequisite has been solved for private networking.
