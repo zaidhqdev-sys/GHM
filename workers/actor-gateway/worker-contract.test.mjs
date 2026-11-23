@@ -35,7 +35,7 @@ test('Worker only loads public ES256 verification material', () => {
 
 test('Worker verifies database identity and ACL before opening HTTP listener', () => {
   const identity = worker.indexOf('assertActorGatewayDatabaseIdentity(identity.rows[0])');
-  const privileges = worker.indexOf('assertActorGatewayDatabasePrivileges(privileges)');
+  const privileges = worker.indexOf('assertActorGatewayDatabasePrivileges(privileges, startupStage)');
   const listen = worker.indexOf('actorGatewayServer.listen(INTERNAL_HTTP_PORT)');
   assert.ok(identity >= 0);
   assert.ok(privileges > identity);
