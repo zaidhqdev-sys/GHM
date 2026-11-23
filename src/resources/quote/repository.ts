@@ -124,7 +124,7 @@ export class PostgresQuoteRepository implements QuoteRepository {
       if (customer.rowCount !== 1) throw new Error('Customer not found or ownership required');
       if (customer.rows[0].status !== 'active') throw new Error('Customer must be active');
       const customerRow = customer.rows[0];
-      const resolvedLines = [];
+      const resolvedLines: Array<{ description: string; quantity: number; unitPrice: number; businessOfferingId: string | null; currencyCode: string | null; priceUnit: string | null }> = [];
       for (const item of input.lineItems) {
         if (item.businessOfferingId) {
           const offering = await client.query(
