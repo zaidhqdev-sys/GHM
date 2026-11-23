@@ -7637,3 +7637,12 @@ Proposed exact role shape for owner execution:
 Then set the password using psql's interactive `\\password ghm_audit_login` meta-command. The membership created by this statement must be ADMIN=false; verify that it is the only membership held by `ghm_audit_login`, that the login owns no objects and has no direct grants, and that its effective privileges are limited to the intended ledger SELECT path. If any check differs, stop; do not improvise grants or revoke the original postgres-granted membership.
 
 This preflight is not evidence that the role has been created. No production role, membership, password, ACL, data, migration, Render setting/service/deployment, payment state or paid resource was changed in this task. After owner execution, record the exact result and use a direct connection as `ghm_audit_login` for the version/name/checksum ledger read. No new branch or qualification run is needed.
+
+
+## 23 November 2026 — dedicated production auditor login created
+
+The owner executed Amanda's documented dedicated-login procedure through the existing administrative Render PostgreSQL connection to `ghm_db`:
+- `CREATE ROLE ghm_audit_login LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE ghm_auditor;` returned `CREATE ROLE`.
+- The subsequent interactive `\\password ghm_audit_login` completed, but PostgreSQL emitted a warning that the password was stored using MD5 encryption. The credential must not be used for routine access until it is reset using SCRAM-SHA-256 (set session `password_encryption='scram-sha-256'` before the interactive `\\password` operation). Never record or transmit the password.
+- The role now exists; do not attempt to recreate it. The SCRAM password reset and post-creation catalog/membership/effective-privilege verification remain pending. Confirm the new membership is only `ghm_auditor`, with ADMIN=false, and that no direct grants or object ownership were added. Preserve the original postgres-granted `ghm_db_user -> ghm_auditor` membership unchanged.
+- After SCRAM reset and verification, connect directly as `ghm_audit_login` and read `ghm.ghm_schema_migrations(version,name,checksum)` to reconcile the live production queue. No migration was run and no Render service/deployment/payment state changed. No branch or CI qualification was created for this database operation.
