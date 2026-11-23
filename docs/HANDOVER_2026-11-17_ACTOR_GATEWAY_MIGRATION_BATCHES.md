@@ -7510,3 +7510,14 @@ No production DB connection or SQL, migration, role/ACL/credential change, Rende
 The first exact-head CI run for the mainline batch-gate candidate (`45216633082`, head `646a8253906126d48913123d92d470f2b7b56a18`) failed at TypeScript Build. Job log identified duplicate declarations in `src/db/migration-order.ts`: duplicate `AppliedMigrationLedgerEntry` and duplicate `assertAppliedMigrationNames` (TS2300/TS2451). This was introduced during sequential connector file updates; no runtime or database operation was reached. All subsequent DB/test steps were skipped because build failed.
 
 Corrected by retaining one copy of the ledger-name guard and removing the duplicate declaration block. Fix commit: `6f5525372f93cc194c22db3f50b932697798c17a` on `feat/production-migration-batches-mainline-20261123`. Rechecked branch head after commit. A new Cloudflare Pages check had started; a complete quality/web-quality result for the corrected head was not yet available at this checkpoint. Do not treat the first run as passed; wait for exact corrected-head CI. No production DB/Render operation occurred.
+
+
+## 23 November 2026 — isolated mainline batch-gate PR opened for CI/review
+
+Opened draft PR #305 from `feat/production-migration-batches-mainline-20261123` to `main`. Exact head `6f5525372f93cc194c22db3f50b932697798c17a`; base `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; GitHub reports mergeable=true at creation. PR URL: https://github.com/zaidhqdev-sys/GHM/pull/305. It is draft/open/unmerged and is a new current-main implementation, not a merge of PR #298/#297.
+
+At the post-open check: Cloudflare Pages preview succeeded; commit status was pending with zero statuses; no exact-head `quality`/`web-quality` check or workflow run was available for corrected head `6f552537...`. Initial CI run on prior head `646a825...` failed TypeScript build due to duplicate ledger-name guard declarations; corrected in `6f552537...`. Do not mark PR #305 CI-qualified until `quality` and `web-quality` run and pass on the exact current head. Local worktree validation has not been run. PR #305 remains draft; no merge or production execution.
+
+Next action to obtain full validation: use a clean separate local worktree based on the PR #305 branch (do not touch `C:\\GHM-main` or `C:\\GHM-pr303`) and make a normal owner-controlled push event or run the workflow through an authorized workflow-dispatch path. Do not fabricate a pass from Cloudflare preview. If local checkout/push is unavailable, leave the PR draft and validation pending.
+
+No production database, migration, role/ACL/credential, Render setting/service/deployment, payment state, or paid resource changed. Manifest remains `[]`.
