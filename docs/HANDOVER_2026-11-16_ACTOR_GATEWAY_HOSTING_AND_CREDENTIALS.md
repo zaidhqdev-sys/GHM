@@ -2090,3 +2090,20 @@ This pass rechecked the current PR #305 branch/head, all open GHM PRs, GHM/Conne
 5. The production batch manifest remains []. No production database, migration ledger, role/ACL, service setting, secret, deployment, DNS, traffic, app data, payment or paid resource was changed.
 
 This is an evidence-based release/deployment matrix, not a claim that the public apps were probed successfully. External web health probes for the Render URLs and Connect domain were inaccessible from the available web path; the Render and Vercel control-plane evidence above is the basis for the status statements.
+
+
+### 23 November 2026 — existing hosting resources and merged Worker/Issuer PRs reconciled
+
+This task rechecked PR #305 and its current branch, the open GHM PR inventory, the existing topology assessment, and merged PRs #272 (Actor Gateway), #276 (isolated Authentication Issuer), and #277 (Worker hardening).
+
+**Corrected hosting picture:** the Actor Gateway Worker and isolated Authentication Issuer implementations are already merged into main; they are not missing source implementations. PR #277's CI proves Worker bundle and local Workerd + disposable Hyperdrive behavior, and its Pages preview deployments succeeded. However, the PR explicitly records that no Cloudflare production resource or route was provisioned and that those disposable tests do not establish live Hyperdrive-to-Render connectivity, production TLS/ACL identity, or production traffic behavior.
+
+**Authentication Issuer cost blocker:** PR #276's exact-source qualification records that the Workers Free Argon2id feasibility test failed GHM's existing password-hashing CPU budget. Do not weaken Argon2id and do not create paid Workers/Render compute under the current constraints.
+
+**Render Actor Gateway status:** the existing `ghm-actor-gateway` Free service still has no successful/live deployment; its latest observed startup failure is `database_privileges_assertion`. The private Render hosting option requires paid compute. Do not treat the failed Free service or Pages previews as a live isolated Gateway.
+
+**Network blocker:** direct Hyperdrive remains no-go because Render Postgres inbound rules are IPv4-only and Hyperdrive's documented shared origin egress has no supported per-origin IPv4-only guarantee. The private Workers VPC path requires a continuously running `cloudflared` connector host. No compliant existing always-on connector resource has been evidenced.
+
+**Decision:** no currently evidenced production hosting path satisfies the no-new-spend, no-new-host, no-keepalive, strict TLS, Argon2id CPU budget and isolation requirements simultaneously. Do not co-host Gateway/Issuer inside the Resource API, weaken password hashing or ACL/TLS checks, create another service/Worker/Hyperdrive/tunnel, or proceed with production migrations/revocations as though these replacements are live. Hold production rollout unless an already-owned compliant compute/network resource or a written vendor-supported no-cost topology changes the evidence.
+
+PR #305 remains the sole active migration-batch implementation workstream, open/draft/unmerged. Its execution manifest remains `[]`; no production batch is authorized. PR #297/#298 remain older overlapping drafts; PR #303 remains separate manual ACL work. No production database, role/ACL, secret, Render setting, Cloudflare resource, service, deployment, DNS, traffic, migration or paid resource was changed.
