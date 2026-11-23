@@ -7535,3 +7535,15 @@ The owner-created isolated validation worktree `C:\\GHM-pr305-ci-20261123` was c
 - PR #298 remains open/draft/dirty at `b6b96c44ac26544156e099373d3185a965b880fd`; PR #297 remains open/draft/dirty at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; PR #303 remains open/draft/mergeable at `3af71a78b86c74864092150c6d036b312cf5ce45`. These remain separate; no merge or cross-branch cherry-pick was performed.
 
 The production batch manifest remains exactly `[]`. No production DB connection or SQL, migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource or original local worktree operation occurred. The CI workflow used disposable PostgreSQL only, and its migration/test stages were skipped after the build failure.
+
+
+
+## 23 November 2026 — CI test-suite failure isolated to migration-version regex; correction committed
+
+Exact-head run `45218102971` for `fc919d662d7d160cbb01466aac7a07c47caa83f0` completed with overall failure. `web-quality` passed. In `quality`, TypeScript Build passed, Actor Gateway worker bundling passed, all repository migrations applied to disposable PostgreSQL, and the configured qualification stages before the unit suite ran. The full unit suite then reported 1,094 passing and 14 failing tests (1,108 total).
+
+Downloaded and inspected the `ghm-test-suite-diagnostics` workflow artifact. All 14 failures are the new migration-batch selector tests. Their common error was `Repository migration list contains an invalid migration identity`; the source validator in `src/db/migration-batches.ts` used an over-escaped digit expression (`/^\\\\d{14}$/`) and therefore rejected valid 14-digit migration versions. Corrected the expression to `/^\\d{14}$/` in commit `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f` on `feat/production-migration-batches-mainline-20261123`.
+
+Post-commit source inspection confirms one correctly escaped 14-digit version validator, and `src/db/migration-order.ts` still contains exactly one `AppliedMigrationLedgerEntry` type and one `assertAppliedMigrationNames` guard. PR #305 remains draft/open/unmerged and mergeable against main at last metadata check. Exact-head CI for `bcbeeb8...` has not yet appeared; do not claim the correction passes until the new full workflow completes.
+
+No production DB connection or SQL, production migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource, or original local worktree operation occurred. All database execution in the workflow was against its disposable PostgreSQL service. Production migration batch manifest remains exactly `[]`.
