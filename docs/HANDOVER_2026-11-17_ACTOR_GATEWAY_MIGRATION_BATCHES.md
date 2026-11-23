@@ -7904,3 +7904,11 @@ The planner has not been run against production. Do not supply or request the au
 ### Planner test assertion correction
 
 A review of the newly added regex regression test found its own pattern omitted the literal slash in the planner's `!/^\\d{14}$/.test(version)` check. Corrected the test assertion before accepting CI evidence. Latest PR #305 branch commit is now `341057216508b466c6d70a12ada7616bc147a44c`; the prior CI run `45235693759` was triggered at the preceding commit and does not qualify this final test correction. Check exact-head CI for this commit before closing planner qualification.
+
+
+### Exact-head CI run for planner assertion correction — 45235819522
+
+- Exact PR #305 head: `341057216508b466c6d70a12ada7616bc147a44c`.
+- `web-quality`: passed (11/11 steps).
+- `quality`: in progress at last inspection (1/70 steps; container initialization). No failures reported.
+- Do not treat the previous head's passing run as qualification for this final assertion correction. Recheck run `45235819522` and record its terminal result.
