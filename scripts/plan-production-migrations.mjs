@@ -54,6 +54,73 @@ const main = async () => {
       fail('Read-only audit identity rejected: expected ghm_audit_login / ghm_db / transaction_read_only=on.');
     }
 
+    const gatewayRoleResult = await client.query(`
+      SELECT rolcanlogin, rolinherit, rolsuper, rolcreatedb, rolcreaterole,
+             rolreplication, rolbypassrls
+      FROM pg_roles
+      WHERE rolname = 'ghm_actor_gateway'
+    `);
+    const gatewayRole = gatewayRoleResult.rows[0] ?? null;
+    const gatewayMembershipResult = await client.query(`
+      SELECT member_role.rolname AS member_name,
+             granted_role.rolname AS granted_role_name,
+             m.admin_option, m.inherit_option, m.set_option
+      FROM pg_auth_members m
+      JOIN pg_roles member_role ON member_role.oid = m.member
+      JOIN pg_roles granted_role ON granted_role.oid = m.roleid
+      WHERE member_role.rolname = 'ghm_actor_gateway'
+         OR granted_role.rolname = 'ghm_actor_gateway'
+      ORDER BY member_name, granted_role_name
+    `);
+    const gatewayMemberships = gatewayMembershipResult.rows;
+    const gatewaySchemaResult = await client.query(`
+      SELECT has_schema_privilege('ghm_actor_gateway', 'ghm', 'USAGE') AS schema_usage,
+             has_schema_privilege('ghm_actor_gateway', 'ghm', 'CREATE') AS schema_create,
+             has_database_privilege('ghm_actor_gateway', current_database(), 'CONNECT') AS database_connect
+    `);
+    const gatewayFunctionResult = await client.query(`
+      SELECT pg_get_userbyid(p.proowner) AS owner,
+             p.prosecdef AS security_definer,
+             p.proconfig AS function_config,
+             has_function_privilege('ghm_actor_gateway', p.oid, 'EXECUTE') AS gateway_execute,
+             has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
+             EXISTS (
+               SELECT 1
+               FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+               WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+             ) AS public_execute
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'ghm'
+        AND p.oid = to_regprocedure('ghm.assert_actor_gateway(bigint)')
+    `);
+    const gatewayFunction = gatewayFunctionResult.rows[0] ?? null;
+    const gatewaySchema = gatewaySchemaResult.rows[0] ?? null;
+    const gatewayMembershipPass = gatewayMemberships.length === 1 &&
+      gatewayMemberships[0].member_name === 'ghm_db_user' &&
+      gatewayMemberships[0].granted_role_name === 'ghm_actor_gateway' &&
+      gatewayMemberships[0].admin_option === true &&
+      gatewayMemberships[0].inherit_option === false &&
+      gatewayMemberships[0].set_option === false;
+    const gatewayRolePass = Boolean(gatewayRole &&
+      gatewayRole.rolcanlogin === true && gatewayRole.rolinherit === false &&
+      gatewayRole.rolsuper === false && gatewayRole.rolcreatedb === false &&
+      gatewayRole.rolcreaterole === false && gatewayRole.rolreplication === false &&
+      gatewayRole.rolbypassrls === false);
+    const gatewaySchemaPass = Boolean(gatewaySchema &&
+      gatewaySchema.schema_usage === true && gatewaySchema.schema_create === false &&
+      gatewaySchema.database_connect === true);
+    const gatewayFunctionPass = Boolean(gatewayFunction &&
+      gatewayFunction.owner === 'ghm_schema_owner' &&
+      gatewayFunction.security_definer === true &&
+      Array.isArray(gatewayFunction.function_config) &&
+      gatewayFunction.function_config.includes('search_path=pg_catalog, ghm') &&
+      gatewayFunction.gateway_execute === true &&
+      gatewayFunction.runtime_execute === false &&
+      gatewayFunction.public_execute === false);
+    const gatewayPrincipalPass = gatewayRolePass && gatewayMembershipPass &&
+      gatewaySchemaPass && gatewayFunctionPass;
+
     const ledgerResult = await client.query(`
       SELECT version, name, checksum, applied_at
       FROM ghm.ghm_schema_migrations
@@ -189,6 +256,19 @@ const main = async () => {
         database: identity.current_database, transaction_read_only: identity.transaction_read_only,
         server_version_num: identity.server_version_num, verified_tls: true,
       },
+      actor_gateway_principal: {
+        pass: gatewayPrincipalPass,
+        role: gatewayRole,
+        memberships: gatewayMemberships,
+        schema: gatewaySchema,
+        assertion_function: gatewayFunction,
+        checks: {
+          role_attributes: gatewayRolePass,
+          exact_membership: gatewayMembershipPass,
+          schema_and_database_privileges: gatewaySchemaPass,
+          assertion_function_authority: gatewayFunctionPass,
+        },
+      },
       source: { migration_count: repository.length },
       ledger: { row_count: ledger.length, current_source_applied_count: canonicalMatches.length + legacyMatches.length + historicalMatches.length,
         ledger_only_count: ledgerOnly.length },
@@ -214,11 +294,12 @@ const main = async () => {
       release_gates: {
         checksum_reconciliation: checksumPass,
         retained_history_and_provenance: historyPass,
+        actor_gateway_principal_preflight: gatewayPrincipalPass,
         pending_allowlist_complete: allowlistPass,
         reviewed_batch_selectable: batchPass,
         production_execution_authorized: false,
       },
-      verdict: checksumPass && historyPass && allowlistPass && batchPass ? 'PLAN_VALID_NOT_AUTHORIZED' : 'PLAN_ONLY_NOT_EXECUTABLE',
+      verdict: checksumPass && historyPass && gatewayPrincipalPass && allowlistPass && batchPass ? 'PLAN_VALID_NOT_AUTHORIZED' : 'PLAN_ONLY_NOT_EXECUTABLE',
     };
     console.log(JSON.stringify(report, null, 2));
     if (report.verdict !== 'PLAN_VALID_NOT_AUTHORIZED') process.exitCode = 2;
