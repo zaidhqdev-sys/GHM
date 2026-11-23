@@ -71,7 +71,13 @@ const main = async () => {
           !/^\d{14}$/.test(version) || typeof checksum !== 'string' || !sha256Pattern.test(checksum))) {
       fail('Production historical provenance exception manifest is invalid.');
     }
-    if (!retainedRegistry || typeof retainedRegistry !== 'object' || Array.isArray(retainedRegistry)) {
+    if (!retainedRegistry || typeof retainedRegistry !== 'object' || Array.isArray(retainedRegistry) ||
+        Object.entries(retainedRegistry).some(([version, entry]) =>
+          !/^\d{14}$/.test(version) || !entry || typeof entry !== 'object' || Array.isArray(entry) ||
+          typeof entry.name !== 'string' || !entry.name ||
+          typeof entry.checksum !== 'string' || !sha256Pattern.test(entry.checksum) ||
+          typeof entry.source !== 'string' || !entry.source ||
+          typeof entry.reason !== 'string' || !entry.reason)) {
       fail('Production retained-history registry is invalid.');
     }
     const sourceEntries = await fs.readdir(migrationsDir, { withFileTypes: true });
@@ -138,6 +144,11 @@ const main = async () => {
     });
 
     const pendingAllowlist = JSON.parse(await fs.readFile(path.resolve('config/pending-migrations.production.json'), 'utf8'));
+    if (!Array.isArray(pendingAllowlist) || pendingAllowlist.some((entry) =>
+      !entry || typeof entry.version !== 'string' || !/^\d{14}$/.test(entry.version) ||
+      typeof entry.name !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(entry.name))) {
+      fail('Production pending migration allowlist is invalid.');
+    }
     const pendingByVersion = new Map(pending.map((row) => [row.version, row.name]));
     const allowlistInvalid = pendingAllowlist.filter((row) => pendingByVersion.get(row.version) !== row.name);
     const allowlistOmitted = pending.filter((row) => !pendingAllowlist.some((allowed) =>
@@ -210,6 +221,7 @@ const main = async () => {
       verdict: checksumPass && historyPass && allowlistPass && batchPass ? 'PLAN_VALID_NOT_AUTHORIZED' : 'PLAN_ONLY_NOT_EXECUTABLE',
     };
     console.log(JSON.stringify(report, null, 2));
+    if (report.verdict !== 'PLAN_VALID_NOT_AUTHORIZED') process.exitCode = 2;
   } finally {
     if (transactionOpen) await client.query('ROLLBACK').catch(() => undefined);
   }
