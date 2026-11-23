@@ -110,6 +110,37 @@ test('Quote creation validates and normalizes line items', async () => {
   ]);
 });
 
+test('Business Quote accepts a valid Business Offering UUID and defers price resolution to the tenant repository', async () => {
+  let received: CreateQuoteInput | null = null;
+  const repository = {
+    createBusinessQuote: async (_context: AuthContext, _businessId: number, input: CreateQuoteInput) => {
+      received = input;
+      return quote(9, 10);
+    },
+  } as unknown as QuoteRepository;
+  const service = new DefaultQuoteService(repository);
+  const offeringId = '123e4567-e89b-42d3-a456-426614174000';
+  await service.createBusinessQuote(context, 91, {
+    customerId: 7,
+    lineItems: [{ businessOfferingId: offeringId, quantity: 2 }],
+    followUpDate: '2026-11-24',
+  });
+  assert.equal(received?.lineItems[0].businessOfferingId, offeringId);
+});
+
+test('Business Quote rejects malformed Business Offering references', async () => {
+  const repository = { createBusinessQuote: async () => { throw new Error('must not be called'); } } as unknown as QuoteRepository;
+  const service = new DefaultQuoteService(repository);
+  await assert.rejects(
+    () => service.createBusinessQuote(context, 91, {
+      customerId: 7,
+      lineItems: [{ businessOfferingId: 'not-a-uuid', quantity: 1 }],
+      followUpDate: '2026-11-24',
+    }),
+    /Business Offering reference is invalid/,
+  );
+});
+
 test('Quote creation requires at least one line item', async () => {
   const { service } = serviceFor();
   await assert.rejects(
