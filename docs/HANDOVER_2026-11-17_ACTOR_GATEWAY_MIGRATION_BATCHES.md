@@ -8056,3 +8056,21 @@ PR #303 remains separate, draft and unmerged; its head `3af71a78b86c74864092150c
 No production batch is approved. The pending allowlist remains 7/52; `config/production-migration-batches.json` remains `[]`. Live Gateway/Auth Issuer readiness, fresh role/membership and ACL evidence, provider attestation provisioning, complete route/caller postflights, and the corrected manual Business Capability cutover remain separate operational requirements. Do not fill the allowlist by copying the pending queue or rerun CI for the unchanged PR #305 head.
 
 Matrix documentation commit: `301279b3a700322bca361021d58dccfd77e00b05`. No production migration, manual cutover, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred.
+## 23 November 2026 — extend read-only planner with live Actor Gateway principal preflight
+
+Before this code task, re-read this handover and the updated 52-entry dependency matrix, rechecked PRs #303 and #305, and verified the existing migration branch inventory. Reused PR #305's existing branch `feat/production-migration-batches-mainline-20261123`; no branch or worktree was created.
+
+The production planner previously verified the dedicated audit login, database, TLS, ledger, checksums, retained history, pending queue and batch manifest, but did not inspect the live `ghm_actor_gateway` role/membership/ACL state. This was an explicit gap because migration `20261110210000_add_actor_gateway_principal_guard` has strict role preconditions.
+
+Added read-only checks to `scripts/plan-production-migrations.mjs` for:
+- `ghm_actor_gateway` LOGIN/NOINHERIT and all non-elevated role flags.
+- The complete membership edge set involving `ghm_actor_gateway`: exactly `ghm_db_user` as its member, ADMIN=true, INHERIT=false, SET=false, with no extra role memberships held by or granted to the Gateway role.
+- `ghm` schema USAGE=true / CREATE=false and database CONNECT=true.
+- `ghm.assert_actor_gateway(bigint)` ownership by `ghm_schema_owner`, SECURITY DEFINER, pinned `search_path=pg_catalog, ghm`, Gateway EXECUTE=true, runtime EXECUTE=false and PUBLIC EXECUTE=false.
+- A separate `actor_gateway_principal_preflight` release-gate result and detailed read-only report fields. A mismatch makes the plan non-executable; no role or ACL is modified.
+
+Added a static regression test for these role, membership and privilege checks. Commits on the existing PR #305 branch: planner `f82f40b2e2c3bff90cd7a74924072098eb864bfb`; tests/latest head `c569334236109331345ad693583efca9a9d584b9`.
+
+Exact-head CI run `45242582863` / #5651 was in progress at handover update time. Do not claim qualification until both jobs finish. The planner has not yet been rerun against production with this new report. Its existing read-only URL remains owner-local; do not paste credentials or connection strings into chat.
+
+No production SQL, migration, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred. The production batch manifest remains `[]`; PR #305 remains draft/unmerged.
