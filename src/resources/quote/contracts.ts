@@ -39,10 +39,11 @@ export interface Quote {
 }
 
 export interface CreateQuoteLineItemInput {
-  readonly description: string;
+  readonly description?: string;
   readonly quantity: number;
-  readonly unitPrice: number;
+  readonly unitPrice?: number;
   readonly catalogItemId?: number | null;
+  readonly businessOfferingId?: string | null;
   readonly businessOfferingId?: string | null;
 }
 
