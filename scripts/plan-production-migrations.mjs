@@ -60,6 +60,20 @@ const main = async () => {
       ORDER BY version
     `);
     const ledger = ledgerResult.rows;
+    const productionExceptions = JSON.parse(await fs.readFile(
+      path.resolve('config/historical-migration-provenance-exceptions.production.json'), 'utf8',
+    ));
+    const retainedRegistry = JSON.parse(await fs.readFile(
+      path.resolve('config/retained-historical-migrations.production.json'), 'utf8',
+    ));
+    if (!productionExceptions || typeof productionExceptions !== 'object' || Array.isArray(productionExceptions) ||
+        Object.entries(productionExceptions).some(([version, checksum]) =>
+          !/^\\d{14}$/.test(version) || typeof checksum !== 'string' || !sha256Pattern.test(checksum))) {
+      fail('Production historical provenance exception manifest is invalid.');
+    }
+    if (!retainedRegistry || typeof retainedRegistry !== 'object' || Array.isArray(retainedRegistry)) {
+      fail('Production retained-history registry is invalid.');
+    }
     const sourceEntries = await fs.readdir(migrationsDir, { withFileTypes: true });
     const repository = [];
     for (const entry of sourceEntries) {
