@@ -224,7 +224,7 @@ try {
 
   const gatewayPrivileges = await readActorGatewayDatabasePrivileges(gatewayPool);
   console.log(`GATEWAY ACL DIAGNOSTIC: ${JSON.stringify(gatewayPrivileges)}`);
-  assertActorGatewayDatabasePrivileges(gatewayPrivileges);
+  assertActorGatewayDatabasePrivileges(gatewayPrivileges, 'full');
   console.log('GATEWAY EXACT FUNCTION AND RELATION ACL ALLOW-LIST: PASS');
   const provision=await cleanupPool.connect();
   try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
