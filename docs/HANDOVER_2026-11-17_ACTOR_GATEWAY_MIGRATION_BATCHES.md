@@ -7438,3 +7438,34 @@ Do not continue feature implementation on PR #298 or #297 until their stale/conf
 Cloudflare Pages preview success is not CI qualification. The PR #298 and #297 heads have no observed `quality`/`web-quality` pass in their exact-head check runs. PR #303's checks passed at its exact recorded head. Do not infer a missing CI result as a pass or use a preview URL as evidence of production readiness.
 
 No branch ref, PR metadata, code, local worktree, production database, migration manifest, Render service, credential, role, ACL, deployment or paid resource was changed during this read-only reconciliation inspection.
+
+
+## 23 November 2026 — PR #298/#297 migration-runner conflict inventory (source-only)
+
+This is a completed source/branch inventory, not a merge or a live database audit. It was performed after re-reading the current handover, matrix, support record, PRs, branches and production manifest.
+
+### Exact source topology
+
+- Current main `93ff3c774ce225760b0e3e2cf99a770b38e8a097` contains the existing production migration runner and seven-entry `config/pending-migrations.production.json`, but no `src/db/migration-batches.ts`, no `src/db/migration-batches.test.ts`, and no `config/production-migration-batches.json`.
+- PR #298 head `b6b96c44ac26544156e099373d3185a965b880fd` introduces `src/db/migration-batches.ts`, its tests, `src/db/migration-runner-plan-mode.test.ts`, `src/db/actor-gateway-security-definer-search-path-migration-contract.test.ts`, and `config/production-migration-batches.json` (exactly `[]`). Its batch API uses `{id,purpose,migrations:[version,name,checksum]}`, exact contiguous pending-prefix selection, checksum equality, and signed supplier/business-profile replacement dependencies. It also changes `src/db/migrate.ts` to query ledger `name`, call `assertAppliedMigrationNames`, add plan-only reporting and select an explicitly named production batch.
+- PR #297 head `304da520c5cfe1e77b479a97dfdd9d951fa6e245` carries a different, older API: `src/db/production-migration-batch.ts`, `config/production-pending-migration-inventory.json`, and a `{batches:[{id,reason,migrations}]}` shape. It is not a drop-in companion to PR #298's `MigrationBatch` model. Do not combine both APIs or both manifests.
+- The two source trees are not identical: current main has two later signed Business Capability migrations absent from PR #298's branch: `20261120010000_add_signed_business_capability_create.sql` and `20261120011000_allow_signed_business_capability_create_assertion.sql`, plus the corresponding create-migration contract test. PR #298's production pending inventory contains 50 entries through `20261117020000`; it cannot be copied unchanged onto current main.
+- Current main's `config/pending-migrations.production.json` lists seven entries from `20261110100000` through `20261110233000`. The two 20 Nov Business Capability migrations are not in that seven-entry list. Their actual applied/pending status in production is unknown because no fresh live ledger read has been obtained. Do not infer status from source tree, export TOC, or old local qualification databases. Do not edit/refresh the production inventory until authorized live ledger/name/checksum evidence exists.
+
+### Reconciliation decision
+
+1. Do not merge, rebase, force-push, or cherry-pick PR #298 or #297 as-is. GitHub reports both dirty/conflicted against main; PR #298 is 443 commits ahead / 94 behind by compare and 56 files changed; PR #297 is 119 commits and 28 files changed. Their mergeability and base snapshots are stale.
+2. Keep PR #303 separate. It is clean against current main and exact-head quality/web-quality/Cloudflare checks passed; it remains draft by owner decision.
+3. The only sensible migration-batch integration candidate is a new isolated branch from current main, re-implementing the single PR #298 batch-selection design on top of current main's migration runner and retaining all current-main security/migration changes. Reuse reviewed source ideas, not wholesale branch history. Do not transplant PR #297's competing manifest/API.
+4. Before any candidate changes, preserve `C:\\GHM-main` (known merge-in-progress/staged/untracked state) and `C:\\GHM-pr303`; use a new worktree/directory based on exact current main. No destructive Git commands in existing worktrees.
+5. The candidate must preserve main's existing seven-entry pending inventory until live ledger reconciliation, add no guessed entries, keep the execution manifest `[]`, and refuse production execution absent a committed reviewed batch ID. Add plan-only mode only if it is strictly read-only and cannot be mistaken for a production restore/qualification.
+6. Candidate validation must include current-main full CI, unit/contract tests for contiguous-prefix and checksum guards, signed cutover dependency tests, production plan-only no-SQL proof, migration-name ledger guard, and all existing Gateway/security-definer tests. Database-backed tests may use only distinct verified disposable localhost databases; never production or Render.
+7. No merge, PR readiness change, production SQL, migration, role/ACL/credential change, Render deployment/restart, or paid resource is authorized by this inventory.
+
+### Explicit unresolved facts
+
+- Actual production applied/pending state and checksums for the two 20 Nov migrations and the full current migration queue remain unknown.
+- PR #298 exact-head `quality` and `web-quality` results are absent; its only observed check is Cloudflare Pages success. PR #297 likewise has only Cloudflare Pages success observed. PR #303 has exact-head `quality`, `web-quality`, and Cloudflare Pages success.
+- The earlier local PR #298 offline test sweep is historical evidence for its then-current branch; it does not qualify a reconciled candidate or current main.
+
+No source files, branches, PR metadata, migration manifest, production DB, Render service, credentials, roles, ACLs, deployments or local worktrees were changed during this inventory.
