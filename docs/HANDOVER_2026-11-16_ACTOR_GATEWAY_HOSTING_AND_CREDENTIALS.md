@@ -2169,3 +2169,23 @@ It makes the pre-task and post-task discipline mandatory:
 This is a documentation-only addition on the existing PR #305 branch. It does not authorize or perform production migration, database changes, role/ACL/credential changes, secret or environment changes, deployment, restart, payment action or new spending.
 
 **Next step:** use this objectives document as the governing pre-task checklist, then continue the existing product migration work from the current PR/branch/handover state. Do not create a new branch or parallel workstream for the objectives.
+
+
+## 2026-11-24 — mandatory task gate synchronized to PR #305
+
+The standing objectives were strengthened on `main` at commit `56d64aa5d95bc5e6e25f6f31b22d2699c815b0e4` with an explicit hard-stop execution gate. The PR #305 branch previously contained the earlier objectives version, which would have risked reintroducing the weaker document if the PR were merged.
+
+The exact current `main` version of `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` has now been synchronized into this existing PR #305 branch. This preserves the mandatory per-task inspection rule and the post-task handover requirement through any future merge.
+
+Repository/PR reconciliation at this task:
+- PR #305 remains the sole active production migration-batch implementation; branch `feat/production-migration-batches-mainline-20261123`.
+- Its prior recorded base was `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; current `main` had advanced through `03d7b6ccf35771c13ed4c0f024bb46fa6a7c793c`, `d0a76c5a9d85641ba5762515b69c899addf7a76f`, and `56d64aa5d95bc5e6e25f6f31b22d2699c815b0e4`. The PR branch is therefore 3 commits behind current main; no rebase, merge, force-push or branch recreation was performed.
+- PR #297 and #298 remain closed/unmerged and their branches preserved. Their old implementation paths are not being reactivated. PR #285 remains a separate open migration-execution implementation and was not merged into this PR; no parallel runner was introduced.
+- PR #305 exact head before this documentation sync: `d8cdcf9828ace115fe4fcfbdf76c26c3d5f33114`. Its exact-head CI run `45276166682` passed both `quality` and `web-quality`.
+- PR #306 is open/draft and adds Business-scoped Customer/Quote API resources. It is not treated as authority to move QuoteFlow's local operational collections into GHM; the owner's local-first operational-data boundary remains controlling.
+
+No production SQL, migration execution, database role/ACL/credential change, secret/environment change, Render setting, service, deployment, restart, payment action, local product data change, new branch/worktree, or paid resource was performed.
+
+### Next actionable step
+
+Use the already-implemented read-only production planner on this existing PR #305 branch against the existing dedicated `ghm_audit_login` connection, after the owner runs it from the existing local validation worktree. The command must verify exact production database/host, strict TLS, `session_user=current_user=ghm_audit_login`, and a read-only transaction. Capture its JSON result without exposing the URL or credentials. The planner must not execute migrations or write the ledger; the committed production batch manifest remains `[]`, and production execution remains unauthorized. Record the resulting evidence here before any further migration decision.
