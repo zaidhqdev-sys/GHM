@@ -125,7 +125,8 @@ test('Business Quote accepts a valid Business Offering UUID and defers price res
     lineItems: [{ businessOfferingId: offeringId, quantity: 2 }],
     followUpDate: '2026-11-24',
   });
-  assert.equal(received?.lineItems[0].businessOfferingId, offeringId);
+  assert.ok(received);
+  assert.equal((received as CreateQuoteInput).lineItems[0].businessOfferingId, offeringId);
 });
 
 test('Business Quote rejects malformed Business Offering references', async () => {
