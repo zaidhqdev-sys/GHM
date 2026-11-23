@@ -18,6 +18,7 @@ export interface QuoteLineItem {
 export interface Quote {
   readonly id: QuoteId;
   readonly accountId: AccountId;
+  readonly businessId?: number | null;
   readonly customerId: CustomerId;
   readonly customerName: string;
   readonly customerPhone: string | null;
@@ -53,6 +54,11 @@ export interface QuoteRepository {
   listQuotes(context: AuthContext): Promise<Quote[]>;
   setQuoteStatus(context: AuthContext, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
   setQuoteNotes(context: AuthContext, quoteId: QuoteId, notes: string): Promise<Quote>;
+  createBusinessQuote?(context: AuthContext, businessId: number, input: CreateQuoteInput): Promise<Quote>;
+  getBusinessQuote?(context: AuthContext, businessId: number, quoteId: QuoteId): Promise<Quote | null>;
+  listBusinessQuotes?(context: AuthContext, businessId: number): Promise<Quote[]>;
+  setBusinessQuoteStatus?(context: AuthContext, businessId: number, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
+  setBusinessQuoteNotes?(context: AuthContext, businessId: number, quoteId: QuoteId, notes: string): Promise<Quote>;
 }
 
 export interface QuoteService {
@@ -61,6 +67,11 @@ export interface QuoteService {
   listQuotes(context: AuthContext): Promise<Quote[]>;
   setQuoteStatus(context: AuthContext, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
   setQuoteNotes(context: AuthContext, quoteId: QuoteId, notes: string): Promise<Quote>;
+  createBusinessQuote?(context: AuthContext, businessId: number, input: CreateQuoteInput): Promise<Quote>;
+  getBusinessQuote?(context: AuthContext, businessId: number, quoteId: QuoteId): Promise<Quote | null>;
+  listBusinessQuotes?(context: AuthContext, businessId: number): Promise<Quote[]>;
+  setBusinessQuoteStatus?(context: AuthContext, businessId: number, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
+  setBusinessQuoteNotes?(context: AuthContext, businessId: number, quoteId: QuoteId, notes: string): Promise<Quote>;
 }
 
 export const QUOTE_OPERATIONS = Object.freeze({
