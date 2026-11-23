@@ -224,6 +224,17 @@ const migrate = async (): Promise<void> => {
       : pendingMigrations;
     const executionVersions = new Set(executionMigrations.map((migration) => migration.version));
 
+    const pendingMigrations = migrations.filter((migration) => !appliedByVersion.has(migration.version));
+    const executionMigrations = approvedTarget.databaseName === 'ghm_db'
+      ? selectProductionMigrationBatch(
+        migrations.map(({ version, name, checksum }) => ({ version, name, checksum })),
+        new Set(appliedByVersion.keys()),
+        productionMigrationBatches as MigrationBatch[],
+        process.env.GHM_MIGRATION_BATCH_ID,
+      )
+      : pendingMigrations;
+    const executionVersions = new Set(executionMigrations.map((migration) => migration.version));
+
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
@@ -238,6 +249,7 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
+      if (!executionVersions.has(migration.version)) continue;
       if (!executionVersions.has(migration.version)) continue;
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
