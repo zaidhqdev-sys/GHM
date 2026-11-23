@@ -7971,3 +7971,35 @@ Separately reviewed PR #303 and its exact manual-only cutover source. It is not 
 The matrix update was fetched again and verified to contain 52 migration rows. The live allowlist remains 7/52 (45 omitted), and the production batch manifest remains empty. This documentation reconciliation does not yet select or authorize a production batch. PR #305 remains draft/unmerged. No production SQL, manual cutover, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred.
 
 Next task: use the exact live pending order and the updated 52-row matrix to assess the earliest safe contiguous prefix against PR #305's selector/dependency guards and the current allowlist. Do not fill the allowlist or manifest by copying the pending queue; determine which migration groups are genuinely safe and what source/deployment/ACL evidence is required for each.
+
+
+## 23 November 2026 — selector guard for signed Business Capability create pair
+
+Before this code task, re-read the current migration handover and 52-row dependency matrix, checked PRs #243/#270/#272/#297/#298/#300/#303/#305, searched the existing production-migration and Business Capability branches, and compared the existing PR #305 branch to main. Reused `feat/production-migration-batches-mainline-20261123`; no branch or worktree was created.
+
+Source review confirmed:
+- `20261120010000_add_signed_business_capability_create` creates a signed create wrapper which calls verifier operation `business.capability.create`.
+- That operation is not admitted by the verifier until `20261120011000_allow_signed_business_capability_create_assertion`.
+- Both are consecutive pending migrations and neither revokes legacy Resource API INSERT/sequence privileges.
+- PR #305's existing selector already guards the supplier and Business Profile runtime-revocation/signed-replacement pairs, but did not guard this new create-wrapper/verifier pair. A one-entry contiguous prefix ending after the wrapper could therefore have been selected.
+
+Added `REQUIRED_ORDERED_MIGRATION_PAIRS` to `src/db/migration-batches.ts`. If the create wrapper is already applied or selected, the verifier allowlist extension must also be applied or selected. Added tests for rejection of a one-entry batch, acceptance of the complete pair, and rejection of a pre-existing incomplete applied state.
+
+Commits on the existing PR #305 branch:
+- Selector guard: `108aa95fe2fe4e0d3ed3de00c131901b2ecf4eee`.
+- Regression tests: `cf100f11fef1a37190bca1d050f4bd1f75172110` (latest observed branch head).
+- Exact-head GitHub Actions run `45240831225` / run number `5646` was pending at last inspection. No CI pass is claimed yet.
+
+### Earliest contiguous-prefix review
+
+The 52-entry live pending order was checked against the first 17 migration SQL files:
+- The first supplier-classification migration creates a SECURITY DEFINER RPC taking caller-supplied account ID and grants it to `ghm_runtime`; the runtime grant is revoked by `20261110260000`, while its HMAC-signed replacement arrives at `20261111030000`.
+- Business Profile has the analogous runtime revocation at `20261110270000` and signed replacement at `20261111040000`.
+- The first 11 migrations precede those revocations but include caller-ID-based functions and initial ID-only Gateway wrappers; they are not permission to expose those wrappers. PR #305 already requires each runtime cutover and its signed replacement in the same completed state.
+- The 7-entry pending allowlist omits the first pending migration and several entries in the initial prefix, so it cannot authorize even a proposed first batch. Do not expand it by copying the live queue.
+- The principal-guard migration requires `ghm_actor_gateway` LOGIN/NOINHERIT with no elevated flags and exactly the bounded `ghm_db_user` membership (ADMIN=true, INHERIT=false, SET=false). Prior role evidence records that intended shape, but the 23 November planner did not inspect role memberships; retain a live preflight.
+- The current operational evidence still has no healthy Actor Gateway process and no isolated Auth Issuer. The existing Actor Gateway Render service failed startup in the inspected handover. Do not use Resource API as a substitute for the Gateway or weaken the identity boundary.
+
+Updated the 20 November dependency matrix to 52 migration rows and appended this contiguous-prefix analysis on the existing continuation branch. Matrix commit: `c883b8921f168d431773936d7f3dba0607936120`. It records that no safe first production batch is selected, the allowlist is 7/52, the execution manifest remains `[]`, and the Business Capability manual cutover is separate from automatic migrations.
+
+No production migration, SQL, manual cutover, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred. PR #305 remains draft/unmerged.
