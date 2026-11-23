@@ -7521,3 +7521,17 @@ At the post-open check: Cloudflare Pages preview succeeded; commit status was pe
 Next action to obtain full validation: use a clean separate local worktree based on the PR #305 branch (do not touch `C:\\GHM-main` or `C:\\GHM-pr303`) and make a normal owner-controlled push event or run the workflow through an authorized workflow-dispatch path. Do not fabricate a pass from Cloudflare preview. If local checkout/push is unavailable, leave the PR draft and validation pending.
 
 No production database, migration, role/ACL/credential, Render setting/service/deployment, payment state, or paid resource changed. Manifest remains `[]`.
+
+
+
+## 23 November 2026 — PR #305 exact-head CI failure and definitive duplicate removal
+
+The owner-created isolated validation worktree `C:\\GHM-pr305-ci-20261123` was created from the PR #305 source branch at `6f5525372f93cc194c22db3f50b932697798c17a`. An empty CI-trigger commit was pushed to the PR source branch; this did not modify application source. The resulting exact-head workflow run was [45217705381](https://github.com/zaidhqdev-sys/GHM/actions/runs/45217705381), at commit `73620d1c3c0ca52b262b49244878ca77378c8218`.
+
+- `web-quality` passed: web build, tests, dependency audit and security-sensitive toolchain verification all succeeded.
+- `quality` failed at TypeScript Build. The actual source file still contained two copies of `AppliedMigrationLedgerEntry` and `assertAppliedMigrationNames` (TS2300/TS2451). Disposable database migration, qualification and test stages were skipped; no DB qualification pass is claimed.
+- Direct branch inspection confirmed the prior correction commit `6f552537` had not removed the duplicate block. The file was then rewritten to retain exactly one ledger-name type/guard pair. Definitive source correction commit: `fc919d662d7d160cbb01466aac7a07c47caa83f0`.
+- Follow-up inspection confirmed the branch file now contains one declaration of each. PR #305 remains open/draft/unmerged; the new head is mergeable against current main at the last metadata check. Await a new full exact-head CI result for `fc919d6...`; do not treat run 45217705381 as passing or as evidence of DB qualification.
+- PR #298 remains open/draft/dirty at `b6b96c44ac26544156e099373d3185a965b880fd`; PR #297 remains open/draft/dirty at `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; PR #303 remains open/draft/mergeable at `3af71a78b86c74864092150c6d036b312cf5ce45`. These remain separate; no merge or cross-branch cherry-pick was performed.
+
+The production batch manifest remains exactly `[]`. No production DB connection or SQL, migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource or original local worktree operation occurred. The CI workflow used disposable PostgreSQL only, and its migration/test stages were skipped after the build failure.
