@@ -12,9 +12,9 @@ export interface QuoteLineItem {
   readonly quantity: number;
   readonly unitPrice: number;
   readonly catalogItemId: number | null;
-  readonly businessOfferingId: string | null;
-  readonly currencyCode: string | null;
-  readonly priceUnit: string | null;
+  readonly businessOfferingId?: string | null;
+  readonly currencyCode?: string | null;
+  readonly priceUnit?: string | null;
   readonly createdAt: Date;
 }
 
