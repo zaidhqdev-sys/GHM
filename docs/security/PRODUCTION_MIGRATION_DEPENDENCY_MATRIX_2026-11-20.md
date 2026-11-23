@@ -367,3 +367,8 @@ Following the corrected live planner result above, rechecked the allowlist imple
 The live read-only planner returned the exact 52 pending version/name identities in repository order; the full 52-source SQL/dependency review is recorded above. Reconciled `config/pending-migrations.production.json` on the existing PR #305 branch to those 52 exact entries in commit `841b8b7075010db9e095e795b5aedb6cf2c11f2c`. The new file was fetched back and verified at 52 entries, strictly ordered and unique. The batch manifest was not changed and remains `[]`.
 
 This is an inventory correction only. It does not make any pending migration executable: PR #305 still requires an explicit reviewed contiguous-prefix batch with matching checksums, and the live Actor Gateway/Auth Issuer, route/caller, ACL, provider-attestation, backup/restore and manual-cutover release gates remain. The latest inventory commit has not yet been qualified by exact-head CI; do not claim a CI pass or execute production migrations.
+
+
+## 23 November 2026 — exact-head CI completed for pending inventory test correction
+
+PR #305 exact-head Actions run [45245920767](https://github.com/zaidhqdev-sys/GHM/actions/runs/45245920767) passed both `quality` and `web-quality` at `4162100767469019fea0a17337185f1672446215`. The run qualifies the explicit frozen 52-entry expected set in the migration audit policy tests and the full repository CI at this exact head. It does not authorize a production batch. The pending inventory is 52/52; `config/production-migration-batches.json` remains `[]`. The read-only production audit and Actor Gateway principal preflight remain as previously recorded. PR #305 stays draft/unmerged; no production SQL or state change occurred.
