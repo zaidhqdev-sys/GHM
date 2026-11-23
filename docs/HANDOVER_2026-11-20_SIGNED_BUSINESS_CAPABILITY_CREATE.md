@@ -376,3 +376,11 @@ PR #303 remains open and draft; it has not been merged. This CI qualification do
 Owner direction: keep PR #303 separate for review. It remains open, draft and unmerged; do not mark it ready for review or merge it as part of this continuation. The branch remains isolated from `main`. Continue recording subsequent source corrections, local validation and CI evidence in this handover, with exact commit/run identifiers and explicit production-boundary statements.
 
 No production database change, manual cutover, Render setting/deployment, role/ACL/credential/secret change, paid resource, or PR #298/#297 change is authorized by this decision.
+
+## PR #303 column-level INSERT cutover correction — exact-head CI #5605 — 2026-11-23
+
+On the existing `fix/business-capability-column-privilege-audit` branch, the manual cutover now revokes the explicit historical column-level INSERT privileges on `ghm.business_capability`, table-level INSERT, and sequence USAGE/SELECT from PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway`. The privilege audit and disposable PostgreSQL qualification were extended to detect column-level INSERT grants rather than only table-level grants.
+
+Exact PR head: `3af71a78b86c74864092150c6d036b312cf5ce45` (8 commits ahead of main, 0 behind). Exact-head Actions run `44924040445` / #5605 completed successfully: both `quality` and `web-quality` passed. The quality job included TypeScript build, full tests, disposable PostgreSQL 18 migrations, Actor Gateway principal qualification and the dedicated cutover qualification. Web build and tests also passed.
+
+PR #303 remains open/draft/unmerged. The corrected cutover is still manual-only and has not been applied to production. Successful disposable CI and the Cloudflare Pages preview do not prove production route/principal readiness or fresh backup restoreability. Preserve the separate requirements: deployed and qualified signed create route, provisioned Gateway principal, resolved Render role model, and fresh verified backup. No production DB, ACL, role, Render setting, secret, deployment or service state changed.
