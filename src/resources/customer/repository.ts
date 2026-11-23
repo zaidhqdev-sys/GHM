@@ -48,7 +48,7 @@ const findVisibleCustomer = async (
   const result = await client.query(
     `SELECT ${CUSTOMER_COLUMNS}
      FROM ghm.customer
-     WHERE id = $1${ownerPredicate(context)}`,
+     WHERE id = $1 AND business_id IS NULL${ownerPredicate(context)}`,
     ownerValues(context, customerId),
   );
 
@@ -157,7 +157,7 @@ export class PostgresCustomerRepository implements CustomerRepository {
       context,
       async client => {
         const values: unknown[] = [];
-        const conditions: string[] = [];
+        const conditions: string[] = ['business_id IS NULL'];
         let parameter = 1;
 
         if (context.role !== 'admin') {
@@ -208,7 +208,7 @@ export class PostgresCustomerRepository implements CustomerRepository {
         const result = await client.query(
           `UPDATE ghm.customer
            SET status = $1, updated_at = now()
-           WHERE id = $2${context.role === 'admin' ? '' : ' AND account_id = $3'}
+           WHERE id = $2 AND business_id IS NULL${context.role === 'admin' ? '' : ' AND account_id = $3'}
            RETURNING ${CUSTOMER_COLUMNS}`,
           context.role === 'admin'
             ? [status, customerId]
