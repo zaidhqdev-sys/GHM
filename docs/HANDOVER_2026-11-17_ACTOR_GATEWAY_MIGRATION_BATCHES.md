@@ -7786,10 +7786,10 @@ Completed the checksum comparison using the read-only production ledger evidence
 - The production ledger head remains `20261109210000_deactivate_unrecognized_public_directory_records`. The two 20 November Business Capability migrations (`20261120010000` and `20261120011000`) are absent from the ledger and remain pending.
 - Therefore 52 of the 147 source migrations are pending (147 - 1 bootstrap - 94 applied source migrations).
 
-### Provenance registry disposition
-- `config/historical-migration-provenance-exceptions.json` contains 18 entries. Sixteen exception checksums exactly match live ledger rows.
-- Of those 16 live entries, 9 are required to account for source-vs-ledger historical checksum differences; 7 are redundant because the current source bytes already match the ledger through canonical/legacy checksum rules.
-- Two registry entries are stale and do not match the live ledger checksums: `20261104120000` (registry `da74451e…`, ledger `3f284b7a…`) and `20261104130000` (registry `b7e1ace8…`, ledger `230657b7…`). Both live ledger checksums match the current source canonical bytes. No exception-registry edit was made; disposition of the 7 redundant and 2 stale entries is separate follow-up work.
+### Provenance registry disposition (corrected after target-specific review)
+- The production-specific manifest `config/historical-migration-provenance-exceptions.production.json` contained 16 entries. Nine are required historical provenance exceptions; seven entries exactly duplicated current source canonical checksums and were removed from the production manifest in the follow-up recorded below.
+- The two PayFast entries `20261104120000` and `20261104130000` are qualification-only records in `config/historical-migration-provenance-exceptions.qualification.json` (and the legacy generic manifest). They were incorrectly described in the earlier production reconciliation note as stale against production. They are not production exceptions and were not removed from the qualification manifest. The qualification-specific test explicitly preserves them.
+- The production manifest now has nine entries. Generic and qualification manifests remain unchanged.
 
 ### Batch gate and exact-head qualification
 - `config/pending-migrations.production.json` still contains 7 entries, all valid identities in the 52-row pending queue, but omits 45 pending migrations and omits the first pending migration. It cannot authorize the complete current queue.
