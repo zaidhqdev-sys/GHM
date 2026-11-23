@@ -19,6 +19,50 @@ const isDateKey = (value: string): boolean => {
 export class DefaultQuoteService implements QuoteService {
   constructor(private readonly repository: QuoteRepository) {}
 
+  async createBusinessQuote(context: AuthContext, businessId: number, input: CreateQuoteInput): Promise<Quote> {
+    if (!this.repository.createBusinessQuote) throw new Error('Business Quote capability unavailable');
+    if (!Number.isSafeInteger(input.customerId) || input.customerId <= 0) throw new Error('Customer is required');
+    if (!Array.isArray(input.lineItems) || input.lineItems.length === 0) throw new Error('At least one quote line item is required');
+    if (!isDateKey(input.followUpDate)) throw new Error('Follow-up date must be YYYY-MM-DD');
+    const lineItems = input.lineItems.map(item => {
+      if (!Number.isFinite(item.quantity) || item.quantity <= 0) throw new Error('Quote line item quantity must be greater than zero');
+      if (item.businessOfferingId !== undefined && item.businessOfferingId !== null) {
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.businessOfferingId)) throw new Error('Business Offering reference is invalid');
+        if (item.catalogItemId !== undefined && item.catalogItemId !== null) throw new Error('Legacy catalog item reference cannot be combined with a Business Offering');
+        return { ...item, description: item.description?.trim() ?? '', unitPrice: item.unitPrice ?? 0, catalogItemId: null };
+      }
+      if (typeof item.description !== 'string' || item.description.trim().length === 0) throw new Error('Quote line item description is required');
+      if (!Number.isFinite(item.unitPrice) || (item.unitPrice ?? 0) <= 0) throw new Error('Quote line item unit price must be greater than zero');
+      if (item.catalogItemId !== undefined && item.catalogItemId !== null) throw new Error('Business catalog item mapping is not available');
+      return { ...item, description: item.description.trim(), unitPrice: item.unitPrice!, catalogItemId: null };
+    });
+    return this.repository.createBusinessQuote(context, businessId, { ...input, lineItems });
+  }
+
+  async getBusinessQuote(context: AuthContext, businessId: number, quoteId: QuoteId): Promise<Quote | null> {
+    if (!this.repository.getBusinessQuote) throw new Error('Business Quote capability unavailable');
+    return this.repository.getBusinessQuote(context, businessId, quoteId);
+  }
+
+  async listBusinessQuotes(context: AuthContext, businessId: number): Promise<Quote[]> {
+    if (!this.repository.listBusinessQuotes) throw new Error('Business Quote capability unavailable');
+    return this.repository.listBusinessQuotes(context, businessId);
+  }
+
+  async setBusinessQuoteStatus(context: AuthContext, businessId: number, quoteId: QuoteId, status: QuoteStatus): Promise<Quote> {
+    if (!this.repository.setBusinessQuoteStatus) throw new Error('Business Quote capability unavailable');
+    if (!Number.isSafeInteger(quoteId) || quoteId <= 0) throw new Error('Quote id is invalid');
+    if (!STATUSES.includes(status)) throw new Error('Invalid Quote status');
+    return this.repository.setBusinessQuoteStatus(context, businessId, quoteId, status);
+  }
+
+  async setBusinessQuoteNotes(context: AuthContext, businessId: number, quoteId: QuoteId, notes: string): Promise<Quote> {
+    if (!this.repository.setBusinessQuoteNotes) throw new Error('Business Quote capability unavailable');
+    if (!Number.isSafeInteger(quoteId) || quoteId <= 0) throw new Error('Quote id is invalid');
+    if (typeof notes !== 'string') throw new Error('Quote notes must be text');
+    return this.repository.setBusinessQuoteNotes(context, businessId, quoteId, notes);
+  }
+
   async createQuote(context: AuthContext, input: CreateQuoteInput): Promise<Quote> {
     if (!Number.isSafeInteger(input.customerId) || input.customerId <= 0) {
       throw new Error('Customer is required');

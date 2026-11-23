@@ -12,12 +12,16 @@ export interface QuoteLineItem {
   readonly quantity: number;
   readonly unitPrice: number;
   readonly catalogItemId: number | null;
+  readonly businessOfferingId?: string | null;
+  readonly currencyCode?: string | null;
+  readonly priceUnit?: string | null;
   readonly createdAt: Date;
 }
 
 export interface Quote {
   readonly id: QuoteId;
   readonly accountId: AccountId;
+  readonly businessId?: number | null;
   readonly customerId: CustomerId;
   readonly customerName: string;
   readonly customerPhone: string | null;
@@ -35,10 +39,11 @@ export interface Quote {
 }
 
 export interface CreateQuoteLineItemInput {
-  readonly description: string;
+  readonly description?: string;
   readonly quantity: number;
-  readonly unitPrice: number;
+  readonly unitPrice?: number;
   readonly catalogItemId?: number | null;
+  readonly businessOfferingId?: string | null;
 }
 
 export interface CreateQuoteInput {
@@ -53,6 +58,11 @@ export interface QuoteRepository {
   listQuotes(context: AuthContext): Promise<Quote[]>;
   setQuoteStatus(context: AuthContext, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
   setQuoteNotes(context: AuthContext, quoteId: QuoteId, notes: string): Promise<Quote>;
+  createBusinessQuote?(context: AuthContext, businessId: number, input: CreateQuoteInput): Promise<Quote>;
+  getBusinessQuote?(context: AuthContext, businessId: number, quoteId: QuoteId): Promise<Quote | null>;
+  listBusinessQuotes?(context: AuthContext, businessId: number): Promise<Quote[]>;
+  setBusinessQuoteStatus?(context: AuthContext, businessId: number, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
+  setBusinessQuoteNotes?(context: AuthContext, businessId: number, quoteId: QuoteId, notes: string): Promise<Quote>;
 }
 
 export interface QuoteService {
@@ -61,6 +71,11 @@ export interface QuoteService {
   listQuotes(context: AuthContext): Promise<Quote[]>;
   setQuoteStatus(context: AuthContext, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
   setQuoteNotes(context: AuthContext, quoteId: QuoteId, notes: string): Promise<Quote>;
+  createBusinessQuote?(context: AuthContext, businessId: number, input: CreateQuoteInput): Promise<Quote>;
+  getBusinessQuote?(context: AuthContext, businessId: number, quoteId: QuoteId): Promise<Quote | null>;
+  listBusinessQuotes?(context: AuthContext, businessId: number): Promise<Quote[]>;
+  setBusinessQuoteStatus?(context: AuthContext, businessId: number, quoteId: QuoteId, status: QuoteStatus): Promise<Quote>;
+  setBusinessQuoteNotes?(context: AuthContext, businessId: number, quoteId: QuoteId, notes: string): Promise<Quote>;
 }
 
 export const QUOTE_OPERATIONS = Object.freeze({

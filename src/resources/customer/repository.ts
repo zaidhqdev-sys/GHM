@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
-import { withAuthorizedTransaction } from '../../db/authorized-transaction';
+import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type {
   CreateCustomerInput,
@@ -13,6 +13,7 @@ import type {
 const CUSTOMER_COLUMNS = `
   id,
   account_id,
+  business_id,
   name,
   phone,
   email,
@@ -24,6 +25,7 @@ const CUSTOMER_COLUMNS = `
 const mapCustomer = (row: any): Customer => ({
   id: Number(row.id),
   accountId: Number(row.account_id),
+  businessId: row.business_id === null || row.business_id === undefined ? null : Number(row.business_id),
   name: row.name,
   phone: row.phone,
   email: row.email,
@@ -46,7 +48,7 @@ const findVisibleCustomer = async (
   const result = await client.query(
     `SELECT ${CUSTOMER_COLUMNS}
      FROM ghm.customer
-     WHERE id = $1${ownerPredicate(context)}`,
+     WHERE id = $1 AND business_id IS NULL${ownerPredicate(context)}`,
     ownerValues(context, customerId),
   );
 
@@ -55,6 +57,66 @@ const findVisibleCustomer = async (
 
 export class PostgresCustomerRepository implements CustomerRepository {
   constructor(private readonly transactionPool?: TransactionPool | Pool) {}
+
+
+  async createBusinessCustomer(context: AuthContext, businessId: number, input: CreateCustomerInput): Promise<Customer> {
+    return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
+      const result = await client.query(
+        `INSERT INTO ghm.customer (account_id, business_id, name, phone, email)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING ${CUSTOMER_COLUMNS}`,
+        [tenant.accountId, tenant.businessId, input.name, input.phone ?? null, input.email ?? null],
+      );
+      if (result.rowCount !== 1) throw new Error('Customer creation failed');
+      return mapCustomer(result.rows[0]);
+    }, this.transactionPool);
+  }
+
+  async listBusinessCustomers(context: AuthContext, businessId: number, status?: CustomerStatus): Promise<Customer[]> {
+    return withTenantTransaction(context, businessId, async client => {
+      const values: unknown[] = [businessId];
+      const statusFilter = status === undefined ? '' : ' AND status = $2';
+      if (status !== undefined) values.push(status);
+      const result = await client.query(
+        `SELECT ${CUSTOMER_COLUMNS} FROM ghm.customer
+         WHERE business_id = $1${statusFilter}
+         ORDER BY created_at DESC, id DESC`,
+        values,
+      );
+      return result.rows.map(mapCustomer);
+    }, this.transactionPool);
+  }
+
+  async getBusinessCustomer(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer | null> {
+    return withTenantTransaction(context, businessId, async client => {
+      const result = await client.query(
+        `SELECT ${CUSTOMER_COLUMNS} FROM ghm.customer WHERE business_id = $1 AND id = $2`,
+        [businessId, customerId],
+      );
+      return result.rowCount === 1 ? mapCustomer(result.rows[0]) : null;
+    }, this.transactionPool);
+  }
+
+  async archiveBusinessCustomer(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer> {
+    return this.setBusinessStatus(context, businessId, customerId, 'archived');
+  }
+
+  async restoreBusinessCustomer(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer> {
+    return this.setBusinessStatus(context, businessId, customerId, 'active');
+  }
+
+  private async setBusinessStatus(context: AuthContext, businessId: number, customerId: CustomerId, status: CustomerStatus): Promise<Customer> {
+    return withTenantTransaction(context, businessId, async client => {
+      const result = await client.query(
+        `UPDATE ghm.customer SET status = $1, updated_at = now()
+         WHERE business_id = $2 AND id = $3
+         RETURNING ${CUSTOMER_COLUMNS}`,
+        [status, businessId, customerId],
+      );
+      if (result.rowCount === 1) return mapCustomer(result.rows[0]);
+      throw new Error('Customer not found or ownership required');
+    }, this.transactionPool);
+  }
 
   async createCustomer(
     context: AuthContext,
@@ -95,7 +157,7 @@ export class PostgresCustomerRepository implements CustomerRepository {
       context,
       async client => {
         const values: unknown[] = [];
-        const conditions: string[] = [];
+        const conditions: string[] = ['business_id IS NULL'];
         let parameter = 1;
 
         if (context.role !== 'admin') {
@@ -146,7 +208,7 @@ export class PostgresCustomerRepository implements CustomerRepository {
         const result = await client.query(
           `UPDATE ghm.customer
            SET status = $1, updated_at = now()
-           WHERE id = $2${context.role === 'admin' ? '' : ' AND account_id = $3'}
+           WHERE id = $2 AND business_id IS NULL${context.role === 'admin' ? '' : ' AND account_id = $3'}
            RETURNING ${CUSTOMER_COLUMNS}`,
           context.role === 'admin'
             ? [status, customerId]
