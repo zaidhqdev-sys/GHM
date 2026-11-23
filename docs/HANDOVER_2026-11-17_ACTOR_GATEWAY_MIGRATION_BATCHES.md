@@ -7864,3 +7864,22 @@ Re-inspected the current PRs (#297/#298/#303/#305), the existing #305 implementa
 - No change to the pending allowlist or execution manifest was made. No production migration, DDL, database read/write, role/ACL/credential change, Render setting, deployment, restart, payment action, or paid resource was performed.
 - The remaining code-level improvement identified by the prior handover is a **non-executing production plan mode** that prints/reports the exact pending queue, selected batch identity/checksums and dependency decisions without executing SQL. It should be implemented and qualified on the existing PR #305 branch before any manifest is populated. It must remain read-only and must not require a new service or database.
 - Until that plan mode and the live service/authority/recovery gates are addressed, keep PR #305 draft and `config/production-migration-batches.json` empty.
+
+
+## 23 November 2026 — read-only production migration plan mode
+
+Implemented on the existing PR #305 branch `feat/production-migration-batches-mainline-20261123`, after rechecking the current PR heads and both canonical handovers.
+
+### Implementation
+- Added `scripts/plan-production-migrations.mjs` and `npm run plan:migrations:production`.
+- The command requires a separate `GHM_MIGRATION_AUDIT_DATABASE_URL`, explicit `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`, explicit expected audit host, `DATABASE_SSL=true`, and verified TLS certificate validation.
+- It connects as the dedicated `ghm_audit_login` identity, verifies current/session user and database, starts `BEGIN READ ONLY`, and always rolls back.
+- It reads the live ledger and exact source files; reports canonical LF, legacy CRLF and production-provenance checksum results, version/name mismatches, retained-history status, pending queue, pending-allowlist omissions, and batch selection status.
+- If a reviewed batch ID/manifest is present, it calls the same compiled production batch selector for validation only. It never sends migration SQL, writes the ledger, changes role, or authorizes production execution. Report fields hard-code `execution_performed=false`, `sql_migrations_executed=0`, and `production_execution_authorized=false`.
+- Added static safety tests to the normal `npm test` command.
+
+### Current qualification
+- Latest branch head after this implementation: `987852bada326f20ec99ac0413e8d0881424184c`.
+- Exact-head GitHub Actions qualification is triggered by the normal branch update; record the final run result before calling the planner qualified.
+- The planner has not been run against production from this conversation. No audit URL, password, secret, or credential was requested or exposed.
+- Existing production batch manifest remains `[]`; pending allowlist and migration SQL remain unchanged. No production SQL, DDL, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource was performed.
