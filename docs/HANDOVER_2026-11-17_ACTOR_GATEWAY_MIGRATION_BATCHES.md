@@ -7575,3 +7575,25 @@ PR #305 changes only nine source/config/test/workflow files; it adds no migratio
 Production decision: no batch can yet be authored safely. We still lack a fresh, authorized production ledger/name/checksum reconciliation; exact contiguous live pending queue; verified full restore test (the 23 Nov logical export has only structural/catalogue/data-decode validation); production migrator/bootstrap authority remediation; healthy deployed Actor Gateway with exact commit/route/startup and restart evidence; and service/route cutover proof. Keep `config/production-migration-batches.json` exactly `[]`. No automatic production migration or manual cutover is authorized.
 
 No production database connection or SQL, migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource or original local worktree operation occurred. CI used disposable PostgreSQL only.
+
+
+
+## 23 November 2026 — direct Render read-only production access check
+
+Used the existing Render Postgres resource `ghm-db` (`dpg-dag0sdtbedkc7389vi2g-a`, database `ghm_db`, PostgreSQL 18, Frankfurt, status available, not suspended). Render's read-only query operation opened a read-only transaction; no SQL writes were possible/performed.
+
+Connection identity and ledger check:
+- `current_database() = ghm_db`
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+- `transaction_read_only = on`
+- `ghm.ghm_schema_migrations` exists.
+- `ghm_db_user` has no SELECT on the ledger.
+- Ledger owner is `ghm_schema_owner`; table ACL is `{ghm_schema_owner=arwdDxtm/ghm_schema_owner,ghm_auditor=r/ghm_schema_owner}`.
+- `ghm_auditor` has schema USAGE and ledger SELECT, but `ghm_db_user` cannot SET ROLE to `ghm_auditor`. Catalog membership checks show membership exists but neither inherited privilege usage nor SET ROLE is available for this role.
+- The role catalog reports `ghm_db_user` is non-superuser but has `CREATEDB` and `CREATEROLE` attributes. This is recorded as an observed role attribute for a separate least-privilege review; no change was made.
+- The same catalog check confirms `ghm_schema_owner` and `ghm_auditor` are NOLOGIN roles; no credentials or secrets were retrieved.
+
+This direct Render read-only inspection confirms why the ledger remains unreadable with the available connection. It does not establish any live migration versions, names, checksums, contiguous pending queue, or applied status. Do not attempt to work around it with role switching or privilege changes. Amanda's proposed dedicated auditor login would require creating a production login/role membership and securely supplying a credential; that is a separate production role/credential change and has not been authorized or performed.
+
+No production data was read from the migration ledger, no role/ACL/credential was changed, and no migration or deployment was executed. Next access route requires a controlled, explicitly authorized read-only auditor credential path or Render Support assistance. No new branch or qualification run was created for this audit.
