@@ -28,7 +28,7 @@ export class DefaultQuoteService implements QuoteService {
       if (typeof item.description !== 'string' || item.description.trim().length === 0) throw new Error('Quote line item description is required');
       if (!Number.isFinite(item.quantity) || item.quantity <= 0) throw new Error('Quote line item quantity must be greater than zero');
       if (!Number.isFinite(item.unitPrice) || item.unitPrice <= 0) throw new Error('Quote line item unit price must be greater than zero');
-      if (item.catalogItemId !== undefined && item.catalogItemId !== null && (!Number.isSafeInteger(item.catalogItemId) || item.catalogItemId <= 0)) throw new Error('Quote catalog item reference is invalid');
+      if (item.catalogItemId !== undefined && item.catalogItemId !== null) throw new Error('Business catalog item mapping is not available');
       return { ...item, description: item.description.trim(), catalogItemId: item.catalogItemId ?? null };
     });
     return this.repository.createBusinessQuote(context, businessId, { ...input, lineItems });
