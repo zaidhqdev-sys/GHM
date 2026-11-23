@@ -7469,3 +7469,8 @@ This is a completed source/branch inventory, not a merge or a live database audi
 - The earlier local PR #298 offline test sweep is historical evidence for its then-current branch; it does not qualify a reconciled candidate or current main.
 
 No source files, branches, PR metadata, migration manifest, production DB, Render service, credentials, roles, ACLs, deployments or local worktrees were changed during this inventory.
+
+
+## 23 November 2026 — isolated current-main integration branch created
+
+Created a single isolated integration branch `feat/production-migration-batches-mainline-20261123` directly from verified current main SHA `93ff3c774ce225760b0e3e2cf99a770b38e8a097`. The branch was created successfully and has not yet received source changes. It is distinct from PR #298, PR #297, PR #303, and the documentation continuation branch. This avoids altering the known local merge-in-progress worktree and preserves existing user changes. Next: selectively implement the PR #298 batch-selection design against current-main source, excluding PR #297's competing API; retain current-main migrations and seven-entry inventory unchanged until live ledger reconciliation; keep production execution manifest `[]`. No source, PR, production DB, Render service, credentials, roles, ACLs, deployment or local worktree changed during branch creation.
