@@ -25,11 +25,16 @@ export class DefaultQuoteService implements QuoteService {
     if (!Array.isArray(input.lineItems) || input.lineItems.length === 0) throw new Error('At least one quote line item is required');
     if (!isDateKey(input.followUpDate)) throw new Error('Follow-up date must be YYYY-MM-DD');
     const lineItems = input.lineItems.map(item => {
-      if (typeof item.description !== 'string' || item.description.trim().length === 0) throw new Error('Quote line item description is required');
       if (!Number.isFinite(item.quantity) || item.quantity <= 0) throw new Error('Quote line item quantity must be greater than zero');
-      if (!Number.isFinite(item.unitPrice) || item.unitPrice <= 0) throw new Error('Quote line item unit price must be greater than zero');
+      if (item.businessOfferingId !== undefined && item.businessOfferingId !== null) {
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.businessOfferingId)) throw new Error('Business Offering reference is invalid');
+        if (item.catalogItemId !== undefined && item.catalogItemId !== null) throw new Error('Legacy catalog item reference cannot be combined with a Business Offering');
+        return { ...item, description: item.description?.trim() ?? '', unitPrice: item.unitPrice ?? 0, catalogItemId: null };
+      }
+      if (typeof item.description !== 'string' || item.description.trim().length === 0) throw new Error('Quote line item description is required');
+      if (!Number.isFinite(item.unitPrice) || (item.unitPrice ?? 0) <= 0) throw new Error('Quote line item unit price must be greater than zero');
       if (item.catalogItemId !== undefined && item.catalogItemId !== null) throw new Error('Business catalog item mapping is not available');
-      return { ...item, description: item.description.trim(), catalogItemId: item.catalogItemId ?? null };
+      return { ...item, description: item.description.trim(), unitPrice: item.unitPrice!, catalogItemId: null };
     });
     return this.repository.createBusinessQuote(context, businessId, { ...input, lineItems });
   }
