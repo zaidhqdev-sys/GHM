@@ -8074,3 +8074,10 @@ Added a static regression test for these role, membership and privilege checks. 
 Exact-head CI run `45242582863` / #5651 was in progress at handover update time. Do not claim qualification until both jobs finish. The planner has not yet been rerun against production with this new report. Its existing read-only URL remains owner-local; do not paste credentials or connection strings into chat.
 
 No production SQL, migration, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred. The production batch manifest remains `[]`; PR #305 remains draft/unmerged.
+### Principal preflight scope correction — pre-migration contract
+
+Source review of `20261110210000_add_actor_gateway_principal_guard.sql` showed that the initial planner extension must test only that migration's preconditions. The migration itself creates/grants `ghm` schema USAGE and `ghm.assert_actor_gateway(bigint)` EXECUTE; requiring those postconditions before the pending migration runs would incorrectly fail a valid pre-migration plan. Removed those premature schema/function gates. The planner now checks only the pre-existing Gateway role flags and exact bounded `ghm_db_user` membership, and labels the result explicitly as a pre-migration check. The migration remains responsible for creating its schema/function grants; later live postflight must verify them after application.
+
+Correction commits on PR #305: `2993bfa6471beb769640ab9272594a8d20b89d94` (planner) and `57feb25ef65ab039d3dd2cd97d11c84de04b32d1` (test/current head). The earlier intermediate head `c569334236109331345ad693583efca9a9d584b9` and its run `45242582863`, if completed, do not qualify the corrected implementation. Exact-head CI for `57feb25ef65ab039d3dd2cd97d11c84de04b32d1` has not yet been observed; no pass is claimed.
+
+The read-only principal check does not create roles, change memberships, grants or ACLs. No production planner rerun has been performed with this code.
