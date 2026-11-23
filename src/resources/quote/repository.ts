@@ -139,6 +139,11 @@ export class PostgresQuoteRepository implements QuoteRepository {
           resolvedLines.push({ description: item.description.trim(), quantity: item.quantity, unitPrice: item.unitPrice, businessOfferingId: null, currencyCode: null, priceUnit: null });
         }
       }
+      const currencies = [...new Set(resolvedLines.map(item => item.currencyCode).filter((value): value is string => value !== null))];
+      if (currencies.length > 1) throw new Error('Business Offerings in one Quote must use the same currency');
+      if (currencies.length === 1) {
+        for (const item of resolvedLines) if (item.currencyCode === null) item.currencyCode = currencies[0];
+      }
       const amount = resolvedLines.reduce((total, item) => total + item.quantity * item.unitPrice, 0);
       const description = resolvedLines.map(item => item.description.trim()).join(', ');
       const quoteResult = await client.query(
