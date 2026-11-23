@@ -20,6 +20,13 @@ const REQUIRED_SIGNED_CUTOVER_REPLACEMENTS: Array<{ cutover: string; replacement
   },
 ];
 
+const REQUIRED_ORDERED_MIGRATION_PAIRS: Array<{ first: string; requiredFollowing: string }> = [
+  {
+    first: '20261120010000_add_signed_business_capability_create',
+    requiredFollowing: '20261120011000_allow_signed_business_capability_create_assertion',
+  },
+];
+
 export const assertProductionMigrationBatchCutoverDependencies = (
   selectedEntries: MigrationBatchEntry[],
   appliedVersions: ReadonlySet<string>,
@@ -32,6 +39,16 @@ export const assertProductionMigrationBatchCutoverDependencies = (
         !selectedVersions.has(dependency.replacement.slice(0, 14))) {
       throw new Error(
         `Production migration batch would leave runtime cutover ${dependency.cutover} without signed replacement ${dependency.replacement}`,
+      );
+    }
+  }
+
+  const completedVersions = new Set([...appliedVersions, ...selectedVersions]);
+  for (const dependency of REQUIRED_ORDERED_MIGRATION_PAIRS) {
+    if (!completedVersions.has(dependency.first.slice(0, 14))) continue;
+    if (!completedVersions.has(dependency.requiredFollowing.slice(0, 14))) {
+      throw new Error(
+        `Production migration batch would include ${dependency.first} without required following migration ${dependency.requiredFollowing}`,
       );
     }
   }
