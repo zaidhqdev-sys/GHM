@@ -28,6 +28,7 @@ import {
 import {
   assertActorGatewayDatabasePrivileges,
   readActorGatewayDatabasePrivileges,
+  resolveActorGatewayStartupStage,
 } from '../../src/actor-gateway/database-privileges';
 
 interface RateLimitBinding {
@@ -46,6 +47,7 @@ interface ActorGatewayWorkerEnv {
   GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM?: string;
   GHM_JWT_ES256_PREVIOUS_KID?: string;
   GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET?: string;
+  GHM_ACTOR_GATEWAY_STARTUP_STAGE?: string;
 }
 
 const INTERNAL_HTTP_PORT = 8787;
@@ -172,6 +174,7 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
         workerEnv.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET,
         'GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET',
       );
+      const startupStage = resolveActorGatewayStartupStage(workerEnv.GHM_ACTOR_GATEWAY_STARTUP_STAGE);
 
       // Construct a public-key-only environment object. The Worker must never
       // receive the ES256 private key, token pepper, or issuer database URL.
@@ -236,7 +239,7 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
         const privileges = await readActorGatewayDatabasePrivileges(
           startupClient as unknown as Pick<Pool, 'query'>,
         );
-        assertActorGatewayDatabasePrivileges(privileges);
+        assertActorGatewayDatabasePrivileges(privileges, startupStage);
       } finally {
         await startupClient.end().catch(() => undefined);
       }
@@ -257,6 +260,7 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
         storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
         connectBusinessProvisioningReader: new PostgresConnectBusinessProvisioningReader(pool, capabilityAssertionSecret),
         campaignDirectoryReviewReader: new PostgresCampaignDirectoryReviewGatewayReader(pool, capabilityAssertionSecret),
+        businessCapabilityCreateEnabled: startupStage === 'full',
       }, {
         rateLimitDecision: async (accountId) => {
           const decision = await edgeRateLimiter.limit({ key: `actor:${accountId}` });
