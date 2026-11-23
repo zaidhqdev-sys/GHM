@@ -7772,3 +7772,30 @@ The repository's canonical checksum rule was inspected at PR #305 head `bcbeeb81
 A checksum attempt using connector-rendered raw text was deliberately not accepted as authoritative: for a known migration whose checksum is recorded in the explicit historical exception registry, the locally computed digest of the rendered text did not match the expected ledger checksum. This indicates that the connector text representation cannot be assumed to preserve exact Git blob bytes/trailing-byte semantics for hashing. No checksum mismatch is asserted from that attempt. Exact checksums must be computed from Git blob bytes at the exact PR #305 commit, not from rendered chat/API text.
 
 Next deterministic procedure: export the already-authorized 105-row ledger (version/name/checksum only) to a local CSV through the dedicated `ghm_audit_login` read-only session; fetch the exact PR #305 head object into the existing local validation worktree without checkout/branch creation; use `git ls-tree` + `git cat-file blob` to hash the exact 94 source-overlap blobs with the repository's canonical LF and legacy CRLF rules; compare the 10 ledger-only rows against the retained registry and 16 explicit provenance exceptions. Preserve all existing worktrees and branches. No production migration, DDL, ACL, credential, Render setting, deployment or CI rerun was performed.
+
+
+## 23 November 2026 — exact source checksum reconciliation completed
+
+Completed the checksum comparison using the read-only production ledger evidence and exact PR #305 source bytes at `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f`. The source-side 147-file inventory was supplied in two parts by the owner; the first 72 source rows were compared from the exact-blob checksum report, and the remaining 23 applied source-overlap migrations were fetched from GitHub Contents as base64 and hashed after decoding the exact UTF-8 blob bytes. Hash rules match `src/db/migration-checksum.ts`: UTF-8 SHA-256 after CRLF/CR-to-LF normalization, with the legacy CRLF digest accepted.
+
+### Production ledger and checksum result
+- Read-only `ghm_audit_login` query on 23 November 2026 returned 105 rows from `ghm.ghm_schema_migrations`; the session identity was `ghm_audit_login` for both `session_user` and `current_user`, over TLS 1.3. The transaction was rolled back.
+- Exact PR #305 source tree: 147 migration SQL files. Production ledger: 105 rows = 1 bootstrap + 94 current-source applied migrations + 10 ledger-only retained historical rows.
+- Across the 95 source-overlap rows (bootstrap included): **24 canonical LF checksum matches, 62 accepted legacy CRLF checksum matches, and 9 exact historical-provenance exception matches**. There are **0 unexplained checksum mismatches and 0 version/name mismatches**.
+- All 10 ledger-only rows match the exact version/name/checksum entries in `config/retained-historical-migrations.production.json`; 0 invalid retained-history records.
+- The production ledger head remains `20261109210000_deactivate_unrecognized_public_directory_records`. The two 20 November Business Capability migrations (`20261120010000` and `20261120011000`) are absent from the ledger and remain pending.
+- Therefore 52 of the 147 source migrations are pending (147 - 1 bootstrap - 94 applied source migrations).
+
+### Provenance registry disposition
+- `config/historical-migration-provenance-exceptions.json` contains 18 entries. Sixteen exception checksums exactly match live ledger rows.
+- Of those 16 live entries, 9 are required to account for source-vs-ledger historical checksum differences; 7 are redundant because the current source bytes already match the ledger through canonical/legacy checksum rules.
+- Two registry entries are stale and do not match the live ledger checksums: `20261104120000` (registry `da74451e…`, ledger `3f284b7a…`) and `20261104130000` (registry `b7e1ace8…`, ledger `230657b7…`). Both live ledger checksums match the current source canonical bytes. No exception-registry edit was made; disposition of the 7 redundant and 2 stale entries is separate follow-up work.
+
+### Batch gate and exact-head qualification
+- `config/pending-migrations.production.json` still contains 7 entries, all valid identities in the 52-row pending queue, but omits 45 pending migrations and omits the first pending migration. It cannot authorize the complete current queue.
+- `config/production-migration-batches.json` remains exactly `[]`; no production batch is authorized or selectable.
+- PR #305 remains open/draft/unmerged at exact head `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f`.
+- Exact-head GitHub Actions run `45218933489` completed successfully. Both `quality` and `web-quality` passed. The quality job applied all migrations to disposable PostgreSQL 18 and completed the qualification steps and full test suite; web build, web tests, dependency audit and toolchain verification passed. This is disposable-CI qualification, not production migration qualification or a production deployment.
+- PRs #298 and #297 remain separate draft workstreams; PR #303 remains separate. No branch was created for this audit and no CI rerun was initiated.
+
+No production migration/DDL, role/ACL/credential change, Render setting, secret, deployment, restart, payment action, or paid resource was changed. Keep PR #305 draft and keep the execution manifest empty. Do not merge or execute production migrations as part of this audit.
