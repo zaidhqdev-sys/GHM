@@ -16,12 +16,35 @@ export interface ActorGatewayDatabasePrivileges {
   unsafe_function_grantees: string[];
 }
 
+export type ActorGatewayStartupStage = 'pre_business_capability_create' | 'full';
+
+export const ACTOR_GATEWAY_BUSINESS_CAPABILITY_CREATE_SIGNATURE =
+  'ghm.gateway_create_business_capability(bigint, bigint, uuid, text, text, jsonb)';
+
+export const resolveActorGatewayStartupStage = (
+  value: string | undefined,
+): ActorGatewayStartupStage => {
+  const normalized = value?.trim();
+  if (!normalized || normalized === 'pre_business_capability_create') {
+    return 'pre_business_capability_create';
+  }
+  if (normalized === 'full') return 'full';
+  throw new Error(
+    'GHM_ACTOR_GATEWAY_STARTUP_STAGE must be pre_business_capability_create or full',
+  );
+};
+
 export const assertActorGatewayDatabasePrivileges = (
   privileges: ActorGatewayDatabasePrivileges,
+  stage: ActorGatewayStartupStage = 'pre_business_capability_create',
 ): void => {
   const normalizeSignature = (signature: string): string => signature.replace(/,\s*/g, ',');
   const actual = privileges.executable_functions.map(normalizeSignature).sort();
-  const expected = privileges.expected_functions.map(normalizeSignature).sort();
+  const expected = privileges.expected_functions
+    .map(normalizeSignature)
+    .filter(signature => stage === 'full'
+      || signature !== ACTOR_GATEWAY_BUSINESS_CAPABILITY_CREATE_SIGNATURE)
+    .sort();
   const campaignReviewFunctions = new Set([
     'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
     'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
