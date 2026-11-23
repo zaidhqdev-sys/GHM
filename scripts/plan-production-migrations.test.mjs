@@ -14,6 +14,19 @@ test('production planner requires a dedicated read-only audit identity and verif
   assert.match(planner, /!\/\^\\d\{14\}\$\/\.test\(version\)/);
 });
 
+test('production planner verifies the live Actor Gateway principal, bounded membership and function authority read-only', () => {
+  assert.match(planner, /FROM pg_roles/);
+  assert.match(planner, /FROM pg_auth_members/);
+  assert.match(planner, /member_name === 'ghm_db_user'/);
+  assert.match(planner, /admin_option === true/);
+  assert.match(planner, /inherit_option === false/);
+  assert.match(planner, /set_option === false/);
+  assert.match(planner, /has_schema_privilege\('ghm_actor_gateway', 'ghm', 'USAGE'\)/);
+  assert.match(planner, /has_function_privilege\('ghm_actor_gateway'/);
+  assert.match(planner, /actor_gateway_principal_preflight: gatewayPrincipalPass/);
+  assert.match(planner, /production_execution_authorized: false/);
+});
+
 test('production planner rolls back its read-only transaction and never executes migration SQL', () => {
   assert.match(planner, /ROLLBACK/);
   assert.match(planner, /sql_migrations_executed: 0/);
