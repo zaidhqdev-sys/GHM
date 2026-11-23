@@ -7883,3 +7883,19 @@ Implemented on the existing PR #305 branch `feat/production-migration-batches-ma
 - Exact-head GitHub Actions qualification is triggered by the normal branch update; record the final run result before calling the planner qualified.
 - The planner has not been run against production from this conversation. No audit URL, password, secret, or credential was requested or exposed.
 - Existing production batch manifest remains `[]`; pending allowlist and migration SQL remain unchanged. No production SQL, DDL, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource was performed.
+
+
+### Planner review correction — exact-head follow-up
+
+After the initial planner implementation passed review at source level, a second review found an over-escaped version-key regular expression in production exception validation. That would have rejected every valid 14-digit provenance key. Corrected the regex and added an explicit regression assertion.
+
+Also tightened the planner before treating it as ready:
+- Validate retained-history records (version, name, SHA-256, source and reason) before classification.
+- Validate the production pending allowlist structure before comparing it with the live queue.
+- Return a non-zero process exit status when the report is not `PLAN_VALID_NOT_AUTHORIZED`; the report itself still explicitly says execution is never authorized.
+- Keep strict TLS, dedicated audit identity, read-only transaction and unconditional rollback.
+
+Latest PR #305 head: `e2993e925016841e55ef4917b8bb8a7cbfbcf1ae`.
+Exact-head CI run `45235693759` has been created and is pending. The prior run `45234597456` passed at the previous head `987852bada326f20ec99ac0413e8d0881424184c`, but does not qualify these corrections.
+
+The planner has not been run against production. Do not supply or request the audit password in chat; when executed locally, use the dedicated read-only audit connection only. Production batch manifest remains empty; no production changes or migration execution occurred.
