@@ -1438,3 +1438,13 @@ Mandatory workflow for every GHM task:
 5. After each completed task, update the existing authoritative handover with exact changes, commit/PR, validation, production impact and next action.
 
 This is the governing direction, not a substitute for detailed handovers. No production operation is authorized by this documentation.
+
+## QuoteFlow Business-scoped Customers and Quotes — 2026-11-24
+
+- Product objective: give QuoteFlow multi-Business workflows tenant-scoped Customer and Quote persistence on GHM, using existing ghm-db and GHM authorization/tenant transaction primitives.
+- Implementation: PR #306, branch feat/quoteflow-business-scoped-customers-quotes, head b1313065d69d77e1e8ea43cefa15de94df0f9605 (18 commits ahead of main, 0 behind at last comparison).
+- Scope: nullable Business ownership on Customer/Quote, composite Business/Customer foreign-key integrity, Business-scoped repository methods and authenticated HTTP routes. Existing account-scoped records remain unmapped and unchanged.
+- Review correction: the route Business/Customer/Quote ID parser had an incorrectly escaped digit matcher that rejected valid numeric IDs. Corrected on the same existing PR branch in commit b1313065d69d77e1e8ea43cefa15de94df0f9605; no new branch or PR.
+- Validation: PR preview deployment for prior head e1a8a78 succeeded. CI run 45280715548 was pending for prior head when inspected; no exact-head CI run was returned for the correction commit. Do not claim exact-head CI passed. The PR currently remains draft/open and mergeability must be refreshed after CI.
+- No production migration, database mutation, deployment, data copy, product cutover, payment action, secret change, or infrastructure provisioning was performed. No new cost introduced.
+- Next: qualify the corrected PR head; review migration/least-privilege and repository behavior; then continue product-driven QuoteFlow work with catalog/items and invoices, reusing existing GHM capabilities before implementing only genuine gaps. QuoteFlow client integration remains outstanding.
