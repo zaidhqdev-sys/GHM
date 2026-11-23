@@ -411,3 +411,14 @@ Current QuoteFlow PR #25 head inspected before the handover update: `71391d74da3
 - No compliant production GHM Authentication Issuer/public HTTPS origin, production DB/role/ACL cutover, approved strict-TLS path or owner-approved legal document catalogue is evidenced. Keep the public APK withdrawn, auth fail-closed, issuer URL unset and QuoteFlow Free-only.
 - Do not retry artifact upload or introduce paid storage/infrastructure. Use the existing local Windows Gradle release path only after the GHM, legal and device-acceptance gates are met.
 - No production service, DB, secrets, role/ACL, payment, website distribution or paid infrastructure changed.
+## 2026-11-23 — QuoteFlow GHM membership contract and operational data gap
+
+GHM PR #202 is closed unmerged as superseded. Current GHM `main` already exposes and tests `GET /api/v1/businesses/memberships` and path-scoped `GET /api/v1/businesses/:businessId/managed`, constrained to the authenticated account's active managed memberships. `GET /api/v1/businesses/managed` handles the sole/default context and returns `409 business_selection_required` for multiple memberships. QuoteFlow PR #25 uses the canonical routes. Do not reopen or duplicate PR #202.
+
+The real QuoteFlow backend gap is operational persistence: customers, items, quotes, invoices and Business profile remain local-first AsyncStorage in PR #25. GHM has existing account-scoped Customer and Quote resources, but GHM Quote requires a numeric GHM Customer ID; QuoteFlow local IDs are strings, and Business-level ownership/isolation is not established. These APIs are not a safe drop-in multi-Business QuoteFlow adapter.
+
+Next product-led GHM capability: define and implement the smallest complete Business-scoped QuoteFlow data contracts (profile, customers, catalog/items, quotes/line items, invoices and required document storage), reusing existing resources only where ownership and authorization fit. Preserve local data and the existing PR #21 migration primitive; no inferred ID/customer/business mapping or local data cutover.
+
+Android GitHub Actions artifact upload is not a blocker. Use the existing local Windows Gradle `assembleRelease` and local verification/signing process, then upload via the existing GitHub/website repositories when the GHM identity, operational data, legal and device gates are satisfied. No paid artifact storage or infrastructure.
+
+No application code, production database, local device data, secrets, roles/ACLs, deployment, website distribution, payment or paid infrastructure changed in this documentation reconciliation.
