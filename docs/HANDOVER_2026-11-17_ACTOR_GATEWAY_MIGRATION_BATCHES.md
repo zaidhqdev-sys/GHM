@@ -7822,3 +7822,11 @@ Follow-up to the exact production ledger/source checksum reconciliation above. R
 - Test import correction: `f85f47a2547f2cb4a06880d3ed61be3dd40f3eef`.
 - Exact-head CI for the final PR #305 head must be checked before treating this follow-up as qualified. The prior passing run `45218933489` predates these commits and does not qualify this change.
 - PR #305 remains draft; the production execution batch manifest remains empty. Do not merge or execute production migrations on the basis of this metadata cleanup.
+
+
+### Exact-head CI follow-up — run 45233002831
+
+- Final PR #305 head: `f85f47a2547f2cb4a06880d3ed61be3dd40f3eef`.
+- GitHub Actions run `45233002831` was triggered by the PR head update. `web-quality` completed successfully.
+- `quality` was still running at the latest check; disposable PostgreSQL qualification and test suite stages had not all completed. Do not mark this follow-up fully qualified until this exact-head job concludes successfully.
+- This is the existing PR branch and its normal push-triggered CI; no separate qualification branch or manual rerun was created.
