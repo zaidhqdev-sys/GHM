@@ -7487,3 +7487,19 @@ On isolated branch `feat/production-migration-batches-mainline-20261123` (create
 GitHub commits on the isolated branch (sequential): `1a7b5f717309f5a1ae5a1ef3bb28595bd020d7af` (selector), `c3423d484472247d87c56efdbd0642bdd86d2830` (tests), `199c130a7380da16db3ae53f5822b4bfbcba0603` (empty manifest). No runner integration has been made yet; this is foundation only, not executable production batch support. No CI/local test result is claimed yet. Next task: wire the selector into current-main `src/db/migrate.ts` with fail-closed production behavior and preserve current-main migration-name/checksum/target/SSL/role guards; keep production inventory unchanged pending fresh live ledger. Add package test discovery and tests proving missing/unknown batch ID fails before SQL execution. Ensure plan-only, if retained, never executes SQL and has an explicit safe target guard.
 
 No PR was created or updated. PR #298/#297/#303 remain separate. No production SQL, migration, DB connection, role/ACL/credential change, Render change, deployment, or paid resource was used. Existing local worktrees were not touched.
+
+
+## 23 November 2026 — mainline production batch gate integrated; CI running
+
+On `feat/production-migration-batches-mainline-20261123`, integrated the selective batch foundation into the current-main migration runner:
+
+- Production `ghm_db` now selects an explicitly named committed batch through `GHM_MIGRATION_BATCH_ID` and the checksum-bound `config/production-migration-batches.json` manifest before any migration SQL is executed. The selected version set gates the migration loop. Non-production targets retain the existing all-pending behavior.
+- Existing production target guard, certificate-verifying SSL requirement, migrator principal assertion, exact `SET ROLE ghm_schema_owner` identity check, advisory lock, production pending allowlist, out-of-order guard, and checksum/provenance validation remain in place.
+- Ledger read now includes `version, name, checksum`; `assertAppliedMigrationNames` rejects repository/ledger name mismatch for versions still present in the repository. Historical rows absent from the current tree remain for separate provenance reconciliation.
+- Added focused tests for migration batch selector, ledger-name guard, and runner wiring/order; added them to the normal package test command.
+- Added this isolated branch to the CI push trigger. Exact current branch head: `646a8253906126d48913123d92d470f2b7b56a18`.
+- The production batch manifest remains exactly `[]`; therefore no production batch can be selected. No production inventory was refreshed or guessed. Current seven-entry pending inventory remains unchanged pending authorized live ledger evidence.
+
+CI run `45216633082` started for this exact branch head: `quality` in progress, `web-quality` queued, Cloudflare Pages in progress at the last check. No pass is claimed yet. This branch is not a PR and has not been merged. Do not execute production migrations, create a batch manifest entry, or set a production batch ID. Wait for exact-head CI and fix any failures on this isolated branch, then update this handover with final evidence.
+
+No production DB connection or SQL, migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource or local worktree operation occurred. Changes are source-only and CI uses disposable workflow PostgreSQL.
