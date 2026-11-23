@@ -25,6 +25,7 @@ export interface ActorGatewayAppOptions {
   rateLimitWindowMs?: number;
   rateLimitDecision?: (accountId: number) => Promise<boolean>;
   jsonBodyParser?: RequestHandler;
+  businessCapabilityCreateEnabled?: boolean;
 }
 
 export interface ActorGatewayDependencies {
@@ -47,7 +48,6 @@ export interface ActorGatewayDependencies {
   commercialConsentPaymentPreparationReader?: CommercialConsentPaymentPreparationReader;
   commercialPaymentPreparationEnabled?: boolean;
   commercialLaunchAuthorized?: boolean;
-  businessCapabilityCreateEnabled?: boolean;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -482,7 +482,7 @@ export const createActorGatewayApp = (
 
   const mutationReader = dependencies.businessCapabilityMutationReader;
   const positiveId = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0;
-  if (dependencies.businessCapabilityCreateEnabled === true) {
+  if (options.businessCapabilityCreateEnabled === true) {
     app.post('/v1/business-capabilities', async (req: Request, res: Response) => {
       const body = req.body as Record<string, unknown> | null;
       const allowed = ['businessId','capabilityId','proficiencyLevel','description','effectiveFrom','effectiveUntil','sourceReference'];
