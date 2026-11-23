@@ -2189,3 +2189,26 @@ No production SQL, migration execution, database role/ACL/credential change, sec
 ### Next actionable step
 
 Use the already-implemented read-only production planner on this existing PR #305 branch against the existing dedicated `ghm_audit_login` connection, after the owner runs it from the existing local validation worktree. The command must verify exact production database/host, strict TLS, `session_user=current_user=ghm_audit_login`, and a read-only transaction. Capture its JSON result without exposing the URL or credentials. The planner must not execute migrations or write the ledger; the committed production batch manifest remains `[]`, and production execution remains unauthorized. Record the resulting evidence here before any further migration decision.
+
+### 24 November 2026 — live production read-only migration planner result
+
+The owner ran the existing `npm run plan:migrations:production` from the existing local validation worktree `C:\\GHM-pr305-ci-20261123`, using the dedicated `ghm_audit_login` connection to Render `ghm-db` / `ghm_db` in Frankfurt. The supplied transcript confirms:
+
+- TypeScript build completed successfully before the planner ran.
+- Planner mode: `READ_ONLY_PLAN_ONLY`; `execution_performed=false`; `sql_migrations_executed=0`.
+- Authority passed: `current_user=session_user=ghm_audit_login`, database `ghm_db`, `transaction_read_only=on`, PostgreSQL `180006`, verified TLS true.
+- Actor Gateway principal preflight passed. The role is LOGIN/NOINHERIT and has no SUPERUSER, CREATEDB, CREATEROLE, REPLICATION or BYPASSRLS attributes. The exact `ghm_db_user` → `ghm_actor_gateway` membership was observed with ADMIN=true, INHERIT=false and SET=false; the planner's role-attribute and exact-membership checks both passed.
+- Source inventory: 147 migrations. Production ledger: 105 rows, comprising 95 current-source applied entries and 10 retained ledger-only historical entries.
+- Checksum reconciliation: 24 canonical matches, 62 supported legacy-CRLF matches and 9 registered historical-exception matches; zero checksum mismatches and zero name mismatches.
+- Retained history: 10/10 verified; no unrecognized ledger-only rows, redundant exceptions or orphaned exceptions.
+- Pending inventory: 52 migrations. Existing legacy allowlist contains 7 entries, has zero malformed entries, but is incomplete: 45 pending migrations are omitted. Therefore `allowlist_pass=false`.
+- Production batch manifest remains exactly `[]`. Planner result: `NO_AUTHORIZED_BATCH`; release gates correctly report `pending_allowlist_complete=false`, `reviewed_batch_selectable=false`, and `production_execution_authorized=false`. Verdict: `PLAN_ONLY_NOT_EXECUTABLE`.
+
+**Interpretation and safety:** the live production ledger and source checksums reconcile cleanly, and the read-only principal preflight passes. This does not authorize a migration batch. Do not simply add all 52 pending migrations to the allowlist or populate the execution manifest. The existing handover's production Actor Gateway/Auth Issuer hosting and live-service readiness gate remains separate and unresolved under the standing no-additional-paid-infrastructure constraint. No production SQL, schema, ledger, role, ACL, credential, secret, Render setting, deployment, restart, payment state or paid resource was changed.
+
+**Evidence precision:** the supplied PowerShell transcript showed the validation worktree at detached `HEAD` and did not include `git rev-parse HEAD`. The remote PR #305 head observed during this reconciliation was `aa40285f4a9f66a42f06713383fa397ed3446fc2`, but the transcript alone does not prove that exact SHA was checked out locally when the planner ran. Preserve that distinction; do not claim exact-source-SHA attribution until the local SHA is captured.
+
+**Repository/PR reconciliation:** PR #305 remains open/draft on `feat/production-migration-batches-mainline-20261123`; the branch's production batch manifest is empty. PRs #297 and #298 are closed/unmerged with their branches preserved. PR #303 remains separate draft/manual-only Business Capability ACL work. PR #285 remains a separate open/draft migration-execution implementation and is not to be merged into or reactivated as a competing runner. No branch, PR disposition, migration source, allowlist or execution manifest was changed by this read-only audit.
+
+**Next action:** do not execute migrations and do not expand the allowlist as a substitute for dependency/security review. Continue from the existing product-first GHM objective and the current no-cost hosting decision; only revisit the migration batch when a compliant already-owned production Gateway/Auth Issuer path and the complete reviewed dependency/authorization sequence are evidenced. No new infrastructure or spending is approved.
+
