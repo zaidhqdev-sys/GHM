@@ -58,6 +58,36 @@ test('allows a completed signed cutover and blocks an already-applied incomplete
   assert.deepEqual(selectProductionMigrationBatch([replacement], new Set([cutover.version]), batch([replacement]), 'gateway-foundation-01'), [replacement]);
   assert.throws(() => assertProductionMigrationBatchCutoverDependencies([], new Set([cutover.version])), /without signed replacement/);
 });
+test('requires the signed Business Capability create wrapper and verifier allowlist extension together', () => {
+  const createWrapper = {
+    version: '20261120010000',
+    name: 'add_signed_business_capability_create',
+    checksum: 'e'.repeat(64),
+  };
+  const verifierAllowlist = {
+    version: '20261120011000',
+    name: 'allow_signed_business_capability_create_assertion',
+    checksum: 'f'.repeat(64),
+  };
+  const entries = [createWrapper, verifierAllowlist];
+  const reviewed = (selected: typeof entries): MigrationBatch[] => [
+    { id: 'business-capability-create-01', purpose: 'Install signed Business Capability create pair', migrations: selected },
+  ];
+
+  assert.throws(
+    () => selectProductionMigrationBatch(entries, new Set(), reviewed([createWrapper]), 'business-capability-create-01'),
+    /without required following migration 20261120011000_allow_signed_business_capability_create_assertion/,
+  );
+  assert.deepEqual(
+    selectProductionMigrationBatch(entries, new Set(), reviewed(entries), 'business-capability-create-01'),
+    entries,
+  );
+  assert.throws(
+    () => assertProductionMigrationBatchCutoverDependencies([], new Set([createWrapper.version])),
+    /without required following migration 20261120011000_allow_signed_business_capability_create_assertion/,
+  );
+});
+
 test('rejects malformed reviewed migration checksums', () => {
   const malformed = [{ ...migrations[0], checksum: 'not-a-sha256' }];
   assert.throws(() => selectProductionMigrationBatch(migrations, new Set(), batch(malformed), 'gateway-foundation-01'), /invalid migration identity/);
