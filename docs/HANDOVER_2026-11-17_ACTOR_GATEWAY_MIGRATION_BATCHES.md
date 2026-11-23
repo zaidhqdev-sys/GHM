@@ -7925,3 +7925,14 @@ Rechecked PRs #297/#298/#303/#305, the current #305 branch head, this handover, 
 - The planner has **not** been run against production yet. Next action is a local execution by the owner from the existing #305 worktree, using the already-created dedicated `ghm_audit_login` connection. Do not paste credentials or connection strings into chat or Git. Capture the JSON report with secrets redacted.
 - Use the planner only for a read-only report. It requires `GHM_MIGRATION_AUDIT_DATABASE_URL`, `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`, `GHM_MIGRATION_AUDIT_HOST`, and `DATABASE_SSL=true`; the script enforces `ghm_audit_login`, verified TLS, `BEGIN READ ONLY`, and `ROLLBACK`.
 - No production batch is approved. `config/production-migration-batches.json` remains `[]`; no migration SQL, DDL, role/ACL/credential, Render setting, deployment or restart was performed.
+
+
+### Next owner-operated action — run the qualified read-only planner
+
+The latest exact-head CI run `45235819522` is fully green: `quality` 73/73 and `web-quality` 11/11, at `341057216508b466c6d70a12ada7616bc147a44c`. The planner is qualified at the current PR #305 head.
+
+Run it only from the existing `C:\GHM-pr305-ci-20261123` validation worktree after checking that it is clean; fetch the existing feature branch and detach at the exact qualified commit (do not create a branch). Use the Render external connection URL for the already-created `ghm_audit_login` role, entered through a hidden secure prompt. Do not persist it to `.env`, print it, paste it into chat, or commit it. The planner verifies the URL database/host, role, read-only transaction and TLS certificate, and rolls back. Save/share only the emitted JSON report, after checking it contains no secrets.
+
+Expected environment is process-scoped only: `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`, `GHM_MIGRATION_AUDIT_HOST=<host parsed from the secure URL>`, `DATABASE_SSL=true`, and `GHM_MIGRATION_AUDIT_DATABASE_URL=<secure URL>`. Remove these environment variables after the command exits.
+
+Interpretation: a clean checksum/provenance report does not approve a production batch. The pending allowlist currently omits 45 of 52 pending migrations and the committed batch manifest remains `[]`; no production execution is authorized.
