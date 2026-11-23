@@ -164,8 +164,13 @@ export class PostgresQuoteRepository implements QuoteRepository {
 
   async setBusinessQuoteStatus(context: AuthContext, businessId: number, quoteId: QuoteId, status: QuoteStatus): Promise<Quote> {
     return withTenantTransaction(context, businessId, async client => {
-      const existing = await loadQuote(client, context, quoteId, true);
-      if (!existing || existing.businessId !== businessId) throw new Error('Quote not found or ownership required');
+      const existingResult = await client.query(
+        `SELECT ${QUOTE_COLUMNS} FROM ghm.quote
+         WHERE id = $1 AND business_id = $2 FOR UPDATE`,
+        [quoteId, businessId],
+      );
+      if (existingResult.rowCount !== 1) throw new Error('Quote not found or ownership required');
+      const existing = mapQuote(existingResult.rows[0], await loadLineItems(client, quoteId));
       if (existing.status === status) return existing;
       const result = await client.query(
         `UPDATE ghm.quote SET status = $1, reminder_id = NULL, reminder_date = NULL, updated_at = now()
