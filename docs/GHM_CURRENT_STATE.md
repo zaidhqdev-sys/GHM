@@ -1483,3 +1483,11 @@ This is the governing direction, not a substitute for detailed handovers. No pro
 - Exact branch head at checkpoint: `a19d1a16ce6d852dddeb8eb0309d33a54ba2bc0a`; PR #306 remains open/draft. Exact-head CI run `45283881404` is in progress (`quality` and `web-quality`); no pass is claimed. Recheck this exact run before further source changes or merge consideration.
 - No production migration, production DB mutation, deployment, data copy, product cutover, payment action, secret change, service creation or paid infrastructure was performed.
 - Next: inspect exact-head CI outcome and fix only any failures; then continue QuoteFlow client integration on its existing PR #25 branch to call GHM Business Offering list/create/update and Business Customer/Quote APIs. Do not duplicate the GHM catalogue.
+
+## QuoteFlow Offering integration CI correction — 2026-11-24
+
+- The first CI run for the Offering integration source commit `a19d1a16ce6d852dddeb8eb0309d33a54ba2bc0a` completed with `web-quality` passing and `quality` failing at TypeScript build. The failure was caused by the widened shared CreateQuoteLineItemInput type making optional description/unitPrice visible in repository code paths; no migration or test suite ran because build stopped first.
+- Corrected repository type handling on the same existing PR #306 branch. Latest source commit: `d5e353b9c1d5da2a5972db84437fb2aed46be26b`. No new branch or PR.
+- CI run `45283881404` is a failed run for the earlier source head and must not be represented as a pass. As of this handover update, no workflow run has yet appeared for `d5e353b9c1d5da2a5972db84437fb2aed46be26b`; exact latest-source qualification is pending.
+- The handover-only commit is separate from the source correction and does not change runtime code. Recheck the latest PR head and CI before further code changes.
+- No production migration, DB mutation, deployment, data copy, product cutover, payment action or infrastructure spend occurred.
