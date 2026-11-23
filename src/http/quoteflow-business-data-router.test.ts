@@ -64,6 +64,25 @@ test('Business Quote creation passes Business scope and accepts only product fie
   } finally { await close(server); }
 });
 
+test('Business Quote accepts a typed Business Offering reference without client price fields', async () => {
+  let received: unknown;
+  const offeringId = '123e4567-e89b-42d3-a456-426614174000';
+  const quotes = { createBusinessQuote: async (context: AuthContext, businessId: number, input: unknown) => {
+    received = [context.userId, businessId, input];
+    return { id: 6, businessId };
+  } } as unknown as QuoteService;
+  const { server, baseUrl } = await start({} as CustomerService, quotes);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/91/quotes`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ customerId: 7, lineItems: [{ businessOfferingId: offeringId, quantity: 2 }], followUpDate: '2026-11-24' }),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(received, [42, 91, { customerId: 7, lineItems: [{ businessOfferingId: offeringId, quantity: 2 }], followUpDate: '2026-11-24' }]);
+  } finally { await close(server); }
+});
+
 test('Business Quote rejects a client-selected account or Business owner', async () => {
   let called=false;
   const quotes={createBusinessQuote:async()=>{called=true;throw new Error('must not be called');}} as unknown as QuoteService;
