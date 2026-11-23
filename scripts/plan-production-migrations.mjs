@@ -68,7 +68,7 @@ const main = async () => {
     ));
     if (!productionExceptions || typeof productionExceptions !== 'object' || Array.isArray(productionExceptions) ||
         Object.entries(productionExceptions).some(([version, checksum]) =>
-          !/^\\d{14}$/.test(version) || typeof checksum !== 'string' || !sha256Pattern.test(checksum))) {
+          !/^\d{14}$/.test(version) || typeof checksum !== 'string' || !sha256Pattern.test(checksum))) {
       fail('Production historical provenance exception manifest is invalid.');
     }
     if (!retainedRegistry || typeof retainedRegistry !== 'object' || Array.isArray(retainedRegistry)) {
