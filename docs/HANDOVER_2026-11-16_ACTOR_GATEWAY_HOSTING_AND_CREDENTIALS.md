@@ -1933,3 +1933,8 @@ The next exact-head run passed the pre-create startup tests, full-stage tests, c
 ### 23 November 2026 — Worker host contract test updated for explicit stage argument
 
 The next full-suite run passed the staged ACL tests, including the signed-create allow-list test, and then found one Worker source-contract test still searching for the pre-stage call form `assertActorGatewayDatabasePrivileges(privileges)`. The Worker correctly passes `startupStage`; updated `workers/actor-gateway/worker-contract.test.mjs` to assert the explicit staged call and preserve the required order (database identity, staged ACL, then HTTP listener). This was a stale source-contract expectation, not a runtime or DB failure. Commit: `1bc8c5b748fd1f2a9e1516c6fd8bef0fa29df99a`. Exact-head CI rerun required; no green full-suite result is claimed. No production state changed.
+
+
+### 23 November 2026 — latest exact-head CI checkpoint
+
+After the Worker source-contract correction, exact-head push CI run `45261554631` for source commit `1bc8c5b748fd1f2a9e1516c6fd8bef0fa29df99a` is still in progress at the full `Test suite` step. The run has passed TypeScript Build, Worker bundle, disposable PostgreSQL migration application, isolated Auth Issuer principal qualification, isolated Actor Gateway principal qualification, and the local Cloudflare Worker smoke test; no failure is reported in this run so far. The Worker smoke test now uses an explicit full-stage fixture. The current PR #305 head is `77dc6c957de77446bde2f8bf53b2e88ac65850fb` (the latest subsequent commit is handover-only). Do not call the staged source qualified until the test suite and remaining quality checks finish. No production/Render changes occurred.
