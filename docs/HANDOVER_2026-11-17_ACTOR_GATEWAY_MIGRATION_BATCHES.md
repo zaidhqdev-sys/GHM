@@ -7547,3 +7547,31 @@ Downloaded and inspected the `ghm-test-suite-diagnostics` workflow artifact. All
 Post-commit source inspection confirms one correctly escaped 14-digit version validator, and `src/db/migration-order.ts` still contains exactly one `AppliedMigrationLedgerEntry` type and one `assertAppliedMigrationNames` guard. PR #305 remains draft/open/unmerged and mergeable against main at last metadata check. Exact-head CI for `bcbeeb8...` has not yet appeared; do not claim the correction passes until the new full workflow completes.
 
 No production DB connection or SQL, production migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource, or original local worktree operation occurred. All database execution in the workflow was against its disposable PostgreSQL service. Production migration batch manifest remains exactly `[]`.
+
+
+
+## 23 November 2026 — PR #305 exact-head CI fully passed; source inventory reviewed, production batch still blocked
+
+Exact-head commit `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f` completed CI run [45218933489](https://github.com/zaidhqdev-sys/GHM/actions/runs/45218933489) with both jobs successful:
+
+- `quality`: passed TypeScript build, Actor Gateway Worker bundle, application of all repository migrations to disposable PostgreSQL, isolated least-privilege role and principal qualification, Gateway local-runtime smoke test, storage/provider and signed Gateway/capability qualification stages, migration audit policy tests, runtime boundary checks, issuer cutover qualification, and the full unit test suite.
+- `web-quality`: passed web build, web tests, dependency audit and security-sensitive toolchain verification.
+
+This is strong source/CI qualification on disposable infrastructure. It is not production qualification, a live ledger audit, proof of deployed Gateway health, or authorization to execute migrations.
+
+### Mainline production migration inventory review
+
+Inspected the exact PR #305 source files and current-main production pending allowlist. The allowlist still contains seven versions:
+`20261110100000`, `20261110120000`, `20261110140000`, `20261110210000`, `20261110220000`, `20261110230000`, and `20261110233000`.
+The two 20 November signed Business Capability automatic migrations are also present in the current-main migration source:
+`20261120010000_add_signed_business_capability_create` and
+`20261120011000_allow_signed_business_capability_create_assertion`.
+They are not in the seven-entry allowlist. Their live applied/pending status remains unknown because production ledger access is still denied. If either is pending, the existing production allowlist intentionally rejects it as unapproved; do not amend the allowlist based on source chronology or disposable CI.
+
+Reviewed the seven allowlisted migration SQL files and the two newer Business Capability migration files. The earlier dependency matrix records separate manual supplier/Profile runtime revocations at `20261120010000` and `20261120020000`; those are cutover operations, not entries in the automatic migration manifest. Their exact `database/cutovers/...` paths were not found on the PR #305 branch during this inspection, so their current source location and deployable artifact must be verified before any future cutover planning. Do not infer that they were executed.
+
+PR #305 changes only nine source/config/test/workflow files; it adds no migration SQL and does not change the seven-entry allowlist. It is 16 commits ahead and 0 behind current main `93ff3c774ce225760b0e3e2cf99a770b38e8a097` at this checkpoint. PR #305 remains open/draft/unmerged and mergeable=true. PR #297 and #298 remain open/draft/mergeable=false (dirty); PR #303 remains open/draft/mergeable=true. No other PR was changed.
+
+Production decision: no batch can yet be authored safely. We still lack a fresh, authorized production ledger/name/checksum reconciliation; exact contiguous live pending queue; verified full restore test (the 23 Nov logical export has only structural/catalogue/data-decode validation); production migrator/bootstrap authority remediation; healthy deployed Actor Gateway with exact commit/route/startup and restart evidence; and service/route cutover proof. Keep `config/production-migration-batches.json` exactly `[]`. No automatic production migration or manual cutover is authorized.
+
+No production database connection or SQL, migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource or original local worktree operation occurred. CI used disposable PostgreSQL only.
