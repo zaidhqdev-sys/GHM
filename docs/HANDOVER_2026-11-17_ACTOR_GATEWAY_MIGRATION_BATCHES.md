@@ -7799,3 +7799,26 @@ Completed the checksum comparison using the read-only production ledger evidence
 - PRs #298 and #297 remain separate draft workstreams; PR #303 remains separate. No branch was created for this audit and no CI rerun was initiated.
 
 No production migration/DDL, role/ACL/credential change, Render setting, secret, deployment, restart, payment action, or paid resource was changed. Keep PR #305 draft and keep the execution manifest empty. Do not merge or execute production migrations as part of this audit.
+
+## 23 November 2026 — production provenance exception manifest cleanup
+
+Follow-up to the exact production ledger/source checksum reconciliation above. Re-inspected PRs #297, #298, #303 and #305, their current heads, the existing continuation branch, production/qualification/generic exception manifests, the checksum implementation, and the provenance audit/tests before changing anything.
+
+### Production-only change
+- On the existing PR #305 branch `feat/production-migration-batches-mainline-20261123`, removed seven entries from `config/historical-migration-provenance-exceptions.production.json`: `20260915194500`, `20260915200000`, `20260915203000`, `20260915210000`, `20260915220000`, `20260916003000`, and `20260916004500`.
+- Each removed checksum exactly equals the current source migration's canonical LF checksum and the live production ledger checksum. These entries were redundant because the standard checksum policy already validates them.
+- Kept the nine production exception records whose registered checksum differs from the current source canonical/legacy checksum representation. Their ledger evidence remains represented in the production manifest.
+- Added a regression test to `scripts/migration-audit-checksum.test.mjs` requiring every production exception to have a source migration and to differ from both the canonical and supported legacy CRLF source checksum. The test uses the same checksum helpers as the audit.
+
+### Explicitly unchanged
+- `config/historical-migration-provenance-exceptions.qualification.json` remains unchanged. The two PayFast entries remain qualification-only; PayFast work is still paused.
+- The generic `config/historical-migration-provenance-exceptions.json` remains unchanged.
+- No retained-history registry, pending migration inventory, production batch manifest, or migration SQL was changed.
+- No database query/write, production ledger change, role/ACL/credential change, Render setting, deployment, restart, payment action, or paid resource was involved.
+
+### Change commits and qualification
+- Production manifest cleanup: `408bd89f8ea0241fbef52ecb41fc8f0be5c8356e`.
+- Regression test addition: `b9cbce9f2da5f2b95223f3cdfedf31fe552251d6`.
+- Test import correction: `f85f47a2547f2cb4a06880d3ed61be3dd40f3eef`.
+- Exact-head CI for the final PR #305 head must be checked before treating this follow-up as qualified. The prior passing run `45218933489` predates these commits and does not qualify this change.
+- PR #305 remains draft; the production execution batch manifest remains empty. Do not merge or execute production migrations on the basis of this metadata cleanup.
