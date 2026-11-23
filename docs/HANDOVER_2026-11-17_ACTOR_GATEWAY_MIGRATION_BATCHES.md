@@ -8113,3 +8113,14 @@ Final planner verdict: `PLAN_ONLY_NOT_EXECUTABLE`. The only failed gates in the 
 This supersedes the earlier statement that the corrected planner had not yet been run against production. It does not approve an execution batch. Do not fill the allowlist by copying the pending queue or populate the execution manifest. Continue using the existing PR #305 branch and existing handovers; no new qualification branch or CI rerun is warranted for this unchanged code head. The remaining work is operational readiness and controlled inventory governance: healthy Actor Gateway/Auth Issuer, grantor/role-model resolution, route/caller and ACL postflights, provider attestation, fresh verified backup with restore evidence, and the separate corrected manual Business Capability cutover.
 
 Dependency matrix updated on existing continuation branch in commit `9110626a1500fcbc2d020ba3a5ea7f453b932c16`.
+
+
+## 23 November 2026 — reconcile production pending inventory after live audit
+
+Before this repository change, re-read the migration handover and 52-row dependency matrix, rechecked open PRs #297/#298/#303/#305, and searched the existing production-migration and Business Capability branches. Continued on the existing PR #305 feature branch; no branch was created.
+
+After the corrected read-only production planner returned the exact 52 pending migrations, inspected `src/db/production-pending-migration-allowlist.ts`. This file enforces exact version/name equality for every unapplied repository migration; it is an inventory guard, not execution authority. The complete 52-migration source/dependency review was already recorded in this handover and the matrix. Therefore reconciled `config/pending-migrations.production.json` to the exact 52 live pending version/name identities in repository order on the existing PR #305 branch. Commit: `841b8b7075010db9e095e795b5aedb6cf2c11f2c`. Fetched the committed file back and verified 52 entries, strict version order and no duplicate versions.
+
+The separate execution manifest `config/production-migration-batches.json` remains exactly `[]`. No batch ID is available or authorized. This inventory correction does not permit production execution and does not relax the selector's exact contiguous-prefix/checksum/pair requirements or the external operational release gates. Latest inventory commit still requires exact-head CI; do not claim qualification until verified. No production SQL, ledger, DDL, role, membership, ACL, credentials, Render setting, deployment, restart, payment action or paid resource was changed.
+
+Dependency matrix inventory addendum recorded in commit `8cfa7edd8cb771f5c75a00bd140d7a999cd21f8a` on the existing continuation branch.
