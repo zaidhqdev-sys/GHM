@@ -2107,3 +2107,17 @@ This task rechecked PR #305 and its current branch, the open GHM PR inventory, t
 **Decision:** no currently evidenced production hosting path satisfies the no-new-spend, no-new-host, no-keepalive, strict TLS, Argon2id CPU budget and isolation requirements simultaneously. Do not co-host Gateway/Issuer inside the Resource API, weaken password hashing or ACL/TLS checks, create another service/Worker/Hyperdrive/tunnel, or proceed with production migrations/revocations as though these replacements are live. Hold production rollout unless an already-owned compliant compute/network resource or a written vendor-supported no-cost topology changes the evidence.
 
 PR #305 remains the sole active migration-batch implementation workstream, open/draft/unmerged. Its execution manifest remains `[]`; no production batch is authorized. PR #297/#298 remain older overlapping drafts; PR #303 remains separate manual ACL work. No production database, role/ACL, secret, Render setting, Cloudflare resource, service, deployment, DNS, traffic, migration or paid resource was changed.
+
+### 23 November 2026 — existing Render compute inventory exhausted
+
+Rechecked current PR #305 and branch, open PR inventory, topology handover and Render workspace service/database inventory. Inspected exact service details for `zaid-ai-workforce`, `GHM-Internal-Runtime` and `ghm-actor-gateway`.
+
+- `zaid-ai-workforce` (`srv-d9t1la7avr4c73fc46c0`) is a Free public web service in Frankfurt, one instance, auto-deploy off, from `zaidhqdev-sys/ai-workforce` (`runtime`). It is not an always-on resource. Render's official Free-service policy spins down after 15 minutes without inbound HTTP/WebSocket traffic, takes about one minute to wake, may restart at any time, disallows private-network ingress, and says Free instances should not be used for production: https://render.com/docs/free.
+- `GHM-Internal-Runtime` is also Free and is the Resource API. It must not be repurposed to co-host the isolated Gateway/Issuer, and it also has Free-service availability limits.
+- `ghm-actor-gateway` is Free, auto-deploy off, and the existing deploy audit shows no successful deployment. It cannot serve as a qualified always-on/private-network host.
+- `ghm-identity-qualification` is an old integration-branch qualification service, not a production Auth Issuer. PayFast services are sandbox-only and excluded. `ghm-db` is the only production DB and is not compute.
+- No existing private service, worker, paid always-on service or other suitable isolated compute resource exists in the connected Render workspace.
+
+**Decision:** the existing Render inventory is exhausted for the required no-cost topology. Do not repurpose Workforce or Resource API, do not co-host the Gateway/Issuer, and do not use keepalive traffic or schedules. No already-owned compliant always-on host has been evidenced. An independently owned resource outside Render would need explicit owner confirmation and qualification for availability, network/TLS, isolation, CPU/Argon2id, secret custody and operational access before being considered.
+
+No Render service, deployment, configuration, secret, database, role/ACL, migration, DNS, Cloudflare resource, traffic or paid plan was changed. PR #305 remains the active migration-gate branch; production batch manifest remains `[]`.
