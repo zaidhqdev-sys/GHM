@@ -109,5 +109,5 @@ test('Render and Worker enforce the same explicit staged Actor Gateway startup c
   assert.match(privilegeSource, /normalized === 'pre_business_capability_create'/);
   assert.match(privilegeSource, /normalized === 'full'/);
   assert.match(privilegeSource, /throw new Error\([\s\S]*GHM_ACTOR_GATEWAY_STARTUP_STAGE/);
-  assert.match(app, /if \(dependencies\.businessCapabilityCreateEnabled === true\) \{[\s\S]*app\.post\('\/v1\/business-capabilities'/);
+  assert.match(app, /if \(options\.businessCapabilityCreateEnabled === true\) \{[\s\S]*app\.post\('\/v1\/business-capabilities'/);
 });
