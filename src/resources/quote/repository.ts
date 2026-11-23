@@ -247,7 +247,7 @@ export class PostgresQuoteRepository implements QuoteRepository {
           `INSERT INTO ghm.quote_line_item
              (quote_id, description, quantity, unit_price, catalog_item_id)
            VALUES ($1, $2, $3, $4, $5)`,
-          [quoteId, item.description.trim(), item.quantity, item.unitPrice, item.catalogItemId ?? null],
+          [quoteId, item.description?.trim() ?? '', item.quantity, item.unitPrice ?? 0, item.catalogItemId ?? null],
         );
       }
 
