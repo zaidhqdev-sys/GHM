@@ -446,3 +446,10 @@ Implemented on the PR branch:
 **Remaining QuoteFlow data capabilities:** Business-scoped catalog/items, invoice persistence, document/PDF storage, and the QuoteFlow client adapter/cutover are not implemented by PR #306. The app must not point local IDs at account-scoped Customer/Quote APIs. No local data copy or automatic account-to-Business mapping is included.
 
 **Production impact:** source/CI/preview only. No production migration execution, DB/data mutation, deployed Resource API, secret/credential/role/ACL change, device data change, APK distribution, payment action, paid infrastructure, or service setting change.
+### PR #306 follow-up — exact head and legacy-scope isolation
+
+Latest exact PR head: `e1a8a780f85ecd40779bf9a2c28773b33d0d29f5` (17 commits ahead / 0 behind `main`).
+
+A follow-up security correction now explicitly keeps the legacy account-scoped Customer and Quote APIs isolated to rows with `business_id IS NULL`. Legacy Quote creation also requires a legacy account-scoped Customer. Business-scoped records are visible and mutable only through the Business tenant routes, whose repositories validate active membership within the same transaction.
+
+Latest exact-head CI run: `45280715548`, pending/queued at the time of this update. No pass is claimed. The preceding run on `ac6a1f1ed31d46f95c0de976f18a7986b035e6e5` was cancelled when the branch advanced. PR #306 remains draft/open; no merge or production rollout.
