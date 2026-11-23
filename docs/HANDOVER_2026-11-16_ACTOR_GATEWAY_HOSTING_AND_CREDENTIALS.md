@@ -1911,3 +1911,10 @@ The first corrected-build full-suite run completed 1,112/1,114 tests and exposed
 2. The cross-host source-contract test still expected the old `dependencies.businessCapabilityCreateEnabled` property after the flag was moved to `ActorGatewayAppOptions`. The test now checks `options.businessCapabilityCreateEnabled`.
 
 Corrections committed on the existing PR #305 branch as `476dc46b901cf8ed560bce5a8a215fdf34242f8d` and `87517539ee18efb1b099830dcf039f5f71ed0ba0`. The previous run's TypeScript Build, Worker bundle, disposable Gateway principal qualification, local Worker smoke and disposable migration application all passed; full test suite failed only on the two staged-contract tests above. Rerun exact-head CI on the corrected source; no green full-suite result is claimed. The production migration manifest remains `[]`; no production state, Render configuration, credentials, secret, deployment or paid resource changed.
+
+
+### 23 November 2026 — full-stage disposable principal qualification corrected
+
+The next exact-head CI run confirmed Build and Worker bundle steps passed, then exposed one existing qualification caller that was still relying on the old implicit full allow-list: `scripts/qualify-actor-gateway-principal.mjs` runs after all migrations are applied to disposable PostgreSQL and therefore must assert the `full` contract, not the default pre-create contract. Its assertion now explicitly passes `'full'`. Added a source-contract assertion so this disposable full-state principal qualification cannot silently regress to the pre-create default. The failing check was confined to disposable CI; it is not a production ACL observation and no production state changed.
+
+Commits: `85238097ee4605c787f6399353bac5fb9439ff8b` updates the qualification stage; `50a701c696464966011476f4d319a3c49adbadb4` protects it with a source-contract test. Exact-head CI must complete on the resulting branch head. The production manifest remains `[]`; no migration, Render configuration, credential, secret, deployment or paid resource was changed.
