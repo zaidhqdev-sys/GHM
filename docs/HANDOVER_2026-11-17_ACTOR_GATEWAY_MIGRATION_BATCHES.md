@@ -7756,3 +7756,19 @@ Owner confirmed `ROLLBACK;` returned `ROLLBACK` in the dedicated `ghm_audit_logi
 
 ### Reconciliation scope/limits
 This step proves production ledger version/name identity, exact 52-entry pending version/name sequence, and the 10 ledger-only historical rows' match to the retained production registry. It does **not** yet certify every one of the 95 overlapping applied SQL checksums against exact PR #305 source bytes. That checksum comparison must be completed using the canonical SHA-256/LF and legacy CRLF rules in `src/db/migration-checksum.ts`, plus the production historical provenance exception registry, before any production batch can be reviewed. Do not claim zero checksum mismatches based solely on this version/name reconciliation. No migration, DDL, role/grant, deployment or Render setting was changed.
+
+
+## 23 November 2026 — checksum reconciliation preparation and count correction
+
+A precise recount of the 105-row live production ledger against the 147-file PR #305 source migration tree corrects the prior summary's overlap arithmetic:
+- 1 ledger bootstrap row: `00000000000000_create_migration_ledger`.
+- 94 applied migration rows overlap current PR #305 source migration versions/names.
+- 10 applied migration rows are ledger-only and match the 10 entries in `config/retained-historical-migrations.production.json`.
+- 52 current source migration files are pending (147 total source files minus 1 bootstrap minus 94 applied overlaps).
+- Total: 1 + 94 + 10 = 105 ledger rows. The earlier figure of 95 overlapping applied migrations incorrectly included the bootstrap; the 52 pending count was correct.
+
+The repository's canonical checksum rule was inspected at PR #305 head `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f`: UTF-8 SHA-256 over SQL normalized from CRLF/CR to LF, with backward compatibility for SHA-256 over the same content represented as CRLF. The production provenance exception registry contains 16 explicit version/checksum entries; the retained historical registry contains 10 ledger-only version/name/checksum entries.
+
+A checksum attempt using connector-rendered raw text was deliberately not accepted as authoritative: for a known migration whose checksum is recorded in the explicit historical exception registry, the locally computed digest of the rendered text did not match the expected ledger checksum. This indicates that the connector text representation cannot be assumed to preserve exact Git blob bytes/trailing-byte semantics for hashing. No checksum mismatch is asserted from that attempt. Exact checksums must be computed from Git blob bytes at the exact PR #305 commit, not from rendered chat/API text.
+
+Next deterministic procedure: export the already-authorized 105-row ledger (version/name/checksum only) to a local CSV through the dedicated `ghm_audit_login` read-only session; fetch the exact PR #305 head object into the existing local validation worktree without checkout/branch creation; use `git ls-tree` + `git cat-file blob` to hash the exact 94 source-overlap blobs with the repository's canonical LF and legacy CRLF rules; compare the 10 ledger-only rows against the retained registry and 16 explicit provenance exceptions. Preserve all existing worktrees and branches. No production migration, DDL, ACL, credential, Render setting, deployment or CI rerun was performed.
