@@ -6,6 +6,7 @@ import test from 'node:test';
 const server = fs.readFileSync(path.resolve(process.cwd(), 'src/actor-gateway/server.ts'), 'utf8');
 const worker = fs.readFileSync(path.resolve(process.cwd(), 'workers/actor-gateway/index.ts'), 'utf8');
 const app = fs.readFileSync(path.resolve(process.cwd(), 'src/actor-gateway/app.ts'), 'utf8');
+const gatewayPrincipalQualification = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-actor-gateway-principal.mjs'), 'utf8');
 const privilegeSource = fs.readFileSync(path.resolve(process.cwd(), 'src/actor-gateway/database-privileges.ts'), 'utf8');
 const qualificationSource = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-auth-issuer-cutover.mjs'), 'utf8');
 const principalMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110210000_add_actor_gateway_principal_guard.sql'), 'utf8');
@@ -110,4 +111,5 @@ test('Render and Worker enforce the same explicit staged Actor Gateway startup c
   assert.match(privilegeSource, /normalized === 'full'/);
   assert.match(privilegeSource, /throw new Error\([\s\S]*GHM_ACTOR_GATEWAY_STARTUP_STAGE/);
   assert.match(app, /if \(options\.businessCapabilityCreateEnabled === true\) \{[\s\S]*app\.post\('\/v1\/business-capabilities'/);
+  assert.match(gatewayPrincipalQualification, /assertActorGatewayDatabasePrivileges\(gatewayPrivileges, 'full'\)/);
 });
