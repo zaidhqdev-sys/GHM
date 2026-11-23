@@ -1457,3 +1457,10 @@ This is the governing direction, not a substitute for detailed handovers. No pro
 - Do not expand this into new Project APIs, data models, migrations or infrastructure. The product objective is to route the existing Connect workflow through the already implemented GHM API, preserving UI behavior and existing authorization.
 - No production database, migration, deployment, runtime config, customer data, payment action, or paid infrastructure changed in this reconciliation.
 
+### Cleanup — assistant-created Project authorization detour removed (2026-11-24)
+
+- PR #307 was created by the assistant during the previous continuation without a demonstrated requirement from the Connect migration contract. The route-role change was unnecessary scope expansion.
+- Restored `src/http/app.ts` and `src/http/app.test.ts` on its branch byte-for-byte to current GHM main (verified identical at blobs `28e159f0d687d8e7133cacba5583d941ea06b689` and `4289384d68a7ee2b4bbd8df93227121fbbbed385`). No Project authorization behavior remains changed by that branch.
+- PR #307 is being closed as assistant-generated, unneeded work; it is not a product dependency. Its branch is preserved and not deleted.
+- This cleanup does not alter GHM main application source, production database, migrations, deployment, runtime settings, customer data, payment state or infrastructure.
+
