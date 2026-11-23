@@ -111,6 +111,7 @@ import { PostgresQuoteRepository } from '../resources/quote/repository';
 import { DefaultQuoteService } from '../resources/quote/service';
 import { QuoteService } from '../resources/quote/contracts';
 import { registerQuoteRoutes } from './quote-router';
+import { registerQuoteFlowBusinessDataRoutes } from './quoteflow-business-data-router';
 import { PostgresNotificationRepository } from '../resources/notification/repository';
 import { NotificationServiceImpl } from '../resources/notification/service';
 import { NotificationService } from '../resources/notification/contracts';
@@ -1113,6 +1114,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOpportunityParticipantRoutes(app, opportunityParticipantService, resourceAuthMiddleware);
   registerCustomerRoutes(app, customerService, resourceAuthMiddleware);
   registerQuoteRoutes(app, quoteService, resourceAuthMiddleware);
+  registerQuoteFlowBusinessDataRoutes(app, customerService, quoteService, resourceAuthMiddleware);
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
