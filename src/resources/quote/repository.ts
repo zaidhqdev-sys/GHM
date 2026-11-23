@@ -41,7 +41,7 @@ const LINE_COLUMNS = `
 `;
 
 const ownerPredicate = (context: AuthContext, column = 'account_id'): string =>
-  context.role === 'admin' ? '' : ` AND ${column} = $2`;
+  context.role === 'admin' ? ' AND business_id IS NULL' : ` AND business_id IS NULL AND ${column} = $2`;
 
 const ownerValues = (context: AuthContext, id: number): number[] =>
   context.role === 'admin' ? [id] : [id, context.userId];
@@ -199,7 +199,7 @@ export class PostgresQuoteRepository implements QuoteRepository {
       const customer = await client.query(
         `SELECT id, name, phone, email, status
          FROM ghm.customer
-         WHERE id = $1 AND account_id = $2
+         WHERE id = $1 AND account_id = $2 AND business_id IS NULL
          FOR SHARE`,
         [input.customerId, context.userId],
       );
@@ -240,7 +240,7 @@ export class PostgresQuoteRepository implements QuoteRepository {
   async listQuotes(context: AuthContext): Promise<Quote[]> {
     return withAuthorizedTransaction(context, async client => {
       const values: number[] = context.role === 'admin' ? [] : [context.userId];
-      const where = context.role === 'admin' ? '' : 'WHERE account_id = $1';
+      const where = context.role === 'admin' ? 'WHERE business_id IS NULL' : 'WHERE business_id IS NULL AND account_id = $1';
       const result = await client.query(
         `SELECT ${QUOTE_COLUMNS}
          FROM ghm.quote
@@ -263,7 +263,7 @@ export class PostgresQuoteRepository implements QuoteRepository {
       const result = await client.query(
         `UPDATE ghm.quote
          SET status = $1, reminder_id = NULL, reminder_date = NULL, updated_at = now()
-         WHERE id = $2${context.role === 'admin' ? '' : ' AND account_id = $3'}
+         WHERE id = $2 AND business_id IS NULL${context.role === 'admin' ? '' : ' AND account_id = $3'}
          RETURNING ${QUOTE_COLUMNS}`,
         context.role === 'admin' ? [status, quoteId] : [status, quoteId, context.userId],
       );
