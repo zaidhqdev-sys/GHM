@@ -37,6 +37,8 @@ const LINE_COLUMNS = `
   quantity,
   unit_price,
   catalog_item_id,
+  business_id,
+  business_offering_id,
   created_at
 `;
 
@@ -53,6 +55,9 @@ const mapLineItem = (row: any): QuoteLineItem => ({
   quantity: Number(row.quantity),
   unitPrice: Number(row.unit_price),
   catalogItemId: row.catalog_item_id === null ? null : Number(row.catalog_item_id),
+  businessOfferingId: row.business_offering_id === null ? null : String(row.business_offering_id),
+  currencyCode: row.currency_code == null ? null : String(row.currency_code),
+  priceUnit: row.price_unit == null ? null : String(row.price_unit),
   createdAt: row.created_at,
 });
 
@@ -117,8 +122,23 @@ export class PostgresQuoteRepository implements QuoteRepository {
       if (customer.rowCount !== 1) throw new Error('Customer not found or ownership required');
       if (customer.rows[0].status !== 'active') throw new Error('Customer must be active');
       const customerRow = customer.rows[0];
-      const amount = input.lineItems.reduce((total, item) => total + item.quantity * item.unitPrice, 0);
-      const description = input.lineItems.map(item => item.description.trim()).join(', ');
+      const resolvedLines = [];
+      for (const item of input.lineItems) {
+        if (item.businessOfferingId) {
+          const offering = await client.query(
+            `SELECT id, name, description, price_amount, currency_code, price_unit FROM ghm.business_offering WHERE id = $1 AND business_id = $2 AND is_active = true FOR SHARE`,
+            [item.businessOfferingId, tenant.businessId],
+          );
+          if (offering.rowCount !== 1) throw new Error('Business Offering not found or ownership required');
+          const row = offering.rows[0];
+          if (row.price_amount === null) throw new Error('Business Offering must have a price before quoting');
+          resolvedLines.push({ description: String(row.description ?? row.name), quantity: item.quantity, unitPrice: Number(row.price_amount), businessOfferingId: String(row.id), currencyCode: String(row.currency_code), priceUnit: row.price_unit === null ? null : String(row.price_unit) });
+        } else {
+          resolvedLines.push({ description: item.description.trim(), quantity: item.quantity, unitPrice: item.unitPrice, businessOfferingId: null, currencyCode: null, priceUnit: null });
+        }
+      }
+      const amount = resolvedLines.reduce((total, item) => total + item.quantity * item.unitPrice, 0);
+      const description = resolvedLines.map(item => item.description.trim()).join(', ');
       const quoteResult = await client.query(
         `INSERT INTO ghm.quote
           (account_id, business_id, customer_id, customer_name, customer_phone, customer_email, description, amount, follow_up_date)
@@ -127,11 +147,11 @@ export class PostgresQuoteRepository implements QuoteRepository {
       );
       if (quoteResult.rowCount !== 1) throw new Error('Quote creation failed');
       const quoteId = Number(quoteResult.rows[0].id);
-      for (const item of input.lineItems) {
+      for (const item of resolvedLines) {
         await client.query(
-          `INSERT INTO ghm.quote_line_item (quote_id, description, quantity, unit_price, catalog_item_id)
-           VALUES ($1,$2,$3,$4,$5)`,
-          [quoteId, item.description.trim(), item.quantity, item.unitPrice, item.catalogItemId ?? null],
+          `INSERT INTO ghm.quote_line_item (quote_id, description, quantity, unit_price, catalog_item_id, business_id, business_offering_id)
+           VALUES ($1,$2,$3,$4,NULL,$5,$6)`,
+          [quoteId, item.description, item.quantity, item.unitPrice, tenant.businessId, item.businessOfferingId],
         );
       }
       return mapQuote(quoteResult.rows[0], await loadLineItems(client, quoteId));
