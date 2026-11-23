@@ -1422,3 +1422,19 @@ Baseline catalog observations (103 SECURITY DEFINER functions):
 **Artifact completeness limitation:** only one artifact was attached to failed run 43330297297. No second post-cutover authority inventory was produced by that failed run. Do not compare the baseline against a presumed final state or infer that the issuer received the intended ten-function allow-list. The next successful exact-head run must retain and publish both before/after (or otherwise independently captured pre/post) inventories and compare full signatures, owners, direct ACLs, effective role reachability, PUBLIC, global/schema default ACLs, table/column/sequence privileges and memberships.
 
 The qualification script's allow-list currently names ten issuer functions. The manual cutover file is explicitly non-migration and documents that it must not be applied until issuer routes, service, private ingress, client configuration, credentials and rollback gates are ready. This remains disposable qualification only; production remains untouched. No merge/deploy/production role or grant changes were made. PayFast and legal publication remain paused.
+
+
+## 2026-11-23 — standing GHM objectives and mandatory operating rules
+
+The governing product direction is now documented in `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` on main (commit `03d7b6ccf35771c13ed4c0f024bb46fa6a7c793c`).
+
+Standing objective: move ZAID Technologies products onto GHM; implement genuine capabilities the products require; continuously improve GHM through real product use. Connect and QuoteFlow are the immediate integration priorities. Supabase is legacy to remove, not a target dependency.
+
+Mandatory workflow for every GHM task:
+1. Read the objectives and the relevant current handover.
+2. Inspect current main, relevant repositories, branches, PRs, existing implementation and exact-head validation.
+3. Reuse existing work; do not create duplicate branches/PRs or requalify unchanged commits.
+4. Make the smallest change that advances a real product workflow.
+5. After each completed task, update the existing authoritative handover with exact changes, commit/PR, validation, production impact and next action.
+
+This is the governing direction, not a substitute for detailed handovers. No production operation is authorized by this documentation.
