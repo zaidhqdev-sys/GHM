@@ -228,3 +228,8 @@ Current-main migration runner now requires an explicitly named, checksum-bound, 
 ## 23 November 2026 — initial CI build failure and correction
 
 CI run 45216633082 at initial integration head 646a825 failed TypeScript Build due to duplicate `AppliedMigrationLedgerEntry` and `assertAppliedMigrationNames` declarations in migration-order.ts (TS2300/TS2451). Database qualification and tests were skipped. Removed the duplicate block in commit `6f5525372f93cc194c22db3f50b932697798c17a` on isolated mainline branch. Corrected-head CI status pending at this checkpoint; no pass claimed. No production changes.
+
+
+## 23 November 2026 — PR #305 created; exact-head CI pending
+
+Draft PR #305 opened from `feat/production-migration-batches-mainline-20261123` to current main. Head `6f5525372f93cc194c22db3f50b932697798c17a`; base `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; mergeable=true at creation. Cloudflare Pages preview passed, but exact-head `quality`/`web-quality` checks were not present and commit status remained pending/empty. Earlier head 646a825 failed TypeScript Build due to duplicate ledger guard declarations; corrected in 6f552537. No local validation run. Keep PR draft; obtain full exact-head CI through a clean worktree/normal owner push or authorized workflow dispatch. Do not treat preview as CI. No production changes; manifest remains [].
