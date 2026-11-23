@@ -342,3 +342,19 @@ Corrected planner commit `2993bfa6471beb769640ab9272594a8d20b89d94`; test/curren
 PR #305 corrected head `57feb25ef65ab039d3dd2cd97d11c84de04b32d1` passed exact-head Actions run `45242824323` / #5655: both `quality` and `web-quality` succeeded. The planner's pre-migration Gateway principal gate checks role LOGIN/NOINHERIT/non-elevated flags and the exact `ghm_db_user` membership edge with ADMIN=true, INHERIT=false, SET=false. Schema USAGE and assertion-function grants are deliberately excluded from preflight because migration `20261110210000` creates them; those grants require postflight verification after a future authorized application.
 
 PR #305 remains draft/open. The corrected planner has not yet been rerun against production. Prior live read-only audit showed 52 pending migrations, 7 allowlisted and 45 omitted; the reviewed production execution manifest remains empty. The next step is a read-only rerun against `ghm_db` using `ghm_audit_login`, not migration execution. No production state changed.
+
+## 23 November 2026 — live production planner result at corrected PR #305 head
+
+The owner ran the corrected read-only planner from the existing validation worktree against Render production `ghm_db`, using the dedicated `ghm_audit_login` URL, at exact PR #305 source head `57feb25ef65ab039d3dd2cd97d11c84de04b32d1`. The TypeScript build passed. The planner connected as `current_user=session_user=ghm_audit_login`, database `ghm_db`, PostgreSQL 18.6, verified TLS, and `transaction_read_only=on`.
+
+Live evidence:
+- 147 source migrations; 105 ledger rows (1 bootstrap, 94 source-overlap applied, 10 retained historical).
+- All 95 source-overlap rows reconcile: 24 canonical LF checksums, 62 legacy CRLF checksums and 9 exact registered historical-exception checksums; zero checksum mismatches and zero version/name mismatches.
+- All 10 retained-history rows verify; no unrecognized ledger-only rows, orphaned exceptions or redundant exceptions.
+- The live pending queue remains 52 migrations. The committed pending inventory contains 7 valid identities and omits 45, including the first pending migration.
+- The live pre-migration Actor Gateway principal check passes: `ghm_actor_gateway` is LOGIN/NOINHERIT with all elevated role flags false; exactly one membership edge is reported, `ghm_db_user` -> `ghm_actor_gateway`, ADMIN=true, INHERIT=false, SET=false. This is the precondition check for migration `20261110210000`; it does not test the membership grantor identity or post-migration schema/function grants.
+- The committed production batch manifest remains `[]`; no batch is selected.
+
+The final verdict is `PLAN_ONLY_NOT_EXECUTABLE`, solely because the pending allowlist is incomplete and no reviewed batch exists. The planner ran in a read-only transaction and executed zero migration SQL. No ledger, schema, role, membership, ACL, credential, Render setting, service, deployment, payment or paid-resource state was changed.
+
+This result supersedes the previous handover statement that the corrected planner had not yet been run against production. It does not supersede the broader operational release gates: healthy Actor Gateway and isolated Auth Issuer, exact grantor/role-model resolution, route/caller and ACL postflights, provider attestation configuration, fresh verified backup with restore evidence, and the separate manual Business Capability cutover correction remain to be addressed. Do not populate the 7-entry pending inventory by blindly copying the 52-row queue, and do not add a batch to the empty manifest. No production execution is authorized.
