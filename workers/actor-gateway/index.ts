@@ -260,8 +260,8 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
         storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
         connectBusinessProvisioningReader: new PostgresConnectBusinessProvisioningReader(pool, capabilityAssertionSecret),
         campaignDirectoryReviewReader: new PostgresCampaignDirectoryReviewGatewayReader(pool, capabilityAssertionSecret),
-        businessCapabilityCreateEnabled: startupStage === 'full',
       }, {
+        businessCapabilityCreateEnabled: startupStage === 'full',
         rateLimitDecision: async (accountId) => {
           const decision = await edgeRateLimiter.limit({ key: `actor:${accountId}` });
           return decision.success;
