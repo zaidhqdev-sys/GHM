@@ -7840,3 +7840,27 @@ Follow-up to the exact production ledger/source checksum reconciliation above. R
 - `web-quality`: success (11/11 steps), including web build/tests, dependency audit and toolchain checks.
 - This completes exact-head CI qualification for the production provenance manifest cleanup and regression test. It does not constitute production migration qualification or authorize any production batch.
 - PR #305 remains open, draft and unmerged. The production batch manifest remains `[]`.
+
+
+## 23 November 2026 — PR #305 production batch-gate review
+
+Re-inspected the current PRs (#297/#298/#303/#305), the existing #305 implementation branch/head, this handover, and the 20 November dependency matrix before reviewing the gate. PR #305 remains the active isolated mainline implementation; #297/#298 remain stale draft workstreams and #303 remains separate. No branch was created.
+
+### Static runner / selector review
+- The production runner checks the seven-entry `config/pending-migrations.production.json` against **every** pending source migration before batch selection. It therefore rejects the present 52-migration queue because 45 pending identities are omitted. This is a deliberate fail-closed condition, not a batch approval. Do not expand that inventory as a shortcut; each pending migration needs its own release-readiness review.
+- The execution manifest `config/production-migration-batches.json` is exactly `[]`. The selector also requires an explicit `GHM_MIGRATION_BATCH_ID`, exact ordered contiguous pending-prefix identities, matching SQL checksums, and valid unique batch IDs. With the empty manifest, no production batch can be selected.
+- The runner validates applied version/name identity and all already-applied source checksums/provenance inside the transaction before commit. Selection happens before any migration SQL execution.
+- The selector's in-code dependency guard covers the two known unsafe intermediate runtime revocations: supplier classification (`20261110260000`) requires signed replacement `20261111030000`; Business Profile (`20261110270000`) requires signed replacement `20261111040000`. It rejects a selected prefix that leaves either cutover without its signed replacement.
+- That selector guard is intentionally not a substitute for the full release matrix. The other matrix requirements—live Resource API commit/route flags, healthy Actor Gateway and its exact principal/ACL/secret contract, auth callers, PUBLIC EXECUTE inventory, SECURITY DEFINER ownership/search_path postflight, storage provider attestation, commercial consent/approval contracts, manual post-deployment revocations, recovery/rollback evidence, and migrator role authority—remain external pre-execution gates. They are not all machine-enforced by the batch selector.
+
+### Current queue / matrix drift
+- The 20 November PR #298 dependency matrix was prepared against a 50-entry pending inventory. The current PR #305 exact production queue is 52 pending migrations.
+- The two additions are `20261120010000_add_signed_business_capability_create` and `20261120011000_allow_signed_business_capability_create_assertion`. Both remain pending in production. They install the signed Business Capability create function and extend the assertion operation allowlist; they do **not** revoke the legacy Resource API INSERT/sequence grants.
+- The corresponding `20261120012000` legacy-create privilege cutover exists under `database/cutovers/`, is explicitly manual-cutover-only, and is not in the automatic migration queue. Do not include it in a normal migration batch or infer that the two new migrations authorize its execution.
+- The matrix must be treated as a 50-entry dependency baseline, with these two later migrations added to the pending review. It must not be represented as a complete 52-entry release plan.
+
+### Review disposition
+- No first production batch is approved or safe to populate from the current evidence. The selector is fail-closed as intended.
+- No change to the pending allowlist or execution manifest was made. No production migration, DDL, database read/write, role/ACL/credential change, Render setting, deployment, restart, payment action, or paid resource was performed.
+- The remaining code-level improvement identified by the prior handover is a **non-executing production plan mode** that prints/reports the exact pending queue, selected batch identity/checksums and dependency decisions without executing SQL. It should be implemented and qualified on the existing PR #305 branch before any manifest is populated. It must remain read-only and must not require a new service or database.
+- Until that plan mode and the live service/authority/recovery gates are addressed, keep PR #305 draft and `config/production-migration-batches.json` empty.
