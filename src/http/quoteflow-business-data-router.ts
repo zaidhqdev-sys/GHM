@@ -7,7 +7,7 @@ import type { CustomerService, CustomerStatus } from '../resources/customer/cont
 import type { QuoteService, QuoteStatus } from '../resources/quote/contracts';
 
 const positiveId = (value: unknown): number | null => {
-  if (typeof value !== 'string' || !/^[1-9]\\d*$/.test(value)) return null;
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : null;
 };
