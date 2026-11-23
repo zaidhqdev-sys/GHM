@@ -8202,3 +8202,41 @@ Reviewed the complete current-main `src/actor-gateway/database-privileges.ts` as
 No dedicated `ghm_actor_gateway` credential was present in the current conversation or accessible handover evidence. Render environment-variable secret values were deliberately not retrieved or displayed. Therefore the exact production diagnostic has not been run; no connection was attempted with another principal, and no credential was requested in chat. Continue only after the owner confirms the existing dedicated service-login credential is securely available locally (or establishes its supported owner-controlled retrieval path). Never paste the URL/password/key into chat or commit it. If unavailable, stop at credential custody; do not create/reset credentials, alter grants, or modify Render settings as part of this read-only pass.
 
 No production SQL, role/ACL/credential/secret, migration, Render setting, deployment, restart, service, or database state was changed. The execution manifest remains empty and PayFast remains paused.
+
+
+## 23 November 2026 — live Actor Gateway privilege failure mapped to pending migrations
+
+Before this follow-up, rechecked PRs #305, #303, #302, #298 and #297, the current remote branch list, the existing PR #305 migration-gate branch, this handover and the production dependency matrix. PR #305 remains the active open/draft implementation at `4162100767469019fea0a17337185f1672446215` on `feat/production-migration-batches-mainline-20261123`; exact-head CI run `45245920767` passed `quality` and `web-quality`. PR #302 is merged at `67859370910984799b12df802e53bf891da1d668`; it corrected the capability cutover's search-path expectation to `pg_catalog, ghm, pg_temp`. PR #303 remains separate/open/draft at `d74ce8488a0be8d5f243eff1ed0d88b738b85f08` for the manual Business Capability column-level INSERT revocation. PRs #297 and #298 remain older open/draft alternatives and are not to be revived or merged as duplicate migration-gate work. No new branch or worktree was created.
+
+### Owner-supplied production ledger result
+
+The owner queried `ghm.ghm_schema_migrations` for versions `20261110210000` and `20261112090000`; the result was zero rows for both. The initial `BEGIN READ ONLY` connection dropped and psql reconnected before the SELECT, so the SELECT ran outside the intended read-only transaction; the final `ROLLBACK` returned “there is no transaction in progress.” This was a SELECT only and made no production change. The result establishes that neither migration version is recorded in the production ledger. The live 52-entry pending inventory on PR #305 also includes `20261112050000_revoke_public_default_function_execution`; do not claim that version was individually selected in the owner's two-version query.
+
+### Exact live Actor Gateway assertion results
+
+The prior owner-run direct diagnostic connected as `session_user=current_user=ghm_actor_gateway` to `ghm_db` over the external PostgreSQL endpoint with certificate verification enabled. It used a read-only transaction and rolled it back. The role identity itself passed: LOGIN=true, NOINHERIT=true, and all elevated role attributes false. The database privilege assertion returned:
+
+- database CONNECT=true; database CREATE=false;
+- `ghm` schema USAGE=false; schema CREATE=false;
+- no direct table/view/sequence privileges;
+- zero executable Gateway functions against 39 expected signatures;
+- no PUBLIC Gateway-function EXECUTE, no `ghm_runtime` Gateway-function EXECUTE, and no unsafe function grantees;
+- `unsafe_function_defaults=true`;
+- 63 SECURITY DEFINER functions, all owned by `ghm_schema_owner`, of which 58 do not have the exact `search_path=pg_catalog, ghm, pg_temp` setting; five already match;
+- no PUBLIC-executable SECURITY DEFINER functions.
+
+The assertion failure list was exactly `schema_usage_missing`, `gateway_function_allow_list_mismatch`, `unsafe_future_function_defaults`, and `unsafe_security_definer_functions`. This is a predicate-level confirmation, not merely the coarse Render startup log. The additional read-only catalogue checks showed the `ghm` schema ACL did not include Gateway USAGE; the only relevant `pg_default_acl` row was a sequence (`defaclobjtype='S'`) entry for `ghm_runtime`, with no global function default-privilege row for `ghm_schema_owner`.
+
+### Failure-to-migration mapping
+
+1. `20261110210000_add_actor_gateway_principal_guard` creates the initial `ghm.assert_actor_gateway(bigint)` primitive and grants `USAGE ON SCHEMA ghm` plus EXECUTE on that one assertion function to `ghm_actor_gateway`. It is not recorded in the live ledger. Applying it alone would not install the 39-function final allow-list.
+2. The signed Gateway capability, supplier, Business Profile, identity, registration, saved-business, hours, trust-score, logo, storage, campaign/directory-review and commercial operations are installed across the later ordered Gateway migrations in the reviewed 52-entry pending chain. The 39 expected signatures in `src/actor-gateway/database-privileges.ts` represent the completed service contract, not the output of the principal-guard migration alone. The zero actual functions therefore reflects an uninstalled Gateway migration chain, not a single missing EXECUTE grant.
+3. `20261112050000_revoke_public_default_function_execution` performs `ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`. The startup assertion explicitly fails when the global function default-ACL row is absent, or when a non-owner EXECUTE grantee remains. The live catalogue result (sequence default-ACL row only, no function row) matches the missing global function-default hardening. This is distinct from the existing sequence default ACL entry.
+4. `20261112090000_pin_security_definer_search_path` checks that all GHM SECURITY DEFINER functions are owned by `ghm_schema_owner`, then sets each to `pg_catalog, ghm, pg_temp`. It is not recorded in the live ledger; the observed 58 path mismatches match the unapplied migration's intended postcondition.
+5. PR #302's merged correction aligns the later capability cutover's assertion with this same three-schema path; it does not apply the migration or make the production functions/ACLs present.
+
+### Sequencing and safety conclusion
+
+The four observed startup failures are explained by the pending production migration chain. Do not manually GRANT schema USAGE, create function grants, change default ACLs, or ALTER FUNCTION search paths to make the service start. Do not apply only `20261110210000` and retry deployment: the complete 39-function allow-list, default-function ACL hardening and repository-wide SECURITY DEFINER pinning are coordinated postconditions. The signed Gateway function chain must be reviewed as a contiguous prefix with the earlier pending migrations and the Auth/Resource API caller dependencies in the dependency matrix. Migrations `20261117010000` and `20261117020000` remain post-deployment revocations and must not run until the Gateway is healthy and authenticated end-to-end routes pass. The manual Business Capability cutover remains separate under PR #303.
+
+PR #305 remains the sole active migration-gate implementation; its pending inventory is 52/52 exact version/name identities and its execution manifest remains exactly `[]`. Exact-head CI qualifies the planner and tests only. No production migration, DDL, ledger write, role, membership, ACL, credential, secret, Render setting, deployment, restart, payment action or paid resource was changed during this diagnostic. The next repository task is to derive and document the exact first contiguous migration prefix and its pre/postconditions from the existing matrix; it is not to populate the execution manifest or run production SQL.
