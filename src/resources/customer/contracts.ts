@@ -7,6 +7,7 @@ export type CustomerStatus = 'active' | 'archived';
 export interface Customer {
   readonly id: CustomerId;
   readonly accountId: AccountId;
+  readonly businessId?: number | null;
   readonly name: string;
   readonly phone: string | null;
   readonly email: string | null;
@@ -27,6 +28,11 @@ export interface CustomerRepository {
   listCustomers(context: AuthContext, status?: CustomerStatus): Promise<Customer[]>;
   archiveCustomer(context: AuthContext, customerId: CustomerId): Promise<Customer>;
   restoreCustomer(context: AuthContext, customerId: CustomerId): Promise<Customer>;
+  createBusinessCustomer?(context: AuthContext, businessId: number, input: CreateCustomerInput): Promise<Customer>;
+  listBusinessCustomers?(context: AuthContext, businessId: number, status?: CustomerStatus): Promise<Customer[]>;
+  getBusinessCustomer?(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer | null>;
+  archiveBusinessCustomer?(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer>;
+  restoreBusinessCustomer?(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer>;
 }
 
 export interface CustomerService {
@@ -35,6 +41,11 @@ export interface CustomerService {
   listCustomers(context: AuthContext, status?: CustomerStatus): Promise<Customer[]>;
   archiveCustomer(context: AuthContext, customerId: CustomerId): Promise<Customer>;
   restoreCustomer(context: AuthContext, customerId: CustomerId): Promise<Customer>;
+  createBusinessCustomer?(context: AuthContext, businessId: number, input: CreateCustomerInput): Promise<Customer>;
+  listBusinessCustomers?(context: AuthContext, businessId: number, status?: CustomerStatus): Promise<Customer[]>;
+  getBusinessCustomer?(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer | null>;
+  archiveBusinessCustomer?(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer>;
+  restoreBusinessCustomer?(context: AuthContext, businessId: number, customerId: CustomerId): Promise<Customer>;
 }
 
 export const CUSTOMER_OPERATIONS = Object.freeze({
