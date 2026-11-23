@@ -8022,3 +8022,37 @@ This is repository CI qualification for the selector dependency guard and regres
 Updated PR #305's body with the exact-head result. No production migration, manual cutover, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred.
 
 Next review continues from the existing 52-row live pending queue and migration dependency matrix. Do not re-run CI for this unchanged head or create a new branch.
+## 23 November 2026 — full pending migration review, CI completion and manual cutover finding
+
+### Pre-task repository/PR/branch review
+
+Re-read this handover and `docs/security/PRODUCTION_MIGRATION_DEPENDENCY_MATRIX_2026-11-20.md`; rechecked PRs #298, #300, #303 and #305 and searched the existing production-migration and Business Capability branches. Reused the existing PR #305 feature branch and the existing continuation branch for documentation. No branch or worktree was created.
+
+### PR #305 exact-head CI completed
+
+PR #305 head `cf100f11fef1a37190bca1d050f4bd1f75172110` is identical to `feat/production-migration-batches-mainline-20261123` (0 ahead / 0 behind). Run `45240831225` / #5646 completed successfully: `quality` and `web-quality` both passed. `quality` included TypeScript build, full tests and disposable PostgreSQL 18 qualification; `web-quality` included web build/tests and dependency checks. This qualifies the PR #305 selector/test source at that exact head only; it does not qualify production execution or deployed service readiness. PR #305 remains draft.
+
+### All 52 pending migration SQL files reviewed
+
+Reviewed all 52 migration SQL files in the planner's live pending queue. Detailed grouped findings and exact migration ranges are in the updated dependency matrix. Important operational conclusions:
+- The earliest migrations include live runtime SECURITY DEFINER RPCs and runtime table/sequence grants; they are not all schema-only additions.
+- The actor principal migration asserts a pre-existing role/membership shape not inspected by the read-only planner. Re-check role membership and ACLs live before any batch.
+- The initial Gateway wrappers are ID-based; the signed HMAC and request-context chain later replaces them. Do not expose the intermediate wrappers.
+- Supplier and Business Profile runtime revocations at `20261110260000` / `20261110270000` must be coordinated with signed replacements at `20261111030000` / `20261111040000` and actual healthy Gateway routes.
+- Auth/QuoteFlow revocations, token-bound recovery changes, PUBLIC default EXECUTE revocation, Connect provisioning and search-path hardening each need their route/caller/ACL postflights.
+- Storage metadata requires the distinct provider workflow attestation secret and proof; SQL migration alone does not provision that authority.
+- Commercial evidence/authority tables are migrator-only at creation. The later payment-prepare Gateway records pending consent/payment evidence but does not initiate checkout or activate subscriptions; PayFast remains paused.
+- `20261117010000` and `20261117020000` explicitly require deployed/healthy signed Gateway routes before revocation.
+- `20261120010000` and `20261120011000` are now hard-paired in PR #305's selector. The separate `20261120012000` direct-write cutover is manual-only.
+
+### PR #303 manual cutover correction
+
+Re-read PR #303 and the exact cutover on its existing branch. Mainline's `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql` revokes table-level INSERT and sequence privileges but omits historical column-level INSERT grants. PR #303's existing branch `fix/business-capability-column-privilege-audit` corrects this by revoking the explicit eight-column INSERT privilege list, table-level INSERT and sequence USAGE/SELECT from PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway`.
+
+PR #303 remains separate, draft and unmerged; its head `3af71a78b86c74864092150c6d036b312cf5ce45` is 8 commits ahead of main / 0 behind. Exact-head CI run `44924040445` passed both `quality` and `web-quality`, including disposable PostgreSQL 18 qualification. PR #303 and PR #305 bodies now record these results and the cross-PR dependency. Cloudflare Pages preview is not a production deployment. Do not apply the manual cutover until the signed Gateway route/principal, Render role model and fresh verified backup requirements are met.
+
+### Current decision
+
+No production batch is approved. The pending allowlist remains 7/52; `config/production-migration-batches.json` remains `[]`. Live Gateway/Auth Issuer readiness, fresh role/membership and ACL evidence, provider attestation provisioning, complete route/caller postflights, and the corrected manual Business Capability cutover remain separate operational requirements. Do not fill the allowlist by copying the pending queue or rerun CI for the unchanged PR #305 head.
+
+Matrix documentation commit: `301279b3a700322bca361021d58dccfd77e00b05`. No production migration, manual cutover, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred.
