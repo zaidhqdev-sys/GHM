@@ -44,7 +44,6 @@ export interface CreateQuoteLineItemInput {
   readonly unitPrice?: number;
   readonly catalogItemId?: number | null;
   readonly businessOfferingId?: string | null;
-  readonly businessOfferingId?: string | null;
 }
 
 export interface CreateQuoteInput {
