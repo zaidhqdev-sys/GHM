@@ -7912,3 +7912,16 @@ A review of the newly added regex regression test found its own pattern omitted 
 - `web-quality`: passed (11/11 steps).
 - `quality`: in progress at last inspection (26/72 steps; Actor Gateway Worker bundle step). No failures reported.
 - Do not treat the previous head's passing run as qualification for this final assertion correction. Recheck run `45235819522` and record its terminal result.
+
+
+### Exact-head planner qualification completed — run 45235819522
+
+Rechecked PRs #297/#298/#303/#305, the current #305 branch head, this handover, the dependency matrix, and the exact-head workflow jobs before proceeding.
+
+- PR #305 branch/head: `feat/production-migration-batches-mainline-20261123` / `341057216508b466c6d70a12ada7616bc147a44c`.
+- GitHub Actions run `45235819522`: `quality` passed (73/73); `web-quality` passed (11/11).
+- This qualifies the read-only planner implementation and its corrected version-regex regression test at the exact current PR head.
+- PR #305 remains open/draft/unmerged. PRs #297/#298 remain older draft workstreams; #303 remains separate. No branch created.
+- The planner has **not** been run against production yet. Next action is a local execution by the owner from the existing #305 worktree, using the already-created dedicated `ghm_audit_login` connection. Do not paste credentials or connection strings into chat or Git. Capture the JSON report with secrets redacted.
+- Use the planner only for a read-only report. It requires `GHM_MIGRATION_AUDIT_DATABASE_URL`, `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`, `GHM_MIGRATION_AUDIT_HOST`, and `DATABASE_SSL=true`; the script enforces `ghm_audit_login`, verified TLS, `BEGIN READ ONLY`, and `ROLLBACK`.
+- No production batch is approved. `config/production-migration-batches.json` remains `[]`; no migration SQL, DDL, role/ACL/credential, Render setting, deployment or restart was performed.
