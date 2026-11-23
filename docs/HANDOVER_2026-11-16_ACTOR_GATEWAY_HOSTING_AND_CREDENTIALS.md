@@ -1901,3 +1901,13 @@ The production migration manifest remains exactly `[]`. No production SQL/migrat
 The first exact-head CI attempt for the staged implementation exposed a TypeScript interface-placement error: `businessCapabilityCreateEnabled` had initially been passed as an application dependency while the tests and route switch correctly treated it as an application option. The failing Build step reported TS2353 in the two full-stage app tests; all earlier workflow setup/qualification-script syntax steps had passed, while later DB/Worker qualification steps were skipped because Build failed. Corrected by moving the flag into `ActorGatewayAppOptions`, checking `options.businessCapabilityCreateEnabled` at route registration, and passing it as the second argument to `createActorGatewayApp` from both Render Node and Worker. No runtime behavior was deployed or changed in a live environment.
 
 Also added `src/actor-gateway/database-startup-acl-contract.test.ts` assertions proving both host adapters resolve the same strict stage, use it in the DB ACL assertion, and enable the create route only for `full`. Exact-head CI must be rerun on the corrected branch head; no pass is claimed. PR #305 remains draft, production manifest remains `[]`, and all production/Render/secret/deployment boundaries remain unchanged.
+
+
+### 23 November 2026 — staged startup test failures diagnosed and corrected
+
+The first corrected-build full-suite run completed 1,112/1,114 tests and exposed two new staged-contract test defects (not production/DB failures):
+
+1. The pre-create signature comparison normalized PostgreSQL's comma spacing in the actual/expected arrays but compared the normalized signature to the unnormalized constant. This meant the create signature was not filtered, so the pre-create unit test correctly caught an allow-list mismatch. The comparison now normalizes the constant before equality.
+2. The cross-host source-contract test still expected the old `dependencies.businessCapabilityCreateEnabled` property after the flag was moved to `ActorGatewayAppOptions`. The test now checks `options.businessCapabilityCreateEnabled`.
+
+Corrections committed on the existing PR #305 branch as `476dc46b901cf8ed560bce5a8a215fdf34242f8d` and `87517539ee18efb1b099830dcf039f5f71ed0ba0`. The previous run's TypeScript Build, Worker bundle, disposable Gateway principal qualification, local Worker smoke and disposable migration application all passed; full test suite failed only on the two staged-contract tests above. Rerun exact-head CI on the corrected source; no green full-suite result is claimed. The production migration manifest remains `[]`; no production state, Render configuration, credentials, secret, deployment or paid resource changed.
