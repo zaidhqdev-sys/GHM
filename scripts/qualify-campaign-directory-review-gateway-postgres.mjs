@@ -132,7 +132,7 @@ try {
 
   await applyManualCutover('database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql');
   assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtime));
-  assertActorGatewayDatabasePrivileges(await readActorGatewayDatabasePrivileges(gateway));
+  assertActorGatewayDatabasePrivileges(await readActorGatewayDatabasePrivileges(gateway), 'full');
   assert.deepEqual(await privilegeMatrix(), {
     runtime_create: false, runtime_update: false, runtime_review: false,
     gateway_create: true, gateway_update: true, gateway_review: true,
