@@ -73,29 +73,6 @@ const main = async () => {
       ORDER BY member_name, granted_role_name
     `);
     const gatewayMemberships = gatewayMembershipResult.rows;
-    const gatewaySchemaResult = await client.query(`
-      SELECT has_schema_privilege('ghm_actor_gateway', 'ghm', 'USAGE') AS schema_usage,
-             has_schema_privilege('ghm_actor_gateway', 'ghm', 'CREATE') AS schema_create,
-             has_database_privilege('ghm_actor_gateway', current_database(), 'CONNECT') AS database_connect
-    `);
-    const gatewayFunctionResult = await client.query(`
-      SELECT pg_get_userbyid(p.proowner) AS owner,
-             p.prosecdef AS security_definer,
-             p.proconfig AS function_config,
-             has_function_privilege('ghm_actor_gateway', p.oid, 'EXECUTE') AS gateway_execute,
-             has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
-             EXISTS (
-               SELECT 1
-               FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
-               WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
-             ) AS public_execute
-      FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'ghm'
-        AND p.oid = to_regprocedure('ghm.assert_actor_gateway(bigint)')
-    `);
-    const gatewayFunction = gatewayFunctionResult.rows[0] ?? null;
-    const gatewaySchema = gatewaySchemaResult.rows[0] ?? null;
     const gatewayMembershipPass = gatewayMemberships.length === 1 &&
       gatewayMemberships[0].member_name === 'ghm_db_user' &&
       gatewayMemberships[0].granted_role_name === 'ghm_actor_gateway' &&
@@ -107,19 +84,7 @@ const main = async () => {
       gatewayRole.rolsuper === false && gatewayRole.rolcreatedb === false &&
       gatewayRole.rolcreaterole === false && gatewayRole.rolreplication === false &&
       gatewayRole.rolbypassrls === false);
-    const gatewaySchemaPass = Boolean(gatewaySchema &&
-      gatewaySchema.schema_usage === true && gatewaySchema.schema_create === false &&
-      gatewaySchema.database_connect === true);
-    const gatewayFunctionPass = Boolean(gatewayFunction &&
-      gatewayFunction.owner === 'ghm_schema_owner' &&
-      gatewayFunction.security_definer === true &&
-      Array.isArray(gatewayFunction.function_config) &&
-      gatewayFunction.function_config.includes('search_path=pg_catalog, ghm') &&
-      gatewayFunction.gateway_execute === true &&
-      gatewayFunction.runtime_execute === false &&
-      gatewayFunction.public_execute === false);
-    const gatewayPrincipalPass = gatewayRolePass && gatewayMembershipPass &&
-      gatewaySchemaPass && gatewayFunctionPass;
+    const gatewayPrincipalPass = gatewayRolePass && gatewayMembershipPass;
 
     const ledgerResult = await client.query(`
       SELECT version, name, checksum, applied_at
@@ -260,14 +225,11 @@ const main = async () => {
         pass: gatewayPrincipalPass,
         role: gatewayRole,
         memberships: gatewayMemberships,
-        schema: gatewaySchema,
-        assertion_function: gatewayFunction,
         checks: {
           role_attributes: gatewayRolePass,
           exact_membership: gatewayMembershipPass,
-          schema_and_database_privileges: gatewaySchemaPass,
-          assertion_function_authority: gatewayFunctionPass,
         },
+        note: 'Pre-migration role preconditions only; schema USAGE and assert_actor_gateway function grants are created by migration 20261110210000 and are not expected before that migration is applied.',
       },
       source: { migration_count: repository.length },
       ledger: { row_count: ledger.length, current_source_applied_count: canonicalMatches.length + legacyMatches.length + historicalMatches.length,
