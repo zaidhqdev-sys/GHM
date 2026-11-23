@@ -136,7 +136,7 @@ export class PostgresQuoteRepository implements QuoteRepository {
           if (row.price_amount === null) throw new Error('Business Offering must have a price before quoting');
           resolvedLines.push({ description: String(row.description ?? row.name), quantity: item.quantity, unitPrice: Number(row.price_amount), businessOfferingId: String(row.id), currencyCode: String(row.currency_code), priceUnit: row.price_unit === null ? null : String(row.price_unit) });
         } else {
-          resolvedLines.push({ description: item.description.trim(), quantity: item.quantity, unitPrice: item.unitPrice, businessOfferingId: null, currencyCode: null, priceUnit: null });
+          resolvedLines.push({ description: item.description?.trim() ?? '', quantity: item.quantity, unitPrice: item.unitPrice ?? 0, businessOfferingId: null, currencyCode: null, priceUnit: null });
         }
       }
       const currencies = [...new Set(resolvedLines.map(item => item.currencyCode).filter((value): value is string => value !== null))];
@@ -234,8 +234,8 @@ export class PostgresQuoteRepository implements QuoteRepository {
       if (customer.rows[0].status !== 'active') throw new Error('Customer must be active');
 
       const customerRow = customer.rows[0];
-      const amount = input.lineItems.reduce((total, item) => total + item.quantity * item.unitPrice, 0);
-      const description = input.lineItems.map(item => item.description.trim()).join(', ');
+      const amount = input.lineItems.reduce((total, item) => total + item.quantity * (item.unitPrice ?? 0), 0);
+      const description = input.lineItems.map(item => item.description?.trim() ?? '').join(', ');
 
       const quoteResult = await client.query(
         `INSERT INTO ghm.quote
