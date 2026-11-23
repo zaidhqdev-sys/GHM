@@ -7672,3 +7672,87 @@ Owner connected through the existing Render PostgreSQL CLI to `ghm_db` as the ne
 Important interpretation: this is now authoritative production ledger evidence, replacing prior assumptions that the ledger could not be read. It does **not** by itself establish the exact pending queue until compared against the complete migration directory at the exact PR #305 source head, with canonical migration provenance/checksum and explicit allowlist reconciliation. In particular, the two Business Capability migrations dated 20 Nov are not present in the returned ledger rows; do not assume their application status—this snapshot indicates they are not recorded in this ledger. The current PR #305 batch manifest was re-read and remains exactly `[]`; no batch is authorized. Existing PR #305 source branch remains 16 commits ahead and 0 behind main at comparison time; no new branch or CI run was created. No production migration, role/grant change, service change or deployment was performed as part of this read.
 
 The supplied transcript ends at the psql `ghm_db=*> ` prompt after `ROLLBACK;` is not shown; this indicates the read-only transaction may still be open. Owner should issue `ROLLBACK;` in that same auditor session to close it cleanly. No data mutation was possible within the explicitly read-only transaction.
+
+
+## 23 November 2026 — production auditor transaction closed; exact pending inventory reconciled against PR #305 source
+
+Owner confirmed `ROLLBACK;` returned `ROLLBACK` in the dedicated `ghm_audit_login` session. The read-only ledger transaction is closed.
+
+### Exact source/PR/branch references inspected
+- PR #305: open, draft, mergeable; source `feat/production-migration-batches-mainline-20261123`, head `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f`, base main `93ff3c774ce225760b0e3e2cf99a770b38e8a097`. 16 commits ahead, 0 behind at last comparison; nine changed files. PR #305 changes no SQL migration files. Its execution manifest remains exactly `[]`.
+- PR #298: open, draft, non-mergeable, head `b6b96c44ac26544156e099373d3185a965b880fd`; its migration tree has 145 SQL migration files and does not contain the two 20 Nov Business Capability migrations present on current main.
+- PR #297: open, draft, non-mergeable, head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; its migration tree has 145 SQL migration files. Its description's earlier 143-file/48-pending audit is a historical snapshot, not the current source inventory.
+- PR #303: open, draft, mergeable, head `3af71a78b86c74864092150c6d036b312cf5ce45`; its migration tree has 147 SQL migration files, same migration file set as current main.
+- Existing continuation branch remains `feat/pr298-github-continuation-20261122`; no new branch was created and no CI run was started for this read-only reconciliation.
+
+### Production ledger compared to exact PR #305 source tree
+- Authoritative ledger snapshot: 105 rows total (104 applied migration rows plus bootstrap `00000000000000`), highest version `20261109210000`.
+- Exact PR #305 source tree: 147 files under `database/migrations/*.sql`.
+- Version/name comparison: 95 ledger rows have matching version entries in the current source tree; **0 version/name mismatches**.
+- The other **10 ledger-only rows** are all represented in `config/retained-historical-migrations.production.json` with exact matching names/checksums; they remain retained historical provenance and are not reintroduced as pending migrations.
+- Therefore the exact source/ledger version-name difference is **52 pending migrations**. These are the complete ordered pending queue below, not a production execution approval:
+
+| Version | Migration |
+|---|---|
+| 20261110010000 | add_business_supplier_classification |
+| 20261110100000 | create_account_onboarding_progress |
+| 20261110120000 | create_business_relationship_outcome_read_models |
+| 20261110140000 | allow_pending_storage_object_cleanup |
+| 20261110160000 | add_admin_capability_catalogue_governance |
+| 20261110210000 | add_actor_gateway_principal_guard |
+| 20261110220000 | add_actor_gateway_self_identity_read |
+| 20261110230000 | add_gateway_business_registration_identity_read |
+| 20261110233000 | add_gateway_business_registration_identity_write |
+| 20261110240000 | enforce_capability_catalogue_cross_row_invariants |
+| 20261110250000 | add_gateway_capability_governance |
+| 20261110260000 | gateway_supplier_classification_cutover |
+| 20261110265000 | reconcile_business_profile_legacy_contract |
+| 20261110270000 | gateway_business_profile_update |
+| 20261111020000 | bind_capability_gateway_actor_to_signed_assertion |
+| 20261111030000 | bind_supplier_gateway_actor_to_signed_assertion |
+| 20261111040000 | bind_business_profile_gateway_actor_to_signed_assertion |
+| 20261111050000 | bind_registration_and_self_identity_to_signed_gateway_actor |
+| 20261111060000 | bind_gateway_assertions_to_request_context |
+| 20261111070000 | add_signed_business_capability_mutations |
+| 20261111100000 | add_signed_saved_business_gateway |
+| 20261111130000 | add_signed_business_hours_gateway |
+| 20261111140000 | add_business_hours_read_projections |
+| 20261111150000 | add_signed_trust_score_gateway |
+| 20261111160000 | add_signed_business_logo_gateway |
+| 20261111170000 | add_trust_score_read_projections |
+| 20261111210000 | revoke_runtime_account_external_identity_table_access |
+| 20261111220000 | revoke_unused_auth_runtime_entry_points |
+| 20261111230000 | add_token_bound_recovery_revocation_result |
+| 20261111240000 | revoke_runtime_quoteflow_migration_provisioning |
+| 20261111250000 | revoke_runtime_external_identity_link |
+| 20261111260000 | revoke_runtime_external_identity_bootstrap |
+| 20261112020000 | add_token_bound_password_recovery_reset |
+| 20261112030000 | add_conditional_password_rehash |
+| 20261112040000 | revoke_runtime_quoteflow_reset_enrollment_registration |
+| 20261112050000 | revoke_public_default_function_execution |
+| 20261112070000 | revoke_legacy_unsigned_actor_gateway_overloads |
+| 20261112080000 | signed_connect_business_provisioning_gateway |
+| 20261112090000 | pin_security_definer_search_path |
+| 20261112140000 | add_signed_storage_metadata_actor_gateway |
+| 20261112150000 | add_storage_provider_workflow_attestation |
+| 20261112170000 | revoke_redundant_migrator_business_mapping_lookup |
+| 20261116140000 | generalize_commercial_payment_provider_code |
+| 20261116150000 | create_commercial_consent_evidence |
+| 20261116160000 | add_commercial_document_approval_authority |
+| 20261116170000 | add_founder_only_commercial_document_authority_gateway |
+| 20261116180000 | add_founder_only_commercial_document_approval_transition |
+| 20261116190000 | add_commercial_consent_payment_prepare_gateway |
+| 20261117010000 | revoke_runtime_business_registration_identity_write |
+| 20261117020000 | revoke_runtime_capability_governance |
+| 20261120010000 | add_signed_business_capability_create |
+| 20261120011000 | allow_signed_business_capability_create_assertion |
+
+### Existing allowlist and execution gate interpretation
+- `config/pending-migrations.production.json` still contains seven entries (versions 20261110100000, 20261110120000, 20261110140000, 20261110210000, 20261110220000, 20261110230000, 20261110233000). All seven names match current source and are present in the 52-row pending queue.
+- The allowlist omits **45 of 52** pending migrations. It also omits the first pending migration `20261110010000_add_business_supplier_classification` and `20261110160000_add_admin_capability_catalogue_governance`. Consequently, the current production pending allowlist rejects the complete live pending queue; it is not an executable approval list and must not be silently expanded.
+- PR #305's batch selector requires a committed, reviewed batch to be an exact contiguous prefix of the pending queue and checksum-bound. Since its manifest is empty, no batch is selectable. This is intentional and remains unchanged.
+- The supplier-classification and Business Profile runtime cutovers (`20261110260000`, `20261110270000`) are pending and their signed replacement migrations (`20261111030000`, `20261111040000`) are also pending. The selector's dependency guard prevents selecting a cutover without its signed replacement in the applied/selected state.
+- The two 20 Nov Business Capability migrations are confirmed **not recorded as applied** in this production ledger snapshot; both are included at the end of the pending queue.
+
+### Reconciliation scope/limits
+This step proves production ledger version/name identity, exact 52-entry pending version/name sequence, and the 10 ledger-only historical rows' match to the retained production registry. It does **not** yet certify every one of the 95 overlapping applied SQL checksums against exact PR #305 source bytes. That checksum comparison must be completed using the canonical SHA-256/LF and legacy CRLF rules in `src/db/migration-checksum.ts`, plus the production historical provenance exception registry, before any production batch can be reviewed. Do not claim zero checksum mismatches based solely on this version/name reconciliation. No migration, DDL, role/grant, deployment or Render setting was changed.
