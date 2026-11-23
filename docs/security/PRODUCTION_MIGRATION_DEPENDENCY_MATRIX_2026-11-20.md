@@ -8,9 +8,9 @@
 
 ## Evidence boundary
 
-Derived from the branch's 50-entry production pending inventory, migration SQL, Actor Gateway app/server, Resource API routers, and production role/service handovers. This is source-contract analysis, not proof of deployed service state.
+Reconciled against the 52-entry live production pending queue returned by the read-only planner on 23 November 2026, plus migration SQL, Actor Gateway app/server, Resource API routers, and production role/service handovers. This remains source-contract analysis, not proof of deployed service state.
 
-Not established: exact deployed Resource API commit and route flags; deployed Actor Gateway service/URL (the owner-selected single Free Render service already exists; its inspected deployments failed at startup and no healthy Gateway process is live); live ledger/checksum match; live Gateway function catalogue/ACL; fresh recoverable backup; provider-authorized PostgreSQL role/migrator ACL remediation.
+Now established by the 23 November read-only production planner: 147 source migrations; 105 ledger rows (1 bootstrap, 94 source-overlap applied rows, 10 retained historical rows); 24 canonical checksum matches, 62 legacy CRLF matches, 9 exact historical-exception matches; zero checksum/name mismatches; all 10 retained rows verified; 52 pending migrations. Still not established: exact deployed Resource API commit and route flags; healthy deployed Actor Gateway service/URL (the inspected service deployment failed startup); live Gateway function catalogue/ACL; a restore-tested fresh backup; provider-authorized PostgreSQL role/migrator ACL remediation.
 
 ## Service and principal contracts
 
@@ -86,6 +86,8 @@ Pre-service = schema/function creation before traffic switches. Cutover = runtim
 | 20261116190000 | add_commercial_consent_payment_prepare_gateway | Requires approved exact version, explicit consent, idempotency and signed assertion; remains pending_checkout/trialing; no provider call. |
 | 20261117010000 | revoke_runtime_business_registration_identity_write | Explicit post-deployment cutover; SQL preflights signed Gateway function, owner and Gateway EXECUTE before revoking runtime. Requires live route and rollback plan. |
 | 20261117020000 | revoke_runtime_capability_governance | Explicit post-deployment cutover; preflights signed verifier, four Gateway operations, owner, SECURITY DEFINER, pinned path, Gateway EXECUTE and runtime denial. |
+| 20261120010000 | add_signed_business_capability_create | Pre-service additive wrapper. Requires the request-context verifier from 20261111060000, the existing Business Capability table/constraints and a correctly provisioned `ghm_actor_gateway` principal. The wrapper calls operation `business.capability.create`, which is not admitted by the verifier until the immediately following 20261120011000 migration; do not expose traffic between these two migrations. It does not revoke legacy Resource API table/column INSERT or sequence privileges. | 
+| 20261120011000 | allow_signed_business_capability_create_assertion | Extends the signed assertion verifier's exact operation allowlist with `business.capability.create`. Must follow 20261120010000 in repository order and be applied in the same reviewed contiguous batch before any create traffic is enabled. This is an allowlist extension only; it does not revoke legacy INSERT/sequence privileges. |
 
 ## Ordering hazards
 
@@ -97,10 +99,12 @@ Pre-service = schema/function creation before traffic switches. Cutover = runtim
 6. Storage provider attestation is a two-party proof; Actor Gateway identity is not provider proof.
 7. Commercial payment preparation is not payment activation. PayFast remains paused.
 8. 20261117010000 and 20261117020000 are final post-deployment runtime revocations requiring live route, principal and ACL evidence.
+9. The 20261120010000 signed Business Capability create wrapper and 20261120011000 verifier allowlist extension form an ordered pair. The first wrapper calls the operation name admitted by the second migration; no create traffic is safe in the intermediate state. Keep both in the same reviewed contiguous batch and deploy/enable the Resource API/Actor Gateway route only after both migrations and the live Gateway principal/secret/route checks pass.
+10. The separate manual-only `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql` is not one of the 52 automatic migrations and is not in the pending queue. It revokes historical column-level INSERT, table-level INSERT and sequence USAGE/SELECT from PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway`. PR #303 (`fix/business-capability-column-privilege-audit`) remains open/draft and deliberately separate; its current cutover source additionally closes the historical column-level grant. Do not apply the cutover or fold it into an automatic batch. Require the deployed and qualified signed create route, provisioned Gateway principal, resolved Render role model, fresh verified backup, and explicit pre/post ACL evidence. The PR's disposable PostgreSQL qualification is not production authorization.
 
 ## Batch decision
 
-No safe first production batch can be approved. There is no verified deployed service commit/route matrix, fresh live ledger/checksum reconciliation, verified recoverable backup, or resolution of PostgreSQL bootstrap/migrator authority and Gateway identity/ACL readiness.
+No safe first production batch can be approved. Live source-to-ledger checksum and retained-history reconciliation now passes, but the 52-entry queue is not yet covered by a complete 52-row matrix-backed readiness decision or complete pending allowlist (7 entries; 45 omitted). There is still no verified deployed service commit/route matrix, restore-tested fresh backup, resolution of PostgreSQL bootstrap/migrator authority, or healthy Gateway identity/ACL readiness. The two newest Business Capability migrations are additive and their separate manual legacy-privilege cutover is not an automatic migration.
 
 Keep the manifest exactly []. Keep PR #298 draft/unmerged. Do not run production SQL, change roles/ACLs, submit/deploy the Gateway form, or alter existing Render services. No new paid resource is required or authorized. PayFast remains paused.
 
@@ -264,3 +268,20 @@ Dedicated `ghm_audit_login` session successfully read 105 production ledger rows
 Corrected the live ledger/source arithmetic: production has 105 rows = 1 bootstrap + 94 applied migrations overlapping the exact PR #305 source tree + 10 ledger-only retained historical rows. The PR #305 source tree contains 147 migration SQL files, so the pending queue is 52 (147 - 1 bootstrap - 94 applied). The previous 95-overlap figure accidentally included the bootstrap; the 52 pending figure remains correct.
 
 Checksum source rules are documented in `src/db/migration-checksum.ts`: SHA-256 UTF-8 after CRLF/CR -> LF normalization, accepting the legacy CRLF digest as a compatibility fallback. The 16-entry historical provenance exception registry and 10-entry retained historical registry were inspected. A digest derived from connector-rendered text did not match a known explicit historical checksum, so that method is rejected as byte-inexact; no checksum mismatch is asserted. Complete the 94 applied source-overlap comparisons using exact Git blob bytes from PR #305 head `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f`, plus verify the 10 retained ledger-only rows and exception registry. No production write or CI rerun.
+
+
+## 23 November 2026 — live 52-entry queue and signed Business Capability create pair
+
+The read-only production planner on exact PR #305 head `341057216508b466c6d70a12ada7616bc147a44c` reconciled the full source and ledger: 147 source migrations, 105 ledger rows (1 bootstrap, 94 source-overlap applied, 10 retained historical), 24 canonical checksum matches, 62 legacy CRLF matches, 9 exact historical-exception matches, zero checksum or name mismatches, 10/10 retained rows verified, and 52 pending source migrations. The pending allowlist still contains only 7 valid entries and omits 45; the execution manifest remains `[]`. This updates the evidence boundary above: checksum/provenance reconciliation is no longer outstanding, while service, backup, ACL/authority and complete queue readiness remain open.
+
+The original migration-by-migration table contained 50 rows. The live pending queue contains 52. Added the two exact missing entries in repository order:
+- `20261120010000_add_signed_business_capability_create`: additive SECURITY DEFINER wrapper, actor assertion, business membership and selectable-catalogue checks; no legacy direct INSERT/sequence privilege revocation.
+- `20261120011000_allow_signed_business_capability_create_assertion`: adds `business.capability.create` to the signed verifier allowlist; no legacy direct INSERT/sequence privilege revocation.
+
+Treat these two migrations as an ordered pair in one reviewed contiguous batch. The first wrapper uses the operation enabled by the second migration, so no create traffic may be enabled in the intermediate state. Their inclusion does not mean the 52-entry queue has a reviewed executable prefix.
+
+### Separate manual Business Capability privilege cutover — PR #303
+
+Re-read PR #303, its signed Business Capability handover, branch `fix/business-capability-column-privilege-audit`, and exact cutover source `database/cutovers/20261120012000_revoke_legacy_business_capability_runtime_create.sql`. PR #303 remains open/draft and separate from PR #305; no review submissions or inline review threads were returned in the current inspection. The cutover is intentionally outside `database/migrations` and outside the 52-entry automatic queue. It revokes historical column-level INSERT (eight columns), table-level INSERT, and sequence USAGE/SELECT from PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway`. Its comments require the signed create route to be deployed and qualified, the Gateway principal provisioned, Render's role model resolved, and a fresh verified backup. PR #303's CI evidence recorded in its handover is disposable PostgreSQL qualification only; it does not authorize production execution. Keep this manual artifact separate and unexecuted.
+
+No production migration, manual cutover, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action, or paid resource change occurred during this reconciliation. PR #305 remains draft/unmerged; its manifest remains `[]`.
