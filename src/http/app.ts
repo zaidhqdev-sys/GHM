@@ -1067,6 +1067,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.post('/api/v1/projects', resourceAuthMiddleware, requireRegisteredAccess('project', 'create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
+      if (context.role !== 'customer') {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
       const input = parseProjectCreateInput(req.body);
 
       if (!input) {
@@ -1214,6 +1218,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.get('/api/v1/projects/:projectId', resourceAuthMiddleware, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
+      if (context.role !== 'customer') {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
       const projectIdValue = routeParam(req.params.projectId);
       const projectId = projectIdValue === null ? null : positiveIntegerId(projectIdValue);
 
@@ -1238,6 +1246,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.patch('/api/v1/projects/:projectId', resourceAuthMiddleware, requireRegisteredAccess('project', 'update'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
+      if (context.role !== 'customer') {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
       const projectIdValue = routeParam(req.params.projectId);
       const projectId = projectIdValue === null ? null : positiveIntegerId(projectIdValue);
       const input = parseProjectUpdateInput(req.body);
