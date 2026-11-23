@@ -11,6 +11,7 @@ test('production planner requires a dedicated read-only audit identity and verif
   assert.match(planner, /ssl: \{ rejectUnauthorized: true \}/);
   assert.match(planner, /BEGIN READ ONLY/);
   assert.match(planner, /transaction_read_only !== 'on'/);
+  assert.match(planner, /!\^\\d\{14\}\$\/.test\(version\)/);
 });
 
 test('production planner rolls back its read-only transaction and never executes migration SQL', () => {
