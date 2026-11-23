@@ -26,7 +26,7 @@ const sendFailure = (res: Response, error: unknown): void => {
   if (error instanceof Error && (error.message === 'Business tenant access denied' || error.message === 'Customer not found or ownership required' || error.message === 'Quote not found or ownership required')) {
     res.status(404).json({ error: 'not_found' }); return;
   }
-  if (error instanceof Error && (error.message.includes('required') || error.message.startsWith('Invalid ') || error.message.startsWith('Quote '))) {
+  if (error instanceof Error && (error.message.includes('required') || error.message === 'Business catalog item mapping is not available' || error.message.startsWith('Invalid ') || error.message.startsWith('Quote '))) {
     res.status(400).json({ error: 'invalid_request' }); return;
   }
   console.error(JSON.stringify({ event: 'quoteflow_business_data_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
