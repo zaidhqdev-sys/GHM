@@ -223,3 +223,8 @@ Created isolated branch from current main and added a checksum-bound exact conti
 ## 23 November 2026 — production batch gate integration (CI pending)
 
 Current-main migration runner now requires an explicitly named, checksum-bound, exact contiguous-prefix batch for production ghm_db before migration SQL; selected versions alone pass through execution loop. Non-production remains all-pending. Existing target/SSL/migrator/SET ROLE/advisory-lock/allowlist/out-of-order/checksum guards are preserved. Ledger query now reads version/name/checksum and verifies current-repository names. Added selector, ledger-name and runner wiring/order tests to package test command; CI push trigger includes isolated branch. Branch `feat/production-migration-batches-mainline-20261123`, head `646a8253906126d48913123d92d470f2b7b56a18`. Manifest remains exactly []; current seven-entry inventory untouched pending live ledger. Exact-head CI run 45216633082 had quality in progress, web-quality queued, Cloudflare Pages in progress at checkpoint; no pass yet. No production/Render/local worktree changes.
+
+
+## 23 November 2026 — initial CI build failure and correction
+
+CI run 45216633082 at initial integration head 646a825 failed TypeScript Build due to duplicate `AppliedMigrationLedgerEntry` and `assertAppliedMigrationNames` declarations in migration-order.ts (TS2300/TS2451). Database qualification and tests were skipped. Removed the duplicate block in commit `6f5525372f93cc194c22db3f50b932697798c17a` on isolated mainline branch. Corrected-head CI status pending at this checkpoint; no pass claimed. No production changes.
