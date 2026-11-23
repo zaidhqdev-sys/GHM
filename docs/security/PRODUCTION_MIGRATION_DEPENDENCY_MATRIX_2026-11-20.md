@@ -327,3 +327,8 @@ PR #303 remains a separate draft/unmerged branch (`fix/business-capability-colum
 ### Batch conclusion
 
 The full source review does not authorize a production prefix. The pending allowlist is still 7/52, the execution manifest is `[]`, the live Actor Gateway/Auth Issuer readiness is not established, the actor role/membership and exact ACLs need fresh live preflight, provider attestation requires separate provisioning, and the manual Business Capability cutover requires the PR #303 column-level correction plus its separate route/role/backup gates. No allowlist or manifest entries were added. No production database or service state changed.
+## 23 November 2026 — read-only planner role/ACL preflight added
+
+The planner now reads and reports the live `ghm_actor_gateway` role attributes, all membership edges involving that role, schema/database privileges, and the `ghm.assert_actor_gateway(bigint)` SECURITY DEFINER owner/search_path/EXECUTE matrix. Expected role contract is LOGIN=true, INHERIT=false, all elevated attributes false; exactly one membership edge (`ghm_db_user` -> `ghm_actor_gateway`) with ADMIN=true, INHERIT=false, SET=false; `ghm` USAGE=true/CREATE=false; database CONNECT=true; assertion function owned by `ghm_schema_owner`, SECURITY DEFINER, pinned `pg_catalog, ghm`, executable by Gateway but not runtime or PUBLIC. Any mismatch makes the read-only plan non-executable. The query performs no role or ACL changes.
+
+Planner commit `f82f40b2e2c3bff90cd7a74924072098eb864bfb`; static regression test and current PR #305 head `c569334236109331345ad693583efca9a9d584b9`. Exact-head CI run `45242582863` / #5651 is in progress. Production has not yet been re-audited with this added preflight; no role/ACL/credential or production state changed.
