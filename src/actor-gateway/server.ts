@@ -80,6 +80,7 @@ const app = createActorGatewayApp({
   ),
   commercialPaymentPreparationEnabled,
   commercialLaunchAuthorized,
+}, {
   businessCapabilityCreateEnabled: actorGatewayStartupStage === 'full',
 });
 const server = http.createServer(app);
