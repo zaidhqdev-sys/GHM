@@ -43,7 +43,7 @@ export const assertActorGatewayDatabasePrivileges = (
   const expected = privileges.expected_functions
     .map(normalizeSignature)
     .filter(signature => stage === 'full'
-      || signature !== ACTOR_GATEWAY_BUSINESS_CAPABILITY_CREATE_SIGNATURE)
+      || signature !== normalizeSignature(ACTOR_GATEWAY_BUSINESS_CAPABILITY_CREATE_SIGNATURE))
     .sort();
   const campaignReviewFunctions = new Set([
     'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
