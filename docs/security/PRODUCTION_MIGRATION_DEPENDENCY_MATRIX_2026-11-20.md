@@ -358,3 +358,12 @@ Live evidence:
 The final verdict is `PLAN_ONLY_NOT_EXECUTABLE`, solely because the pending allowlist is incomplete and no reviewed batch exists. The planner ran in a read-only transaction and executed zero migration SQL. No ledger, schema, role, membership, ACL, credential, Render setting, service, deployment, payment or paid-resource state was changed.
 
 This result supersedes the previous handover statement that the corrected planner had not yet been run against production. It does not supersede the broader operational release gates: healthy Actor Gateway and isolated Auth Issuer, exact grantor/role-model resolution, route/caller and ACL postflights, provider attestation configuration, fresh verified backup with restore evidence, and the separate manual Business Capability cutover correction remain to be addressed. Do not populate the 7-entry pending inventory by blindly copying the 52-row queue, and do not add a batch to the empty manifest. No production execution is authorized.
+
+
+## 23 November 2026 — production pending inventory reconciled (not execution authority)
+
+Following the corrected live planner result above, rechecked the allowlist implementation in `src/db/production-pending-migration-allowlist.ts`. It is a pending-inventory equality guard: every unapplied repository migration must have an exact version/name entry. It does not select a batch, provide a checksum approval, or authorize execution. Batch authority remains separately controlled by `config/production-migration-batches.json` and the explicit batch selector.
+
+The live read-only planner returned the exact 52 pending version/name identities in repository order; the full 52-source SQL/dependency review is recorded above. Reconciled `config/pending-migrations.production.json` on the existing PR #305 branch to those 52 exact entries in commit `841b8b7075010db9e095e795b5aedb6cf2c11f2c`. The new file was fetched back and verified at 52 entries, strictly ordered and unique. The batch manifest was not changed and remains `[]`.
+
+This is an inventory correction only. It does not make any pending migration executable: PR #305 still requires an explicit reviewed contiguous-prefix batch with matching checksums, and the live Actor Gateway/Auth Issuer, route/caller, ACL, provider-attestation, backup/restore and manual-cutover release gates remain. The latest inventory commit has not yet been qualified by exact-head CI; do not claim a CI pass or execute production migrations.
