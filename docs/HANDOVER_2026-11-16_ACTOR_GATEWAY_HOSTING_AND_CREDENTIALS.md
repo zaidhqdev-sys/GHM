@@ -2151,3 +2151,21 @@ Reviewed current PR metadata, branch ancestry, exact comparison against `main`, 
 - Production migration execution manifest remains exactly `[]`. No production SQL, migration, role/ACL, secret, Render/Cloudflare setting, deployment, restart, traffic, payment or paid resource was changed in this consolidation.
 
 **Next active workstream:** continue only on PR #305 and the existing mainline implementation. Do not create another migration-batch branch or repeat exact-head CI without a source change. The next useful work must address an already-owned, policy-compliant production hosting/network/issuer path or complete an existing read-only production readiness item; until then, production migrations and legacy revocations remain held.
+
+
+## 2026-11-23 — standing GHM objectives established
+
+Created `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` at commit `ce573539c2d8b2ad90269c96b0dae0bd16daf9f7` on this existing PR #305 branch.
+
+The document establishes the standing direction: move ZAID Technologies products onto GHM; let real Connect and QuoteFlow requirements drive GHM capability improvements; remove Supabase as a target dependency; and measure success by working product workflows rather than PRs, branches or qualification volume.
+
+It makes the pre-task and post-task discipline mandatory:
+- Read the objectives and relevant current handover before each task.
+- Inspect current repository, branches, PRs, implementation and qualification evidence.
+- Reuse existing work and avoid duplicate workstreams or requalifying unchanged commits.
+- After each completed task, update the existing authoritative handover with exact changes, commit/PR, validation, production impact and next action.
+- Preserve the standing cost, infrastructure, production-safety and PayFast constraints.
+
+This is a documentation-only addition on the existing PR #305 branch. It does not authorize or perform production migration, database changes, role/ACL/credential changes, secret or environment changes, deployment, restart, payment action or new spending.
+
+**Next step:** use this objectives document as the governing pre-task checklist, then continue the existing product migration work from the current PR/branch/handover state. Do not create a new branch or parallel workstream for the objectives.
