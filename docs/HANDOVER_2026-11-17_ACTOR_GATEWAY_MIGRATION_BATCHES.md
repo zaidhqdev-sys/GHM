@@ -7307,3 +7307,53 @@ Production migration batch manifest remains exactly `[]`. No production database
 - The request has been prepared in the repository only. It has **not** been submitted to Render Support, and no support ticket or external communication was sent. Owner/operator submission remains required.
 - No production database, role, membership, ACL, credential, Render service/environment, deployment or restart was changed. No secret environment values or connection strings were read.
 - Next: owner/operator submits the prepared request through Render's support channel; await provider's written supported procedure. Separately obtain fresh backup/restore evidence and authorized read-only migration-ledger/checksum audit. Do not attempt role or schema grants from the query/app session.
+
+
+## 23 November 2026 — Render support clarification: auditor login and recovery options
+
+### Provider response received
+
+The owner supplied Amanda's written Render Support response, received 23 November 2026 at 15:41:10Z, following the owner's 22 November follow-up. This is provider guidance; it is not evidence that any production role, backup, export, or restore action has been performed.
+
+### 1. Routine read-only migration-ledger access
+
+Amanda clarified that a temporary `GRANT` issued by `ghm_db_user` without `GRANTED BY` creates a second membership row, recorded with `ghm_db_user` as grantor. It does not replace or modify the existing membership row. While both rows exist, PostgreSQL permits `SET ROLE` because the new row carries `SET=true`; revoking the temporary grant removes only the row granted by `ghm_db_user`. The original membership remains unchanged.
+
+Amanda then recommended avoiding that temporary grant for routine inspection. Her proposed pattern is a dedicated SQL login (example name `ghm_audit_login`) created as a member of the existing `ghm_auditor` role, then connecting directly as that login. The intent is read-only access to the migration ledger without using the administrative credential and with a distinct login audit trail.
+
+**Decision / safety boundary:**
+- Do not use the temporary `GRANT` / `SET ROLE` procedure for routine ledger inspection.
+- Prefer the dedicated auditor-login pattern, subject to a source- and catalogue-verified privilege review of the exact resulting login and its effective privileges.
+- Creating a production login, setting its password, and adding its auditor membership are production role/credential changes. They have **not** been performed or authorized by this provider response.
+- Do not put the password in Git, chat, handovers, logs, or a support ticket. Credential delivery must use an owner-controlled secret-entry path and must not expose the value.
+- Before any creation, verify that `ghm_auditor` still has only the intended schema USAGE and migration-ledger SELECT privileges, and verify the new login has no unintended memberships, ownership, direct grants, or effective access beyond the required read-only ledger path.
+- Keep the existing administrator memberships and all other role/ACL state unchanged. Do not infer that Amanda's clarification authorizes changing or revoking any existing membership.
+
+### 2. Existing-plan backup and recovery
+
+Amanda confirmed that the current Hobby workspace has a three-day point-in-time recovery (PITR) window. A PITR restore can be initiated for a point within that window, but Render creates a **new separate PostgreSQL instance**; it never overwrites the live database. That new instance is separately billed while it exists.
+
+Amanda also confirmed that a logical export of the current database can be initiated at any time and remains available for download from the Render Recovery page for seven days, regardless of workspace plan. She recommended this export route for validation given the owner's restriction against additional paid resources, while retaining the three-day PITR window as the recovery safety net.
+
+**Decision / safety boundary:**
+- Do not initiate a PITR restore for routine validation because it creates an additional billable database instance.
+- The preferred no-new-resource evidence path is a logical export from the existing Render Recovery page, followed by validation using existing local PostgreSQL tooling where the export format and local capacity permit.
+- No export has yet been initiated or downloaded, and no restore validation has been performed. Do not describe backup integrity or recoverability as proven until a downloaded export has been successfully inspected/restored and the result recorded.
+- Record the export timestamp, source database identity, export format, file size/checksum, download deadline, local restore result, and any limitations without recording credentials or sensitive data.
+- The three-day PITR window is provider-confirmed protection, but no PITR recovery point has been restored or independently tested.
+- No additional Render database, service, plan upgrade, or recurring cost is authorized.
+
+### Updated prerequisite status
+
+The provider has answered the two narrow questions about membership-row behavior and existing-plan recovery options. This resolves the uncertainty over whether the temporary grant would replace the existing membership and identifies a lower-risk dedicated-login approach. It does **not** itself complete production ledger reconciliation or backup validation.
+
+Before any production migration:
+1. Decide separately whether to authorize creation of the dedicated read-only auditor login; do not create it implicitly as part of documentation or audit work.
+2. If authorized, define and verify the exact role attributes, membership options, effective privileges, credential handling, and rollback before executing the narrowly scoped role operation.
+3. Initiate and download a logical export from the existing Recovery page, then validate it locally using existing resources; preserve the seven-day availability deadline.
+4. Obtain the authorized live production migration-ledger/checksum reconciliation and refresh the pending migration inventory.
+5. Continue to require the remaining independent migration, SECURITY DEFINER, migrator-authority, Gateway target/session, TLS, deployment, route, and rollback prerequisites.
+
+### Change boundary
+
+This entry records the owner's supplied provider response and the resulting decision boundaries only. No production SQL, role, membership, grant, ACL, credential, backup/export, restore, Render setting, service, deployment, migration, payment state, or paid resource was changed. The production migration execution manifest remains exactly `[]`; PR #298 remains draft/open/unmerged, and PRs #297 and #303 remain separate. The original local worktree was not touched.
