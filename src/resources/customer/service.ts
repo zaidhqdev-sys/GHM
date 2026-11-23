@@ -36,6 +36,32 @@ const validateStatus: (status: unknown) => asserts status is CustomerStatus = (s
 export class CustomerServiceImpl implements CustomerService {
   constructor(private readonly repository: CustomerRepository) {}
 
+  async createBusinessCustomer(context: AuthContext, businessId: number, input: CreateCustomerInput): Promise<Customer> {
+    if (!this.repository.createBusinessCustomer) throw new Error('Business Customer capability unavailable');
+    return this.repository.createBusinessCustomer(context, businessId, validateCreateInput(input));
+  }
+
+  async listBusinessCustomers(context: AuthContext, businessId: number, status?: CustomerStatus): Promise<Customer[]> {
+    if (!this.repository.listBusinessCustomers) throw new Error('Business Customer capability unavailable');
+    if (status !== undefined) validateStatus(status);
+    return this.repository.listBusinessCustomers(context, businessId, status);
+  }
+
+  async getBusinessCustomer(context: AuthContext, businessId: number, customerId: number): Promise<Customer | null> {
+    if (!this.repository.getBusinessCustomer) throw new Error('Business Customer capability unavailable');
+    return this.repository.getBusinessCustomer(context, businessId, customerId);
+  }
+
+  async archiveBusinessCustomer(context: AuthContext, businessId: number, customerId: number): Promise<Customer> {
+    if (!this.repository.archiveBusinessCustomer) throw new Error('Business Customer capability unavailable');
+    return this.repository.archiveBusinessCustomer(context, businessId, customerId);
+  }
+
+  async restoreBusinessCustomer(context: AuthContext, businessId: number, customerId: number): Promise<Customer> {
+    if (!this.repository.restoreBusinessCustomer) throw new Error('Business Customer capability unavailable');
+    return this.repository.restoreBusinessCustomer(context, businessId, customerId);
+  }
+
   async createCustomer(
     context: AuthContext,
     input: CreateCustomerInput,
