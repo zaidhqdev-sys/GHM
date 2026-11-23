@@ -29,3 +29,8 @@ CREATE INDEX quote_line_item_business_offering_idx
   WHERE business_offering_id IS NOT NULL;
 
 -- Existing account-scoped quote lines remain NULL/NULL and retain their existing behavior.
+-- Preserve the runtime's column-level least-privilege model for the new snapshot/reference fields.
+GRANT SELECT (business_id, business_offering_id, currency_code, price_unit)
+  ON TABLE ghm.quote_line_item TO ghm_runtime;
+GRANT INSERT (business_id, business_offering_id, currency_code, price_unit)
+  ON TABLE ghm.quote_line_item TO ghm_runtime;
