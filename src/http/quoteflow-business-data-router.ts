@@ -102,12 +102,12 @@ export const registerQuoteFlowBusinessDataRoutes = (
     if (!isRegisteredOperation('quote', 'create') || !quotes.createBusinessQuote) { res.status(501).json({ error: 'not_implemented' }); return; }
     const body = req.body as Record<string, unknown>;
     const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
-    const validLines = lineItems.length > 0 && lineItems.every(item => item && typeof item === 'object' && !Array.isArray(item) && typeof item.description === 'string' && !!item.description.trim() && typeof item.quantity === 'number' && Number.isFinite(item.quantity) && item.quantity > 0 && typeof item.unitPrice === 'number' && Number.isFinite(item.unitPrice) && item.unitPrice > 0 && (item.catalogItemId === undefined || item.catalogItemId === null));
+    const validLines = lineItems.length > 0 && lineItems.every(item => { if (!item || typeof item !== 'object' || Array.isArray(item)) return false; const keys = Object.keys(item); if (keys.some(key => !['description','quantity','unitPrice','businessOfferingId'].includes(key))) return false; if (typeof item.quantity !== 'number' || !Number.isFinite(item.quantity) || item.quantity <= 0) return false; if (item.businessOfferingId !== undefined) return typeof item.businessOfferingId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.businessOfferingId); return typeof item.description === 'string' && !!item.description.trim() && typeof item.unitPrice === 'number' && Number.isFinite(item.unitPrice) && item.unitPrice > 0; });
     if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(k => !['customerId','lineItems','followUpDate'].includes(k)) || !Number.isSafeInteger(body.customerId) || (body.customerId as number) <= 0 || !validLines || typeof body.followUpDate !== 'string') {
       res.status(400).json({ error: 'invalid_request' }); return;
     }
     try {
-      const quote = await quotes.createBusinessQuote(scope.context, scope.businessId, { customerId: body.customerId as number, lineItems: lineItems as Array<{description:string;quantity:number;unitPrice:number;catalogItemId?:number|null}>, followUpDate: body.followUpDate });
+      const quote = await quotes.createBusinessQuote(scope.context, scope.businessId, { customerId: body.customerId as number, lineItems: lineItems as Array<{description?:string;quantity:number;unitPrice?:number;businessOfferingId?:string}>, followUpDate: body.followUpDate });
       res.status(201).json({ quote });
     } catch (error) { sendFailure(res, error); }
   });
