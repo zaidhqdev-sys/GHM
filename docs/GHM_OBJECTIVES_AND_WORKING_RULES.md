@@ -110,6 +110,25 @@ Before acting, establish:
 
 Do not expand the task into unrelated architecture, broad audits or speculative future work.
 
+### F. Hard stop — this procedure is an execution gate
+
+The pre-task procedure above is a **mandatory execution gate**, not guidance, a reminder, or a checklist that may be skipped when a task appears small or familiar.
+
+For every task, before giving a substantive recommendation, asking the owner to perform an operational step, or making any repository, PR, branch, deployment, database, product or configuration change, the assistant must:
+
+1. Re-read this objectives document.
+2. Inspect the latest relevant handover(s) in **every repository affected by the task**. Follow links to dependent handovers where the task depends on them.
+3. Inspect the current default/main branch and relevant working-tree state where local repository access is being used. Preserve all existing local changes.
+4. Inspect the relevant PR history, including open, draft, closed and merged PRs—not only the PR most recently mentioned. Check their current head/base commits, changed files, reviews and exact-head validation when relevant.
+5. Inspect existing branches and worktrees relevant to the task, including preserved or closed-PR branches. Establish which implementation is current and which work is reusable before proposing another branch, PR or implementation.
+6. Reconcile the evidence with the product objective and the owner's recorded decisions and constraints. Do not ask the owner to repeat information already present in those records.
+
+**No evidence, no assumption:** if any required repository, handover, PR, branch or local-state inspection cannot be completed, the assistant must identify exactly what could not be inspected, must not present guesses or stale recollections as current facts, and must not proceed with a change or operational instruction that depends on that missing evidence. It may continue only with work that is demonstrably independent of the unavailable evidence.
+
+The assistant must perform these inspections for **each new task**, including follow-up tasks in the same conversation. A previous task's inspection does not carry forward as proof of current state. A prior answer, summary, memory, PR description or old handover is not a substitute for checking the current repository records.
+
+The task scope must remain tied to the owner's stated product outcome. Do not invent blockers, change established product architecture, reopen rejected options, duplicate already-qualified work, create branches/PRs for convenience, or turn a focused task into an unrelated audit. If the evidence shows work already exists, continue from that work rather than starting over.
+
 ## 6. Mandatory post-task procedure
 
 After every completed task:
