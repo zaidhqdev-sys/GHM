@@ -7384,3 +7384,35 @@ The archive listing, extraction, catalogue parsing, non-empty data-file inventor
 - The archive and extracted production data remain local to the owner's machine; do not upload the backup or its data contents to GitHub, chat, or external services.
 - Render Support's 23 November guidance states that logical exports remain downloadable from the Recovery page for seven days. The owner should retain the downloaded local copy; no exact expiry timestamp is asserted here.
 - Keep the production migration execution manifest exactly `[]`. PR #298 remains a separate draft/open/unmerged change; PR #297 and PR #303 remain separate. No production migration or manual cutover is authorized by this backup validation.
+
+## 23 November 2026 — consolidated audit register and no-repeat checkpoint
+
+This is the authoritative index for the production Actor Gateway / migration-batch qualification work. Read this register and the latest dated handover before repeating any inspection. Do not rerun a completed audit merely because a new chat/task starts. Re-run only when its freshness trigger is met, the underlying source changes, a new discrepancy appears, or the owner explicitly requests a fresh check. Record timestamp, exact target/identity, method, result, limitations and evidence. Historical results are not current beyond their stated freshness boundary.
+
+### Completed — do not repeat absent a trigger
+
+1. Render Support response (23 Nov 2026, 15:41:10Z): Amanda explained PostgreSQL membership-row/grantor behavior and recommended a dedicated LOGIN in ghm_auditor for routine ledger reads. Hobby PITR window is three days; PITR creates a separately billed database instance and never overwrites live DB. Logical exports remain downloadable for seven days. No auditor login or production role/credential change was created or authorized.
+2. Owner-created logical export from existing Render Recovery page: workspace ZAID Technologies; production service ghm-db, service ID dpg-dag0sdtbedkc7389vi2g-a; database ghm_db, Frankfurt; created/downloaded 23 Nov 2026. Directory-format archive; owner reported approximately 80 KB; tar listing succeeded with 68 entries. Local copy retained by owner.
+3. Extraction/inventory: 65 files, all .dat, 537,326 bytes total, zero zero-byte files; toc.dat present.
+4. Catalogue parse: local PostgreSQL pg_restore 18.6 --list exit 0. Catalogue identifies database ghm_db, directory format, no compression, dump/pg_dump version 18.7, approximately 760 TOC entries, including ghm and legacy public objects.
+5. Data-section decode: pg_restore --data-only --file NUL against extracted directory exit 0. No database connection or restore target was used.
+6. SHA-256: command was run but available transcript contains only a truncated hash. No full checksum is verified or recorded.
+7. Actual restore: NOT performed. No target DB was created, no objects/rows restored, and no post-restore checks run. This export is structurally readable and data sections decode; it is not restore-tested and full recoverability is not proven. A local restore is a separate action requiring owner confirmation and local disk-capacity check.
+
+### Outstanding gates
+
+- Obtain full local SHA-256 if required; do not repeat archive listing, extraction, catalogue parse or data decode for this unchanged export.
+- Decide separately whether to authorize creation of ghm_audit_login. Before any creation, re-verify ghm_auditor effective privileges and define exact role attributes, membership options, safe secret entry and rollback. Never put password in Git/chat/logs.
+- Obtain authorized read-only production migration-ledger/checksum reconciliation. Prior query-session read was denied SQLSTATE 42501; do not bypass it or infer ledger contents from the backup catalogue.
+- Verify actual Gateway database target and runtime session identity without disclosing connection strings or secrets; obtain provider-supported handling for bootstrap role-membership authority.
+- Last inspected ghm-actor-gateway state: Render Free, branch main, auto-deploy off; inspected deployment failed startup at database_privileges_rejected / database_privileges_assertion. No healthy live Gateway established. Re-inspect only after a relevant deployment/config/PR event.
+- Still outstanding: migrator authority, SECURITY DEFINER review, effective least-privilege ACLs, Gateway startup/routes/restart/cold-start evidence, verified transport/TLS pairing, rollback evidence, and production-only Project↔Opportunity reconciliation where applicable.
+- Manifest config/production-migration-batches.json remains exactly []. PR #298, #297 and #303 were confirmed open/draft/unmerged on 23 Nov. Recheck exact heads/status before new work; continuation branch is not assumed to be a PR head.
+
+### No-change boundary
+
+The owner created/downloaded the export and inspected it locally. No production DB connection or SQL was used for validation. No production migration, role, membership, GRANT/REVOKE, ACL, credential, service/environment setting, deployment/restart, payment state, PITR restore, extra Render resource or paid resource was changed. No backup data or secrets were committed. Original local worktree was not touched.
+
+### Reusable audit protocol
+
+Before subsequent GHM work, inspect this checkpoint and the relevant current handover, dependency matrix, support record, PR heads/status, branches and manifest. Treat completed items above as closed for duplicate execution; revisit only on new evidence, changed source state, explicit owner request or defined discrepancy. After each task, append exact evidence, scope, result, limitations and no-change boundary here and update affected source documents. Never describe a passed decode/catalogue check as a successful restore.
