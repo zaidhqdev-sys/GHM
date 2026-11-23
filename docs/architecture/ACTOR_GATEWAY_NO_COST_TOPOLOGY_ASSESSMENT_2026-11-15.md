@@ -305,3 +305,27 @@ Required next evidence:
 5. If the above cannot be established without production mutation or a new paid/disposable database, retain the current no-go and use the private Tunnel/VPC architecture only if an already-approved continuously available host becomes available.
 
 No Render IP allow-list, TLS setting, database, credential, Cloudflare configuration, Worker, route, secret, production traffic, service, deployment or migration was changed by this review. PR #305 remains the active migration-gate workstream; this topology document is an architecture handover, not a change to migration authority.
+
+## 2026-11-23 follow-up — Hyperdrive egress constraints and no-cost decision
+
+Reviewed current Cloudflare Hyperdrive firewall/FAQ documentation, Workers VPC documentation, Workers Gateway dedicated-egress documentation, pricing/limits, and Render inbound IP rules.
+
+- Hyperdrive's documented origin egress uses Cloudflare's shared IP ranges. The ranges are shared with other Cloudflare products and Hyperdrive configurations; they are not dedicated to this account or Worker. Hyperdrive's firewall guide says to allow-list those ranges when restricting the origin firewall. References: https://developers.cloudflare.com/hyperdrive/configuration/firewall-and-networking-configuration/ and https://developers.cloudflare.com/hyperdrive/reference/faq/.
+- Render Postgres inbound rules accept IPv4 CIDRs only. Cloudflare publishes dual-stack IP ranges. The Hyperdrive documentation reviewed does not document a per-configuration IPv4-only egress switch or a guarantee that its connection to an arbitrary dual-stack hostname will use IPv4 only. Therefore a safe IPv4-only allow-list cannot yet be proven complete for Hyperdrive. Do not infer that the IPv4 subset is sufficient. Reference: https://render.com/docs/inbound-ip-rules.
+- Cloudflare documents dedicated egress IPs through Gateway as an add-on to Zero Trust Enterprise plans. The cited documentation applies to traffic proxied by Gateway (including `cf1:network` bindings); it does not establish that Hyperdrive's managed database-origin connections can be routed through that mechanism. This is not a no-cost workaround and is not a qualified Hyperdrive solution. Reference: https://developers.cloudflare.com/workers-vpc/configuration/vpc-networks/.
+- Hyperdrive Free includes 100,000 database statements/day; paid Workers has unlimited Hyperdrive queries. The API documents a soft origin connection maximum of 20 on Free accounts and 100 on paid accounts. These limits are not a substitute for confirming account usage and workload needs. References: https://developers.cloudflare.com/hyperdrive/platform/pricing/ and https://developers.cloudflare.com/api/resources/hyperdrive/.
+- Hyperdrive supports PostgreSQL `verify-full` when supplied the region-appropriate CA certificate; hostname SAN matching is required. This remains a technically viable TLS mode, but no Render CA bundle has been obtained or tested. Reference: https://developers.cloudflare.com/hyperdrive/configuration/tls-ssl-certificates-for-hyperdrive/.
+- Cloudflare Workers VPC is the documented private-network path for a private database, but its setup requires a Cloudflare Tunnel instance in the private network. It does not remove the always-on connector-host prerequisite in this architecture. References: https://developers.cloudflare.com/hyperdrive/configuration/firewall-and-networking-configuration/ and https://developers.cloudflare.com/hyperdrive/configuration/connect-to-private-database-vpc/.
+
+### Decision
+
+**Direct-public Hyperdrive is not qualified under the current no-cost and network constraints.** Render accepts only IPv4 inbound rules; Hyperdrive documents shared Cloudflare IP ranges but no IPv4-only guarantee. Dedicated egress is an Enterprise add-on and is not proven to apply to Hyperdrive origin traffic. The private VPC/Tunnel path still needs an always-on connector host. Do not change Render's existing `0.0.0.0/0` rule or create any Cloudflare resource to experiment against production.
+
+### Next useful action
+
+Ask Render and Cloudflare support the narrow interoperability questions below using existing support channels, without creating a new paid plan or resource:
+1. Can Render confirm the exact public Postgres endpoint is IPv4-only (A records only) and whether an inbound IPv4-only allow-list is sufficient for all external connections to that endpoint?
+2. Can Cloudflare confirm whether Hyperdrive resolves/connects to an IPv4-only origin using IPv4 source addresses exclusively, and whether that behavior is guaranteed/supported rather than incidental?
+3. Can Cloudflare confirm whether Gateway dedicated egress IPs can apply to Hyperdrive-managed origin connections? If not, mark this route incompatible with Render's IPv4-only allow-list under the no-cost constraint.
+
+Until those answers exist, retain the no-go. No database, allow-list, TLS setting, credential, Worker, Hyperdrive/VPC resource, route, DNS, deployment, production traffic, service or paid plan was changed.
