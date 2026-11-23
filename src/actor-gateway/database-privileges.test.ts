@@ -199,5 +199,5 @@ test('full startup stage requires the signed Business Capability create wrapper'
 
 test('rejects unknown Actor Gateway startup stages rather than silently selecting a contract', () => {
   assert.throws(() => resolveActorGatewayStartupStage('partial'), /GHM_ACTOR_GATEWAY_STARTUP_STAGE/);
-  assert.throws(() => resolveActorGatewayStartupStage(''), /not.to.be.thrown/, 'empty values resolve to the safe pre-create stage');
+  assert.equal(resolveActorGatewayStartupStage(''), 'pre_business_capability_create');
 });
