@@ -198,3 +198,28 @@ PR #299 remains open/draft. The Project detail/update implementation has a passi
 - **Next action:** inspect the current #299 diff against current GHM main and the existing CI workflow conditions; establish whether the current head can be qualified without changing unrelated migration/security work. Reuse this branch. Then reconcile the GHM API availability with Connect #70 and #68 before any merge/deploy decision.
 - No production DB, migration, role/ACL, secrets, environment, deployment, service, payment, or paid infrastructure was changed in this checkpoint.
 
+## 2026-11-24 — PR #299 reconciled against current GHM main
+
+**Current refs inspected**
+- GHM main: `56d64aa5d95bc5e6e25f6f31b22d2699c815b0e4`.
+- PR #299 branch `feat/project-detail-update-api`: `7a9003ba249ef55eb94b6adf7482caa58d520095`; open/draft, mergeable=false.
+- PR #299 is 28 commits ahead and 103 commits behind current main (merge base `b73839b27ac90446650f921d3e8ce1b5de041f04)); the diff against current main still contains eight files, including unrelated capability-governance migration/qualification/privilege changes.
+- Exact-head workflow query for the PR's current SHA returned no runs. Do not attribute older run 44228636216 to the current head; it belongs to `94a9d58894d11f0f886203af37cbd096619d447b`.
+
+**Important correction to the earlier handover**
+- Authenticated Project detail GET and update PATCH routes are already present in current GHM main `src/http/app.ts` (main file blob `28e159f0d687d8e7133cacba5583d941ea06b689`, routes around lines 1214–1260).
+- The ownership-scoped `ProjectService.getOwnedProject` and `updateOwnedProject` methods are also already present on main.
+- Current main HTTP tests already cover owner reads/updates, not-found, invalid IDs, and protected ownership/status fields.
+- Therefore PR #299's original stated missing-route scope is no longer missing from main. Do not merge the stale PR as-is and do not re-add duplicate routes.
+- The remaining substantive difference in the Project HTTP tests is the branch's explicit customer-only role boundary: it changes Project create fixtures from `business` to `customer` and adds explicit business/admin denial coverage. Current main tests still exercise Project create/update with `business` tokens. This is a distinct authorization-contract question, not a missing endpoint. Resolve it against the actual Connect actor contract and GHM registered capability policy before changing main; do not assume the PR's role change is correct solely from its description.
+- The branch also contains unrelated changes to the 17 November capability-governance migration, capability qualification script and runtime privilege-stage model. These are not needed to deliver Connect Project detail/update routes and must not be swept into a Project API promotion.
+
+**Decision**
+- Keep PR #299 and its branch intact for now; do not merge, close, rebase, force-push, or create a replacement branch.
+- Treat Project detail/update route implementation as present in GHM main source. This is source-state evidence only; it does not establish that the current deployed Internal Runtime commit serves those routes.
+- Next product action is to reconcile the customer/business actor contract for Project create/read/update against Connect's current caller and GHM capability registrations. If a real authorization gap is confirmed, make the smallest targeted correction using existing work/branch discipline, with unrelated migration/security changes excluded.
+- After that, return to the existing Connect #70/#68 reconciliation and validate the selected caller against GHM main's actual route contract.
+
+**Validation and impact**
+- Read-only source inspection and GitHub metadata/diff comparison only. No code, dependency, migration, branch ancestry, PR disposition, CI workflow, database, production service, secret, deployment, payment state or paid infrastructure was changed in this checkpoint.
+
