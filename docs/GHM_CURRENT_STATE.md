@@ -1438,3 +1438,30 @@ Mandatory workflow for every GHM task:
 5. After each completed task, update the existing authoritative handover with exact changes, commit/PR, validation, production impact and next action.
 
 This is the governing direction, not a substitute for detailed handovers. No production operation is authorized by this documentation.
+
+## 2026-11-24 — customer-owned Project API authorization correction (PR #307)
+
+### Objective and evidence
+- This change directly supports the ZAID Technologies Connect Project workflow using GHM as the backend; no new Project endpoint was introduced.
+- Current GHM main before the change was `56d64aa5d95bc5e6e25f6f31b22d2699c815b0e4`.
+- Main already restricted `GET /api/v1/projects` to customer actors, and the Project repository's detail/update queries are scoped by both Project ID and authenticated `context.userId`.
+- Main did not apply the same customer-role restriction to `POST /api/v1/projects`, `GET /api/v1/projects/:projectId`, or `PATCH /api/v1/projects/:projectId`. Business and admin actors were allowed through the resource-level role matrix.
+- Connect's existing Project facade calls create, detail and update from its customer workspace. The older GHM PR #299 contains the same intended customer-only correction and denial tests, but its branch is 103 commits behind current main and includes unrelated capability-governance migration/privilege changes. That stale branch was not merged or rewritten.
+
+### Implemented
+- Existing branch: `fix/customer-project-route-authorization-20261124`, created directly from current main; no existing branch could safely carry this isolated correction without bringing in unrelated changes.
+- `src/http/app.ts`: require `context.role === 'customer'` for Project create, individual detail read and update, returning 403 before service execution for business/admin actors.
+- `src/http/app.test.ts`: changed the successful Project creation actor to customer and added a regression test that exercises create/read/update denial for both business and admin roles, asserting the Project service is never called.
+- Existing owner scoping remains unchanged. Non-owner Project lookups still return not found through the `account_id = context.userId` repository predicate.
+
+### Exact repository state
+- PR #307: https://github.com/zaidhqdev-sys/GHM/pull/307 (open, draft; base `main`).
+- Code commits: `eb335a254b022a55eddcc8e63f3393f4ef845bcb` (route guards), `b57949cdc2a11bf2b7b2b32f0d1f9bb1aa9148a1` (HTTP regression tests).
+- PR #307 head at handover: `b57949cdc2a11bf2b7b32f0d1f9bb1aa9148a1`; changed files limited to the two files above.
+- Exact-head workflow query returned no runs at handover time. Do not claim CI passed. PR remains draft pending the existing required quality and web-quality workflows.
+
+### Impact and next action
+- No production database, schema, migration, role/ACL, credentials, secret, Render/Vercel setting, deployment, restart, payment state, customer data, paid infrastructure or new scheduled process was changed.
+- Keep PR #307 draft until exact-head CI completes. If quality passes but web-quality fails only on the already documented picomatch advisory, record the exact result without weakening or bypassing the dependency audit.
+- Once CI is green, reconcile Connect PR #70 against this role contract and current GHM main. Keep overlapping older Connect PR #68 draft until the single authoritative cutover scope is established. Do not merge/deploy solely from source-level or CI evidence.
+
