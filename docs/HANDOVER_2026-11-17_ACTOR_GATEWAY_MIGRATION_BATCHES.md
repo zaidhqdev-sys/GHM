@@ -7357,3 +7357,30 @@ Before any production migration:
 ### Change boundary
 
 This entry records the owner's supplied provider response and the resulting decision boundaries only. No production SQL, role, membership, grant, ACL, credential, backup/export, restore, Render setting, service, deployment, migration, payment state, or paid resource was changed. The production migration execution manifest remains exactly `[]`; PR #298 remains draft/open/unmerged, and PRs #297 and #303 remain separate. The original local worktree was not touched.
+
+
+## 23 November 2026 — current Render logical export: local structural and data-section validation
+
+### Export provenance and local inspection
+
+- The owner created a logical export from the Render Recovery page for workspace **ZAID Technologies**, existing production PostgreSQL service **ghm-db** (dpg-dag0sdtbedkc7389vi2g-a), database **ghm_db**, Frankfurt, on 23 November 2026.
+- The owner downloaded the directory-format export to a local Windows Downloads folder and extracted it locally. The source archive was reported as approximately 80 KB. The archive listing completed successfully and contained 68 tar entries.
+- The extracted PostgreSQL directory-format backup contains **65 files**, all with the `.dat` extension, totalling **537,326 bytes**; no zero-byte files were found. The `toc.dat` catalogue was present in the extracted database directory.
+- Local PostgreSQL **18.6** `pg_restore --list` parsed the catalogue successfully (exit code 0). The catalogue identifies database `ghm_db`, directory format, no compression, and a source dump / `pg_dump` version of **18.7**. It contains approximately 760 TOC entries, including GHM schema objects and legacy `public` schema objects.
+- The owner then ran `pg_restore --data-only --file NUL` against the extracted directory. It completed with **exit code 0**, processing the archived table-data sections to the Windows null device. No database connection was used and no SQL was applied to any database.
+- A SHA-256 command was run on the source archive, but the available transcript contains only a truncated hash. No incomplete hash is recorded here as a checksum.
+
+### Validation conclusion and limitations
+
+The archive listing, extraction, catalogue parsing, non-empty data-file inventory, and local processing of all data sections succeeded. This is meaningful evidence that the export is structurally readable and that the local PostgreSQL 18.6 restore utility can decode its catalogue and table-data sections, despite the source dump being produced by PostgreSQL 18.7.
+
+**This is not an actual database restore test.** No target database was created, no objects or rows were restored, and no post-restore ledger/table/data checks were performed. Therefore do not describe this 23 November export as fully restore-tested or as proof that a complete recovery would succeed. A separate local restore test would be stronger evidence and must be explicitly agreed before creating a local database or consuming additional disk.
+
+### Operational boundary
+
+- No connection to production was made during local inspection.
+- No production SQL, migration, role, membership, grant, ACL, credential, database setting, Render service, deployment, payment state, or paid resource was changed by this validation.
+- No PITR restore or additional Render database instance was created.
+- The archive and extracted production data remain local to the owner's machine; do not upload the backup or its data contents to GitHub, chat, or external services.
+- Render Support's 23 November guidance states that logical exports remain downloadable from the Recovery page for seven days. The owner should retain the downloaded local copy; no exact expiry timestamp is asserted here.
+- Keep the production migration execution manifest exactly `[]`. PR #298 remains a separate draft/open/unmerged change; PR #297 and PR #303 remain separate. No production migration or manual cutover is authorized by this backup validation.
