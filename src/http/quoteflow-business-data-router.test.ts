@@ -74,3 +74,14 @@ test('Business Quote rejects a client-selected account or Business owner', async
     assert.equal(called,false);
   } finally { await close(server); }
 });
+
+test('Business Quote rejects unmapped local catalog item IDs', async () => {
+  let called=false;
+  const quotes={createBusinessQuote:async()=>{called=true;throw new Error('must not be called');}} as unknown as QuoteService;
+  const {server,baseUrl}=await start({} as CustomerService,quotes);
+  try {
+    const response=await fetch(`${baseUrl}/api/v1/businesses/91/quotes`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({customerId:7,lineItems:[{description:'Work',quantity:1,unitPrice:100,catalogItemId:123}],followUpDate:'2026-11-24'})});
+    assert.equal(response.status,400);
+    assert.equal(called,false);
+  } finally { await close(server); }
+});
