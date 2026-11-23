@@ -7,9 +7,11 @@ import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSq
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
-import { findOutOfOrderPendingMigration } from './migration-order';
+import { assertAppliedMigrationNames, findOutOfOrderPendingMigration } from './migration-order';
 import productionPendingMigrationAllowlist from '../../config/pending-migrations.production.json';
+import productionMigrationBatches from '../../config/production-migration-batches.json';
 import { assertProductionPendingMigrationAllowlist } from './production-pending-migration-allowlist';
+import { selectProductionMigrationBatch, type MigrationBatch } from './migration-batches';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -190,8 +192,9 @@ const migrate = async (): Promise<void> => {
     }
 
     const applied = ledgerTable
-      ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
-      : { rows: [] as Array<{ version: string; checksum: string }> };
+      ? await client.query<{ version: string; name: string; checksum: string }>(`SELECT version, name, checksum FROM ${ledgerTable}`)
+      : { rows: [] as Array<{ version: string; name: string; checksum: string }> };
+    assertAppliedMigrationNames(migrations, applied.rows);
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
     if (approvedTarget.databaseName === 'ghm_db') {
       assertProductionPendingMigrationAllowlist(
@@ -210,6 +213,17 @@ const migrate = async (): Promise<void> => {
       );
     }
 
+    const pendingMigrations = migrations.filter((migration) => !appliedByVersion.has(migration.version));
+    const executionMigrations = approvedTarget.databaseName === 'ghm_db'
+      ? selectProductionMigrationBatch(
+        migrations.map(({ version, name, checksum }) => ({ version, name, checksum })),
+        new Set(appliedByVersion.keys()),
+        productionMigrationBatches as MigrationBatch[],
+        process.env.GHM_MIGRATION_BATCH_ID,
+      )
+      : pendingMigrations;
+    const executionVersions = new Set(executionMigrations.map((migration) => migration.version));
+
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
@@ -224,6 +238,7 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
+      if (!executionVersions.has(migration.version)) continue;
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
       await client.query(normalizeMigrationSqlForExecution(migration.sql));
