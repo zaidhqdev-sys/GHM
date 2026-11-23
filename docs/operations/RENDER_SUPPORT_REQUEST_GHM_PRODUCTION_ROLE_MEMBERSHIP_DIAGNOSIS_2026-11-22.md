@@ -59,3 +59,8 @@ Before any production change, we require:
 - Do not alter the production migration batch manifest. It must remain exactly `[]` until separately reviewed and authorized.
 
 Thank you. Please respond with the supported diagnostic and remediation procedure, the provider-owned responsibilities, and any backup/recovery prerequisites before proposing a change.
+
+
+## 23 November 2026 — owner completed logical export validation
+
+The owner followed the export route recommended above using the existing Render Recovery page for ghm-db / ghm_db (Frankfurt). The directory-format export was downloaded and inspected locally. Archive listing (68 entries), extraction, inventory (65 .dat files, 537,326 bytes, no zero-byte files), PostgreSQL 18.6 catalogue parsing of the PostgreSQL 18.7 dump (pg_restore --list, exit 0), and data-section processing to Windows NUL (pg_restore --data-only --file NUL, exit 0) all succeeded. No database connection was made. The available SHA-256 transcript is truncated, so no checksum is verified. This is not a restore test: no database was created/restored and no rows, ledger or application behavior were checked. Do not describe the export as restore-tested or full recovery as proven. Owner retains the local backup; production data must not be uploaded to this repository or support ticket. No PITR instance, new Render resource or additional paid resource was created. The seven-day logical-export availability period is based on Render Support's statement; no exact expiry timestamp is asserted.
