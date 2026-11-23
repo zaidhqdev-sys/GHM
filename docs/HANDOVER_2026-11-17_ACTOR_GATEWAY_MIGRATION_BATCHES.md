@@ -7830,3 +7830,13 @@ Follow-up to the exact production ledger/source checksum reconciliation above. R
 - GitHub Actions run `45233002831` was triggered by the PR head update. `web-quality` completed successfully.
 - `quality` was still running at the latest check; disposable PostgreSQL qualification and test suite stages had not all completed. Do not mark this follow-up fully qualified until this exact-head job concludes successfully.
 - This is the existing PR branch and its normal push-triggered CI; no separate qualification branch or manual rerun was created.
+
+
+### Exact-head CI final result — run 45233002831
+
+- Final PR #305 head: `f85f47a2547f2cb4a06880d3ed61be3dd40f3eef`.
+- GitHub Actions run `45233002831` has now completed successfully at that exact head.
+- `quality`: success (73/73 steps), including disposable PostgreSQL 18 migration qualification and the full test suite.
+- `web-quality`: success (11/11 steps), including web build/tests, dependency audit and toolchain checks.
+- This completes exact-head CI qualification for the production provenance manifest cleanup and regression test. It does not constitute production migration qualification or authorize any production batch.
+- PR #305 remains open, draft and unmerged. The production batch manifest remains `[]`.
