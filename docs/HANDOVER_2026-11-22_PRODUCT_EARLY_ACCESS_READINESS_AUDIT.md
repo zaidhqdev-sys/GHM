@@ -400,3 +400,14 @@ The owner confirmed the legacy QuoteFlow APK was built/downloaded locally and up
 QuoteFlow PR #25 remains draft/open. Its current branch head is `undefined` after documentation-only updates to `HANDOVER.md` and `README.md`. The code head previously tested at `6865048a234d9700b700ea4b02c87ee4b810f9f3` had passing TypeScript/Jest CI (`44450679464`) and a failed preview workflow (`44450679449`) only at the final artifact-upload step after Gradle assembly and package verification passed. New CI and Android preview runs for the documentation-updated branch head are in progress (`44989305275`, `44989305232`); do not claim results until complete.
 
 The QuoteFlow branch handover and README now record the owner-confirmed withdrawal, GHM production issuer/Actor Gateway deployment blockers, no-cost Argon2id hosting constraint, production DB role/ACL/backup/TLS gates, mandatory GHM legal acceptance PR #201, and the real-device rebuild/sign/upload acceptance order. No APK rebuild is authorized or technically meaningful until the production GHM identity/legal dependencies are available; keep the website download withdrawn. No source-code changes, device-data changes, production GHM mutations, or paid infrastructure were introduced by this documentation update.
+
+## QuoteFlow PR #25 exact-head recheck — 23 November 2026
+
+Current QuoteFlow PR #25 head inspected before the handover update: `71391d74da34779943743f5dbf1eedc7201db66f`.
+
+- Exact-head CI run `44989305275` (run #262) passed.
+- Exact-head Android preview run `44989305232` (run #148) failed only at the final `Upload preview APK` step. Expo/Gradle build and package verification passed; no preview artifact was delivered.
+- PR #25 removes the Supabase SDK and URL polyfill from the dependency manifest/lockfile and deletes the former Supabase client shim on its branch. This is source-branch evidence, not proof that the change is merged or live.
+- No compliant production GHM Authentication Issuer/public HTTPS origin, production DB/role/ACL cutover, approved strict-TLS path or owner-approved legal document catalogue is evidenced. Keep the public APK withdrawn, auth fail-closed, issuer URL unset and QuoteFlow Free-only.
+- Do not retry artifact upload or introduce paid storage/infrastructure. Use the existing local Windows Gradle release path only after the GHM, legal and device-acceptance gates are met.
+- No production service, DB, secrets, role/ACL, payment, website distribution or paid infrastructure changed.
