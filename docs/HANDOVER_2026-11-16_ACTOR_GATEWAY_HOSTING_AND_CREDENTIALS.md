@@ -1861,3 +1861,36 @@ Amanda's guidance remains controlling: the SQL-created service login must use it
 ### Change boundary
 
 This is a documentation correction based on the owner's clarification. No Render form was read or changed by the assistant; no environment variable was created, read or modified; no password or secret was accessed; no production SQL, role, membership, grant, migration, deployment or service creation occurred; and no additional paid infrastructure or cost was introduced.
+
+
+## 23 November 2026 — PR #305 staged Actor Gateway startup contract implementation
+
+Before this task, rechecked open PRs, all relevant remote branches, PR #305 changed-file set, the current migration inventory, the signed Business Capability handover and the Actor Gateway hosting/credentials handover. PR #305 remains the sole active production migration batch-gate implementation on `feat/production-migration-batches-mainline-20261123`; its base is current main `93ff3c774ce225760b0e3e2cf99a770b38e8a097`. PRs #297/#298 remain older competing draft designs and were not changed. PR #303 remains the separate manual Business Capability direct-INSERT privilege cutover. PR #300's signed Business Capability application path remains a distinct feature PR and its migration pair remains pending in the PR #305 inventory. No new branch or worktree was created.
+
+### Cycle resolution implemented in source (qualification pending)
+
+The source-ordering cycle was resolved on the existing PR #305 branch with an explicit two-stage Actor Gateway startup contract:
+
+- `GHM_ACTOR_GATEWAY_STARTUP_STAGE` accepts only `pre_business_capability_create` or `full`; missing/blank defaults to the conservative `pre_business_capability_create`; any other value throws before startup.
+- In pre-create mode, the DB privilege assertion expects the complete reviewed Gateway allow-list except exactly `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)`. It continues to reject every other missing or extra function, unsafe ACL/default ACL, direct relation privilege, wrong SECURITY DEFINER owner/path, PUBLIC EXECUTE, runtime EXECUTE or grant option.
+- The authenticated `POST /v1/business-capabilities` route is not registered unless the stage is explicitly `full`. In pre-create mode the route is absent (404 after the existing authentication middleware); the reader may be constructed but cannot be invoked by this endpoint.
+- Render Node server and Cloudflare Worker both resolve the same strict stage value, apply the corresponding DB assertion before listening/dispatching, and pass the stage to the application route-registration option. No platform configuration, secrets or deployment was changed.
+- The full stage requires the create wrapper to be present and executable; it is not enabled by default. The intended final promotion is only after both `20261120010000_add_signed_business_capability_create` and `20261120011000_allow_signed_business_capability_create_assertion` are installed together and the final DB contract is verified.
+
+Source commits on PR #305 branch:
+- `3ed81032f513e3688d7462d2a837e65ba5934d52` staged privilege assertion and strict stage resolver.
+- `c290832b32fc571deec307dde211bd8e68b5b45d` conditionally registers Business Capability create route.
+- `88f380814bad059bc46e3004b1a85d2d7a1c2c26` wires stage into Render Node server startup.
+- `c4082143aecfa6b79f03b8fda293c5986275b627` wires stage into Worker startup and route registration.
+- `3da488413ee2179dc14a61ed78aa0ed817ec9460` adds authenticated pre-create route-absence test and explicitly enables create in existing full-route tests.
+- `e05f1e1762ababe9d8573bbc8853d9423cd5da03` adds stage allow-list tests; `d979b4141778f6506a1fb95e5be94c7d2f8a11d2` corrects the empty/default-stage assertion.
+
+### Required qualification before calling the cycle resolved for release
+
+1. Run exact-head PR #305 CI and inspect all quality/web-quality/Worker typecheck/Worker tests.
+2. Add/verify a source contract test that Render and Worker both consume the same startup-stage resolver and that no alternate app construction path registers the create route in pre-create mode.
+3. Confirm route absence and no mutation-reader invocation in pre-create mode; confirm the route is enabled only in full mode.
+4. Confirm pre-create DB function-set test permits only the single create-wrapper omission while rejecting any other missing/extra signature, and full mode fails closed if the wrapper or its signed operation allow-list is absent.
+5. Review the staged operational sequence: first all pre-revocation Gateway migrations and shared hardening; deploy only after the separate no-cost hosting, endpoint, Auth Issuer, credential, provider and backup gates are met; qualify authenticated non-create routes; only then separately authorize/apply the 17 November revocations; then apply the 20 November signed-create pair together; finally set stage to `full` and requalify. This document does not authorize a production migration, Render configuration change or deployment.
+
+The production migration manifest remains exactly `[]`. No production SQL/migration, ledger, role, membership, ACL, credential, secret, Render service/environment, deployment/restart, payment or paid resource was changed. PR #305 remains draft/unmerged and no CI result is claimed until exact-head checks complete.
