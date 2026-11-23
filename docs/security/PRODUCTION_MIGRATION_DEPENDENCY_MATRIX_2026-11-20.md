@@ -233,3 +233,9 @@ CI run 45216633082 at initial integration head 646a825 failed TypeScript Build d
 ## 23 November 2026 — PR #305 created; exact-head CI pending
 
 Draft PR #305 opened from `feat/production-migration-batches-mainline-20261123` to current main. Head `6f5525372f93cc194c22db3f50b932697798c17a`; base `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; mergeable=true at creation. Cloudflare Pages preview passed, but exact-head `quality`/`web-quality` checks were not present and commit status remained pending/empty. Earlier head 646a825 failed TypeScript Build due to duplicate ledger guard declarations; corrected in 6f552537. No local validation run. Keep PR draft; obtain full exact-head CI through a clean worktree/normal owner push or authorized workflow dispatch. Do not treat preview as CI. No production changes; manifest remains [].
+
+
+
+## 23 November 2026 — Render read-only ledger access evidence
+
+A direct Render read-only query against existing `ghm-db` confirmed database `ghm_db` is available and the connection is `session_user=ghm_app_user`, `current_user=ghm_db_user`, with `transaction_read_only=on`. The ledger `ghm.ghm_schema_migrations` exists and is owned by `ghm_schema_owner`; ACL grants SELECT to `ghm_auditor` only. The auditor has schema USAGE and ledger SELECT, but the current `ghm_db_user` session cannot SET ROLE to it. Therefore no production ledger rows/checksums or exact pending queue could be retrieved. Catalog metadata also reports `ghm_db_user` as NOSUPERUSER with CREATEDB and CREATEROLE; no role mutation was performed. The proposed dedicated auditor login is a production role/credential change and remains unperformed pending explicit authorization and a secure secret-entry path. This evidence supersedes the earlier statement that access was merely assumed to be denied: the denial was reproduced through Render's read-only query path. No production writes, migration, deploy, or new branch/CI qualification occurred.
