@@ -376,3 +376,22 @@ Do not create another service, Worker, Hyperdrive configuration, tunnel host, pa
 Stop further speculative hosting implementation. The only evidence that can change this no-go is either (a) an already-owned/available compliant always-on compute/network resource that satisfies the existing isolation and Argon2id requirements without new spend, or (b) a written vendor-supported no-cost topology that resolves both Hyperdrive egress and Worker CPU constraints. Otherwise the production Gateway/Auth Issuer release remains held. PR #305 stays draft, its production execution manifest remains `[]`, and no production batch is authorized.
 
 No Cloudflare resource, Worker, Pages production route, Hyperdrive configuration, Render service/setting, DB role/ACL, credential, secret, deployment, migration, DNS, traffic or paid resource was changed.
+## 2026-11-23 follow-up — existing Render compute inventory exhausted
+
+Rechecked PR #305/open PR inventory, the active migration branch, the topology assessment, Actor Gateway hosting handover, Render workspace service inventory and Postgres inventory. Queried service details for the only plausible existing non-GHM compute candidate (`zaid-ai-workforce`) and both GHM runtime services.
+
+### Existing compute findings
+
+- `zaid-ai-workforce` (`srv-d9t1la7avr4c73fc46c0`) is an existing Render **Free web service**, Frankfurt, repository `zaidhqdev-sys/ai-workforce`, root `runtime`, one instance, auto-deploy off. It is not a dedicated Gateway/Issuer runtime and does not provide an always-on compute slot. Render's current Free-service policy spins a Free web service down after 15 minutes without inbound HTTP/WebSocket traffic, takes about one minute to wake, may restart it at any time, and explicitly says Free instances are not for production. Free services also cannot receive private-network traffic. Official reference: https://render.com/docs/free.
+- `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) is also Free, auto-deploy off and public web service. It is the existing Resource API and must not be repurposed to co-host isolated Gateway or Authentication Issuer boundaries. It also spins down under Free-service policy.
+- `ghm-actor-gateway` (`srv-dc09scl9el5s73fdgj1g`) is Free, auto-deploy off and has no successful deployment per the existing deployment audit. It is neither a reliable always-on host nor a private-network service; Render Free web services cannot receive private-network traffic.
+- `ghm-identity-qualification` is an old integration-branch qualification service, not a production Auth Issuer. PayFast services are sandbox-only and excluded. `ghm-db` is the only production database and is not a compute host.
+- Render workspace inventory contains no existing private service, background worker, always-on paid service, or other suitable continuously available isolated compute resource. The only other listed web app, `zaid-ai-workforce`, is Free and cannot meet the always-on requirement.
+
+### Decision
+
+**The existing-resource search is complete for the connected Render workspace: no already-owned Render compute resource can host the isolated Actor Gateway/Auth Issuer within the stated no-cost/no-new-host constraints.** Do not move either service into `zaid-ai-workforce` or `GHM-Internal-Runtime`; this would violate application/security isolation and would still inherit Free-service sleep behavior. Do not use inbound keepalive traffic or add schedules to simulate availability.
+
+This does not rule out an independently owned compute/network resource outside the connected Render workspace; none has been evidenced in the reviewed GHM handovers. Do not infer access to another provider/account. If such a resource already exists, it must be owner-confirmed and assessed for continuous availability, strict outbound TLS/network access, isolated process identity, sufficient CPU for Argon2id, secret handling and operational access before it is considered.
+
+No Render service was created, modified, deployed, restarted, suspended, upgraded or deleted. No Cloudflare resource, database, migration, role/ACL, secret, DNS, traffic or paid plan was changed.
