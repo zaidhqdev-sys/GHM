@@ -167,3 +167,20 @@ test('migration audit strips connection-string SSL options so strict TLS config 
   assert.equal(output.searchParams.get('application_name'), 'ghm-audit');
   assert.deepEqual([...output.searchParams.keys()], ['application_name']);
 });
+
+
+test('production exception manifest excludes checksums already represented by current source bytes', () => {
+  const migrationDir = fileURLToPath(new URL('../database/migrations/', import.meta.url));
+  const productionPath = fileURLToPath(new URL('../config/historical-migration-provenance-exceptions.production.json', import.meta.url));
+  const manifest = JSON.parse(readFileSync(productionPath, 'utf8'));
+  for (const [version, registeredChecksum] of Object.entries(manifest)) {
+    const filename = readdirSync(migrationDir)
+      .find((name) => name.startsWith(version + '_') && name.endsWith('.sql'));
+    assert.ok(filename, `production exception ${version} must retain its source migration`);
+    const sql = readFileSync(path.join(migrationDir, filename), 'utf8');
+    assert.notEqual(registeredChecksum, migrationChecksum(sql),
+      `production exception ${version} duplicates the canonical source checksum`);
+    assert.notEqual(registeredChecksum, legacyCrlfMigrationChecksum(sql),
+      `production exception ${version} duplicates the legacy CRLF source checksum`);
+  }
+});
