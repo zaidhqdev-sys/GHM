@@ -8081,3 +8081,6 @@ Source review of `20261110210000_add_actor_gateway_principal_guard.sql` showed t
 Correction commits on PR #305: `2993bfa6471beb769640ab9272594a8d20b89d94` (planner) and `57feb25ef65ab039d3dd2cd97d11c84de04b32d1` (test/current head). The earlier intermediate head `c569334236109331345ad693583efca9a9d584b9` and its run `45242582863`, if completed, do not qualify the corrected implementation. Exact-head CI for `57feb25ef65ab039d3dd2cd97d11c84de04b32d1` has not yet been observed; no pass is claimed.
 
 The read-only principal check does not create roles, change memberships, grants or ACLs. No production planner rerun has been performed with this code.
+### Corrected planner exact-head CI run started
+
+After the pre-migration scope correction, exact PR #305 head `57feb25ef65ab039d3dd2cd97d11c84de04b32d1` triggered Actions run `45242824323` / #5655. `web-quality` has passed; `quality` is still running at the full test-suite step with no failure reported. This run, not the cancelled earlier intermediate run `45242582863`, is the qualification target. Do not claim final CI until `quality` completes.
