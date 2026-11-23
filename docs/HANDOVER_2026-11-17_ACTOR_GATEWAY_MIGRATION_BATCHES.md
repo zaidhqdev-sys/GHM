@@ -7646,3 +7646,13 @@ The owner executed Amanda's documented dedicated-login procedure through the exi
 - The subsequent interactive `\\password ghm_audit_login` completed, but PostgreSQL emitted a warning that the password was stored using MD5 encryption. The credential must not be used for routine access until it is reset using SCRAM-SHA-256 (set session `password_encryption='scram-sha-256'` before the interactive `\\password` operation). Never record or transmit the password.
 - The role now exists; do not attempt to recreate it. The SCRAM password reset and post-creation catalog/membership/effective-privilege verification remain pending. Confirm the new membership is only `ghm_auditor`, with ADMIN=false, and that no direct grants or object ownership were added. Preserve the original postgres-granted `ghm_db_user -> ghm_auditor` membership unchanged.
 - After SCRAM reset and verification, connect directly as `ghm_audit_login` and read `ghm.ghm_schema_migrations(version,name,checksum)` to reconcile the live production queue. No migration was run and no Render service/deployment/payment state changed. No branch or CI qualification was created for this database operation.
+
+
+## 23 November 2026 — auditor login role attributes and membership verified
+
+Owner supplied post-password-reset catalog output from the existing administrative `ghm_db` session:
+- `ghm_audit_login`: LOGIN=true, INHERIT=true, SUPERUSER=false, CREATEDB=false, CREATEROLE=false, REPLICATION=false, BYPASSRLS=false.
+- Exactly one membership row: `ghm_auditor` -> `ghm_audit_login`, with ADMIN=false, INHERIT=true, SET=true.
+- This confirms the intended non-elevated role shape and sole auditor membership. The original `ghm_db_user -> ghm_auditor` membership was not changed.
+- The owner ran `\\password ghm_audit_login` again, but the transcript does not show whether `password_encryption='scram-sha-256'` was set in that same session before the command. Therefore SCRAM storage is not yet proven; verify password format using a boolean-only catalog query (never select or expose the password hash) before relying on the credential.
+- Next: verify SCRAM storage; establish a direct session as `ghm_audit_login`; verify `current_user/session_user`, read-only transaction, effective schema/table privileges, and then retrieve the live migration ledger version/name/checksum. No migration execution or service deployment is authorized by this auditor-login setup.
