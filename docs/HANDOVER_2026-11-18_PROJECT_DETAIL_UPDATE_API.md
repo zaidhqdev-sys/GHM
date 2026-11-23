@@ -176,3 +176,13 @@ PS C:\GHM-main>
 - Current advisory cross-check still shows GHSA-fc5q-39xc-vjpf as High / Unreviewed, with no fixed version stated; the GitHub release page still identifies 4.0.7 as the latest published release. The npm audit finding therefore remains unresolved. Sources: GitHub Advisory Database GHSA-fc5q-39xc-vjpf; picomatch release history.
 - Decision unchanged: do not add the fork branch, PR head, Git URL, patch, or override to GHM. Revisit only after an official upstream release is published, then verify the exact release tarball/version and test it in GHM before updating the lockfile. Keep the audit gate intact; do not start another CI run merely to retest the same unresolved package.
 - This was a remote source/discussion inspection only. No GHM application or dependency code changed, no manual CI run was started, and no production database, deployment, payment action, or paid resource was touched. PR #299 remains draft.
+
+## 2026-11-23 — exact-head CI result reconciled
+
+PR #299 exact head checked: 94a9d58894d11f0f886203af37cbd096619d447b.
+
+GitHub Actions run 44228636216 completed:
+- quality: SUCCESS. The TypeScript build, complete test suite and disposable PostgreSQL migration/HTTP qualification completed successfully, including the Project detail/update route work.
+- web-quality: FAILURE only at Audit web dependency tree. This is the already documented unresolved upstream picomatch advisory in the web dependency tree; it is not a failure in the Project HTTP code or changed files. The existing handover's picomatch review remains controlling: no unmerged fork/patch, no weakened audit, and no speculative downgrade.
+
+PR #299 remains open/draft. The Project detail/update implementation has a passing quality job, but the full required CI workflow is not green. Do not describe the PR as fully qualified or merge-ready. No production database, deployment, credentials, roles/ACLs, paid infrastructure or application data changed.
