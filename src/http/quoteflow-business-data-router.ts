@@ -68,7 +68,7 @@ export const registerQuoteFlowBusinessDataRoutes = (
     const scope = businessContext(req, res); if (!scope) return;
     const customerId = positiveId(req.params.customerId);
     if (customerId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
-    if (!customers.getBusinessCustomer) { res.status(501).json({ error: 'not_implemented' }); return; }
+    if (!isRegisteredOperation('customer', 'read') || !customers.getBusinessCustomer) { res.status(501).json({ error: 'not_implemented' }); return; }
     try {
       const customer = await customers.getBusinessCustomer(scope.context, scope.businessId, customerId);
       if (!customer) { res.status(404).json({ error: 'not_found' }); return; }
@@ -81,6 +81,7 @@ export const registerQuoteFlowBusinessDataRoutes = (
     const customerId = positiveId(req.params.customerId);
     const body = req.body as Record<string, unknown>;
     if (customerId === null || !body || Object.keys(body).length !== 1 || (body.status !== 'active' && body.status !== 'archived')) { res.status(400).json({ error: 'invalid_request' }); return; }
+    if (!isRegisteredOperation('customer', 'update')) { res.status(403).json({ error: 'forbidden' }); return; }
     const operation = body.status === 'archived' ? customers.archiveBusinessCustomer : customers.restoreBusinessCustomer;
     if (!operation) { res.status(501).json({ error: 'not_implemented' }); return; }
     try {
@@ -101,7 +102,7 @@ export const registerQuoteFlowBusinessDataRoutes = (
     if (!isRegisteredOperation('quote', 'create') || !quotes.createBusinessQuote) { res.status(501).json({ error: 'not_implemented' }); return; }
     const body = req.body as Record<string, unknown>;
     const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
-    const validLines = lineItems.length > 0 && lineItems.every(item => item && typeof item === 'object' && !Array.isArray(item) && typeof item.description === 'string' && !!item.description.trim() && typeof item.quantity === 'number' && Number.isFinite(item.quantity) && item.quantity > 0 && typeof item.unitPrice === 'number' && Number.isFinite(item.unitPrice) && item.unitPrice > 0 && (item.catalogItemId === undefined || item.catalogItemId === null || Number.isSafeInteger(item.catalogItemId) && item.catalogItemId > 0));
+    const validLines = lineItems.length > 0 && lineItems.every(item => item && typeof item === 'object' && !Array.isArray(item) && typeof item.description === 'string' && !!item.description.trim() && typeof item.quantity === 'number' && Number.isFinite(item.quantity) && item.quantity > 0 && typeof item.unitPrice === 'number' && Number.isFinite(item.unitPrice) && item.unitPrice > 0 && (item.catalogItemId === undefined || item.catalogItemId === null));
     if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(k => !['customerId','lineItems','followUpDate'].includes(k)) || !Number.isSafeInteger(body.customerId) || (body.customerId as number) <= 0 || !validLines || typeof body.followUpDate !== 'string') {
       res.status(400).json({ error: 'invalid_request' }); return;
     }
