@@ -186,3 +186,15 @@ GitHub Actions run 44228636216 completed:
 - web-quality: FAILURE only at Audit web dependency tree. This is the already documented unresolved upstream picomatch advisory in the web dependency tree; it is not a failure in the Project HTTP code or changed files. The existing handover's picomatch review remains controlling: no unmerged fork/patch, no weakened audit, and no speculative downgrade.
 
 PR #299 remains open/draft. The Project detail/update implementation has a passing quality job, but the full required CI workflow is not green. Do not describe the PR as fully qualified or merge-ready. No production database, deployment, credentials, roles/ACLs, paid infrastructure or application data changed.
+
+## 2026-11-24 — current dependency reconciliation for Connect PR #70
+
+- Current GHM PR #299 head at inspection: `859999daf1b46fd4f2de7ec648a66b37be7fa3b9`, branch `feat/project-detail-update-api`, open/draft, base `main`. The current head has no workflow run returned by the exact-commit workflow query.
+- The previously recorded run `44228636216` is not an exact-head qualification for this current commit: the GitHub run metadata identifies its head as `94a9d58894d11f0f886203af37cbd096619d447b`. That run's quality job passed and web-quality failed at the existing picomatch dependency audit. Do not attribute that run to `859999d`.
+- Current PR #299 scope still adds authenticated Project detail GET and update PATCH routes, reuses ownership-scoped ProjectService methods, and enforces customer-only create/read/update behavior. No delete endpoint is added.
+- Connect PR #70 depends on these GET/PATCH routes. Connect #70 remains open/draft at `ccb74a354fcd5f96c8b8e44420624180266715db`; its latest exact-head quality run `45277814325` completed successfully. This qualifies Connect source/contracts/build only, not the absent GHM route on the live runtime.
+- Connect main is `84d7edb64346f1b698f9b76bcb54d2e653df1292`. The broader Connect PR #68 remains open/draft at `60f612ed50ba8af78a81824dd2fd9a9c4546b017`, based on older main `1e92f85cdd99dea2070ede58a875cec45d5f2047`; it overlaps the Project/Opportunity callers and must be reconciled before any promotion. Do not merge #68 or #70 based on their isolated CI alone.
+- GHM #299's previous CI failure remains tied to the older exact head and documented web dependency audit. No new exact-head CI qualification has been observed for the current #299 head. Do not weaken or bypass the audit gate, alter dependencies speculatively, or create another PR/branch.
+- **Next action:** inspect the current #299 diff against current GHM main and the existing CI workflow conditions; establish whether the current head can be qualified without changing unrelated migration/security work. Reuse this branch. Then reconcile the GHM API availability with Connect #70 and #68 before any merge/deploy decision.
+- No production DB, migration, role/ACL, secrets, environment, deployment, service, payment, or paid infrastructure was changed in this checkpoint.
+
