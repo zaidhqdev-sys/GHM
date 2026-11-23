@@ -8135,3 +8135,12 @@ Exact-head run `45244972318` for inventory commit `841b8b7075010db9e095e795b5aed
 Corrected both test expectations to use one explicit, frozen 52-entry expected version/name array, copied from the reconciled inventory and pinned in test source (not dynamically derived from the file under test). Commit: `4162100767469019fea0a17337185f1672446215` on the existing PR #305 branch. The production inventory remains 52 exact version/name identities; `config/production-migration-batches.json` remains exactly `[]`. This test correction does not select or authorize any production batch.
 
 Exact-head Actions for `4162100767469019fea0a17337185f1672446215` had not yet appeared when checked. Await the exact-head CI result before claiming qualification. No production SQL/migrations, ledger, DDL, role/membership/ACL/credentials, Render setting, service, deployment, restart, payment action or paid resource changed.
+
+
+### Exact-head CI completed for frozen 52-entry pending inventory tests — 23 November 2026
+
+Exact-head GitHub Actions run [45245920767](https://github.com/zaidhqdev-sys/GHM/actions/runs/45245920767) completed successfully at PR #305 head `4162100767469019fea0a17337185f1672446215` (run #5659). Both `quality` and `web-quality` passed. This resolves the two stale duplicate seven-entry expectations in `scripts/migration-audit-checksum.test.mjs`; the 52-entry production pending inventory is now covered by an explicit frozen expected version/name set. The successful CI qualifies this exact repository head and its tests, not production execution or live operational readiness.
+
+PR #305 remains open/draft/unmerged. The 52-entry pending inventory is an equality guard only. `config/production-migration-batches.json` remains exactly `[]`; no batch is selected or authorized. The live read-only production audit remains valid: 105 ledger rows reconcile against 147 source migrations, 10/10 retained-history entries verify, zero checksum/name mismatches, and the Actor Gateway pre-migration principal preflight passes. The audit executed zero migration SQL. No production state changed.
+
+Before further changes, retain the existing PR/branch separation: #305 is the active isolated migration gate; #303 remains a separate manual Business Capability column-privilege cutover; #297/#298 remain older open draft alternatives. No new branch/worktree or duplicate qualification was created for this close-out.
