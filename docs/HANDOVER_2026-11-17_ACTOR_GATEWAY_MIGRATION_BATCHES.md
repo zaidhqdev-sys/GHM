@@ -7936,3 +7936,23 @@ Run it only from the existing `C:\GHM-pr305-ci-20261123` validation worktree aft
 Expected environment is process-scoped only: `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`, `GHM_MIGRATION_AUDIT_HOST=<host parsed from the secure URL>`, `DATABASE_SSL=true`, and `GHM_MIGRATION_AUDIT_DATABASE_URL=<secure URL>`. Remove these environment variables after the command exits.
 
 Interpretation: a clean checksum/provenance report does not approve a production batch. The pending allowlist currently omits 45 of 52 pending migrations and the committed batch manifest remains `[]`; no production execution is authorized.
+
+
+## 23 November 2026 — exact-head read-only production planner result
+
+Owner-operated planner run completed from the existing validation worktree `C:\\GHM-pr305-ci-20261123`, detached at exact PR #305 qualified head `341057216508b466c6d70a12ada7616bc147a44c`. The first attempt stopped before database access because this isolated worktree had no installed TypeScript compiler; `npm ci` installed the locked dependencies (167 packages, audit reported 0 vulnerabilities). No tracked files changed and no branch was created.
+
+The subsequent `npm run plan:migrations:production` connected to the Render external `ghm_db` endpoint using the dedicated `ghm_audit_login` role and returned:
+
+- Authority: `current_user=session_user=ghm_audit_login`; database `ghm_db`; PostgreSQL `180006`; verified TLS true; transaction `READ ONLY`.
+- Source inventory: 147 migrations. Ledger: 105 rows; planner reports 95 source-applied rows (including the bootstrap/source-overlap accounting) and 10 ledger-only retained historical rows.
+- Checksums: 24 canonical LF matches, 62 legacy CRLF matches, 9 exact historical-exception matches; 0 checksum mismatches and 0 version/name mismatches.
+- Retained history: 10/10 verified; no retained failures, unrecognized ledger-only rows, redundant exceptions or orphaned exceptions.
+- Pending queue: 52 migrations. Existing pending allowlist has 7 valid entries and omits 45 pending identities, including the first pending migration. `allowlist_pass=false`.
+- Batch manifest: empty; planner reports `NO_AUTHORIZED_BATCH`.
+- Release gates: checksum reconciliation and retained history/provenance pass; pending allowlist completeness and reviewed batch selection fail; production execution authorization false.
+- Final verdict: `PLAN_ONLY_NOT_EXECUTABLE`; `execution_performed=false`; `sql_migrations_executed=0`.
+
+This live planner result supersedes the earlier handover statements that the planner had not yet been run against production. It confirms the historical ledger/checksum reconciliation but does not approve a batch. Do not expand the pending allowlist as a shortcut or populate the execution manifest without migration-by-migration dependency/readiness review and exact contiguous-prefix validation. The 20 November dependency matrix remains a 50-entry baseline and must be reconciled with the two later Business Capability migrations already identified in the 52-entry queue.
+
+No production migration SQL, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action, or paid resource change occurred. The planner's read-only transaction was rolled back. PR #305 remains draft/unmerged; its production batch manifest remains `[]`.
