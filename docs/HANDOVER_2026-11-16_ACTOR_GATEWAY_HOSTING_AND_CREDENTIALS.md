@@ -2121,3 +2121,18 @@ Rechecked current PR #305 and branch, open PR inventory, topology handover and R
 **Decision:** the existing Render inventory is exhausted for the required no-cost topology. Do not repurpose Workforce or Resource API, do not co-host the Gateway/Issuer, and do not use keepalive traffic or schedules. No already-owned compliant always-on host has been evidenced. An independently owned resource outside Render would need explicit owner confirmation and qualification for availability, network/TLS, isolation, CPU/Argon2id, secret custody and operational access before being considered.
 
 No Render service, deployment, configuration, secret, database, role/ACL, migration, DNS, Cloudflare resource, traffic or paid plan was changed. PR #305 remains the active migration-gate branch; production batch manifest remains `[]`.
+
+### 23 November 2026 — production backup catalogue evidence reconciled
+
+Reviewed the owner-supplied PowerShell inspection transcript for the existing Render `ghm-db` / `ghm_db` recovery export at `C:\\Users\\zaidh\\Downloads\\ghm-db-recovery-inspection\\2026-11-23T15_53Z\\ghm_db`.
+
+- The export is a PostgreSQL directory-format archive; `toc.dat` is present.
+- `pg_restore --list` successfully read the archive catalogue and exited with code 0.
+- Archive metadata reports database `ghm_db`, archive creation time 2026-11-23 15:55:39, 760 TOC entries, and source/dump PostgreSQL version 18.7.
+- The catalogue includes the `ghm` schema and its database objects, including tables, sequences, functions, indexes, constraints, triggers, and policies.
+
+**Recovery evidence boundary:** this is positive evidence that the archive exists and its catalogue is readable. It is not a restore test and does not independently prove row-level completeness, role/cluster-global objects, application consistency, or a successful recovery procedure. No restore was attempted and no database was modified. Do not describe this as a restore-verified backup.
+
+**Release decision unchanged:** this backup evidence does not resolve the separately recorded production service-readiness gap. The existing Free `ghm-actor-gateway` deployment is still recorded as failing at `database_privileges_assertion`; the merged Worker/Issuer source and preview qualification do not establish a live production database connection or operational Authentication Issuer. The handover's hold on production migration/revocation rollout therefore remains in force until an already-owned compliant production path is evidenced. Do not create infrastructure, weaken security controls, or treat the backup as authorization to execute migrations.
+
+**PR #305 reconciliation:** current PR #305 head is `5385a810640f8d8cfaff718ea24adde007502c63`; its exact-commit CI run `45271111825` completed successfully. PR #305 remains open/draft. PRs #297 and #298 remain overlapping open/drafts; PR #303 remains separate manual-only Business Capability ACL work. The production batch manifest remains `[]`. No new branch/worktree, CI rerun, production SQL, restore, migration, role/ACL change, credential/secret change, Render/Cloudflare change, deployment, payment action, or paid resource was used for this reconciliation.
