@@ -1438,3 +1438,22 @@ Mandatory workflow for every GHM task:
 5. After each completed task, update the existing authoritative handover with exact changes, commit/PR, validation, production impact and next action.
 
 This is the governing direction, not a substitute for detailed handovers. No production operation is authorized by this documentation.
+
+## 2026-11-24 — QuoteFlow local-first boundary applied to GHM PR #306
+
+- Re-read `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` and reconciled the GHM work against QuoteFlow's owner-confirmed architecture in QuoteFlow `docs/architecture/QUOTEFLOW_GHM_NATIVE_REBUILD.md`.
+- QuoteFlow operational records (Customers, Items, Quotes, Invoices, line items, business preferences and reminder state) remain local-first. GHM is used for authentication/session lifecycle, canonical account identity, Business membership/role/selected Business context, onboarding, legal acceptance and authoritative entitlements when supported.
+- GHM PR #306 (`feat/quoteflow-business-scoped-customers-quotes`, head `5b9a5d5b502b46008d5e2d8f46ad3a8d05853f6d`) adds Business-scoped Customer/Quote schema, migrations and APIs. Its proposed QuoteFlow Business Offering linkage conflicts with the owner's explicit no-cloud-operational-data decision. Do not merge, deploy, execute its migrations, or integrate those endpoints into QuoteFlow. Preserve the draft PR/branch for historical review; no branch deletion or PR disposition change is part of this record.
+- QuoteFlow PR #25 remains the identity/control-plane cutover path. Its latest corrected source head `4ce8789f5da330d1ead1ffa374411e1fea76bc8a` passed typecheck/tests in run `45287025364`; Android preview run `45287025421` failed in the artifact workflow and is not a source-test failure. This does not establish production runtime/device/release verification.
+- No production database, schema, migration, operational record, local storage, deployment, payment, secret, Render/Vercel setting, paid infrastructure or schedule was changed.
+- Next product work: verify the GHM identity/session and Business membership path for QuoteFlow on the existing PR #25 branch. Do not add operational Customer/Item/Quote/Invoice persistence to GHM.
+
+## 2026-11-24 — Project/Opportunity Connect cutover scope reconciliation
+
+- Connect PR #70 (`feat/ghm-project-opportunity-cutover`, head `1ece6f54b1445f87b6dc1fd5fe624a2e46c7b5d1`) is the narrow existing Project/Opportunity caller cutover path. Exact-head Connect quality run `45290272778` passed.
+- Connect PR #68 (`feat/ghm-opportunity-runtime-migration-20261110`, head `60f612ed50ba8af78a81824dd2fd9a9c4546b017`) is a broad, overlapping migration batch covering many additional workflows; exact-head Connect quality run `45277620881` passed, but it is not interchangeable with PR #70 and must not be merged alongside overlapping callers without reconciliation.
+- Existing GHM main already registers Project list/create/detail/update routes. GHM PR #299 is not a clean dependency: it is 103 commits behind main and includes unrelated capability-governance migration/privilege changes in addition to Project route edits. Do not merge that stale branch wholesale.
+- A separate assistant-created PR #307 added customer-only guards to Project create/detail/update routes. It is still draft and not qualified; it is not evidence of an agreed product requirement and must not be treated as a prerequisite to Connect cutover. Reconcile its route-role assumptions against the actual Connect authenticated actor contract before any promotion.
+- Do not expand this into new Project APIs, data models, migrations or infrastructure. The product objective is to route the existing Connect workflow through the already implemented GHM API, preserving UI behavior and existing authorization.
+- No production database, migration, deployment, runtime config, customer data, payment action, or paid infrastructure changed in this reconciliation.
+
