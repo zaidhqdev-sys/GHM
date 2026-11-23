@@ -7416,3 +7416,25 @@ The owner created/downloaded the export and inspected it locally. No production 
 ### Reusable audit protocol
 
 Before subsequent GHM work, inspect this checkpoint and the relevant current handover, dependency matrix, support record, PR heads/status, branches and manifest. Treat completed items above as closed for duplicate execution; revisit only on new evidence, changed source state, explicit owner request or defined discrepancy. After each task, append exact evidence, scope, result, limitations and no-change boundary here and update affected source documents. Never describe a passed decode/catalogue check as a successful restore.
+
+
+## 23 November 2026 — resumed work: PR/base reconciliation checkpoint
+
+Before selecting the next implementation task, re-read this handover, the production migration dependency matrix, Render support record, all three related PRs, their head/base refs, continuation branch and production manifest. Current read-only GitHub evidence:
+
+- Current main: `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+- PR #298: open/draft/unmerged; head `b6b96c44ac26544156e099373d3185a965b880fd`; base `main` recorded by GitHub as `0dc1b27c2b7de71c77d071966a9f374e13075e2b`; mergeable=false, mergeable_state=`dirty`; 443 commits; 56 changed files. Compare of current `main` to the PR branch reports 443 ahead / 94 behind and diverged. Its only check run at the exact head is Cloudflare Pages success; commit status is pending with no statuses. No `quality` or `web-quality` result is present at this head. Treat it as stale/conflicted and not CI-qualified; do not merge, mark ready, or run production work from it.
+- PR #297: open/draft/unmerged; head `304da520c5cfe1e77b479a97dfdd9d951fa6e245`; base `main` recorded as `632a8fc67a0ca4c3f8e2d23db487e0ce6dcc595c`; mergeable=false, mergeable_state=`dirty`; 119 commits; 28 changed files. Its exact-head check list shows only Cloudflare Pages success. Treat as stale/conflicted and not CI-qualified; do not merge or mark ready.
+- PR #303: open/draft/unmerged; head `3af71a78b86c74864092150c6d036b312cf5ce45`; base is current `main` `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; mergeable=true, mergeable_state=`clean`; 8 commits; 6 changed files. Exact-head checks include Cloudflare Pages, `web-quality`, and `quality`, all successful. It remains deliberately separate and draft; do not merge/mark ready without owner direction.
+- Continuation documentation branch remains `feat/pr298-github-continuation-20261122`, separate from PR #298's actual head. Latest continuation commit before this checkpoint was `bc19ef36c5f8daeb0fae64e64c79317ab84b6573`.
+- Production execution manifest remains exactly `[]`.
+
+### Decision / next safe work
+
+Do not continue feature implementation on PR #298 or #297 until their stale/conflicted bases are reconciled. First perform a conflict inventory and dependency-aware integration plan in a separate isolated worktree/branch based on current main, preserving `C:\\GHM-main` and every existing staged/unstaged/untracked change. Do not blindly merge main into either branch, cherry-pick hundreds of commits, force-push, or combine PRs. Identify exactly which source commits/files are still unique and required, whether the migration-batch runner work overlaps mainline changes, and whether PR #297's explicit batch runner is redundant/stacked with PR #298. Re-run full exact-head CI only after a reviewed reconciliation candidate exists. PR #303 remains separate; its clean mergeability and successful CI do not authorize merge.
+
+### CI evidence boundary
+
+Cloudflare Pages preview success is not CI qualification. The PR #298 and #297 heads have no observed `quality`/`web-quality` pass in their exact-head check runs. PR #303's checks passed at its exact recorded head. Do not infer a missing CI result as a pass or use a preview URL as evidence of production readiness.
+
+No branch ref, PR metadata, code, local worktree, production database, migration manifest, Render service, credential, role, ACL, deployment or paid resource was changed during this read-only reconciliation inspection.
