@@ -239,3 +239,14 @@ Draft PR #305 opened from `feat/production-migration-batches-mainline-20261123` 
 ## 23 November 2026 — Render read-only ledger access evidence
 
 A direct Render read-only query against existing `ghm-db` confirmed database `ghm_db` is available and the connection is `session_user=ghm_app_user`, `current_user=ghm_db_user`, with `transaction_read_only=on`. The ledger `ghm.ghm_schema_migrations` exists and is owned by `ghm_schema_owner`; ACL grants SELECT to `ghm_auditor` only. The auditor has schema USAGE and ledger SELECT, but the current `ghm_db_user` session cannot SET ROLE to it. Therefore no production ledger rows/checksums or exact pending queue could be retrieved. Catalog metadata also reports `ghm_db_user` as NOSUPERUSER with CREATEDB and CREATEROLE; no role mutation was performed. The proposed dedicated auditor login is a production role/credential change and remains unperformed pending explicit authorization and a secure secret-entry path. This evidence supersedes the earlier statement that access was merely assumed to be denied: the denial was reproduced through Render's read-only query path. No production writes, migration, deploy, or new branch/CI qualification occurred.
+
+
+
+## 23 November 2026 — Amanda auditor-login prerequisite role audit
+
+Before implementing Amanda's already-recommended dedicated login, used the existing Render read-only query path to verify `ghm_auditor`:
+- NOLOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS; INHERIT=true; no role memberships.
+- `ghm` schema USAGE=true and CREATE=false.
+- Only non-system relation privilege in `ghm` is SELECT on `ghm_schema_migrations`; no INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER or other relation grants.
+- `public` schema USAGE and database CONNECT/TEMP are present as ordinary PUBLIC defaults; database CREATE=false.
+This verifies the target role is appropriately read-only for the ledger. Amanda's prescribed next step is a dedicated LOGIN member of `ghm_auditor`, direct connection as that login, and post-creation verification. The owner-controlled password must be entered through a secure interactive path (not chat/Git/logs). The Render query connector is read-only and cannot perform CREATE ROLE; no login or credential was created in this step. Do not ask Amanda to repeat the recommendation; use the already documented answer.
