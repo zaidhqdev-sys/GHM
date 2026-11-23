@@ -355,3 +355,24 @@ The only remaining way to reopen direct Hyperdrive is a written vendor answer th
 No support case has been submitted from this session: no support-ticket creation/action is available in the connected tools, and no existing case ID was present in the reviewed handover. Do not claim that vendors were contacted or that they answered. Reuse existing Render/Cloudflare support channels if the owner elects to send these questions; no paid support upgrade is implied.
 
 No Render IP allow-list, Postgres setting, TLS configuration, credential, Cloudflare account setting, Worker, Hyperdrive/VPC resource, DNS, production traffic, service, deployment, migration, or paid plan was changed. PR #305 remains the active migration-gate workstream; this architecture decision does not alter migration authority.
+## 2026-11-23 follow-up — existing Cloudflare Worker/Pages and Render resources reconciled
+
+Rechecked the current PR #305 branch/head, the current open GHM PR inventory, and the merged Actor Gateway/Auth Issuer/Worker PRs #272, #276 and #277 before making this decision.
+
+- PR #272 (Actor Gateway foundation) merged 14 November. Its PR record explicitly says no production gateway service exists, a private Render service requires paid compute, and the Resource API must not be treated as an isolated issuer/gateway host. The production Resource API remains on the older `c7cf1eb` deployment.
+- PR #276 (isolated Authentication Issuer) merged 15 November and contains the isolated issuer application and dedicated DB principal/ACL checks. Its qualification record explicitly says the Workers Free Argon2id feasibility test failed the existing GHM password-hashing CPU budget. Do not weaken Argon2id or purchase paid Workers/Render compute.
+- PR #277 (Actor Gateway Worker hardening) merged 15 November. It proves Worker bundle and local Workerd + disposable Hyperdrive behavior, but its own production boundary says no Cloudflare resource or route was provisioned and that disposable qualification does not prove live Cloudflare-to-Render Hyperdrive connectivity, production TLS/ACL identity, or production traffic behavior. Successful Pages PR previews are not a production Worker deployment.
+- The existing Render `ghm-actor-gateway` service is a Free service with failed deployments; the last observed startup failure is the live database privilege assertion. It is not a successful production host and does not satisfy the isolated/private hosting and live-availability gates.
+- The current Hyperdrive route remains unqualified for Render because Render's inbound Postgres rules are IPv4-only while Hyperdrive documents shared Cloudflare egress without a supported per-origin IPv4-only guarantee. The private VPC alternative still requires an always-on `cloudflared` connector host.
+
+### No-cost hosting decision
+
+**No currently evidenced, compliant production hosting path exists within the owner's stated constraints.** The merged Worker is source/preview-qualified, not provisioned for production; the Auth Issuer cannot meet the Argon2id CPU budget on Workers Free; direct Hyperdrive egress cannot be safely allow-listed on Render from current documentation; private VPC needs an always-on connector; and a private Render service requires paid compute. The existing Resource API must not be used to co-host these isolated security boundaries.
+
+Do not create another service, Worker, Hyperdrive configuration, tunnel host, paid plan, keepalive schedule, or database. Do not weaken Argon2id, TLS verification, Gateway ACL checks, or service isolation. Do not deploy the Resource API or execute dependent revocations on the assumption that the missing services are live.
+
+### Next decision boundary
+
+Stop further speculative hosting implementation. The only evidence that can change this no-go is either (a) an already-owned/available compliant always-on compute/network resource that satisfies the existing isolation and Argon2id requirements without new spend, or (b) a written vendor-supported no-cost topology that resolves both Hyperdrive egress and Worker CPU constraints. Otherwise the production Gateway/Auth Issuer release remains held. PR #305 stays draft, its production execution manifest remains `[]`, and no production batch is authorized.
+
+No Cloudflare resource, Worker, Pages production route, Hyperdrive configuration, Render service/setting, DB role/ACL, credential, secret, deployment, migration, DNS, traffic or paid resource was changed.
