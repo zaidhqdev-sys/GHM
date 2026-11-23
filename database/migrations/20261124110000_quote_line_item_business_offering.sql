@@ -13,6 +13,8 @@ ALTER TABLE ghm.quote_line_item
   ADD COLUMN price_unit text NULL;
 
 ALTER TABLE ghm.quote_line_item
+  ADD CONSTRAINT quote_line_item_offering_requires_business_ck
+    CHECK (business_offering_id IS NULL OR business_id IS NOT NULL),
   ADD CONSTRAINT quote_line_item_quote_business_fk
     FOREIGN KEY (business_id, quote_id)
     REFERENCES ghm.quote (business_id, id)
