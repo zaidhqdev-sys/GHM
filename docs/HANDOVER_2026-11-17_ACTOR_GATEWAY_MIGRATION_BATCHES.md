@@ -7503,3 +7503,10 @@ On `feat/production-migration-batches-mainline-20261123`, integrated the selecti
 CI run `45216633082` started for this exact branch head: `quality` in progress, `web-quality` queued, Cloudflare Pages in progress at the last check. No pass is claimed yet. This branch is not a PR and has not been merged. Do not execute production migrations, create a batch manifest entry, or set a production batch ID. Wait for exact-head CI and fix any failures on this isolated branch, then update this handover with final evidence.
 
 No production DB connection or SQL, migration, role/ACL/credential change, Render setting/service/deployment, payment action, paid resource or local worktree operation occurred. Changes are source-only and CI uses disposable workflow PostgreSQL.
+
+
+## 23 November 2026 — CI build failure diagnosed and source correction committed
+
+The first exact-head CI run for the mainline batch-gate candidate (`45216633082`, head `646a8253906126d48913123d92d470f2b7b56a18`) failed at TypeScript Build. Job log identified duplicate declarations in `src/db/migration-order.ts`: duplicate `AppliedMigrationLedgerEntry` and duplicate `assertAppliedMigrationNames` (TS2300/TS2451). This was introduced during sequential connector file updates; no runtime or database operation was reached. All subsequent DB/test steps were skipped because build failed.
+
+Corrected by retaining one copy of the ledger-name guard and removing the duplicate declaration block. Fix commit: `6f5525372f93cc194c22db3f50b932697798c17a` on `feat/production-migration-batches-mainline-20261123`. Rechecked branch head after commit. A new Cloudflare Pages check had started; a complete quality/web-quality result for the corrected head was not yet available at this checkpoint. Do not treat the first run as passed; wait for exact corrected-head CI. No production DB/Render operation occurred.
