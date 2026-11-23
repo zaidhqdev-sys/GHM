@@ -8,7 +8,9 @@ ALTER TABLE ghm.quote
 
 ALTER TABLE ghm.quote_line_item
   ADD COLUMN business_id bigint NULL,
-  ADD COLUMN business_offering_id uuid NULL;
+  ADD COLUMN business_offering_id uuid NULL,
+  ADD COLUMN currency_code text NULL,
+  ADD COLUMN price_unit text NULL;
 
 ALTER TABLE ghm.quote_line_item
   ADD CONSTRAINT quote_line_item_quote_business_fk
