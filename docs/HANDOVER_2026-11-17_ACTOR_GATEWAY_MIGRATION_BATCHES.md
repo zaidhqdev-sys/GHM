@@ -8003,3 +8003,8 @@ The 52-entry live pending order was checked against the first 17 migration SQL f
 Updated the 20 November dependency matrix to 52 migration rows and appended this contiguous-prefix analysis on the existing continuation branch. Matrix commit: `c883b8921f168d431773936d7f3dba0607936120`. It records that no safe first production batch is selected, the allowlist is 7/52, the execution manifest remains `[]`, and the Business Capability manual cutover is separate from automatic migrations.
 
 No production migration, SQL, manual cutover, DDL, ledger write, role/ACL/credential change, Render setting, deployment, restart, payment action or paid resource change occurred. PR #305 remains draft/unmerged.
+
+
+### Dependency matrix selector-guard status correction — 23 November 2026
+
+Re-fetched the matrix and corrected its wording from “guard is being added” to the committed state. The matrix now records selector commit `108aa95fe2fe4e0d3ed3de00c131901b2ecf4eee`, test commit `cf100f11fef1a37190bca1d050f4bd1f75172110`, and exact-head CI run `45240831225` as still in progress. Matrix documentation commit: `7af8d1f7d55aac337ce03b667b0163daaec358b3`. No CI pass is claimed; PR #305 remains draft and the manifest remains empty.
