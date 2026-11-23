@@ -39,6 +39,8 @@ const LINE_COLUMNS = `
   catalog_item_id,
   business_id,
   business_offering_id,
+  currency_code,
+  price_unit,
   created_at
 `;
 
@@ -149,9 +151,9 @@ export class PostgresQuoteRepository implements QuoteRepository {
       const quoteId = Number(quoteResult.rows[0].id);
       for (const item of resolvedLines) {
         await client.query(
-          `INSERT INTO ghm.quote_line_item (quote_id, description, quantity, unit_price, catalog_item_id, business_id, business_offering_id)
-           VALUES ($1,$2,$3,$4,NULL,$5,$6)`,
-          [quoteId, item.description, item.quantity, item.unitPrice, tenant.businessId, item.businessOfferingId],
+          `INSERT INTO ghm.quote_line_item (quote_id, description, quantity, unit_price, catalog_item_id, business_id, business_offering_id, currency_code, price_unit)
+           VALUES ($1,$2,$3,$4,NULL,$5,$6,$7,$8)`,
+          [quoteId, item.description, item.quantity, item.unitPrice, tenant.businessId, item.businessOfferingId, item.currencyCode, item.priceUnit],
         );
       }
       return mapQuote(quoteResult.rows[0], await loadLineItems(client, quoteId));
