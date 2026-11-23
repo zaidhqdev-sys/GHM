@@ -7597,3 +7597,22 @@ Connection identity and ledger check:
 This direct Render read-only inspection confirms why the ledger remains unreadable with the available connection. It does not establish any live migration versions, names, checksums, contiguous pending queue, or applied status. Do not attempt to work around it with role switching or privilege changes. Amanda's proposed dedicated auditor login would require creating a production login/role membership and securely supplying a credential; that is a separate production role/credential change and has not been authorized or performed.
 
 No production data was read from the migration ledger, no role/ACL/credential was changed, and no migration or deployment was executed. Next access route requires a controlled, explicitly authorized read-only auditor credential path or Render Support assistance. No new branch or qualification run was created for this audit.
+
+
+
+## 23 November 2026 — Amanda's dedicated auditor-login path: target role privilege audit
+
+Re-read the existing Render Support/Amanda section before acting. Amanda's 23 Nov 15:41:10Z answer already gives the intended routine-access method: create a dedicated LOGIN (example `ghm_audit_login`) as a member of the existing `ghm_auditor` role, then connect directly using that login. Her clarification about the temporary grant explicitly says not to rely on that temporary SET ROLE route for routine reads. Do not ask Amanda to repeat or reconfirm this guidance.
+
+Using the existing Render read-only query path against `ghm-db` / `ghm_db`, audited the current `ghm_auditor` role before creating the login:
+- Role flags: NOLOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS; INHERIT=true.
+- No role memberships held by `ghm_auditor`.
+- In `ghm` schema: USAGE=true, CREATE=false.
+- In non-system schemas, `public` USAGE=true and CREATE=false; this is the standard PUBLIC schema usage and not a grant of object write access.
+- Within `ghm`, the only relation privilege found for `ghm_auditor` is SELECT on `ghm.ghm_schema_migrations`. INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER are all false. No other non-system relation privilege rows were returned.
+- Database privileges: CONNECT=true, CREATE=false, TEMP=true (consistent with standard PUBLIC database privileges; no database CREATE).
+- This establishes the existing role is currently scoped to the intended ledger read within `ghm`, with ordinary database/public defaults. It is not a live login test.
+
+Next action follows Amanda's already documented recommendation; do not reopen the support question. Create `ghm_audit_login` as a dedicated LOGIN member of `ghm_auditor`, with no elevated attributes, no admin option, and owner-controlled password entry (psql `\\password` prompt; never put the secret in chat, Git, logs or handover). After creation, verify exact role flags, its sole membership in `ghm_auditor` with ADMIN=false, no ownership/direct grants, and effective privileges. Then connect directly as `ghm_audit_login` and read the migration ledger (version/name/checksum) to build the exact live inventory. The Render MCP query action is read-only and cannot create roles; no write-capable SQL was executed in this task. Do not create another branch or rerun CI for this database-only operation.
+
+No role/login/credential/ACL, migration, production data, Render service/configuration, deployment, payment state or paid resource was changed during this audit.
