@@ -155,12 +155,12 @@ test('includes the signed Business Capability create wrapper in the exact Gatewa
     ...leastPrivilege,
     expected_functions: [...leastPrivilege.expected_functions, createSignature],
     executable_functions: leastPrivilege.executable_functions,
-  }), /gateway_function_allow_list_mismatch/);
+  }, 'full'), /gateway_function_allow_list_mismatch/);
   assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
     ...leastPrivilege,
     expected_functions: [...leastPrivilege.expected_functions, createSignature],
     executable_functions: [...leastPrivilege.executable_functions, createSignature],
-  }));
+  }, 'full'));
 });
 
 
