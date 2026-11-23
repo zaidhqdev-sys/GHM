@@ -422,3 +422,27 @@ Next product-led GHM capability: define and implement the smallest complete Busi
 Android GitHub Actions artifact upload is not a blocker. Use the existing local Windows Gradle `assembleRelease` and local verification/signing process, then upload via the existing GitHub/website repositories when the GHM identity, operational data, legal and device gates are satisfied. No paid artifact storage or infrastructure.
 
 No application code, production database, local device data, secrets, roles/ACLs, deployment, website distribution, payment or paid infrastructure changed in this documentation reconciliation.
+## 2026-11-23 — QuoteFlow Business-scoped Customer and Quote capability (GHM PR #306)
+
+**Product outcome:** establish GHM-owned, Business-tenant-scoped persistence for QuoteFlow Customers and Quotes. This is a first operational data slice, not full QuoteFlow parity.
+
+GHM PR #306: https://github.com/zaidhqdev-sys/GHM/pull/306
+- Branch: `feat/quoteflow-business-scoped-customers-quotes`
+- Exact current head at this handover update: `ac6a1f1ed31d46f95c0de976f18a7986b035e6e5`
+- Base: `main` at `d0a76c5a9d85641ba5762515b69c899addf7a76f`
+- Diff: 15 commits ahead / 0 behind; 10 files.
+
+Implemented on the PR branch:
+- Nullable `business_id` on `ghm.customer` and `ghm.quote`; existing account-scoped rows remain NULL and unchanged.
+- Composite `(business_id, customer_id)` foreign key for Quotes, preventing a Business Quote from referencing a Customer owned by another Business.
+- Tenant-validated Customer and Quote repository methods use the existing `withTenantTransaction` / `resolveTenantContext` membership authority.
+- Authenticated HTTP routes: `/api/v1/businesses/:businessId/customers` and `/api/v1/businesses/:businessId/quotes` (list/create/get and the supported status/notes updates).
+- Existing account-scoped `/api/v1/customers` and `/api/v1/quotes` contracts remain for compatibility.
+- Client-supplied account/Business ownership fields are rejected. Non-null catalog item references are rejected until a Business-scoped catalog mapping exists.
+- HTTP tests cover tenant path binding, forged owner/tenant fields, and unmapped catalog IDs.
+
+**Validation boundary:** PR #306 exact-head CI run `45280558882` was pending at the last check; no pass is claimed. Earlier run `45280544552` targeted the preceding commit and was superseded. Cloudflare Pages branch preview was still in progress; it is not a production deployment. No local test run was performed in this environment.
+
+**Remaining QuoteFlow data capabilities:** Business-scoped catalog/items, invoice persistence, document/PDF storage, and the QuoteFlow client adapter/cutover are not implemented by PR #306. The app must not point local IDs at account-scoped Customer/Quote APIs. No local data copy or automatic account-to-Business mapping is included.
+
+**Production impact:** source/CI/preview only. No production migration execution, DB/data mutation, deployed Resource API, secret/credential/role/ACL change, device data change, APK distribution, payment action, paid infrastructure, or service setting change.
