@@ -7616,3 +7616,24 @@ Using the existing Render read-only query path against `ghm-db` / `ghm_db`, audi
 Next action follows Amanda's already documented recommendation; do not reopen the support question. Create `ghm_audit_login` as a dedicated LOGIN member of `ghm_auditor`, with no elevated attributes, no admin option, and owner-controlled password entry (psql `\\password` prompt; never put the secret in chat, Git, logs or handover). After creation, verify exact role flags, its sole membership in `ghm_auditor` with ADMIN=false, no ownership/direct grants, and effective privileges. Then connect directly as `ghm_audit_login` and read the migration ledger (version/name/checksum) to build the exact live inventory. The Render MCP query action is read-only and cannot create roles; no write-capable SQL was executed in this task. Do not create another branch or rerun CI for this database-only operation.
 
 No role/login/credential/ACL, migration, production data, Render service/configuration, deployment, payment state or paid resource was changed during this audit.
+
+
+
+## 23 November 2026 — auditor-login execution preflight (owner-directed, no mutation)
+
+Mandatory pre-task review completed on the existing continuation branch and PRs #305/#303/#298/#297. Current PR heads remain: #305 `bcbeeb817c53569a6a3ac71df7d270b10a4bca9f` (open/draft/mergeable), #303 `3af71a78b86c74864092150c6d036b312cf5ce45` (open/draft/mergeable), #298 `b6b96c44ac26544156e099373d3185a965b880fd` (open/draft/not mergeable), #297 `304da520c5cfe1e77b479a97dfdd9d951fa6e245` (open/draft/not mergeable). No PR or branch was created or changed for this task. Reused the existing Render read-only query path; no CI was rerun.
+
+Rechecked the precise membership edge that Amanda's approach depends on:
+- Current database/user: `ghm_db` / `ghm_db_user`.
+- `ghm_db_user`: LOGIN, INHERIT, NOSUPERUSER, CREATEDB, CREATEROLE.
+- Existing `ghm_db_user -> ghm_auditor` membership: ADMIN OPTION=true, INHERIT=false, SET=false, grantor=`postgres`.
+- This confirms the existing operator identity holds ADMIN OPTION on the auditor role while the old membership itself cannot be used to SET ROLE. A new dedicated login can be created as a separate membership row under Amanda's recommendation; do not modify/revoke the original postgres-granted edge. The new login must not receive ADMIN OPTION or any other membership.
+- Reconfirmed `ghm_auditor` itself has only the intended ledger SELECT privilege and is non-elevated (prior section above).
+
+**Owner direction:** The owner has now explicitly instructed us to proceed with Amanda's dedicated auditor-login path. The assistant's Render connector remains technically read-only; it cannot execute `CREATE ROLE` or set a password. The owner must execute the narrowly scoped operation through the already-used administrative PostgreSQL connection, with password entered only through psql's interactive `\\password ghm_audit_login` prompt. Never paste the password or connection URI into chat, Git, logs or a handover. Use strict certificate/hostname verification where the existing Render CA/trust setup supports it; do not silently downgrade TLS verification. Do not use the Render read-only query connector for write SQL.
+
+Proposed exact role shape for owner execution:
+`CREATE ROLE ghm_audit_login LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE ghm_auditor;`
+Then set the password using psql's interactive `\\password ghm_audit_login` meta-command. The membership created by this statement must be ADMIN=false; verify that it is the only membership held by `ghm_audit_login`, that the login owns no objects and has no direct grants, and that its effective privileges are limited to the intended ledger SELECT path. If any check differs, stop; do not improvise grants or revoke the original postgres-granted membership.
+
+This preflight is not evidence that the role has been created. No production role, membership, password, ACL, data, migration, Render setting/service/deployment, payment state or paid resource was changed in this task. After owner execution, record the exact result and use a direct connection as `ghm_audit_login` for the version/name/checksum ledger read. No new branch or qualification run is needed.
