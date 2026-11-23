@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
-import { withAuthorizedTransaction } from '../../db/authorized-transaction';
+import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type {
   CreateQuoteInput,
@@ -14,6 +14,7 @@ import type {
 const QUOTE_COLUMNS = `
   id,
   account_id,
+  business_id,
   customer_id,
   customer_name,
   customer_phone,
@@ -58,6 +59,7 @@ const mapLineItem = (row: any): QuoteLineItem => ({
 const mapQuote = (row: any, lineItems: readonly QuoteLineItem[]): Quote => ({
   id: Number(row.id),
   accountId: Number(row.account_id),
+  businessId: row.business_id === null || row.business_id === undefined ? null : Number(row.business_id),
   customerId: Number(row.customer_id),
   customerName: row.customer_name,
   customerPhone: row.customer_phone,
@@ -103,6 +105,89 @@ const loadQuote = async (
 
 export class PostgresQuoteRepository implements QuoteRepository {
   constructor(private readonly transactionPool?: TransactionPool | Pool) {}
+
+
+  async createBusinessQuote(context: AuthContext, businessId: number, input: CreateQuoteInput): Promise<Quote> {
+    return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
+      const customer = await client.query(
+        `SELECT id, name, phone, email, status FROM ghm.customer
+         WHERE id = $1 AND business_id = $2 FOR SHARE`,
+        [input.customerId, tenant.businessId],
+      );
+      if (customer.rowCount !== 1) throw new Error('Customer not found or ownership required');
+      if (customer.rows[0].status !== 'active') throw new Error('Customer must be active');
+      const customerRow = customer.rows[0];
+      const amount = input.lineItems.reduce((total, item) => total + item.quantity * item.unitPrice, 0);
+      const description = input.lineItems.map(item => item.description.trim()).join(', ');
+      const quoteResult = await client.query(
+        `INSERT INTO ghm.quote
+          (account_id, business_id, customer_id, customer_name, customer_phone, customer_email, description, amount, follow_up_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${QUOTE_COLUMNS}`,
+        [tenant.accountId, tenant.businessId, input.customerId, customerRow.name, customerRow.phone, customerRow.email, description, amount, input.followUpDate],
+      );
+      if (quoteResult.rowCount !== 1) throw new Error('Quote creation failed');
+      const quoteId = Number(quoteResult.rows[0].id);
+      for (const item of input.lineItems) {
+        await client.query(
+          `INSERT INTO ghm.quote_line_item (quote_id, description, quantity, unit_price, catalog_item_id)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [quoteId, item.description.trim(), item.quantity, item.unitPrice, item.catalogItemId ?? null],
+        );
+      }
+      return mapQuote(quoteResult.rows[0], await loadLineItems(client, quoteId));
+    }, this.transactionPool);
+  }
+
+  async getBusinessQuote(context: AuthContext, businessId: number, quoteId: QuoteId): Promise<Quote | null> {
+    return withTenantTransaction(context, businessId, async client => {
+      const result = await client.query(
+        `SELECT ${QUOTE_COLUMNS} FROM ghm.quote WHERE business_id = $1 AND id = $2`,
+        [businessId, quoteId],
+      );
+      if (result.rowCount !== 1) return null;
+      return mapQuote(result.rows[0], await loadLineItems(client, quoteId));
+    }, this.transactionPool);
+  }
+
+  async listBusinessQuotes(context: AuthContext, businessId: number): Promise<Quote[]> {
+    return withTenantTransaction(context, businessId, async client => {
+      const result = await client.query(
+        `SELECT ${QUOTE_COLUMNS} FROM ghm.quote
+         WHERE business_id = $1 ORDER BY created_at DESC, id DESC`,
+        [businessId],
+      );
+      const values: Quote[] = [];
+      for (const row of result.rows) values.push(mapQuote(row, await loadLineItems(client, Number(row.id))));
+      return values;
+    }, this.transactionPool);
+  }
+
+  async setBusinessQuoteStatus(context: AuthContext, businessId: number, quoteId: QuoteId, status: QuoteStatus): Promise<Quote> {
+    return withTenantTransaction(context, businessId, async client => {
+      const existing = await loadQuote(client, context, quoteId, true);
+      if (!existing || existing.businessId !== businessId) throw new Error('Quote not found or ownership required');
+      if (existing.status === status) return existing;
+      const result = await client.query(
+        `UPDATE ghm.quote SET status = $1, reminder_id = NULL, reminder_date = NULL, updated_at = now()
+         WHERE id = $2 AND business_id = $3 RETURNING ${QUOTE_COLUMNS}`,
+        [status, quoteId, businessId],
+      );
+      if (result.rowCount !== 1) throw new Error('Quote status update failed');
+      return mapQuote(result.rows[0], existing.lineItems);
+    }, this.transactionPool);
+  }
+
+  async setBusinessQuoteNotes(context: AuthContext, businessId: number, quoteId: QuoteId, notes: string): Promise<Quote> {
+    return withTenantTransaction(context, businessId, async client => {
+      const result = await client.query(
+        `UPDATE ghm.quote SET notes = $1, updated_at = now()
+         WHERE id = $2 AND business_id = $3 RETURNING ${QUOTE_COLUMNS}`,
+        [notes, quoteId, businessId],
+      );
+      if (result.rowCount !== 1) throw new Error('Quote not found or ownership required');
+      return mapQuote(result.rows[0], await loadLineItems(client, quoteId));
+    }, this.transactionPool);
+  }
 
   async createQuote(context: AuthContext, input: CreateQuoteInput): Promise<Quote> {
     return withAuthorizedTransaction(context, async client => {
