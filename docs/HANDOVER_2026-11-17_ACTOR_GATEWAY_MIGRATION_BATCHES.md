@@ -8124,3 +8124,14 @@ After the corrected read-only production planner returned the exact 52 pending m
 The separate execution manifest `config/production-migration-batches.json` remains exactly `[]`. No batch ID is available or authorized. This inventory correction does not permit production execution and does not relax the selector's exact contiguous-prefix/checksum/pair requirements or the external operational release gates. Latest inventory commit still requires exact-head CI; do not claim qualification until verified. No production SQL, ledger, DDL, role, membership, ACL, credentials, Render setting, deployment, restart, payment action or paid resource was changed.
 
 Dependency matrix inventory addendum recorded in commit `8cfa7edd8cb771f5c75a00bd140d7a999cd21f8a` on the existing continuation branch.
+
+
+## 23 November 2026 — exact-head CI regression from the reconciled 52-entry pending inventory
+
+Rechecked current open PRs and the existing migration branches before continuing: PR #305 is the active isolated implementation on `feat/production-migration-batches-mainline-20261123`; PRs #297 and #298 remain older open draft alternatives; PR #303 remains the separate manual Business Capability column-privilege cutover correction. No new branch or worktree was created. The 52-entry dependency review and the inventory addendum were re-read before this change.
+
+Exact-head run `45244972318` for inventory commit `841b8b7075010db9e095e795b5aedb6cf2c11f2c` completed with `web-quality` passing and `quality` failing only at `Migration audit policy tests`. The full general test suite passed. The failing test output identifies two stale, duplicate hard-coded seven-entry expectations in `scripts/migration-audit-checksum.test.mjs` (tests at original lines 89 and 137); both still expected the old seven-entry set even though the production inventory is now correctly 52/52. No migration SQL, database, or runtime qualification failed.
+
+Corrected both test expectations to use one explicit, frozen 52-entry expected version/name array, copied from the reconciled inventory and pinned in test source (not dynamically derived from the file under test). Commit: `4162100767469019fea0a17337185f1672446215` on the existing PR #305 branch. The production inventory remains 52 exact version/name identities; `config/production-migration-batches.json` remains exactly `[]`. This test correction does not select or authorize any production batch.
+
+Exact-head Actions for `4162100767469019fea0a17337185f1672446215` had not yet appeared when checked. Await the exact-head CI result before claiming qualification. No production SQL/migrations, ledger, DDL, role/membership/ACL/credentials, Render setting, service, deployment, restart, payment action or paid resource changed.
