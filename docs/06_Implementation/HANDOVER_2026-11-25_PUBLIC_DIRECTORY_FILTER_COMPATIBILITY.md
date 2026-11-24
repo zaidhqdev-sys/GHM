@@ -55,3 +55,23 @@ Rechecked current Connect main and GHM main before continuing.
 - Investigation only; no featured schema or write API has been added yet.
 - No GHM PR #308 merge, Connect Marketplace cutover, DB migration, production data write, deploy or service change.
 - Keep PR #308 draft until its exact-head CI is available and then integrate it with the smallest safe change.
+## 2026-11-25 — GHM Business authority and feature-field audit
+
+Inspected the current GHM main Business Identity and Directory contracts/repositories to identify the safe source for featured status.
+
+### Confirmed source facts
+- `src/resources/business-identity/contracts.ts` defines BusinessVerificationStatus and BusinessIdentity, but BusinessIdentity has no featured flag or expiry field.
+- `BUSINESS_PROFILE_PROTECTED_FIELDS` explicitly includes `is_featured`; ordinary owner-managed Business profile updates must not control this field.
+- `src/resources/business-identity/repository.ts` selects canonical `ghm.business` fields including is_active, is_supplier and verification_status, but no featured state/expiry.
+- `src/resources/business-identity/service.ts` permits public visibility only for active businesses with verificationStatus `approved`; there is no feature-management operation or lifecycle in this service.
+- `src/resources/directory/contracts.ts` and `src/resources/directory/repository.ts` expose supplier filtering and rating/review/newest/distance ordering, but no feature projection or featured-first ordering.
+- The `PublicBusiness` contract similarly has no `isFeatured` property.
+
+### Authority conclusion
+`is_featured` is explicitly protected from ordinary profile updates. No existing GHM feature/unfeature authority or expiry lifecycle was found in the inspected Business Identity and Directory source. Do not add a public owner-editable field, infer it from `tier`, or assume that a legacy `featured_until` column exists in GHM. The canonical DB migration/schema and admin authority must be verified before adding SQL that references feature columns.
+
+### Implementation decision
+No speculative schema or SQL was added. The next safe step is to identify the canonical GHM migration that creates `ghm.business` and inspect any existing privileged/admin capability pathway. Then add the smallest governed feature lifecycle (if no existing one is present), expose effective featured state, and preserve featured-first ordering. If no existing authority is available, use the existing GHM capability governance design rather than bypassing it.
+
+### Scope status
+PR #308 remains a route-parser compatibility fix only. It does not close featured parity. No DB schema change, migration, new admin endpoint, production data write, deployment, or Connect Marketplace cutover was made.
