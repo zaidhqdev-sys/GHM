@@ -1861,3 +1861,23 @@ Amanda's guidance remains controlling: the SQL-created service login must use it
 ### Change boundary
 
 This is a documentation correction based on the owner's clarification. No Render form was read or changed by the assistant; no environment variable was created, read or modified; no password or secret was accessed; no production SQL, role, membership, grant, migration, deployment or service creation occurred; and no additional paid infrastructure or cost was introduced.
+
+
+## 2026-11-25 — Render service inventory and Actor Gateway startup reconciliation
+
+Read-only review against the current Render workspace inventory and service logs; no service, environment, database, credential, deployment, or billing changes were made.
+
+- The Render workspace currently contains a service named `ghm-actor-gateway` (service `srv-dc09scl9el5s73fdgj1g`) in Frankfurt, connected to GHM `main`, with auto-deploy OFF and plan reported as **Free**. This service exists despite the earlier handover's assumption that no dedicated service had been created. Do not create a duplicate service.
+- Its configured start command is `npm run start:actor-gateway`; build command is `npm ci --include=dev && npm run build`; health path is `/healthz`.
+- Render event history shows three deployment attempts on 20 November. Builds succeeded, but each process exited with status 1. The available application logs identify the exact startup error: `Error: PORT must be a valid TCP port` at `dist/actor-gateway/server.js:41`. This is a concrete service configuration/startup mismatch, not a build failure or database ACL result. No PORT value or environment configuration was changed during this review.
+- The service is not evidence of a working Actor Gateway. Its current service metadata reports Free plan; do not assume it provides the always-on production availability required by the earlier gateway architecture decision.
+- The same Render inventory contains `GHM-Internal-Runtime` at `https://ghm-internal-runtime.onrender.com`; no separately named Authentication Issuer service appears in the returned non-preview service inventory. The QuoteFlow split-origin client therefore still has no verified production issuer origin. Do not point it at the Actor Gateway or Resource API as a substitute.
+- Existing service inventory also confirms auto-deploy is OFF for GHM Internal Runtime. No deploy was triggered.
+
+### Corrected next technical actions
+1. Reconcile the Actor Gateway's PORT startup contract against the existing Render service configuration and service runbook; fix only the proven mismatch on the existing service configuration/source path, without creating another service or incurring new cost.
+2. Separately reconcile the production Actor Gateway database principal/functions/ACL installation against the current production migration handover. A successful HTTP process start alone would not prove DB readiness.
+3. Keep the Authentication Issuer distinct. Do not claim QuoteFlow authentication is live until an actual approved issuer service and reachable HTTPS origin exist and its auth lifecycle is verified.
+4. Continue the two product migrations independently wherever their required GHM APIs are already available; do not let an unrelated Actor Gateway startup defect block independent product workflows.
+
+No production DB query or mutation, role/ACL change, credential access, environment update, deployment/restart, payment action, paid service creation, or product cutover occurred in this review.
