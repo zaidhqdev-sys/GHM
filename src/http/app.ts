@@ -602,7 +602,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'province', 'city', 'latitude', 'longitude', 'radiusKm', 'sort', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'city', 'latitude', 'longitude', 'radiusKm', 'businessType', 'sort', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -627,6 +627,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const category = readStringQuery('category');
       const province = readStringQuery('province');
       const city = readStringQuery('city');
+      const businessType = readStringQuery('businessType');
       const sort = readStringQuery('sort');
       const parseCoordinate = (key: string): number | undefined => {
         const value = readStringQuery(key);
@@ -646,6 +647,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         (req.query.category !== undefined && category === undefined) ||
         (req.query.province !== undefined && province === undefined) ||
         (req.query.city !== undefined && city === undefined) ||
+        (req.query.businessType !== undefined && businessType !== 'suppliers' && businessType !== 'contractors') ||
         (req.query.sort !== undefined && sort === undefined) ||
         (req.query.latitude !== undefined && latitude === undefined) ||
         (req.query.longitude !== undefined && longitude === undefined) ||
@@ -670,6 +672,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         latitude,
         longitude,
         radiusKm,
+        businessType: businessType as 'suppliers' | 'contractors' | undefined,
         sort: sort as 'rating' | 'reviews' | 'newest' | 'distance' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
@@ -685,7 +688,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'category must be a valid category id or slug' ||
           error.message === 'province must be a string' || error.message === 'city must be a string' ||
           error.message === 'latitude must be a valid coordinate' || error.message === 'longitude must be a valid coordinate' ||
-          error.message === 'radiusKm must be between 0 and 500' || error.message === 'sort must be rating, reviews, newest, or distance' ||
+          error.message === 'radiusKm must be between 0 and 500' || error.message === 'businessType must be suppliers or contractors' || error.message === 'sort must be rating, reviews, newest, or distance' ||
           error.message === 'latitude and longitude must be supplied together' || error.message === 'radiusKm requires latitude and longitude' || error.message === 'distance sort requires latitude and longitude' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
