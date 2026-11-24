@@ -96,3 +96,15 @@ There is currently no qualified GHM authority for changing featured promotion st
 
 ### Current delivery status
 PR #308 remains the isolated supplier/contractor query parser fix. This investigation made no schema or application code changes, did not add a feature lifecycle, and did not cut over Connect Marketplace. No production database, data, deployment, secrets or paid service changed.
+## 2026-11-25 — Legacy featured-state writer audit completed
+
+Connect main complete tree and code search confirms no active application writer for `is_featured` and no active use of `featured_until`.
+
+- Connect migration `20260718130542_establish_directory_business_contract.sql` adds protected `is_featured boolean not null default false`, creates featured-first indexes, and states subscription/payment-controlled promotion is out of scope.
+- Connect migration `20260825190000_remediate_businesses_registration_number_column_privileges.sql` grants `is_featured` SELECT only; no client UPDATE grant is made.
+- Across all 45 tracked Supabase migrations and all code search hits, there is no feature/unfeature RPC, application write path or expiry lifecycle. The only active behavior is read/projection, featured-first ordering and UI display.
+- `featured_until` occurs only in the checked-in schema snapshot; no active Marketplace query, reader, writer or migration uses it. Do not carry it into GHM as an active behavior.
+
+Therefore GHM needs no new promotion authority to preserve the behavior that actually exists. Add only protected `is_featured NOT NULL DEFAULT false`, public read projection and featured-first ordering. No write path. Fresh GHM Businesses default false; legacy values cannot be presumed or imported from the unavailable Supabase database. Do not add Founder review, commercial plan or PayFast dependency.
+
+Next change is a narrow GHM schema/Directory contract implementation, followed by Connect Marketplace caller cutover. No production changes were made in this audit.
