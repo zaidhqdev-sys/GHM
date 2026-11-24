@@ -30,3 +30,28 @@ Legacy Marketplace orders is_featured DESC, rating DESC, created_at DESC. Curren
 
 ## Safety / scope
 No production DB migration, production data mutation, Render deployment/configuration, secrets, service creation, paid infrastructure, PayFast activation or Connect cutover was performed. Existing branches and PRs #243/#244, Connect #68/#70/#71 remain untouched.
+## 2026-11-25 — Featured listing parity investigation
+
+Rechecked current Connect main and GHM main before continuing.
+
+### Original Connect behavior confirmed
+- Connect main `84d7edb64346f1b698f9b76bcb54d2e653df1292`, `src/features/marketplace/marketplaceService.js`: public listing selects approved, verified and active businesses; optional search/category/province/supplier filter; exact count; order is `is_featured DESC`, `rating DESC`, `created_at DESC`.
+- Connect main `src/supabase/supabase_schema.sql`: Business columns include `is_featured boolean default false` and `featured_until timestamptz`. The Business tier enum also contains `featured`, but this is not equivalent to the listing flag and must not be substituted.
+- Marketplace UI consumes `business.is_featured` to mark featured cards. This is observable product behavior, not merely an internal sort preference.
+
+### GHM main behavior confirmed
+- GHM `src/resources/directory/repository.ts` selects canonical business fields and filters `is_supplier`; no `is_featured` or `featured_until` projection, active feature lifecycle or featured-first ordering is present in this repository.
+- GHM `DirectoryQuery` supports supplier/contractor filtering but has no featured filter/order contract.
+- PR #308 only repairs HTTP parsing for businessType. It does not deliver featured parity.
+
+### Next required backend work
+- Inspect canonical GHM Business schema/migrations and existing admin/owner governance before choosing where a featured flag and expiry belong. Do not infer or copy the legacy Supabase value into production without a source-of-truth migration plan.
+- Preserve `is_featured` display data and `featured_until` expiry semantics in the GHM public Directory response; expired features must not remain featured.
+- Preserve featured-first ordering, then rating, then creation time, with stable pagination and count.
+- Find the existing legitimate authority that sets/unsets featured status. Do not create a browser-writable flag or grant ordinary Business owners/admin clients direct DB mutation.
+- Once GHM endpoint and authority exist, update Connect Marketplace client and UI mapping, remove Supabase listing reads, and add exact contract coverage.
+
+### Current status
+- Investigation only; no featured schema or write API has been added yet.
+- No GHM PR #308 merge, Connect Marketplace cutover, DB migration, production data write, deploy or service change.
+- Keep PR #308 draft until its exact-head CI is available and then integrate it with the smallest safe change.
