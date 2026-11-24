@@ -60,7 +60,7 @@ The owner has not reduced Zaid Connect to a directory-only product. The intended
 - Founder review authority, business ownership, private/public field separation, inactive/unapproved listing exclusion, upload/storage and abuse/rate limits are tested end to end.
 - Vercel production deployment SHA, environment scope and rollback path are verified.
 
-**Assessment:** Closest web product to a directory-only early-access pilot, but not a GO on repository evidence alone.
+**Assessment:** Existing Connect product prioritized for owner-led free early-access testing once the intended GHM-backed workflows are restored and technically functional. Directory-only is not the owner's chosen product scope.
 
 ## 3. QuoteFlow
 
@@ -208,32 +208,28 @@ The following are shared dependencies for Connect and QuoteFlow, and later produ
 6. **Provider-neutrality:** provider integrations must sit behind GHM-owned capability contracts. PayFast is the current intended payment provider, but product code must not hard-code it as the domain model. Do not infer that PayStack is required because old Connect/Wealth/Legal code contains it.
 7. **No parallel data stores:** do not revive Supabase or add another paid database/service as a shortcut. Preserve source data and perform controlled migrations only where needed.
 
-## 8. Recommended execution order
+## 8. Corrected execution order — Connect and QuoteFlow first
 
-### Release track A — Connect directory early access
+### Track A — restore existing Zaid Connect workflows on GHM
 
-1. Reconcile Connect main, PR #68 and #70, GHM #243/#244/#298/#303/#299 and all relevant handovers.
-2. Define directory-only route allowlist and exact GHM dependency map.
-3. Close only the P0 security/ACL/migration/deploy gates required for that slice.
-4. Qualify Connect's selected journey against the deployed GHM runtime.
-5. Pilot with a small invited set of businesses; keep commercial and nonessential features disabled.
+1. Reconcile current Connect main, PR #68, PR #70, GHM dependencies and their handovers; preserve existing work and avoid new branches unless a demonstrated integration conflict requires one.
+2. Continue the existing backend migration for the non-paid Connect workflows the owner intends to test. Do not impose a directory-only redesign.
+3. Keep commercial/trial/checkout/payment and paid-entitlement UI inactive. Their terms and counsel requirements are deferred and do not block unrelated free workflows.
+4. Verify the actual GHM auth/session, Business membership, authorization, tenant boundaries and endpoint behavior for each workflow being tested.
+5. Enable owner-led testing as soon as the relevant workflow is genuinely functional; record failures against the affected workflow rather than holding all of Connect for unrelated modules.
 
-### Release track B — QuoteFlow early access
+### Track B — restore existing QuoteFlow workflows on GHM
 
-1. Complete PR #25 identity cutover and resolve any conflict with PRs #20/#23/#19.
-2. Resolve legal acceptance with GHM #201 and owner-approved documents.
-3. Fix the Android preview workflow and complete device acceptance.
-4. Verify GHM registration, multi-Business selection, Free entitlement and local storage preservation.
-5. Invite a small controlled group; no paid subscription activation until entitlement/payment gates are complete.
+1. Continue PR #25's GHM identity/Business cutover and resolve actual API compatibility issues.
+2. Do not require GHM PR #201, legal document publication or counsel approval for free early access. Paid-service legal acceptance is deferred.
+3. Preserve local Customers, Items, Quotes, Invoices and existing device data. Do not turn optional legacy-data recovery into a fresh-account testing gate.
+4. Build the GHM-native Android app, verify install/signing/package identity and exercise the existing quote-to-invoice/PDF/share workflow on a real device.
+5. Keep paid subscriptions, Pro entitlements, checkout and payment-provider activation disabled.
+6. Begin owner-led testing when the GHM identity/Business path and app workflow are working; invited testers may follow.
 
-### Parallel preparation — Tender AI
+### Parallel tracks
 
-Keep work on the two feature branches; do not create more branches until current branch/PR relationship is reconciled. Finish GHM gap decisions and live GHM/real-model test plan before customer pilot.
-
-### Later work — Wealth and Legal
-
-Wealth: provider-neutral architecture and Supabase/Stripe/Paystack removal plan first; no mock Pro activation.
-Legal: architecture decision for GHM integration and core MVP completion first; do not introduce new paid services until cost/necessity is reviewed.
+Tender AI, Wealth and Legal OS remain separate projects. They do not delay Connect or QuoteFlow owner testing. No new product, infrastructure or monitoring work is implied by this sequence.
 
 ## 9. Evidence limitations and follow-up
 
@@ -301,7 +297,7 @@ Keep out of this slice: Projects/Quotes/Opportunities, Analytics/engagement, sup
 
 Do not set `EXPO_PUBLIC_GHM_AUTH_ISSUER_BASE_URL` to a guessed Resource API or Render hostname. Do not co-host issuer-only signing secrets in the ordinary Resource API, repurpose sandbox services, weaken TLS, or create a new paid service. The no-cost topology must be reviewed and proven before production auth can be enabled.
 
-**Legal acceptance:** QuoteFlow PR #25 calls the proposed GHM legal endpoints in PR #201 and remains fail-closed until approved documents are published. GHM #201 is still draft, has a stale-base/security-boundary re-review requirement (caller-supplied account ID in SECURITY DEFINER functions), and the owner previously directed that legal-document work remain parked until core systems are stable. Do not revive or merge #201, draft legal wording, or seed documents as part of this task. This remains a launch gate if mandatory legal acceptance is required for the pilot; the owner must explicitly resume the legal publication decision after core systems are stable.
+**Paid-service legal work — deferred:** QuoteFlow's active startup path no longer invokes the GHM PR #201 legal endpoints. The owner has confirmed PR #201 and the consolidated counsel package are parked, and neither is a dependency of free owner-led testing. Do not revive, merge, deploy or seed PR #201 for this phase. Revisit it only when the owner prepares paid services.
 
 **QuoteFlow next actions:**
 1. Preserve PR #25; do not merge until the production issuer topology and exact live identity flow are qualified.
@@ -325,27 +321,15 @@ The latest GHM source/handover review does not support a production cutover yet:
 
 **No-cost constraint:** do not resolve these gates by creating a paid Render Web Service, new database, separate paid database tool, keepalive schedule, or sandbox relaunch. The existing Worker/VPC/Hyperdrive/Tunnel candidate remains an architecture candidate, not an approved production topology.
 
-### 10.4 Revised execution order — least work before early access
+### 10.4 Corrected execution order — owner-led free early access
 
-**P0 — shared GHM readiness, no product code shortcuts**
-1. Continue Amanda/Render role-authority resolution and obtain a fresh verified backup/recovery point.
-2. Complete a no-cost, isolated, strict-TLS production topology for the Actor Gateway and Authentication Issuer; prove each with the correct dedicated identities and no shared issuer secrets.
-3. Refresh the production migration ledger and reconcile the exact pending inventory. Qualify the PR #303 ACL correction and PR #298 batch runner on their exact current heads. Derive only the first dependency-safe contiguous migration batch; keep execution fail-closed until the live evidence and rollback gate pass.
-4. Deploy and smoke-test the exact GHM runtime/Actor Gateway/issuer route set only after the above gates. Auto-deploy remains OFF; no dummy URL or bypass of startup guards.
+The shared GHM production issues below remain real technical work, but they must be treated as the core backend-transition work, not expanded into a portfolio-wide checklist. Resolve only the identity, database authority, migration, endpoint and deployment dependencies needed for the existing product workflows being tested. Do not create new paid infrastructure or weaken security boundaries.
 
-**P1 — Connect directory-only pilot**
-1. From current Connect main, create a narrow directory-only integration slice. Use PR #68 as reference, but avoid pulling in its Projects/Opportunity and Analytics/Commercial changes.
-2. Do not require GHM #243/#244 for the first pilot if supplier filters and Analytics are disabled.
-3. Test registration → owner membership → profile completion → founder review → approved public listing → anonymous browse/search → public profile, including authorization denial and unpublished/inactive exclusion.
-4. Pilot with invited businesses; no payment, subscription or paid offer messaging.
+**Connect:** reconcile PR #68/#70 overlap and GHM API dependencies; restore the existing non-paid workflows on GHM; keep paid commercial surfaces inactive; verify each selected workflow against the actual deployed GHM endpoints and tenant authorization. Do not reduce Connect to a directory-only product.
 
-**P1 — QuoteFlow Free pilot**
-1. Retain PR #25; repair artifact delivery without extra spend.
-2. Wait for the shared production GHM issuer/Actor Gateway to be live and run the end-to-end GHM identity/multi-Business suite.
-3. Keep subscription/billing disabled. Do not migrate old device namespaces; preserve them.
-4. Do not bypass the legal acceptance fail-closed state. Resume legal publication only when the owner explicitly reopens it and approved content is available.
+**QuoteFlow:** keep PR #25 focused on GHM identity/Business context and local-first data preservation; legal acceptance PR #201 is deferred; build/install the GHM-native Android app and test the existing quote, reminder, invoice, PDF and share workflows. Keep subscriptions/payments inactive.
 
-**Deferred, not launch blockers for the first two products:** Connect Projects/Opportunities (#70/#299), supplier classification (#243), Analytics/engagement (#244), Wealth Supabase/provider migration, Tender AI live model/persistence qualification and Legal OS architecture/MVP work.
+Start owner-led testing with the owner's account as soon as the corresponding workflow works end to end. Invite a few friends if useful. Do not wait for unrelated product modules, the wider counsel submission, or paid-service work. Do not claim a workflow is live until its actual endpoint/build/device path has been verified.
 
 ### 10.5 Evidence boundary
 
