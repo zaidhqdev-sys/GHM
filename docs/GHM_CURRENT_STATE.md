@@ -1464,3 +1464,27 @@ This is the governing direction, not a substitute for detailed handovers. No pro
 - PR #307 is being closed as assistant-generated, unneeded work; it is not a product dependency. Its branch is preserved and not deleted.
 - This cleanup does not alter GHM main application source, production database, migrations, deployment, runtime settings, customer data, payment state or infrastructure.
 
+
+
+
+## 2026-11-25 — controlling product backend-transition baseline
+
+The owner has confirmed the engineering objective: transition the already-built Zaid Connect and QuoteFlow products from their previous backend to GHM while preserving existing product functionality and user experience. This is backend replacement, not product reconstruction, redesign, scope reduction, or a new approval/qualification programme. Payment activation remains outside this work and PayFast remains paused. Do not make legal/counsel work, paid entitlements, checkout, AI, or unrelated GHM subsystems prerequisites to migrating workflows that do not depend on them.
+
+The pre-GHM history boundary is the last product state before the first GHM production-replacement foundation commit, `83d66e6f7362649e2580a61189c6a460baf82a87` (2026-09-09 13:25 SAST). The 2026-09-10 construction handover confirms both products remained on Supabase and no product adapters/cutover had begun.
+
+Baseline candidates recovered from repository commit history:
+- Zaid Connect: code-bearing candidate `c32b4c6e824598908e9612a782c1217fb1a4cb5b` and latest pre-GHM documentation snapshot `abcffa73f893602c25310a58946bebb91fd7eeb5` (2026-09-03 SAST).
+- QuoteFlow: code-bearing candidate `a2912bfacde704745a9d424fe4192cf528f603d7` and latest pre-GHM README snapshot `dbcf165978aa0456350fcb2aa995e2ec6436e892` (2026-09-02 SAST).
+
+The baseline-to-current comparisons show the existing products and migration branches must be reconciled rather than rebuilt:
+- Connect current main is 151 commits beyond the recovered snapshot; existing PR #70 is the narrow Project/Quote/Opportunity caller transition, while PR #68 carries additional distinct workflow migrations and overlaps #70. Preserve both branches; do not merge them together or substitute either wholesale. Reconcile only the unique active callers and use GHM APIs already present on main wherever possible.
+- QuoteFlow current main is 11 commits beyond its recovered snapshot; existing PR #25 is 263 commits beyond that snapshot and contains the GHM identity/control-plane adapter. Preserve QuoteFlow's local-first operational records (customers, catalogue/items, quotes, invoices, quote lines, Business preferences and reminder state). GHM owns account identity/authentication/session lifecycle and Business membership/creation/selection/authorization only.
+
+Known actual integration dependency: QuoteFlow's Authentication Issuer implementation exists in GHM main, but the current Render inventory has no separately deployed Authentication Issuer or verified HTTPS origin. The existing `ghm-actor-gateway` is a different service and is not a substitute. Continue independent Connect integration work while resolving the issuer through the existing hosting decision; do not create paid infrastructure or weaken the established trust boundary.
+
+The current GitHub Free Actions allowance is exhausted for the November cycle; recent workflow attempts failed before job steps with no source diagnostics. Do not blindly rerun until the allowance resets. Reuse recorded local exact-source validation where the source SHA is unchanged, and perform only the smallest local validation needed for changed code. Do not report a workflow as failed due to code when no runner/steps ran.
+
+This section supersedes historical September/October construction handovers wherever they imposed product-adapter prohibitions, broad shadow-qualification programmes, or blanket cutover gates that conflict with this owner-confirmed backend-transition objective. Existing security, tenant-isolation, authentication, and data-integrity requirements that are directly necessary for a working GHM backend remain in scope; do not expand them into unrelated platform programmes.
+
+No application source, production database, role/ACL, credential, secret, runtime configuration, deployment, product routing, customer data, or payment state changed during this documentation reconciliation.
