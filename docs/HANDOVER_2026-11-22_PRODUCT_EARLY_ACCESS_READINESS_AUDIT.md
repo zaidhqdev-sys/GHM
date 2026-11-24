@@ -504,3 +504,31 @@ Before stopping work, check whether it actually prevents the specific workflow t
 - No production deployment, production database change, APK publication or payment activation was performed by these documentation corrections.
 
 **This incident record is authoritative and must be read before future planning or implementation on these products.**
+
+## 25 November 2026 — SUPERSEDING OWNER SCOPE: GHM BACKEND REPLACEMENT ONLY
+
+This entry supersedes any earlier handover language that describes a newly invented early-access programme, owner-led pilot as a required phase, free-only product scope as the final intended release, a reduced directory-only/limited-workflow product, or additional product readiness gates. Those were not the original scope.
+
+### The owner's actual original plan
+
+1. Zaid Connect and QuoteFlow were already operational products on their previous backend, with the payment system excluded/not yet part of the completed product operation.
+2. The assigned engineering task was to replace the previous backend with GHM and preserve the existing products and their intended functionality. This is a backend migration, not a product rebuild, redesign, feature reduction or new launch-readiness programme.
+3. No additional gates, approval stages, pilot programmes, legal acceptance systems, product scope restrictions, or unrelated qualification programmes were authorised as additions to that task.
+4. Once the GHM backend replacement was complete, the owner would arrange the legal documents.
+5. After that, the owner intended to release the full products together with the payment architecture.
+
+### Binding scope rules
+
+- Treat GHM backend replacement and preservation of existing product functionality as the engineering objective. Do not substitute a directory-only pilot, owner-only early access, friend testing, reduced free tier, demo, or partial product release as the project goal.
+- Do not introduce new gates. Do not turn recommendations, missing documentation, counsel questions, optional audits, new acceptance APIs, new governance processes or unrequested tests into prerequisites.
+- Do not remove, disable or defer existing non-payment product functionality merely to make a reduced scope easier to qualify. Preserve the existing product behaviour while replacing backend dependencies.
+- Payment integration/activation is outside the immediate backend-replacement task. Do not activate or redesign it as part of this task. The owner's intended sequence is legal documents after GHM migration, then full product release with the payment architecture.
+- Legal work is not an engineering prerequisite to completing the GHM backend replacement. The owner will arrange it at the stated point in the sequence. Do not resume counsel work, prepare more legal packages or add legal acceptance dependencies unless the owner asks.
+- Existing, evidenced technical dependencies that are genuinely part of replacing the backend remain in scope. State precisely which existing product function they affect and what must be done to complete the GHM replacement. Do not expand a narrow issue into a new product gate.
+- A backend migration is not complete merely because code or CI passes: verify the actual GHM integration and preservation of the existing product workflows. Equally, do not demand unrelated production/security programmes or new infrastructure unless they are demonstrably required by the GHM replacement itself.
+
+### Correction to previous incident wording
+
+The earlier incident record correctly acknowledged assistant-created legal and scope assumptions, but its description of the intended next phase as 'free owner-led early access' did not fully capture the owner's original plan. That testing was discussed as a way to verify the restored products; it was not a replacement target, mandatory staged release, or authority to introduce new gates. The authoritative target is the original full Connect and QuoteFlow products on GHM, followed by the owner's legal work and then full release with payment architecture.
+
+**This entry supersedes conflicting sequencing and scope statements elsewhere in this handover. Read it as the controlling owner instruction.**
