@@ -1,6 +1,6 @@
 # Product Early-Access Readiness Audit — 2026-11-22
 
-**Status:** Portfolio audit in progress; evidence-based source review completed. No product is declared GO for public early access by this document.
+**Status:** Portfolio audit in progress; evidence-based source review completed. This audit is not an authorization checklist for owner-led free testing of Zaid Connect and QuoteFlow. The owner has confirmed the immediate sequence is backend migration → owner-led free early access (owner account, with a few invited testers if useful) → real workflow testing, feedback and fixes. Paid services are not being released. Paid agreements, paid-tier licensing, subscriptions, checkout, payment-provider activation and related counsel review are deferred until the owner prepares the paid-service release. No public launch or paid-service release is implied.
 **Audit owner:** ZAID Technologies
 **GHM baseline inspected:** `main` at `93ff3c774ce225760b0e3e2cf99a770b38e8a097`
 **Audit branch:** `docs/product-early-access-readiness-audit-20261122`
@@ -15,8 +15,8 @@ This is a repository and handover evidence audit. It is not a live production pe
 
 | Product | Source maturity | Mainline / integration state | Early-access decision |
 |---|---|---|---|
-| Zaid Connect | Broad product surface; directory and business workflows exist | Major GHM migration PRs #68 and #70 remain draft; current main still contains Supabase runtime/dependency surfaces | **Conditional candidate — directory-only pilot after GHM production cutover and smoke tests** |
-| QuoteFlow | Existing app was built and launched on its previous backend; current hosted APK stopped opening after the GHM backend switch and has been withdrawn from the website | Main still contains Supabase SDK; GHM identity cutover PR #25 is draft; GHM issuer and device-level GHM-native rebuild/acceptance remain outstanding | **Conditional candidate — no Android download until GHM-native rebuild, device testing, signing and upload** |
+| Zaid Connect | Broad product surface; directory and business workflows exist | Major GHM migration PRs #68 and #70 remain draft; current main still contains Supabase runtime/dependency surfaces | **Owner-led free early access — migrate the intended existing Connect workflows to GHM, then test the selected workflows with the owner and invited testers; do not impose a directory-only product redesign as a prerequisite** |
+| QuoteFlow | Existing app was built and launched on its previous backend; current hosted APK stopped opening after the GHM backend switch and has been withdrawn from the website | Main still contains Supabase SDK; GHM identity cutover PR #25 is draft; GHM issuer and device-level GHM-native rebuild/acceptance remain outstanding | **Owner-led free early access — restore the existing QuoteFlow workflow on GHM, then test it with the owner and invited testers; rebuild, install and verify the Android app before use/distribution** |
 | Tender AI | Analysis engine and web workflow exist on feature branches | No PRs; web app branch unmerged; no live GHM or real-model verification | **Not ready — internal/demo only** |
 | Zaid Wealth | Broad web UI and serverless functions exist | Main is still Supabase-backed; mock analysis; Stripe/Paystack provider logic; mock query-string subscription activation | **Not ready — rebuild/migrate before external early access** |
 | ZAID Legal OS | Legal practice workspace foundation with 32 API routes and document/AI pipeline | Main has own Prisma/Postgres and Better Auth; PayStack; no GHM integration verified; important UX/security gaps | **Not ready — narrow MVP and resolve high-risk gaps first** |
@@ -47,9 +47,9 @@ This is a repository and handover evidence audit. It is not a live production pe
 6. GHM Actor Gateway production readiness, production role separation, production migration inventory/batch selection, and deployment/cutover remain unresolved. GHM PR #298 explicitly keeps the production batch manifest empty and production migration execution fail-closed; PR #303 is a further privilege audit correction.
 7. A historical Connect launch runbook still says launch authorization is not granted and includes old Supabase migration assumptions. It must be reconciled with the current GHM-only target rather than followed literally.
 
-### Recommended early-access scope
+### Owner-led free early-access scope
 
-A **directory-only controlled pilot** is the smallest useful release: public directory browsing, business registration, owner profile completion, founder review/approval, public listing, business search and safe profile views. Exclude or keep disabled until separately qualified: subscriptions/checkout, analytics requiring entitlements, unqualified supplier/featured ranking, unverified relationships/outcomes, Projects/Quotes/Opportunities until PR #70 + GHM #299 are qualified, and any remaining Supabase-backed feature.
+The owner has not reduced Zaid Connect to a directory-only product. The intended product is the existing Connect application with its existing workflows restored through GHM. The immediate test audience is the owner, with a small number of invited testers if useful. Do not treat unfinished commercial features as launch dependencies: keep subscriptions, checkout, paid entitlements and payment-provider activation disabled. Complete the backend migration for the actual workflows being tested and verify their authorization and tenant boundaries. If a particular workflow is not yet migrated or does not work, record that specific defect; do not redefine the product or make unrelated unfinished modules block testing of working migrated workflows.
 
 ### Required GO evidence
 
@@ -83,24 +83,22 @@ A **directory-only controlled pilot** is the smallest useful release: public dir
 2. PR #25 is the GHM-native identity cutover and removes the Supabase SDK/client/RPC adapter on its feature branch. It remains draft. CI passed on exact head `6865048a...` (TypeScript/Jest); Android Gradle assembly and package verification passed, but the final preview APK upload step failed. The original app had already been built and launched on its previous backend; the currently hosted legacy APK stopped opening after the backend switch and has since been withdrawn from the corporate website. Therefore the GHM-native Android release is not yet qualified.
 3. GHM live login/session/managed-Business flow still needs end-to-end qualification against deployed mainline. Profile API is contract-only/fail-closed pending live DB reconciliation.
 4. Business ownership/mapping and the legacy local-storage recovery lead remain unresolved. The known two bot identities are explicit exclusions; no inference from storage key names is permitted.
-5. Legal acceptance depends on GHM PR #201, still draft. It intentionally has an empty document catalogue and fails closed until owner-approved documents are supplied, versioned, deployed and seeded through reviewed migration.
 6. Subscription/entitlement is not connected; Free access only until a GHM entitlement contract is ready.
 7. Device-level acceptance on supported Android versions, upgrade/install behaviour, offline/local persistence and backup/restore remain to be completed.
 
 ### Recommended early-access scope
 
-Keep early access **Free and limited**: new GHM registration, explicit managed-Business creation/selection, customer management, quotes, reminders, invoice generation and PDF sharing. Do not activate paid subscription features. Preserve existing local data; do not attempt automatic legacy mapping or deletion. Require approved current legal documents and durable GHM acceptance before account creation/sign-in if that is the agreed legal gate.
+Keep early access **Free and limited**: new GHM registration, explicit managed-Business creation/selection, customer management, quotes, reminders, invoice generation and PDF sharing. Do not activate paid subscription features. Preserve existing local data; do not attempt automatic legacy mapping or deletion. Do not make GHM PR #201, legal-counsel review, paid-service agreements or durable paid-service acceptance prerequisites for this free owner-led testing phase.
 
 ### Required GO evidence
 
 - Merge-ready, exact-head GHM identity cutover with no Supabase runtime dependency.
 - Android preview APK build succeeds and is installed/tested on a real device.
 - Register/login/refresh/logout, multiple Business selection/switching and ownership denial pass against deployed GHM.
-- Legal document catalogue and versioned acceptance API are live, populated with owner-approved documents and tested.
 - Local storage scope activation remains explicit, conflict-first, resumable and verified; source namespace remains preserved.
 - Free entitlement behaviour is explicit and no unverified billing path is exposed.
 
-**Assessment:** The original QuoteFlow product workflow was built and launched on its previous backend. The current public APK became non-functional after the GHM backend switch and has been removed from the website. The proposed GHM-native release is not ready to distribute; it remains a strong near-term candidate after the identity, legal and Android build gates.
+**Assessment:** The original QuoteFlow product workflow was built and launched on its previous backend. The current public APK became non-functional after the GHM backend switch and has been removed from the website. The GHM-native backend transition remains unfinished. The legal-acceptance dependency is removed from the free early-access scope; focus remaining work on the GHM identity/Business path, preserving local records, Android rebuild and real-device workflow tests.
 
 ## 4. ZAID Tender AI
 
