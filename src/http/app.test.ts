@@ -927,16 +927,32 @@ test('lazy auth service uses the app-injected auth persistence for reset session
 });
 
 
-test('public directory route passes canonical location and geo filters without authentication', async () => {
+test('public directory route passes canonical location, geo and supplier filters without authentication', async () => {
   let received: unknown;
   const directoryService: DirectoryService = {
     search: async query => { received = query; return { items: [], page: query.page, pageSize: query.pageSize, total: 0 }; },
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&sort=distance`);
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&businessType=suppliers&sort=distance`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: 'suppliers', sort: 'distance', page: 1, pageSize: 20 });
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+test('public directory route accepts contractor filtering and rejects unknown business types', async () => {
+  const received: unknown[] = [];
+  const directoryService: DirectoryService = {
+    search: async query => { received.push(query.businessType); return { items: [], page: query.page, pageSize: query.pageSize, total: 0 }; },
+  };
+  const { server, baseUrl } = await startDirectoryTestServer(directoryService);
+  try {
+    const contractors = await fetch(`${baseUrl}/api/v1/public/businesses?businessType=contractors`);
+    assert.equal(contractors.status, 200);
+    assert.deepEqual(received, ['contractors']);
+    const invalid = await fetch(`${baseUrl}/api/v1/public/businesses?businessType=unknown`);
+    assert.equal(invalid.status, 400);
+    assert.deepEqual(received, ['contractors']);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
