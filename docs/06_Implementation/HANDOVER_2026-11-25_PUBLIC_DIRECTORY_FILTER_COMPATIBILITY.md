@@ -108,3 +108,18 @@ Connect main complete tree and code search confirms no active application writer
 Therefore GHM needs no new promotion authority to preserve the behavior that actually exists. Add only protected `is_featured NOT NULL DEFAULT false`, public read projection and featured-first ordering. No write path. Fresh GHM Businesses default false; legacy values cannot be presumed or imported from the unavailable Supabase database. Do not add Founder review, commercial plan or PayFast dependency.
 
 Next change is a narrow GHM schema/Directory contract implementation, followed by Connect Marketplace caller cutover. No production changes were made in this audit.
+## 2026-11-25 — Protected featured Directory parity implementation
+
+Implemented on this focused branch after the legacy writer audit established that the original product only reads protected featured state; there is no active feature/unfeature writer or expiry behavior.
+
+### Code changes
+- Migration `20261125010000_add_protected_business_featured_directory_order.sql`: adds `ghm.business.is_featured BOOLEAN NOT NULL DEFAULT false` and a partial public-directory ordering index for active, verified, approved Businesses. No write function, owner grant, promotion workflow, payment rule or expiry field is added.
+- `PublicBusiness` adds optional `isFeatured` and the public Business repository maps the canonical database flag.
+- Directory repository selects and maps `is_featured`; featured Businesses remain first for default rating, newest, reviews and distance sort modes. Existing visibility filters, supplier/contractor filters, count and pagination remain intact.
+- Migration contract tests verify default/protected field boundary, public projection and featured-first order. They are included in `npm test`.
+
+### Safe defaults and data
+New Businesses default to not featured. No historical values are imported because the legacy Supabase database is unavailable and owner has accepted fresh signup. No GHM write authority is created.
+
+### Validation status
+Source changes and regression contract tests are committed. Full local build/test and exact-head CI have not yet been run. Do not claim production qualification. No production migration or deployment has occurred.
