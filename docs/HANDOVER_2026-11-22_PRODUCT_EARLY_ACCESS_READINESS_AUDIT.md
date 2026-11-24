@@ -451,3 +451,29 @@ Latest exact PR head: `e1a8a780f85ecd40779bf9a2c28773b33d0d29f5` (17 commits ahe
 A follow-up security correction now explicitly keeps the legacy account-scoped Customer and Quote APIs isolated to rows with `business_id IS NULL`. Legacy Quote creation also requires a legacy account-scoped Customer. Business-scoped records are visible and mutable only through the Business tenant routes, whose repositories validate active membership within the same transaction.
 
 Latest exact-head CI run: `45280715548`, pending/queued at the time of this update. No pass is claimed. The preceding run on `ac6a1f1ed31d46f95c0de976f18a7986b035e6e5` was cancelled when the branch advanced. PR #306 remains draft/open; no merge or production rollout.
+## 2026-11-24 — Superseding owner decision: Connect and QuoteFlow free early access
+
+This section supersedes earlier recommendations in this audit that conflict with the owner's clarified immediate objective. In particular, earlier directory-only Connect pilot recommendations, blanket statements that no product may enter early access, and QuoteFlow legal-acceptance/PR #201 gates are historical audit recommendations, not current owner decisions.
+
+### Current objective
+
+- Restore the existing Zaid Connect and QuoteFlow products after their GHM backend transition and enable free owner-led early-access testing.
+- The owner will test using their own account and may invite a small number of friends. This is not a public launch.
+- The products are not being reduced to a directory-only Connect slice or a QuoteFlow demo. The aim is to test the existing product workflows as they are restored through GHM.
+- Paid services are not being released. Keep subscriptions, paid entitlements, trials, checkout and payment-provider activation disabled. Paid-service agreements, paid-tier licensing and related counsel work are deferred until the owner prepares the paid-service release.
+- The consolidated counsel package and GHM PR #201 are parked and are not dependencies of this free testing phase.
+
+### What remains genuine engineering work
+
+- Complete and verify the GHM identity/session and Business membership paths used by the products. Current branch code and passing contract tests do not establish that the production issuer/runtime is deployed and working.
+- Migrate the existing Connect workflows needed for testing; do not use commercial/paid panel acceptance or unfinished analytics as a reason to hold unrelated free workflows.
+- For QuoteFlow, keep operational Customers, Items, Quotes and Invoices local-first; preserve existing local data and verify the GHM account/Business context and Android build/device workflows.
+- Run current exact-head CI and real integration/device tests. A failure must be tied to its actual cause and the affected workflow; do not turn it into a portfolio-wide or legal blocker.
+- No weakening of GHM identity, authorization, tenant isolation, DB ACL, backup or TLS boundaries; no invented live/deployed status.
+
+### Current evidence checkpoint
+
+- QuoteFlow PR #25 legal acceptance was removed from the active App startup path on 24 November. README, architecture and handover were updated. Exact-head CI run 45496072031 and Android preview run 45496072197 failed immediately; the available workflow-log endpoint returned 404, so the failure cause is not established. This is a validation issue to diagnose, not a reason to restore the legal gate.
+- Connect PR #68 handover and PR description now record that paid/commercial terms gates do not block free owner-led testing of migrated non-paid workflows.
+- ZaidTechnologies PR #5 and GHM PR #201 remain open/draft but are explicitly parked/deferred. No counsel package was sent, merged or published.
+- No production database, service configuration, deployment, public APK distribution or payment activation was changed by these corrections.
