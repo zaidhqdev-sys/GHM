@@ -75,3 +75,24 @@ No speculative schema or SQL was added. The next safe step is to identify the ca
 
 ### Scope status
 PR #308 remains a route-parser compatibility fix only. It does not close featured parity. No DB schema change, migration, new admin endpoint, production data write, deployment, or Connect Marketplace cutover was made.
+## 2026-11-25 — Canonical Business schema and promotion-authority source verification
+
+Used the recursive GHM main Git tree to identify the exact canonical migration files (rather than guessing migration names).
+
+### Canonical schema facts
+- `database/migrations/20260909150000_create_business_identity.sql` creates `ghm.business` with name, slug, verification_status, is_active and timestamps. It does not define is_featured or featured_until.
+- `database/migrations/20261105230000_create_founder_directory_review.sql` adds directory review metadata, a dedicated founder reviewer allowlist, immutable review events and SECURITY DEFINER submit/list/decision functions.
+- `database/migrations/20261109140000_close_evidence_and_founder_review_authority.sql` explicitly disables Founder directory review: `ghm.is_directory_listing_founder_reviewer()` always returns false and runtime execution is revoked from the review submit/list/decision functions. `src/http/directory-review-router.ts` also returns deterministic 403 for these endpoints.
+- `database/migrations/20261110160000_add_admin_capability_catalogue_governance.sql` permits active system administrators to govern Capability taxonomy drafts/lifecycle only. It is not a general Business promotion authority and must not be reused to mutate featured listing state.
+- `docs/architecture/CONNECT_FOUNDER_DIRECTORY_REVIEW_GHM_CONTRACT.md` explicitly states Founder review authority is separate from general system-admin status and that the contract is proposal-only / not qualified.
+
+### Original Connect promotion facts
+- `supabase/migrations/20260718130542_establish_directory_business_contract.sql` defines `tier` and protected `is_featured` on `public.businesses`; its comments say `is_featured` is protected promotion state and client owners cannot mutate it.
+- That migration explicitly deferred subscription/payment-controlled promotion. Do not infer that any business should be featured because of a plan, subscription, review, verification or trust score.
+- The Connect source audit previously recorded `featured_until`, but its exact migration and active write authority have not yet been verified from the complete Supabase migration history. Treat expiry as an unverified legacy contract detail until located; do not add a GHM column based only on the earlier summary.
+
+### Implementation consequence
+There is currently no qualified GHM authority for changing featured promotion state. Founder directory review is disabled and is a different business process; Capability catalogue admin functions are unrelated. Do not add a new promotion mutation using either path or expose is_featured to owners. The next step is to establish whether any live Connect workflow actually writes is_featured/featured_until and inspect the complete legacy migration history / database contract. If no active writer exists, preserve the effective existing read state during migration without inventing new commercial promotion controls. Keep PayFast/payment activation out of scope.
+
+### Current delivery status
+PR #308 remains the isolated supplier/contractor query parser fix. This investigation made no schema or application code changes, did not add a feature lifecycle, and did not cut over Connect Marketplace. No production database, data, deployment, secrets or paid service changed.
