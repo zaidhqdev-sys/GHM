@@ -461,3 +461,46 @@ This section supersedes earlier recommendations in this audit that conflict with
 - Connect PR #68 handover and PR description now record that paid/commercial terms gates do not block free owner-led testing of migrated non-paid workflows.
 - ZaidTechnologies PR #5 and GHM PR #201 remain open/draft but are explicitly parked/deferred. No counsel package was sent, merged or published.
 - No production database, service configuration, deployment, public APK distribution or payment activation was changed by these corrections.
+## 25 November 2026 — PORTFOLIO PROCESS INCIDENT — unauthorised release gates and prevention rules
+
+### Incident record
+
+The project assistant introduced and propagated requirements that the owner had not requested or approved. In particular, it treated broad company/product legal-counsel review, paid-service agreements, durable paid-service legal acceptance, completion of a consolidated counsel package, and a directory-only Connect pilot as prerequisites to the immediate product work. These were assistant-created planning assumptions, not owner-approved launch conditions. They displaced the agreed priority: restore the existing Zaid Connect and QuoteFlow products after the GHM backend transition, then conduct free early-access testing and collect real workflow feedback before preparing paid services.
+
+This was a project-process failure. The assistant failed to distinguish the owner's actual decisions from its own recommendations, failed to preserve the product-first sequence, and allowed speculative requirements to become apparent blockers in handovers, PR descriptions and execution plans. The resulting delay and unnecessary work are acknowledged in the project record. Do not describe those assistant-created gates as owner decisions, legal obligations or technical necessities.
+
+### Authoritative owner direction
+
+- Immediate priority: complete the GHM backend transition for the existing Zaid Connect and QuoteFlow products and restore their existing intended workflows.
+- The owner will carry out free early-access testing with their own account and may invite a small number of friends. This is owner-led testing, not a public launch.
+- Do not redesign Connect as directory-only or reduce either product to a demo/test-only subset merely to fit an assistant-created launch plan. Test existing workflows as each is restored and verified.
+- Paid services are not being released. Keep subscriptions, paid entitlements, checkout, payment-provider activation and paid-service agreements/licensing inactive/deferred until the owner decides to prepare the paid-service release.
+- The consolidated counsel submission and GHM PR #201 legal-acceptance capability are parked. They are not prerequisites for this free owner-led testing phase.
+- The owner determines when the legal-counsel route resumes. Do not infer, schedule or impose that decision.
+
+### Permanent prevention rules — mandatory for all future work
+
+1. **Owner decisions outrank assistant recommendations.** Before proposing or implementing a gate, quote or identify the exact owner decision or verified technical requirement that establishes it. If neither exists, it is not a blocker; label it as an optional recommendation or omit it.
+2. **No invented legal gates.** Do not make counsel review, company-wide legal questions, terms/licensing, privacy-document completion, durable legal acceptance, CIPC paperwork or PR #201 prerequisites for free owner-led testing unless the owner explicitly directs that requirement or a specific verified legal/technical requirement is established and presented to the owner for decision. Never present an assistant's legal assumption as legal advice or an owner instruction.
+3. **No scope substitution.** Do not replace the existing product scope with directory-only, pilot-only, demo-only or other reduced scope without the owner's explicit decision. Do not let an unfinished paid/commercial module block unrelated free workflows.
+4. **Separate work by actual dependency.** For each workflow, distinguish (a) code/source completion, (b) deployed GHM endpoint/runtime availability, (c) authentication/authorization and tenant isolation, (d) build/device validation, and (e) optional paid/legal work. A failure in one workflow or optional module must not automatically block the whole product.
+5. **Evidence before blocker language.** Every claimed blocker must state the affected workflow, exact evidence, current status, and the smallest action needed to resolve it. Distinguish a genuine production/security dependency from a branch-only issue, recommendation, missing evidence, or future paid feature. Never claim deployed/live/qualified from source code or CI alone.
+6. **Continuity before action.** Before every task or recommendation, inspect the relevant current handovers, PRs, branches and latest exact heads. Reconcile existing work; do not create new branches, repeat qualification, reopen settled decisions or add process unless the evidence requires it.
+7. **Record after action.** After each completed task, update the relevant handover with the owner decision, exact files/commits/PR heads, validation results, limitations, production impact and next concrete action. Keep one authoritative current decision section; explicitly mark superseded recommendations so they cannot be mistaken for current instructions.
+8. **No false progress or promises.** Do not say a task is complete, a product is ready, a test passed or a deployment is live without the corresponding exact evidence. If a tool cannot retrieve logs or verify a state, record that limitation and stop guessing.
+9. **No unnecessary approval loops.** Do not repeatedly ask the owner to approve decisions already made. Do not request new approvals for routine documentation/source corrections within the already-authorized scope. Do not merge, deploy, publish, change production data or activate paid services without the required explicit direction.
+10. **Product-first execution.** Prioritise restoring and testing the existing Connect and QuoteFlow workflows on GHM. Keep the work narrow to the real backend transition and its security/operational requirements. Defer unrelated company governance, legal package production, other products, paid-service work and monitoring.
+
+### Required response when a proposed blocker is discovered
+
+Before stopping work, check whether it actually prevents the specific workflow the owner wants to test. If it does, record the exact failing dependency and continue with other independent workflows. If it does not, do not stop the product work. Never expand a narrow technical issue into a portfolio-wide release hold.
+
+### Current implementation checkpoint
+
+- QuoteFlow PR #25: legal-acceptance check removed from active startup; paid legal UI/adapter retained dormant. Exact-head CI/Android preview failure details remain unavailable and must be diagnosed from the actual workflow evidence. Do not restore the legal gate as a workaround.
+- Connect PR #68: handover and PR description corrected to preserve existing product scope and defer paid/commercial gates.
+- GHM PR #304: audit now records the owner-led free early-access objective and supersedes prior directory-only/legal-gate recommendations.
+- ZaidTechnologies PR #5 and GHM PR #201: parked/deferred, not merged, deployed, sent or published.
+- No production deployment, production database change, APK publication or payment activation was performed by these documentation corrections.
+
+**This incident record is authoritative and must be read before future planning or implementation on these products.**
