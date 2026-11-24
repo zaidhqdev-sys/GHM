@@ -1488,3 +1488,18 @@ The current GitHub Free Actions allowance is exhausted for the November cycle; r
 This section supersedes historical September/October construction handovers wherever they imposed product-adapter prohibitions, broad shadow-qualification programmes, or blanket cutover gates that conflict with this owner-confirmed backend-transition objective. Existing security, tenant-isolation, authentication, and data-integrity requirements that are directly necessary for a working GHM backend remain in scope; do not expand them into unrelated platform programmes.
 
 No application source, production database, role/ACL, credential, secret, runtime configuration, deployment, product routing, customer data, or payment state changed during this documentation reconciliation.
+
+
+## 2026-11-25 — Authentication Issuer deployment feasibility confirmed
+
+The isolated Authentication Issuer implementation is present on GHM main following merged PR #276. This does not mean a production issuer service is deployed.
+
+Evidence checked on 2026-11-25:
+- Merged PR #276 explicitly records that production issuer deployment remains blocked under the current $0 constraint because the Cloudflare Workers Free Argon2id feasibility test exceeded the existing CPU budget. The benchmark preserves the existing Argon2id profile `m=65536,t=3,p=1` and tests native/WASM PHC interoperability; the Worker Free CPU budget in the benchmark is 10 ms. Do not weaken the password hash profile or claim the Worker Free runtime is qualified.
+- Current Render service inventory (including preview services) contains `GHM-Internal-Runtime`, `ghm-actor-gateway`, and old sandbox/qualification services, but no separately deployed Authentication Issuer.
+- `ghm-identity-qualification` belongs to the old sandbox environment `evm-db43vk4s728c739fn460`, on branch `integration/ghm-identity-merge-candidate-20261018`. It is not the production issuer and must not be revived or repurposed as a shortcut.
+- `ghm-actor-gateway` is a distinct service with a different trust responsibility; it is not the issuer.
+- The existing GHM Internal Runtime remains a separate Resource API process on main, auto-deploy OFF. Do not co-host issuer secrets in the Resource API process or weaken ADR-001 isolation.
+- ADR-001 permits distinct internal services or isolated processes only when process, credential, network and deployment isolation are demonstrably equivalent. It also states no Render services are to be created until a separate provisioning plan is reviewed and authorized.
+
+Therefore the QuoteFlow GHM-native identity source transition can be prepared and tested at contract level, but live registration/login/refresh/logout cannot be declared operational until a zero-additional-cost hosting path meets ADR-001 and preserves the Argon2id profile. This dependency does not stop independent Connect source migration work. No new Render service, Worker, database, credential, secret, environment, production role/grant, deployment or payment state was changed during this inspection.
