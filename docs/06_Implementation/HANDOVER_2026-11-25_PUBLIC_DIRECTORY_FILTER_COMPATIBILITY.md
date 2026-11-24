@@ -123,3 +123,11 @@ New Businesses default to not featured. No historical values are imported becaus
 
 ### Validation status
 Source changes and regression contract tests are committed. Full local build/test and exact-head CI have not yet been run. Do not claim production qualification. No production migration or deployment has occurred.
+
+
+### Final source review — 2026-11-25
+- Rechecked the exact branch source after implementation. The migration, public Business projection and Directory projection all include the protected flag; the HTTP route passes the optional businessType value through.
+- Corrected the pagination-default HTTP test expectation to include `businessType: undefined`, matching the expanded route contract.
+- Added `src/db/business-featured-directory-migration-contract.test.ts` and included it plus the Directory service test in the package test command.
+- Latest source commit at this handover update: `7633f4f6ca6cb085c8e0496bfa0e6a56e3ca67b2`.
+- Validation remains unrun locally; GitHub Actions allowance remains exhausted. This is source-complete but not build/test/production-qualified. No migration was run against any database.
