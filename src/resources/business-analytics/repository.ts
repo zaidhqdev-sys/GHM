@@ -41,10 +41,10 @@ export class PostgresBusinessAnalyticsRepository implements BusinessAnalyticsRep
         if (visitorId) {
           // Visitor keys are pseudonymous dedupe keys only. Actor identity
           // remains derived exclusively from verified GHM auth context.
-          if (visitorId) {
+          {
             const accepted = await client.query(
               `INSERT INTO ghm.business_profile_view_visitor (business_id, visitor_id, last_viewed_at)
-               VALUES ($1, $2::uuid, now())
+               VALUES ($1, $2, now())
                ON CONFLICT (business_id, visitor_id) DO UPDATE
                  SET last_viewed_at = now()
                  WHERE ghm.business_profile_view_visitor.last_viewed_at < now() - interval '24 hours'
