@@ -28,9 +28,10 @@ CREATE INDEX business_engagement_event_business_type_time_idx
 
 CREATE TABLE ghm.business_profile_view_visitor (
   business_id bigint NOT NULL REFERENCES ghm.business(id) ON DELETE CASCADE,
-  visitor_id uuid NOT NULL,
+  visitor_id text NOT NULL,
   last_viewed_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (business_id, visitor_id)
+  PRIMARY KEY (business_id, visitor_id),
+  CONSTRAINT business_profile_view_visitor_id_ck CHECK (length(btrim(visitor_id)) BETWEEN 1 AND 128)
 );
 CREATE INDEX business_profile_view_visitor_last_viewed_idx
   ON ghm.business_profile_view_visitor (last_viewed_at DESC);
