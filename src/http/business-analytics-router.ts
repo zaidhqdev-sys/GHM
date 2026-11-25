@@ -4,7 +4,7 @@ import { requireAuth } from '../auth/http';
 import type { BusinessAnalyticsService } from '../resources/business-analytics/service';
 
 const positiveId = (value: string | string[] | undefined): number | null => {
-  if (typeof value !== 'string' || !/^[1-9]\\d*$/.test(value)) return null;
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : null;
 };
