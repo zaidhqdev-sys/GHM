@@ -16,7 +16,7 @@ const assertBusinessId = (value: number): void => {
 const assertPublicBusiness = async (client: PoolClient, businessId: number): Promise<boolean> => {
   const result = await client.query(
     `SELECT 1 FROM ghm.business
-     WHERE id = $1 AND is_active = true AND verification_status = 'approved'`,
+     WHERE id = $1 AND is_active = true AND is_verified = true AND verification_status = 'approved'`,
     [businessId],
   );
   return result.rowCount === 1;
