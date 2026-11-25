@@ -168,3 +168,31 @@ Audited existing Connect PR #68 GHM clients against GHM main routes/resources to
 - Existing AnalyticsScreen expects `business_id`, `period_days`, engagement profile_views/calls/whatsapp_clicks, leads, quotes, projects_won, conversion_rate and recent_activity with `id/event_type/occurred_at`.
 - Existing engagement client accepts event types profile_view/call/whatsapp/quote_request/website_visit/direction_request/save/share, sources web/mobile, and bounded context keys visitor_id/campaign/referrer/surface. Supabase migration history documents 24-hour profile-view deduplication and the profile_views aggregate counter.
 - Before implementing these GHM resources, recover exact original Supabase table/function definitions and inspect active callers. Preserve semantics; do not trust client-supplied account IDs or invent metrics. No historical Supabase event import is required; fresh GHM events accumulate after cutover.
+
+
+## 2026-11-25 — Existing Connect Analytics and Engagement contracts ported to GHM
+
+### Duplicate-work investigation
+- Recovered Connect's authoritative migration `supabase/migrations/20260727010000_reconcile_core_production_runtime_contracts.sql`. It already defines the canonical append-only `business_engagement_events` contract, allowlisted event types, 24-hour profile-view deduplication follow-up, denormalized profile-view counter, and deterministic `get_business_analytics_dashboard` projection.
+- Confirmed that this migration explicitly retires the older `analytics_events`, `lead_tracking`, and `business_analytics` assumptions. The old schema snapshot is not the authoritative implementation. No legacy analytics table is being recreated.
+- The GHM main branch had no corresponding analytics or engagement resource/router/migration. This PR adds the missing backend counterpart; Connect's existing clients and UI remain unchanged.
+
+### GHM implementation added
+- Migration `20261125020000_add_business_engagement_analytics.sql`: append-only Business engagement facts, bounded context and event vocabulary, web/mobile source, visitor-scoped 24-hour profile-view deduplication, and a canonical `ghm.business.profile_views` counter updated by an insert trigger.
+- Resource `src/resources/business-analytics/`: typed contracts, validation service and PostgreSQL repository.
+- HTTP `src/http/business-analytics-router.ts`: public engagement event recording with optional verified GHM authentication; actor account is derived only from verified middleware context and never from request payload. Analytics read is authenticated and validates 7/30/90-day periods.
+- Analytics uses GHM Enquiries for lead counts and GHM Project Quotes for submitted/accepted quote counts, matching the legacy dashboard projection's canonical facts. No invented metrics or historical Supabase data import.
+- Wired the resource and routes into the existing GHM Resource API app; no new service or infrastructure.
+- Added service and HTTP regression tests and included both in `npm test`.
+
+### Security and compatibility notes
+- Active Business visibility is required before public engagement events are recorded.
+- Analytics reads require active owner/administrator Business membership.
+- Event vocabulary is restricted to profile_view/call/whatsapp/quote_request/website_visit/direction_request/save/share; source is web/mobile; context keys are bounded to visitor_id/campaign/referrer/surface.
+- Profile views are deduplicated per Business/visitor for 24 hours; repeated views return HTTP 204 and do not increment the counter.
+- No historic event rows are imported because Supabase is unavailable. Fresh GHM events start accumulating after deployment.
+- No production migration, Render deployment, production cutover, payment activation, or new paid infrastructure occurred.
+
+### Validation
+- New source and tests are committed on PR #308. Exact-head CI run #5783 (ID `45517222291`) is pending at the time of this handover update. Do not claim build/test success until its jobs complete.
+- Previous #5774 was cancelled before completing its quality job and is not validation of these changes.
