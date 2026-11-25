@@ -29,10 +29,15 @@ export const registerBusinessAnalyticsRoutes = (
   service: BusinessAnalyticsService,
   authMiddleware: RequestHandler = requireAuth,
 ): void => {
+  const optionalAuth: RequestHandler = (req, res, next) => {
+    if (!req.header('authorization')) { next(); return; }
+    authMiddleware(req, res, next);
+  };
+
   // Public interaction facts may be recorded by anonymous directory visitors.
   // The actor identity is always derived from verified middleware context, never
   // accepted from the request body.
-  app.post('/api/v1/business-engagement-events', async (req: Request, res: Response) => {
+  app.post('/api/v1/business-engagement-events', optionalAuth, async (req: Request, res: Response) => {
     try {
       const input = parseEvent(req.body);
       if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
