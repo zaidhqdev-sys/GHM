@@ -212,3 +212,9 @@ Audited existing Connect PR #68 GHM clients against GHM main routes/resources to
 - Analytics uses only canonical GHM tables: `ghm.enquiry`, `ghm.project_quote`, and the new append-only event table. `projects_won` follows the recovered legacy dashboard's accepted Project Quote count semantics.
 - Simplified the dedupe transaction block in commit `4b291555b1f0ab99ad7a558021ec85519ea72ab1`. This is a source-only cleanup; no behaviour change.
 - Latest source commit: `4b291555b1f0ab99ad7a558021ec85519ea72ab1`. CI remains unavailable/cancelled before jobs initialized; no successful build/test claim.
+
+
+### Latest exact-head workflow attempt — 2026-11-25
+- After the final source/handover update, GHM CI run #5787 (`45517540928`) was cancelled before jobs initialized. No build, test, or migration qualification ran.
+- Connect quality run #370 (`45517368838`) likewise has no step records or downloadable logs (`BlobNotFound`). It supplies no source-level failure diagnosis.
+- Exact-head validation remains outstanding on both branches. No merge, production migration or deployment was performed.
