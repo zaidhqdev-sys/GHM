@@ -218,3 +218,11 @@ Audited existing Connect PR #68 GHM clients against GHM main routes/resources to
 - After the final source/handover update, GHM CI run #5787 (`45517540928`) was cancelled before jobs initialized. No build, test, or migration qualification ran.
 - Connect quality run #370 (`45517368838`) likewise has no step records or downloadable logs (`BlobNotFound`). It supplies no source-level failure diagnosis.
 - Exact-head validation remains outstanding on both branches. No merge, production migration or deployment was performed.
+
+
+### Follow-up source audit and correction — 2026-11-25
+- Reopened PR #308 changed-file inventory and inspected the exact Directory, Analytics router/repository, migrations and tests; no duplicate Marketplace caller migration was created. Connect PR #68 already owns the Marketplace/Analytics/engagement clients; PR #70 owns the Project/Opportunity caller changes; QuoteFlow PR #25 remains the local-first identity transition.
+- Confirmed PR #308 branch is 43 commits ahead / 0 behind GHM main at the current compare point. Its latest exact-head Actions run #5787 (45517540928) has no jobs; run #5783 (45517222291) likewise has no jobs. These are not passing validation and provide no code-level failure evidence.
+- Source review found an eligibility mismatch: the new public engagement recorder checked is_active and verification_status='approved' but omitted is_verified=true, while the public Directory requires all three. Corrected src/resources/business-analytics/repository.ts to apply the same visibility predicate. Correction commit: e32f220ee166b915858842a7f87568d3c7d4f4c9.
+- Remaining source-review items to qualify locally before merge: run full TypeScript/build/tests and disposable PostgreSQL migration chain; verify runtime DB role has required INSERT/SELECT/visitor UPDATE and column UPDATE grants; test trigger execution under actual runtime role; confirm accepted Project Quote status and Enquiry mapping against legacy analytics projection; test anonymous visitor dedupe and retention/cleanup behavior; confirm response shape exactly matches Connect Analytics screen. Do not infer these from contract tests alone.
+- A source-only audit found no basis to merge or deploy. No production DB migration, deployment, production data change, paid infrastructure or payment activation occurred.
