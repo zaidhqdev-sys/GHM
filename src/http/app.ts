@@ -137,6 +137,9 @@ import { HttpBusinessLogoGatewayClient, type BusinessLogoGatewayClient } from '.
 import { HttpStorageMetadataGatewayClient } from './storage-metadata-gateway-client';
 import { HttpCampaignDirectoryReviewGatewayClient, type CampaignDirectoryReviewGatewayClient } from './campaign-directory-review-gateway-client';
 import { createStorageProvider } from '../storage/factory';
+import { PostgresBusinessAnalyticsRepository } from '../resources/business-analytics/repository';
+import { BusinessAnalyticsService } from '../resources/business-analytics/service';
+import { registerBusinessAnalyticsRoutes } from './business-analytics-router';
 
 
 export interface AppDependencies {
@@ -171,6 +174,7 @@ export interface AppDependencies {
   readonly businessOfferingService?: BusinessOfferingService;
   readonly directoryService?: DirectoryService;
   readonly commercialService?: CommercialService;
+  readonly businessAnalyticsService?: BusinessAnalyticsService;
   /** Disable issuer-only routes in the ordinary Resource API process. */
   readonly authRoutesEnabled?: boolean;
   readonly authService?: GhmAuthService;
@@ -496,6 +500,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
+  const businessAnalyticsService = dependencies.businessAnalyticsService
+    ?? new BusinessAnalyticsService(new PostgresBusinessAnalyticsRepository());
   const commercialService = dependencies.commercialService ?? new DefaultCommercialService(new PostgresCommercialRepository());
   const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
   app.disable('x-powered-by');
@@ -1109,6 +1115,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient, config.isProduction || dependencies.businessRegistrationIdentityGatewayRequired === true);
   registerDirectoryReviewRoutes(app, directoryReviewService, resourceAuthMiddleware);
   registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware, trustScoreGatewayClient, trustScoreGatewayRequired);
+  registerBusinessAnalyticsRoutes(app, businessAnalyticsService, resourceAuthMiddleware);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
   registerReviewRoutes(app, reviewService, resourceAuthMiddleware);
   registerProjectQuoteRoutes(app, projectQuoteService, resourceAuthMiddleware);
