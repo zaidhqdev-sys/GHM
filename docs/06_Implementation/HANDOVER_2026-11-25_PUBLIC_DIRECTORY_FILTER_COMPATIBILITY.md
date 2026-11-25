@@ -196,3 +196,11 @@ Audited existing Connect PR #68 GHM clients against GHM main routes/resources to
 ### Validation
 - New source and tests are committed on PR #308. Exact-head CI run #5783 (ID `45517222291`) is pending at the time of this handover update. Do not claim build/test success until its jobs complete.
 - Previous #5774 was cancelled before completing its quality job and is not validation of these changes.
+
+
+### Final test inventory and CI allowance status — 2026-11-25
+- Added `src/db/business-analytics-migration-contract.test.ts` to verify canonical event vocabulary, bounded context, Business-scoped 24-hour deduplication, profile-view counter trigger and GHM account actor reference.
+- Added `src/resources/business-analytics/service.test.ts` and `src/http/business-analytics-router.test.ts` to the standard `npm test` script.
+- Exact-head CI run #5783 (`45517222291`) was cancelled before any jobs initialized (empty jobs result). It is not a source test failure and does not validate this implementation. The included Actions allowance/runner restriction remains the reason exact-head CI cannot presently qualify this change.
+- Latest code/test commit: `45a51f8653d89a76f4d63902b258632397a1f538`; latest handover commit: `a284f5fadedf4b54a03c9de4770960c1f5dca56b`. The test-only package update is later than that handover commit and is recorded here.
+- PR #308 remains draft and must not be merged/deployed until validation can run. No production migration or runtime deployment has occurred.
