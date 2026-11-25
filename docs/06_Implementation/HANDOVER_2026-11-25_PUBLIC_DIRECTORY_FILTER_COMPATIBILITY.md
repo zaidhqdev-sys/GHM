@@ -131,3 +131,8 @@ Source changes and regression contract tests are committed. Full local build/tes
 - Added `src/db/business-featured-directory-migration-contract.test.ts` and included it plus the Directory service test in the package test command.
 - Latest source commit at this handover update: `7633f4f6ca6cb085c8e0496bfa0e6a56e3ca67b2`.
 - Validation remains unrun locally; GitHub Actions allowance remains exhausted. This is source-complete but not build/test/production-qualified. No migration was run against any database.
+
+
+### Follow-up package/test hygiene — 2026-11-25
+- Removed a duplicate invocation of `dist/resources/directory/service.test.js` from the `npm test` script; the existing single invocation remains and the new featured migration contract test remains included.
+- This is a script de-duplication only. No runtime or migration behavior changed.
