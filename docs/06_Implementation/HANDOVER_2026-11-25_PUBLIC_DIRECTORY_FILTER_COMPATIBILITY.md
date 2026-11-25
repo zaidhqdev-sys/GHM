@@ -204,3 +204,11 @@ Audited existing Connect PR #68 GHM clients against GHM main routes/resources to
 - Exact-head CI run #5783 (`45517222291`) was cancelled before any jobs initialized (empty jobs result). It is not a source test failure and does not validate this implementation. The included Actions allowance/runner restriction remains the reason exact-head CI cannot presently qualify this change.
 - Latest code/test commit: `45a51f8653d89a76f4d63902b258632397a1f538`; latest handover commit: `a284f5fadedf4b54a03c9de4770960c1f5dca56b`. The test-only package update is later than that handover commit and is recorded here.
 - PR #308 remains draft and must not be merged/deployed until validation can run. No production migration or runtime deployment has occurred.
+
+
+### Final source review — 2026-11-25
+- Reviewed the final HTTP route, app registration, repository and migration after the test additions. The GHM engagement endpoint accepts anonymous visitors and optionally authenticates supplied bearer tokens; invalid supplied tokens fail authentication. The actor account is never accepted from the event payload.
+- Visitor dedupe keys are stored as bounded text so authenticated GHM numeric account IDs can use an `account:<id>` key without lossy UUID coercion. Anonymous callers are deduplicated when the existing client supplies a visitor ID.
+- Analytics uses only canonical GHM tables: `ghm.enquiry`, `ghm.project_quote`, and the new append-only event table. `projects_won` follows the recovered legacy dashboard's accepted Project Quote count semantics.
+- Simplified the dedupe transaction block in commit `4b291555b1f0ab99ad7a558021ec85519ea72ab1`. This is a source-only cleanup; no behaviour change.
+- Latest source commit: `4b291555b1f0ab99ad7a558021ec85519ea72ab1`. CI remains unavailable/cancelled before jobs initialized; no successful build/test claim.
