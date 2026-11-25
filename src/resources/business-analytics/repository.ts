@@ -5,8 +5,8 @@ import { withTransaction, type TransactionPool } from '../../db/transaction';
 import type { BusinessAnalytics, BusinessAnalyticsRepository, BusinessEngagementEvent, RecordBusinessEngagementInput } from './contracts';
 
 const validVisitorId = (value: string | undefined): string | null =>
-  value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-    ? value
+  typeof value === 'string' && value.trim().length > 0 && value.length <= 128
+    ? value.trim()
     : null;
 
 const assertBusinessId = (value: number): void => {
@@ -37,15 +37,11 @@ export class PostgresBusinessAnalyticsRepository implements BusinessAnalyticsRep
 
       if (input.eventType === 'profile_view') {
         const visitorId = validVisitorId(input.context.visitor_id)
-          ?? (context ? String(context.userId) : null);
+          ?? (context ? `account:${context.userId}` : null);
         if (visitorId) {
-          // Authenticated GHM account IDs are numeric, so use a stable UUID
-          // namespace for the dedupe key without accepting an account ID from
-          // the request body as actor identity.
-          const dedupeId = validVisitorId(visitorId) ?? (
-            context ? '00000000-0000-4000-8000-' + String(context.userId).padStart(12, '0') : null
-          );
-          if (dedupeId) {
+          // Visitor keys are pseudonymous dedupe keys only. Actor identity
+          // remains derived exclusively from verified GHM auth context.
+          if (visitorId) {
             const accepted = await client.query(
               `INSERT INTO ghm.business_profile_view_visitor (business_id, visitor_id, last_viewed_at)
                VALUES ($1, $2::uuid, now())
@@ -53,7 +49,7 @@ export class PostgresBusinessAnalyticsRepository implements BusinessAnalyticsRep
                  SET last_viewed_at = now()
                  WHERE ghm.business_profile_view_visitor.last_viewed_at < now() - interval '24 hours'
                RETURNING business_id`,
-              [input.businessId, dedupeId],
+              [input.businessId, visitorId],
             );
             if (accepted.rowCount !== 1) return null;
           }
@@ -88,7 +84,7 @@ export class PostgresBusinessAnalyticsRepository implements BusinessAnalyticsRep
          LIMIT 1`,
         [businessId, context.userId],
       );
-      if (membership.rowCount !== 1 && context.role !== 'admin') {
+      if (membership.rowCount !== 1) {
         return null;
       }
 
