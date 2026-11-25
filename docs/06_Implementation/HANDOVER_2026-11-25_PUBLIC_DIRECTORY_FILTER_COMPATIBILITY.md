@@ -136,3 +136,11 @@ Source changes and regression contract tests are committed. Full local build/tes
 ### Follow-up package/test hygiene — 2026-11-25
 - Removed a duplicate invocation of `dist/resources/directory/service.test.js` from the `npm test` script; the existing single invocation remains and the new featured migration contract test remains included.
 - This is a script de-duplication only. No runtime or migration behavior changed.
+
+
+### Exact-head CI diagnosis and correction — 2026-11-25
+- Inspected GitHub Actions run `45515122239` and downloaded its `ghm-test-suite-diagnostics` artifact. Build succeeded; disposable PostgreSQL migration and qualification setup completed; the web-quality job passed.
+- Test suite result: 1,090 passed / 1 failed. The sole failure was the pre-existing anonymous Directory HTTP route test at `src/http/app.test.ts:126`: its expected query object omitted the newly added optional `businessType: undefined` property. This was a test expectation mismatch, not a runtime Directory behavior failure.
+- Corrected that exact assertion in commit `c0587bc016729f0923c0e17ee740dbe10e98a112`. The separate pagination-default assertion already included the property.
+- Do not rerun Actions until the included allowance is available; this run did start and execute jobs (unlike the earlier allowance-blocked attempts). The correction is not yet revalidated.
+- No source change to Connect Marketplace was needed for caller cutover: the existing PR #68 branch already routes Marketplace listing reads through the GHM Directory client and maps `isFeatured` to the existing card field. Its branch is 186 commits ahead and 1 behind main, and overlaps PR #70; do not merge it wholesale or duplicate its work.
