@@ -154,3 +154,17 @@ Source changes and regression contract tests are committed. Full local build/tes
 - Mainline branch audit: GHM #308 is 18 commits ahead / 0 behind main at its base; Connect #68 is 186 ahead / 1 behind and overlaps #70; Connect #70 is 31 ahead / 0 behind; QuoteFlow #25 is 253 ahead / 0 behind. Do not merge Connect #68 wholesale or recreate #70/#25 work.
 - GHM #308 exact-head run #5771 (run ID `45515122239`) built, completed the disposable migration/qualification setup and passed web-quality, but the main test suite failed only on the anonymous Directory route expectation missing `businessType: undefined` (1,090 passed / 1 failed). Corrected in `c0587bc016729f0923c0e17ee740dbe10e98a112`. The follow-up run #5772 (run ID `45515788327`) was cancelled during container initialization before checkout/tests; it is not validation. The fix remains unverified.
 - Inspection of current-main `public-repository.ts` confirms its shared public-business column projection includes the new field only on the PR branch; Directory query selects and maps it on the PR branch. Owner profile update inputs do not include the field.
+
+
+### Connect caller-to-GHM backend coverage audit — 2026-11-25
+Audited existing Connect PR #68 GHM clients against GHM main routes/resources to avoid duplicate endpoints.
+
+**Existing GHM implementations found:** Directory (subject to PR #308); Relationships/Outcomes; Onboarding Progress; Notifications; Commercial offer/access/subscription/admin launch-state; Trust Score; Storage/Business Logo. Their source existence does not establish live production readiness.
+
+**Confirmed missing GHM endpoints/resources:**
+- Connect `ghmBusinessAnalyticsService` calls `GET /api/v1/businesses/:businessId/analytics?days=7|30|90`; current GHM main has no analytics router, resource, migration or analytics-named source artifact.
+- Connect `ghmBusinessEngagementService` calls `POST /api/v1/business-engagement-events`; current GHM main has no engagement router, resource, migration or engagement-named source artifact.
+- These are existing Connect clients/UI, not requests for new product features. The missing backend endpoints are genuine cutover gaps.
+- Existing AnalyticsScreen expects `business_id`, `period_days`, engagement profile_views/calls/whatsapp_clicks, leads, quotes, projects_won, conversion_rate and recent_activity with `id/event_type/occurred_at`.
+- Existing engagement client accepts event types profile_view/call/whatsapp/quote_request/website_visit/direction_request/save/share, sources web/mobile, and bounded context keys visitor_id/campaign/referrer/surface. Supabase migration history documents 24-hour profile-view deduplication and the profile_views aggregate counter.
+- Before implementing these GHM resources, recover exact original Supabase table/function definitions and inspect active callers. Preserve semantics; do not trust client-supplied account IDs or invent metrics. No historical Supabase event import is required; fresh GHM events accumulate after cutover.
