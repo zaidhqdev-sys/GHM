@@ -15,6 +15,7 @@ export interface PublicBusiness {
   readonly whatsapp?: string | null;
   readonly website?: string | null;
   readonly isSupplier?: boolean;
+  readonly isFeatured?: boolean;
   readonly logoUrl?: string | null;
   readonly rating: number;
   readonly reviewCount: number;

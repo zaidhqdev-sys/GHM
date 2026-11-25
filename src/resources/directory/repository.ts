@@ -5,7 +5,7 @@ import type { DirectoryQuery, DirectoryRepository, DirectoryResult, PublicDirect
 const DIRECTORY_COLUMNS = `
   b.id, b.name, b.slug, b.description, b.phone, b.email,
   b.province, b.city, b.physical_address, b.latitude, b.longitude,
-  b.whatsapp, b.website, b.is_supplier, b.logo_storage_object_id, b.rating, b.review_count, b.jobs_completed,
+  b.whatsapp, b.website, b.is_supplier, b.is_featured, b.logo_storage_object_id, b.rating, b.review_count, b.jobs_completed,
   b.verification_status, b.is_verified, b.created_at, b.updated_at
 `;
 const PUBLIC_VISIBILITY = `b.is_active = true AND b.is_verified = true AND b.verification_status = 'approved'`;
@@ -21,7 +21,7 @@ interface DirectoryRow {
   whatsapp: string | null; website: string | null; logo_storage_object_id: string | number | null; rating: string | number;
   review_count: string | number; jobs_completed: string | number;
   verification_status: PublicDirectoryBusiness['verificationStatus']; is_verified: boolean;
-  is_supplier: boolean; created_at: Date; updated_at: Date; distance_km?: string | number | null; category?: string | null;
+  is_supplier: boolean; is_featured: boolean; created_at: Date; updated_at: Date; distance_km?: string | number | null; category?: string | null;
 }
 
 const distanceSql = (latIndex: number, lonIndex: number) =>
@@ -33,7 +33,7 @@ const mapDirectoryBusiness = (row: DirectoryRow): PublicDirectoryBusiness => ({
   city: row.city ?? null, physicalAddress: row.physical_address ?? null,
   latitude: row.latitude === null ? null : Number(row.latitude),
   longitude: row.longitude === null ? null : Number(row.longitude),
-  whatsapp: row.whatsapp ?? null, website: row.website ?? null, isSupplier: row.is_supplier === true, logoUrl: row.logo_storage_object_id === null || row.logo_storage_object_id === undefined ? null : `/api/v1/public/businesses/${Number(row.id)}/logo`,
+  whatsapp: row.whatsapp ?? null, website: row.website ?? null, isSupplier: row.is_supplier === true, isFeatured: row.is_featured === true, logoUrl: row.logo_storage_object_id === null || row.logo_storage_object_id === undefined ? null : `/api/v1/public/businesses/${Number(row.id)}/logo`,
   rating: Number(row.rating), reviewCount: Number(row.review_count),
   jobsCompleted: Number(row.jobs_completed), category: row.category ?? null, verificationStatus: row.verification_status,
   isVerified: row.is_verified === true, createdAt: row.created_at, updatedAt: row.updated_at,
@@ -103,10 +103,10 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
 
       const limitIndex = add(query.pageSize);
       const offsetIndex = add((query.page - 1) * query.pageSize);
-      let orderBy = 'b.rating DESC, b.review_count DESC, b.id ASC';
-      if (query.sort === 'newest') orderBy = 'b.created_at DESC, b.id ASC';
-      if (query.sort === 'reviews') orderBy = 'b.review_count DESC, b.rating DESC, b.id ASC';
-      if (query.sort === 'distance' && distanceExpression) orderBy = `${distanceExpression} ASC, b.id ASC`;
+      let orderBy = 'b.is_featured DESC, b.rating DESC, b.created_at DESC, b.id ASC';
+      if (query.sort === 'newest') orderBy = 'b.is_featured DESC, b.created_at DESC, b.id ASC';
+      if (query.sort === 'reviews') orderBy = 'b.is_featured DESC, b.review_count DESC, b.rating DESC, b.created_at DESC, b.id ASC';
+      if (query.sort === 'distance' && distanceExpression) orderBy = `b.is_featured DESC, ${distanceExpression} ASC, b.rating DESC, b.created_at DESC, b.id ASC`;
 
       const selectDistance = distanceExpression ? `, ${distanceExpression} AS distance_km` : '';
       const categoryProjection = `, (SELECT bc.slug FROM ghm.business_category_assignment bca JOIN ghm.business_category bc ON bc.id = bca.category_id WHERE bca.business_id = b.id AND bca.is_primary = true AND bc.is_active = true LIMIT 1) AS category`;

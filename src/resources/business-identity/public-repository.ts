@@ -17,6 +17,7 @@ const PUBLIC_BUSINESS_COLUMNS = `
   whatsapp,
   website,
   is_supplier,
+  is_featured,
   logo_storage_object_id,
   rating,
   review_count,
@@ -42,6 +43,7 @@ interface PublicBusinessRow {
   whatsapp: string | null;
   website: string | null;
   is_supplier: boolean;
+  is_featured: boolean;
   logo_storage_object_id: string | number | null;
   rating: string | number;
   review_count: string | number;
@@ -67,6 +69,7 @@ const mapPublicBusiness = (row: PublicBusinessRow): PublicBusiness => ({
   whatsapp: row.whatsapp ?? null,
   website: row.website ?? null,
   isSupplier: row.is_supplier === true,
+  isFeatured: row.is_featured === true,
   logoUrl: row.logo_storage_object_id === null || row.logo_storage_object_id === undefined ? null : `/api/v1/public/businesses/${Number(row.id)}/logo`,
   rating: Number(row.rating),
   reviewCount: Number(row.review_count),
