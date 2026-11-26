@@ -212,3 +212,16 @@ Related PR status rechecked:
 No rebase, merge, force-push, branch update, local worktree change, migration, production SQL, database/role/ACL/credential/secret change, Render setting, deployment, payment action or paid resource was performed in this inspection.
 
 **Next safe step:** before synchronizing PR #305 with `main`, inspect the owner's existing local PR #305 worktree and preserve any dirty/untracked work. Then reconcile the two append-only hosting-handover additions without dropping either history, incorporate the mainline documentation-only commits on the existing branch, and verify GitHub mergeability. Do not rebase/force-push, merge the PR, change its draft status, run migrations, or alter the empty production batch manifest as part of that synchronization.
+
+
+## 2026-11-26 — mainline documentation reconciliation into PR #305
+
+Read the existing PR #305 worktree inspection and compared the current `main` documentation against the existing PR branch before making this documentation-only synchronization. The PR branch tip before synchronization was `6e9c53528909030b7dfc36126ce5d02bc911e974`; the local worktree inspection showed a clean detached checkout at `a0aa50b593aea887487c1eb1b0529e0c5776507f`. No local worktree contents were changed.
+
+- Replaced `docs/GHM_CURRENT_STATE.md` on this existing PR branch with the exact current `main` version. This carries forward the 23–25 November standing objectives, QuoteFlow local-first boundary, Connect Project/Opportunity migration scope, owner-confirmed product backend-transition baseline, and Authentication Issuer deployment-feasibility findings.
+- Confirmed `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` has the same blob on `main` and the PR branch (`1ec460fb070e771c485502dc7d4c65e360c7ab26`); no redundant update was made.
+- Reconciled the append-only hosting handover without replacing either branch's history. Preserved the PR branch's staged Gateway startup, migration dependency/transaction-boundary analysis, and source-backed rejection of legacy compatibility regrants; appended the separate 25 November mainline Render inventory/startup reconciliation. The Render section records the existing Free `ghm-actor-gateway` service and its observed `PORT must be a valid TCP port` startup error, keeps the Authentication Issuer distinct, and does not authorize a deployment or configuration change.
+- The earlier proposed legacy runtime compatibility grants remain withdrawn; no legacy regrant migration is to be introduced. The migration transaction/deploy/verify boundary remains unresolved. `config/production-migration-batches.json` remains exactly `[]`.
+- PR #305 remains open/draft. This synchronization does not merge or rebase the PR, change PR disposition, alter migration source/allowlists/manifest, run CI, execute production SQL, or change production database/roles/ACLs/credentials/secrets, Render/Cloudflare settings, services, deployments, payments, or paid resources.
+
+This is documentation-only synchronization on the existing PR #305 branch. No new branch/worktree was created; no existing branch was force-updated.
