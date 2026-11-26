@@ -320,3 +320,67 @@ This confirms the current PR head (including the latest handover documentation) 
 PR #300 remains open, draft, unmerged and mergeable. Its description now accurately documents the end-to-end Gateway route, manual-only cutover, full disposable PostgreSQL evidence and production boundary. PR #298 remains open/draft/unmerged and untouched. The feature branch is 91 commits ahead and 0 behind `main` at inspection; changed file set remains 20 intended files.
 
 No production migration, manual cutover, Render database mutation, Gateway production deployment or paid resource creation occurred. The Cloudflare Pages branch preview is an automatic PR preview only, not production. Keep PR #300 draft/unmerged and do not deploy or apply the manual cutover without separate owner-directed authorization and its documented preconditions.
+
+
+## 21 November 2026 — post-merge column-level Business Capability privilege correction
+
+PR #300 was rechecked and is now merged into `main`; PR #298 and PR #297 remain separate open draft PRs. The signed Business Capability create implementation is therefore maintained on the default branch, not added to the production migration batching PR.
+
+A source review found that the manual create cutover revoked table-level INSERT but did not revoke the historical column-level INSERT grant from migration `20260916213000_narrow_business_capability_runtime_insert.sql`. Table-level REVOKE does not remove a separately granted column privilege. The cutover now explicitly revokes INSERT on all eight historically granted columns from PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway`, in addition to its existing table and sequence revocations. Its comment now describes signed Gateway operations as the only intended mutation paths, covering both signed create and signed replacement.
+
+The Actor Gateway database privilege audit now checks column-level INSERT across `ghm` relations for both `session_user` and `ghm_runtime`, so a column-only grant cannot evade the direct-relation boundary. Static tests assert these checks. The disposable PostgreSQL cutover qualification now probes direct INSERT as runtime, Gateway, and migrator and asserts `has_any_column_privilege` is false for all three principals in its final matrix.
+
+This source correction was committed on branch `fix/business-capability-column-privilege-audit` as `b4dad739d36383bc541cdc69e3b3a5d2c5ece364` and opened as draft PR #303. CI run #5599 (ID `44922904969`) is in progress; no CI pass is claimed yet. It has not been applied to any database. The manual cutover remains excluded from automatic migrations and must not be applied to production as part of this task. No production DB, Render service, deployment, credentials, roles, ACLs, secrets, or settings were changed. PR #298/#297 remain untouched.
+
+Next: sync the follow-up branch locally, run focused TypeScript build/tests and the guarded disposable-local PostgreSQL qualification only when three distinct localhost disposable principal URLs are available. Inspect CI after pushing; update this handover with exact commit and qualification results. Keep the manual production cutover gated on its documented deployment, principal, role-model and verified-backup prerequisites.
+
+
+## PR #303 local focused validation — 2026-11-21
+
+The PR #303 correction was synced into an isolated worktree at `C:\\GHM-pr303`, preserving the separate staged/unstaged/untracked work in `C:\\GHM-main`. The worktree is clean and tracks `origin/fix/business-capability-column-privilege-audit`.
+
+Local validation completed:
+- `npm ci`: PASS; zero vulnerabilities reported. npm emitted an approval warning for the `argon2` install script, but installation completed successfully.
+- `npm run build`: PASS.
+- `node --test dist/actor-gateway/database-privileges.test.js`: 12/12 PASS, including detection of table- and column-level INSERT grants for the session and runtime principals.
+- `node --test dist/db/actor-gateway-business-capability-create-migration-contract.test.js`: 7/7 PASS, including the manual create cutover contract.
+- `node --check scripts/qualify-business-capability-gateway-cutover-postgres.mjs`: PASS (syntax only; script not executed).
+
+GitHub CI run #5600 (ID `44922957860`) is in progress for the latest handover commit. No CI pass is claimed yet. Disposable PostgreSQL qualification remains outstanding; do not execute it until its runtime, Gateway and migrator URLs are verified as distinct disposable localhost targets. The manual cutover has not been applied to any live database. PR #303 remains open/draft; PR #298 and PR #297 remain separate and untouched.
+
+
+## PR #303 CI #5600 diagnosis — pre-cutover runtime INSERT boundary — 2026-11-21
+
+CI run #5600 (ID `44922957860`) completed with `web-quality` successful and `quality` failing at step 32, `Qualify isolated actor gateway database principal`. Build, Worker bundle, automatic migrations and isolated Auth Issuer principal qualification passed. All later database qualification steps were skipped. The diagnostic reported `direct_relation_privileges: true` and the Actor Gateway least-privilege assertion stopped the workflow.
+
+The regression is in how the new audit combined two different lifecycle boundaries. Migration `20260916213000_narrow_business_capability_runtime_insert.sql` intentionally leaves a narrowly scoped column-level INSERT grant to `ghm_runtime` for the legacy Resource API path until the separate manual create cutover is applied. The generic Actor Gateway principal qualification runs before the manual cutover qualification. Therefore treating that known pre-cutover runtime grant as a direct privilege of the Actor Gateway session incorrectly fails the pre-cutover principal check. This does not justify removing the audit or weakening the post-cutover requirement.
+
+Correction in progress: keep Gateway session-user table/column privileges in the fail-closed `direct_relation_privileges` check, but report the legacy runtime column-level INSERT state separately as `runtime_column_insert_privileges`. The dedicated disposable PostgreSQL cutover qualification continues to require runtime, migrator and Gateway column-level INSERT privileges all false after applying the manual cutover. This preserves detection and the strict post-cutover assertion without making the pre-cutover qualification impossible.
+
+The correction has not yet been committed or CI-validated. No production database, Render service, migration, ACL, role, secret, deployment or setting was changed. PR #303 remains draft/open; PR #298 and PR #297 remain separate.
+
+
+## PR #303 CI #5603 — full qualification passed — 2026-11-21
+
+GitHub Actions CI run #5603 (run ID `44923297235`) completed successfully for PR #303 head `9bb3a45266d51e60d9a08d26ca804d218e4a71e1`. Both workflow jobs passed: `quality` and `web-quality`.
+
+The completed `quality` job confirms success for the whole-database SECURITY DEFINER inventory script syntax check, isolated Actor Gateway database-principal qualification, pre-cutover issuer authority inventory, disposable issuer cutover, post-cutover authority inventory, and the pre/post authority-inventory comparison. This supersedes the earlier CI #5600 failure diagnosis: the column-level INSERT audit now distinguishes the pre-cutover `ghm_runtime` column grant from direct Actor Gateway session privileges while retaining the post-cutover fail-closed checks.
+
+Local focused validation on the same branch also passed: TypeScript build; Actor Gateway database-privilege tests (12/12); signed Business Capability create migration-contract tests (7/7); and Node syntax check of the guarded PostgreSQL qualification script (syntax only).
+
+PR #303 remains open and draft; it has not been merged. This CI qualification does not apply the manual cutover to production. No production database, Render service, deployment, credentials, roles, ACLs, secrets, or settings were changed. The manual cutover remains separately gated by its documented deployment, principal, role-model and verified-backup prerequisites. PR #298/#297 remain separate and untouched.
+
+
+## PR #303 review-state decision — remain draft and separate — 2026-11-21
+
+Owner direction: keep PR #303 separate for review. It remains open, draft and unmerged; do not mark it ready for review or merge it as part of this continuation. The branch remains isolated from `main`. Continue recording subsequent source corrections, local validation and CI evidence in this handover, with exact commit/run identifiers and explicit production-boundary statements.
+
+No production database change, manual cutover, Render setting/deployment, role/ACL/credential/secret change, paid resource, or PR #298/#297 change is authorized by this decision.
+
+## PR #303 column-level INSERT cutover correction — exact-head CI #5605 — 2026-11-23
+
+On the existing `fix/business-capability-column-privilege-audit` branch, the manual cutover now revokes the explicit historical column-level INSERT privileges on `ghm.business_capability`, table-level INSERT, and sequence USAGE/SELECT from PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway`. The privilege audit and disposable PostgreSQL qualification were extended to detect column-level INSERT grants rather than only table-level grants.
+
+Exact PR head: `3af71a78b86c74864092150c6d036b312cf5ce45` (8 commits ahead of main, 0 behind). Exact-head Actions run `44924040445` / #5605 completed successfully: both `quality` and `web-quality` passed. The quality job included TypeScript build, full tests, disposable PostgreSQL 18 migrations, Actor Gateway principal qualification and the dedicated cutover qualification. Web build and tests also passed.
+
+PR #303 remains open/draft/unmerged. The corrected cutover is still manual-only and has not been applied to production. Successful disposable CI and the Cloudflare Pages preview do not prove production route/principal readiness or fresh backup restoreability. Preserve the separate requirements: deployed and qualified signed create route, provisioned Gateway principal, resolved Render role model, and fresh verified backup. No production DB, ACL, role, Render setting, secret, deployment or service state changed.

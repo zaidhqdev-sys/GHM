@@ -6,6 +6,7 @@ export interface ActorGatewayDatabasePrivileges {
   schema_usage: boolean;
   schema_create: boolean;
   direct_relation_privileges: boolean;
+  runtime_column_insert_privileges: boolean;
   executable_functions: string[];
   expected_functions: string[];
   public_executable_functions: string[];
@@ -124,12 +125,30 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
         SELECT 1
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'ghm'
+           AND c.relkind IN ('r', 'p')
+           AND (
+             has_any_column_privilege(session_user, c.oid, 'INSERT')
+           )
+      )
+      OR EXISTS (
+        SELECT 1
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
           CROSS JOIN (VALUES ('USAGE'), ('SELECT'), ('UPDATE')) AS p(privilege)
          WHERE n.nspname = 'ghm'
            AND c.relkind = 'S'
            AND has_sequence_privilege(session_user, c.oid, p.privilege)
       )
     ) AS direct_relation_privileges,
+    EXISTS (
+      SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'ghm'
+         AND c.relkind IN ('r', 'p')
+         AND has_any_column_privilege('ghm_runtime', c.oid, 'INSERT')
+    ) AS runtime_column_insert_privileges,
     ARRAY(
       SELECT signature FROM gateway_functions ORDER BY signature
     ) AS executable_functions,

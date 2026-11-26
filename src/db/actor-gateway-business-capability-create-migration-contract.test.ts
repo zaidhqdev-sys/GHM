@@ -60,7 +60,10 @@ test('forward-only assertion allowlist preserves every existing signed Gateway o
 });
 
 test('manual create cutover removes direct runtime and Gateway INSERT and sequence access',()=>{
+ assert.match(createCutover,/REVOKE INSERT \([\s\S]*business_id,[\s\S]*capability_id,[\s\S]*proficiency_level,[\s\S]*description,[\s\S]*effective_from,[\s\S]*effective_until,[\s\S]*source_reference,[\s\S]*created_by[\s\S]*\)\s*ON TABLE ghm\.business_capability\s*FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
  assert.match(createCutover,/REVOKE INSERT ON TABLE ghm\.business_capability[\s\S]*FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
+ assert.doesNotMatch(createCutover,/only intended create path/i);
+ assert.match(createCutover,/only intended mutation/);
  assert.match(createCutover,/REVOKE USAGE, SELECT ON SEQUENCE ghm\.business_capability_id_seq[\s\S]*FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
  assert.match(createCutover,/MANUAL CUTOVER ONLY/);
  assert.match(createCutover,/intentionally excluded from automatic migrations/);
