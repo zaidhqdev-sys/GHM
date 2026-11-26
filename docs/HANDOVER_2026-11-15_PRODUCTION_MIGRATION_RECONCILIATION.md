@@ -165,3 +165,24 @@ Migration-related branches were also checked:
 ## 8. Change record
 
 This handover records source review and the user's supplied read-only audit. It does not claim a new production audit was run. No production SQL, migration, role/grant, secret, environment variable, Render service, Cloudflare resource, deployment or application data was changed.
+
+## 9. Follow-up inventory reconciliation — 2026-11-26
+
+A read-only exact-set comparison was completed between the 50-entry pending inventory in the user's `C:\\GHM-main` worktree (branch `feat/actor-gateway-production-migration-batches`) and the 52-entry inventory on this PR #305 branch (`feat/production-migration-batches-mainline-20261123`, HEAD `a0aa50b593aea887487c1eb1b0529e0c5776507f`).
+
+Results:
+- PR #305 inventory: 52 entries.
+- Comparison inventory in `C:\\GHM-main`: 50 entries.
+- Entries in PR #305 but absent from the 50-entry comparison: exactly two:
+  - `20261120010000_add_signed_business_capability_create`
+  - `20261120011000_allow_signed_business_capability_create_assertion`
+- Entries in the 50-entry comparison but absent from PR #305: zero.
+- The two migration files were independently inspected in both worktrees; their SHA-256 hashes match exactly:
+  - `20261120010000_add_signed_business_capability_create.sql`: `E4AD9EDAF9C0CC8320099EAE0BC7D5A91FAC969A40ACA5B91CDCFB36F9E266D0`
+  - `20261120011000_allow_signed_business_capability_create_assertion.sql`: `A5E21E71AAFE6B0A2DF41CB55E2926D1132B08B8F5377ADE38A5972E7346CF8C`
+
+Conclusion: the two-entry difference is explained by the later signed Business Capability create migration pair. The PR #305 52-entry pending inventory is the complete candidate inventory for its audited source/ledger state; the 50-entry comparison inventory is missing those two entries. This comparison did not change either inventory or any migration file.
+
+PR #305 remains open and draft, based on main commit `93ff3c774ce225760b0e3e2cf99a770b38e8a097`, with head `a0aa50b593aea887487c1eb1b0529e0c5776507f`; GitHub reported `mergeable=false` at the time of inspection. The production execution manifest remains exactly `[]`. No batch is authorized, and no production SQL or migration was executed.
+
+**Do not repeat:** the 105-row production ledger/checksum reconciliation, the 52-entry allowlist reconciliation on PR #305, the PR #300 signed Business Capability migration checksum comparison, or this 50-vs-52 set comparison unless a specific new source/ledger/head change invalidates the recorded evidence. Next work should first inspect the reason PR #305 is reported non-mergeable and compare current base/head state; do not rerun production audit or migration qualification merely to revisit these completed checks.
