@@ -1422,3 +1422,84 @@ Baseline catalog observations (103 SECURITY DEFINER functions):
 **Artifact completeness limitation:** only one artifact was attached to failed run 43330297297. No second post-cutover authority inventory was produced by that failed run. Do not compare the baseline against a presumed final state or infer that the issuer received the intended ten-function allow-list. The next successful exact-head run must retain and publish both before/after (or otherwise independently captured pre/post) inventories and compare full signatures, owners, direct ACLs, effective role reachability, PUBLIC, global/schema default ACLs, table/column/sequence privileges and memberships.
 
 The qualification script's allow-list currently names ten issuer functions. The manual cutover file is explicitly non-migration and documents that it must not be applied until issuer routes, service, private ingress, client configuration, credentials and rollback gates are ready. This remains disposable qualification only; production remains untouched. No merge/deploy/production role or grant changes were made. PayFast and legal publication remain paused.
+
+
+## 2026-11-23 — standing GHM objectives and mandatory operating rules
+
+The governing product direction is now documented in `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` on main (commit `03d7b6ccf35771c13ed4c0f024bb46fa6a7c793c`).
+
+Standing objective: move ZAID Technologies products onto GHM; implement genuine capabilities the products require; continuously improve GHM through real product use. Connect and QuoteFlow are the immediate integration priorities. Supabase is legacy to remove, not a target dependency.
+
+Mandatory workflow for every GHM task:
+1. Read the objectives and the relevant current handover.
+2. Inspect current main, relevant repositories, branches, PRs, existing implementation and exact-head validation.
+3. Reuse existing work; do not create duplicate branches/PRs or requalify unchanged commits.
+4. Make the smallest change that advances a real product workflow.
+5. After each completed task, update the existing authoritative handover with exact changes, commit/PR, validation, production impact and next action.
+
+This is the governing direction, not a substitute for detailed handovers. No production operation is authorized by this documentation.
+
+## 2026-11-24 — QuoteFlow local-first boundary applied to GHM PR #306
+
+- Re-read `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` and reconciled the GHM work against QuoteFlow's owner-confirmed architecture in QuoteFlow `docs/architecture/QUOTEFLOW_GHM_NATIVE_REBUILD.md`.
+- QuoteFlow operational records (Customers, Items, Quotes, Invoices, line items, business preferences and reminder state) remain local-first. GHM is used for authentication/session lifecycle, canonical account identity, Business membership/role/selected Business context, onboarding, legal acceptance and authoritative entitlements when supported.
+- GHM PR #306 (`feat/quoteflow-business-scoped-customers-quotes`, head `5b9a5d5b502b46008d5e2d8f46ad3a8d05853f6d`) adds Business-scoped Customer/Quote schema, migrations and APIs. Its proposed QuoteFlow Business Offering linkage conflicts with the owner's explicit no-cloud-operational-data decision. Do not merge, deploy, execute its migrations, or integrate those endpoints into QuoteFlow. Preserve the draft PR/branch for historical review; no branch deletion or PR disposition change is part of this record.
+- QuoteFlow PR #25 remains the identity/control-plane cutover path. Its latest corrected source head `4ce8789f5da330d1ead1ffa374411e1fea76bc8a` passed typecheck/tests in run `45287025364`; Android preview run `45287025421` failed in the artifact workflow and is not a source-test failure. This does not establish production runtime/device/release verification.
+- No production database, schema, migration, operational record, local storage, deployment, payment, secret, Render/Vercel setting, paid infrastructure or schedule was changed.
+- Next product work: verify the GHM identity/session and Business membership path for QuoteFlow on the existing PR #25 branch. Do not add operational Customer/Item/Quote/Invoice persistence to GHM.
+
+## 2026-11-24 — Project/Opportunity Connect cutover scope reconciliation
+
+- Connect PR #70 (`feat/ghm-project-opportunity-cutover`, head `1ece6f54b1445f87b6dc1fd5fe624a2e46c7b5d1`) is the narrow existing Project/Opportunity caller cutover path. Exact-head Connect quality run `45290272778` passed.
+- Connect PR #68 (`feat/ghm-opportunity-runtime-migration-20261110`, head `60f612ed50ba8af78a81824dd2fd9a9c4546b017`) is a broad, overlapping migration batch covering many additional workflows; exact-head Connect quality run `45277620881` passed, but it is not interchangeable with PR #70 and must not be merged alongside overlapping callers without reconciliation.
+- Existing GHM main already registers Project list/create/detail/update routes. GHM PR #299 is not a clean dependency: it is 103 commits behind main and includes unrelated capability-governance migration/privilege changes in addition to Project route edits. Do not merge that stale branch wholesale.
+- A separate assistant-created PR #307 added customer-only guards to Project create/detail/update routes. It is still draft and not qualified; it is not evidence of an agreed product requirement and must not be treated as a prerequisite to Connect cutover. Reconcile its route-role assumptions against the actual Connect authenticated actor contract before any promotion.
+- Do not expand this into new Project APIs, data models, migrations or infrastructure. The product objective is to route the existing Connect workflow through the already implemented GHM API, preserving UI behavior and existing authorization.
+- No production database, migration, deployment, runtime config, customer data, payment action, or paid infrastructure changed in this reconciliation.
+
+### Cleanup — assistant-created Project authorization detour removed (2026-11-24)
+
+- PR #307 was created by the assistant during the previous continuation without a demonstrated requirement from the Connect migration contract. The route-role change was unnecessary scope expansion.
+- Restored `src/http/app.ts` and `src/http/app.test.ts` on its branch byte-for-byte to current GHM main (verified identical at blobs `28e159f0d687d8e7133cacba5583d941ea06b689` and `4289384d68a7ee2b4bbd8df93227121fbbbed385`). No Project authorization behavior remains changed by that branch.
+- PR #307 is being closed as assistant-generated, unneeded work; it is not a product dependency. Its branch is preserved and not deleted.
+- This cleanup does not alter GHM main application source, production database, migrations, deployment, runtime settings, customer data, payment state or infrastructure.
+
+
+
+
+## 2026-11-25 — controlling product backend-transition baseline
+
+The owner has confirmed the engineering objective: transition the already-built Zaid Connect and QuoteFlow products from their previous backend to GHM while preserving existing product functionality and user experience. This is backend replacement, not product reconstruction, redesign, scope reduction, or a new approval/qualification programme. Payment activation remains outside this work and PayFast remains paused. Do not make legal/counsel work, paid entitlements, checkout, AI, or unrelated GHM subsystems prerequisites to migrating workflows that do not depend on them.
+
+The pre-GHM history boundary is the last product state before the first GHM production-replacement foundation commit, `83d66e6f7362649e2580a61189c6a460baf82a87` (2026-09-09 13:25 SAST). The 2026-09-10 construction handover confirms both products remained on Supabase and no product adapters/cutover had begun.
+
+Baseline candidates recovered from repository commit history:
+- Zaid Connect: code-bearing candidate `c32b4c6e824598908e9612a782c1217fb1a4cb5b` and latest pre-GHM documentation snapshot `abcffa73f893602c25310a58946bebb91fd7eeb5` (2026-09-03 SAST).
+- QuoteFlow: code-bearing candidate `a2912bfacde704745a9d424fe4192cf528f603d7` and latest pre-GHM README snapshot `dbcf165978aa0456350fcb2aa995e2ec6436e892` (2026-09-02 SAST).
+
+The baseline-to-current comparisons show the existing products and migration branches must be reconciled rather than rebuilt:
+- Connect current main is 151 commits beyond the recovered snapshot; existing PR #70 is the narrow Project/Quote/Opportunity caller transition, while PR #68 carries additional distinct workflow migrations and overlaps #70. Preserve both branches; do not merge them together or substitute either wholesale. Reconcile only the unique active callers and use GHM APIs already present on main wherever possible.
+- QuoteFlow current main is 11 commits beyond its recovered snapshot; existing PR #25 is 263 commits beyond that snapshot and contains the GHM identity/control-plane adapter. Preserve QuoteFlow's local-first operational records (customers, catalogue/items, quotes, invoices, quote lines, Business preferences and reminder state). GHM owns account identity/authentication/session lifecycle and Business membership/creation/selection/authorization only.
+
+Known actual integration dependency: QuoteFlow's Authentication Issuer implementation exists in GHM main, but the current Render inventory has no separately deployed Authentication Issuer or verified HTTPS origin. The existing `ghm-actor-gateway` is a different service and is not a substitute. Continue independent Connect integration work while resolving the issuer through the existing hosting decision; do not create paid infrastructure or weaken the established trust boundary.
+
+The current GitHub Free Actions allowance is exhausted for the November cycle; recent workflow attempts failed before job steps with no source diagnostics. Do not blindly rerun until the allowance resets. Reuse recorded local exact-source validation where the source SHA is unchanged, and perform only the smallest local validation needed for changed code. Do not report a workflow as failed due to code when no runner/steps ran.
+
+This section supersedes historical September/October construction handovers wherever they imposed product-adapter prohibitions, broad shadow-qualification programmes, or blanket cutover gates that conflict with this owner-confirmed backend-transition objective. Existing security, tenant-isolation, authentication, and data-integrity requirements that are directly necessary for a working GHM backend remain in scope; do not expand them into unrelated platform programmes.
+
+No application source, production database, role/ACL, credential, secret, runtime configuration, deployment, product routing, customer data, or payment state changed during this documentation reconciliation.
+
+
+## 2026-11-25 — Authentication Issuer deployment feasibility confirmed
+
+The isolated Authentication Issuer implementation is present on GHM main following merged PR #276. This does not mean a production issuer service is deployed.
+
+Evidence checked on 2026-11-25:
+- Merged PR #276 explicitly records that production issuer deployment remains blocked under the current $0 constraint because the Cloudflare Workers Free Argon2id feasibility test exceeded the existing CPU budget. The benchmark preserves the existing Argon2id profile `m=65536,t=3,p=1` and tests native/WASM PHC interoperability; the Worker Free CPU budget in the benchmark is 10 ms. Do not weaken the password hash profile or claim the Worker Free runtime is qualified.
+- Current Render service inventory (including preview services) contains `GHM-Internal-Runtime`, `ghm-actor-gateway`, and old sandbox/qualification services, but no separately deployed Authentication Issuer.
+- `ghm-identity-qualification` belongs to the old sandbox environment `evm-db43vk4s728c739fn460`, on branch `integration/ghm-identity-merge-candidate-20261018`. It is not the production issuer and must not be revived or repurposed as a shortcut.
+- `ghm-actor-gateway` is a distinct service with a different trust responsibility; it is not the issuer.
+- The existing GHM Internal Runtime remains a separate Resource API process on main, auto-deploy OFF. Do not co-host issuer secrets in the Resource API process or weaken ADR-001 isolation.
+- ADR-001 permits distinct internal services or isolated processes only when process, credential, network and deployment isolation are demonstrably equivalent. It also states no Render services are to be created until a separate provisioning plan is reviewed and authorized.
+
+Therefore the QuoteFlow GHM-native identity source transition can be prepared and tested at contract level, but live registration/login/refresh/logout cannot be declared operational until a zero-additional-cost hosting path meets ADR-001 and preserves the Argon2id profile. This dependency does not stop independent Connect source migration work. No new Render service, Worker, database, credential, secret, environment, production role/grant, deployment or payment state was changed during this inspection.
