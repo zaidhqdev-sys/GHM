@@ -236,3 +236,18 @@ The documentation synchronization was committed directly to the existing PR bran
 - This handover update: `5f15ac5cbb098012310c580f8ca8ad2abb16878e` (blob `699fe0a57e1b4dc66c2ac080adcf2a46f5ee6a61`).
 
 Post-write reads confirmed the two new current-state sections, both historical and mainline hosting-handover additions, the objectives document's unchanged blob, and the exact production batch manifest content `[]`. PR #305 remains open and draft. GitHub reports it is not currently mergeable; comparison against `main` reports a diverged history, 90 commits ahead and 8 behind. This task synchronized the relevant documentation content only; it did not merge `main` into the branch, rebase, force-update, merge PR #305, or resolve the remaining branch-history divergence. No CI was run for these documentation-only commits. No production or infrastructure state changed.
+
+
+### Mainline history merge completed — 26 November 2026
+
+Correction to the earlier synchronization note: the documentation synchronization was subsequently followed by a non-force, two-parent merge commit to reconcile the eight commits that had landed on `main`.
+
+- Merge commit: `4b476873070d97b3e6f51f6ecbc4133cc06fb2d6`.
+- First parent (PR branch immediately before merge): `51c7cff801b94ebe6e767e346308d0cb626f313f`.
+- Second parent (then-current `main`): `8be9deaa8e007cdc1bbed0bbce95838fa45571a4`.
+- The merge reused the already-reviewed PR branch tree `d79d3606b6b586d8218487024b1c7fea92ff2d0b`; the exact mainline current-state/objectives/hosting content had already been synchronized and verified in that tree.
+- The branch ref update used expected-head protection against `51c7cff801b94ebe6e767e346308d0cb626f313f` and did not force-update.
+- Post-merge GitHub comparison reports `main` is an ancestor of the PR branch (92 commits ahead, 0 behind); PR #305 is still open/draft and GitHub now reports it mergeable.
+- Post-merge reads confirm `config/production-migration-batches.json` is exactly `[]`, the current-state/objectives blobs remain the synchronized versions, and the hosting handover retains both the PR historical section and the mainline Render section.
+
+This was a Git-history reconciliation using the existing reviewed tree, not a migration implementation change. No migration SQL, pending allowlist, production manifest, production database, roles/ACLs, credentials, secrets, Render configuration, services, deployments, payments, or paid resources were changed. No CI was manually triggered as part of this merge; any automatically triggered check status must be read from the merge commit before relying on qualification.
