@@ -165,3 +165,89 @@ Migration-related branches were also checked:
 ## 8. Change record
 
 This handover records source review and the user's supplied read-only audit. It does not claim a new production audit was run. No production SQL, migration, role/grant, secret, environment variable, Render service, Cloudflare resource, deployment or application data was changed.
+
+## 9. Follow-up inventory reconciliation — 2026-11-26
+
+A read-only exact-set comparison was completed between the 50-entry pending inventory in the user's `C:\\GHM-main` worktree (branch `feat/actor-gateway-production-migration-batches`) and the 52-entry inventory on this PR #305 branch (`feat/production-migration-batches-mainline-20261123`, HEAD `a0aa50b593aea887487c1eb1b0529e0c5776507f`).
+
+Results:
+- PR #305 inventory: 52 entries.
+- Comparison inventory in `C:\\GHM-main`: 50 entries.
+- Entries in PR #305 but absent from the 50-entry comparison: exactly two:
+  - `20261120010000_add_signed_business_capability_create`
+  - `20261120011000_allow_signed_business_capability_create_assertion`
+- Entries in the 50-entry comparison but absent from PR #305: zero.
+- The two migration files were independently inspected in both worktrees; their SHA-256 hashes match exactly:
+  - `20261120010000_add_signed_business_capability_create.sql`: `E4AD9EDAF9C0CC8320099EAE0BC7D5A91FAC969A40ACA5B91CDCFB36F9E266D0`
+  - `20261120011000_allow_signed_business_capability_create_assertion.sql`: `A5E21E71AAFE6B0A2DF41CB55E2926D1132B08B8F5377ADE38A5972E7346CF8C`
+
+Conclusion: the two-entry difference is explained by the later signed Business Capability create migration pair. The PR #305 52-entry pending inventory is the complete candidate inventory for its audited source/ledger state; the 50-entry comparison inventory is missing those two entries. This comparison did not change either inventory or any migration file.
+
+PR #305 remains open and draft, based on main commit `93ff3c774ce225760b0e3e2cf99a770b38e8a097`, with head `a0aa50b593aea887487c1eb1b0529e0c5776507f`; GitHub reported `mergeable=false` at the time of inspection. The production execution manifest remains exactly `[]`. No batch is authorized, and no production SQL or migration was executed.
+
+**Do not repeat:** the 105-row production ledger/checksum reconciliation, the 52-entry allowlist reconciliation on PR #305, the PR #300 signed Business Capability migration checksum comparison, or this 50-vs-52 set comparison unless a specific new source/ledger/head change invalidates the recorded evidence. Next work should first inspect the reason PR #305 is reported non-mergeable and compare current base/head state; do not rerun production audit or migration qualification merely to revisit these completed checks.
+
+## 10. PR #305 synchronization inspection — 2026-11-26
+
+Following the 50-vs-52 inventory comparison, the next read-only task was to identify why PR #305 is currently non-mergeable and compare its head with current `main`.
+
+Verified repository state:
+- Current `main`: `8be9deaa8e007cdc1bbed0bbce95838fa45571a4`.
+- PR #305 branch: `feat/production-migration-batches-mainline-20261123`.
+- PR #305 head at start of this inspection: `64b7d8b1ca30e8e7d26e0703abe63452f8cbe070`.
+- PR #305 base remains `main`, recorded base SHA `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+- Compare result: 86 commits ahead / 8 commits behind; merge-base is the recorded base SHA.
+- The eight mainline commits since the merge-base are documentation-only changes to `docs/GHM_CURRENT_STATE.md`, `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md`, and `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md`. No migration source or batch-runner code changed in those eight commits.
+- The objectives file has identical blob SHA `1ec460fb070e771c485502dc7d4c65e360c7ab26` on `main` and the PR branch.
+- The Actor Gateway hosting handover differs between branches. Both versions share the original 1,864-line base content, then append different content at the same end-of-file location: `main` adds the 25 November Render service/PORT reconciliation, while PR #305 carries its longer staged-startup implementation and qualification history. This is a likely textual merge-conflict area; exact GitHub conflict diagnostics were not available from the metadata response, so do not label it conclusively as the sole cause.
+- The latest PR #305 check-run query shows a successful Cloudflare Pages preview for documentation commit `64b7d8b`. No quality/web-quality check run is attached to that documentation-only commit. Existing exact-head CI evidence for the unchanged implementation remains recorded in this handover; do not rerun it solely for this documentation commit.
+- PR #305 has no submitted reviews or inline review threads at inspection.
+
+Related PR status rechecked:
+- PR #285 remains open/draft and non-mergeable; it is the separate bounded incremental migration-execution proposal and is not to be merged into PR #305 or revived as a competing implementation.
+- PR #303 remains open/draft and non-mergeable; it is the separate manual Business Capability column-privilege cutover.
+- PR #300 is closed and merged; its signed Business Capability create work is mainline.
+- PRs #297 and #298 remain closed unmerged; their branches are preserved and are not to be reactivated.
+
+No rebase, merge, force-push, branch update, local worktree change, migration, production SQL, database/role/ACL/credential/secret change, Render setting, deployment, payment action or paid resource was performed in this inspection.
+
+**Next safe step:** before synchronizing PR #305 with `main`, inspect the owner's existing local PR #305 worktree and preserve any dirty/untracked work. Then reconcile the two append-only hosting-handover additions without dropping either history, incorporate the mainline documentation-only commits on the existing branch, and verify GitHub mergeability. Do not rebase/force-push, merge the PR, change its draft status, run migrations, or alter the empty production batch manifest as part of that synchronization.
+
+
+## 2026-11-26 — mainline documentation reconciliation into PR #305
+
+Read the existing PR #305 worktree inspection and compared the current `main` documentation against the existing PR branch before making this documentation-only synchronization. The PR branch tip before synchronization was `6e9c53528909030b7dfc36126ce5d02bc911e974`; the local worktree inspection showed a clean detached checkout at `a0aa50b593aea887487c1eb1b0529e0c5776507f`. No local worktree contents were changed.
+
+- Replaced `docs/GHM_CURRENT_STATE.md` on this existing PR branch with the exact current `main` version. This carries forward the 23–25 November standing objectives, QuoteFlow local-first boundary, Connect Project/Opportunity migration scope, owner-confirmed product backend-transition baseline, and Authentication Issuer deployment-feasibility findings.
+- Confirmed `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` has the same blob on `main` and the PR branch (`1ec460fb070e771c485502dc7d4c65e360c7ab26`); no redundant update was made.
+- Reconciled the append-only hosting handover without replacing either branch's history. Preserved the PR branch's staged Gateway startup, migration dependency/transaction-boundary analysis, and source-backed rejection of legacy compatibility regrants; appended the separate 25 November mainline Render inventory/startup reconciliation. The Render section records the existing Free `ghm-actor-gateway` service and its observed `PORT must be a valid TCP port` startup error, keeps the Authentication Issuer distinct, and does not authorize a deployment or configuration change.
+- The earlier proposed legacy runtime compatibility grants remain withdrawn; no legacy regrant migration is to be introduced. The migration transaction/deploy/verify boundary remains unresolved. `config/production-migration-batches.json` remains exactly `[]`.
+- PR #305 remains open/draft. This synchronization does not merge or rebase the PR, change PR disposition, alter migration source/allowlists/manifest, run CI, execute production SQL, or change production database/roles/ACLs/credentials/secrets, Render/Cloudflare settings, services, deployments, payments, or paid resources.
+
+This is documentation-only synchronization on the existing PR #305 branch. No new branch/worktree was created; no existing branch was force-updated.
+
+
+### Synchronization commit and branch-state verification
+
+The documentation synchronization was committed directly to the existing PR branch in three sequential commits:
+
+- Current-state document: `56e8e84579ed3ff099414cd6d08985dd892463f5` (blob `ede5a4f719a5c85d5ae2e8e43c13ab1f128af52a`).
+- Hosting handover reconciliation: `af3f2e779bb4a3b0ef2728999fb85ef4dfce5bcb` (blob `84d3c9c35baef80b7a2a9797ddc2a16a5a9e5075`).
+- This handover update: `5f15ac5cbb098012310c580f8ca8ad2abb16878e` (blob `699fe0a57e1b4dc66c2ac080adcf2a46f5ee6a61`).
+
+Post-write reads confirmed the two new current-state sections, both historical and mainline hosting-handover additions, the objectives document's unchanged blob, and the exact production batch manifest content `[]`. PR #305 remains open and draft. GitHub reports it is not currently mergeable; comparison against `main` reports a diverged history, 90 commits ahead and 8 behind. This task synchronized the relevant documentation content only; it did not merge `main` into the branch, rebase, force-update, merge PR #305, or resolve the remaining branch-history divergence. No CI was run for these documentation-only commits. No production or infrastructure state changed.
+
+
+### Mainline history merge completed — 26 November 2026
+
+Correction to the earlier synchronization note: the documentation synchronization was subsequently followed by a non-force, two-parent merge commit to reconcile the eight commits that had landed on `main`.
+
+- Merge commit: `4b476873070d97b3e6f51f6ecbc4133cc06fb2d6`.
+- First parent (PR branch immediately before merge): `51c7cff801b94ebe6e767e346308d0cb626f313f`.
+- Second parent (then-current `main`): `8be9deaa8e007cdc1bbed0bbce95838fa45571a4`.
+- The merge reused the already-reviewed PR branch tree `d79d3606b6b586d8218487024b1c7fea92ff2d0b`; the exact mainline current-state/objectives/hosting content had already been synchronized and verified in that tree.
+- The branch ref update used expected-head protection against `51c7cff801b94ebe6e767e346308d0cb626f313f` and did not force-update.
+- Post-merge GitHub comparison reports `main` is an ancestor of the PR branch (92 commits ahead, 0 behind); PR #305 is still open/draft and GitHub now reports it mergeable.
+- Post-merge reads confirm `config/production-migration-batches.json` is exactly `[]`, the current-state/objectives blobs remain the synchronized versions, and the hosting handover retains both the PR historical section and the mainline Render section.
+
+This was a Git-history reconciliation using the existing reviewed tree, not a migration implementation change. No migration SQL, pending allowlist, production manifest, production database, roles/ACLs, credentials, secrets, Render configuration, services, deployments, payments, or paid resources were changed. No CI was manually triggered as part of this merge; any automatically triggered check status must be read from the merge commit before relying on qualification.

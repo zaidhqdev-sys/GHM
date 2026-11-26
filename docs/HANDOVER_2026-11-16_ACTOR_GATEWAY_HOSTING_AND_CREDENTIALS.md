@@ -1863,6 +1863,355 @@ Amanda's guidance remains controlling: the SQL-created service login must use it
 This is a documentation correction based on the owner's clarification. No Render form was read or changed by the assistant; no environment variable was created, read or modified; no password or secret was accessed; no production SQL, role, membership, grant, migration, deployment or service creation occurred; and no additional paid infrastructure or cost was introduced.
 
 
+## 23 November 2026 — PR #305 staged Actor Gateway startup contract implementation
+
+Before this task, rechecked open PRs, all relevant remote branches, PR #305 changed-file set, the current migration inventory, the signed Business Capability handover and the Actor Gateway hosting/credentials handover. PR #305 remains the sole active production migration batch-gate implementation on `feat/production-migration-batches-mainline-20261123`; its base is current main `93ff3c774ce225760b0e3e2cf99a770b38e8a097`. PRs #297/#298 remain older competing draft designs and were not changed. PR #303 remains the separate manual Business Capability direct-INSERT privilege cutover. PR #300's signed Business Capability application path remains a distinct feature PR and its migration pair remains pending in the PR #305 inventory. No new branch or worktree was created.
+
+### Cycle resolution implemented in source (qualification pending)
+
+The source-ordering cycle was resolved on the existing PR #305 branch with an explicit two-stage Actor Gateway startup contract:
+
+- `GHM_ACTOR_GATEWAY_STARTUP_STAGE` accepts only `pre_business_capability_create` or `full`; missing/blank defaults to the conservative `pre_business_capability_create`; any other value throws before startup.
+- In pre-create mode, the DB privilege assertion expects the complete reviewed Gateway allow-list except exactly `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)`. It continues to reject every other missing or extra function, unsafe ACL/default ACL, direct relation privilege, wrong SECURITY DEFINER owner/path, PUBLIC EXECUTE, runtime EXECUTE or grant option.
+- The authenticated `POST /v1/business-capabilities` route is not registered unless the stage is explicitly `full`. In pre-create mode the route is absent (404 after the existing authentication middleware); the reader may be constructed but cannot be invoked by this endpoint.
+- Render Node server and Cloudflare Worker both resolve the same strict stage value, apply the corresponding DB assertion before listening/dispatching, and pass the stage to the application route-registration option. No platform configuration, secrets or deployment was changed.
+- The full stage requires the create wrapper to be present and executable; it is not enabled by default. The intended final promotion is only after both `20261120010000_add_signed_business_capability_create` and `20261120011000_allow_signed_business_capability_create_assertion` are installed together and the final DB contract is verified.
+
+Source commits on PR #305 branch:
+- `3ed81032f513e3688d7462d2a837e65ba5934d52` staged privilege assertion and strict stage resolver.
+- `c290832b32fc571deec307dde211bd8e68b5b45d` conditionally registers Business Capability create route.
+- `88f380814bad059bc46e3004b1a85d2d7a1c2c26` wires stage into Render Node server startup.
+- `c4082143aecfa6b79f03b8fda293c5986275b627` wires stage into Worker startup and route registration.
+- `3da488413ee2179dc14a61ed78aa0ed817ec9460` adds authenticated pre-create route-absence test and explicitly enables create in existing full-route tests.
+- `e05f1e1762ababe9d8573bbc8853d9423cd5da03` adds stage allow-list tests; `d979b4141778f6506a1fb95e5be94c7d2f8a11d2` corrects the empty/default-stage assertion.
+
+### Required qualification before calling the cycle resolved for release
+
+1. Run exact-head PR #305 CI and inspect all quality/web-quality/Worker typecheck/Worker tests.
+2. Add/verify a source contract test that Render and Worker both consume the same startup-stage resolver and that no alternate app construction path registers the create route in pre-create mode.
+3. Confirm route absence and no mutation-reader invocation in pre-create mode; confirm the route is enabled only in full mode.
+4. Confirm pre-create DB function-set test permits only the single create-wrapper omission while rejecting any other missing/extra signature, and full mode fails closed if the wrapper or its signed operation allow-list is absent.
+5. Review the staged operational sequence: first all pre-revocation Gateway migrations and shared hardening; deploy only after the separate no-cost hosting, endpoint, Auth Issuer, credential, provider and backup gates are met; qualify authenticated non-create routes; only then separately authorize/apply the 17 November revocations; then apply the 20 November signed-create pair together; finally set stage to `full` and requalify. This document does not authorize a production migration, Render configuration change or deployment.
+
+The production migration manifest remains exactly `[]`. No production SQL/migration, ledger, role, membership, ACL, credential, secret, Render service/environment, deployment/restart, payment or paid resource was changed. PR #305 remains draft/unmerged and no CI result is claimed until exact-head checks complete.
+
+
+### 23 November 2026 — exact-head CI feedback and correction
+
+The first exact-head CI attempt for the staged implementation exposed a TypeScript interface-placement error: `businessCapabilityCreateEnabled` had initially been passed as an application dependency while the tests and route switch correctly treated it as an application option. The failing Build step reported TS2353 in the two full-stage app tests; all earlier workflow setup/qualification-script syntax steps had passed, while later DB/Worker qualification steps were skipped because Build failed. Corrected by moving the flag into `ActorGatewayAppOptions`, checking `options.businessCapabilityCreateEnabled` at route registration, and passing it as the second argument to `createActorGatewayApp` from both Render Node and Worker. No runtime behavior was deployed or changed in a live environment.
+
+Also added `src/actor-gateway/database-startup-acl-contract.test.ts` assertions proving both host adapters resolve the same strict stage, use it in the DB ACL assertion, and enable the create route only for `full`. Exact-head CI must be rerun on the corrected branch head; no pass is claimed. PR #305 remains draft, production manifest remains `[]`, and all production/Render/secret/deployment boundaries remain unchanged.
+
+
+### 23 November 2026 — staged startup test failures diagnosed and corrected
+
+The first corrected-build full-suite run completed 1,112/1,114 tests and exposed two new staged-contract test defects (not production/DB failures):
+
+1. The pre-create signature comparison normalized PostgreSQL's comma spacing in the actual/expected arrays but compared the normalized signature to the unnormalized constant. This meant the create signature was not filtered, so the pre-create unit test correctly caught an allow-list mismatch. The comparison now normalizes the constant before equality.
+2. The cross-host source-contract test still expected the old `dependencies.businessCapabilityCreateEnabled` property after the flag was moved to `ActorGatewayAppOptions`. The test now checks `options.businessCapabilityCreateEnabled`.
+
+Corrections committed on the existing PR #305 branch as `476dc46b901cf8ed560bce5a8a215fdf34242f8d` and `87517539ee18efb1b099830dcf039f5f71ed0ba0`. The previous run's TypeScript Build, Worker bundle, disposable Gateway principal qualification, local Worker smoke and disposable migration application all passed; full test suite failed only on the two staged-contract tests above. Rerun exact-head CI on the corrected source; no green full-suite result is claimed. The production migration manifest remains `[]`; no production state, Render configuration, credentials, secret, deployment or paid resource changed.
+
+
+### 23 November 2026 — full-stage disposable principal qualification corrected
+
+The next exact-head CI run confirmed Build and Worker bundle steps passed, then exposed one existing qualification caller that was still relying on the old implicit full allow-list: `scripts/qualify-actor-gateway-principal.mjs` runs after all migrations are applied to disposable PostgreSQL and therefore must assert the `full` contract, not the default pre-create contract. Its assertion now explicitly passes `'full'`. Added a source-contract assertion so this disposable full-state principal qualification cannot silently regress to the pre-create default. The failing check was confined to disposable CI; it is not a production ACL observation and no production state changed.
+
+Commits: `85238097ee4605c787f6399353bac5fb9439ff8b` updates the qualification stage; `50a701c696464966011476f4d319a3c49adbadb4` protects it with a source-contract test. Exact-head CI must complete on the resulting branch head. The production manifest remains `[]`; no migration, Render configuration, credential, secret, deployment or paid resource was changed.
+
+
+### 23 November 2026 — Worker smoke fixture explicitly selects full ACL stage
+
+Reviewing the next CI run after the disposable principal qualification passed identified the local Worker smoke fixture as another full-migration environment. It writes `workers/actor-gateway/.dev.vars` and starts Wrangler against the fully migrated disposable PostgreSQL database, so the fixture must set `GHM_ACTOR_GATEWAY_STARTUP_STAGE=full` rather than inherit the production-safe default pre-create stage. Added that explicit value to the ephemeral CI-only `.dev.vars` content in `.github/workflows/ci.yml`; cleanup continues removing the file on exit. No production or persistent Worker configuration was changed. Commit: `96d6dddde68a01ef734c0e3c7a655b759e89854c`. Exact-head CI must be rerun after this correction.
+
+
+### 23 November 2026 — final default-stage unit test made explicit
+
+The next exact-head run passed the pre-create startup tests, full-stage tests, cross-host source contract, disposable principal qualification, and Worker smoke test. The full suite then exposed one legacy unit test that asserted the signed create wrapper was mandatory but still relied on the old implicit full-stage default. Since the safe default is now intentionally pre-create, that assertion must explicitly select `full`; updated both its missing-wrapper rejection and present-wrapper acceptance cases to pass `'full'`. The run had 1,113/1,114 tests pass; this was the single remaining test failure and did not involve production or disposable DB startup. Commit: `0507eab4c342c161f41cfc2f5808b44942f89e06`. Exact-head CI rerun required; no full-suite pass is claimed. Production manifest remains `[]`, with no production/Render/secret/deployment change.
+
+
+### 23 November 2026 — Worker host contract test updated for explicit stage argument
+
+The next full-suite run passed the staged ACL tests, including the signed-create allow-list test, and then found one Worker source-contract test still searching for the pre-stage call form `assertActorGatewayDatabasePrivileges(privileges)`. The Worker correctly passes `startupStage`; updated `workers/actor-gateway/worker-contract.test.mjs` to assert the explicit staged call and preserve the required order (database identity, staged ACL, then HTTP listener). This was a stale source-contract expectation, not a runtime or DB failure. Commit: `1bc8c5b748fd1f2a9e1516c6fd8bef0fa29df99a`. Exact-head CI rerun required; no green full-suite result is claimed. No production state changed.
+
+
+### 23 November 2026 — latest exact-head CI checkpoint
+
+After the Worker source-contract correction, exact-head push CI run `45261554631` for source commit `1bc8c5b748fd1f2a9e1516c6fd8bef0fa29df99a` is still in progress at the full `Test suite` step. The run has passed TypeScript Build, Worker bundle, disposable PostgreSQL migration application, isolated Auth Issuer principal qualification, isolated Actor Gateway principal qualification, and the local Cloudflare Worker smoke test; no failure is reported in this run so far. The Worker smoke test now uses an explicit full-stage fixture. The current PR #305 head is `77dc6c957de77446bde2f8bf53b2e88ac65850fb` (the latest subsequent commit is handover-only). Do not call the staged source qualified until the test suite and remaining quality checks finish. No production/Render changes occurred.
+
+
+### 23 November 2026 — full suite passes; campaign qualification caller updated
+
+Correction to the preceding CI checkpoint: run `45261554631` has completed the full repository Test suite successfully. It then failed at the separate `Qualify Campaign and directory-review signed actor gateway on disposable PostgreSQL` step. The failure was the same explicit-stage compatibility issue: `scripts/qualify-campaign-directory-review-gateway-postgres.mjs` applies the campaign/directory-review manual cutover on top of the full disposable migration state, then called the database privilege assertion without a stage. Its actual full Gateway ACL set therefore correctly failed against the conservative pre-create default. Updated this qualification to explicitly select `full`, and added a source-contract test to keep it that way. Commits: `7170330be65867fe460cb6be6c28428df5ea3ed3` and `b27cdb31ce8ffc8c4689c1c69cb5d43ff0c661b7`. This was a disposable CI qualification script issue; no production database or Render state changed. Exact-head CI must be rerun after these fixes.
+
+
+### 23 November 2026 — staged Actor Gateway ACL startup qualification passed exact-head CI
+
+The corrected staged startup contract is now green at source commit `b27cdb31ce8ffc8c4689c1c69cb5d43ff0c661b7`. Exact-head push run [45262246125](https://github.com/zaidhqdev-sys/GHM/actions/runs/45262246125) completed successfully, and the matching PR run [45262293731](https://github.com/zaidhqdev-sys/GHM/actions/runs/45262293731) passed both `quality` (73/73 steps) and `web-quality` (11/11 steps). This includes TypeScript build, Worker bundle, disposable PostgreSQL migration application, isolated Auth Issuer and Actor Gateway principal qualification, Worker smoke, full repository test suite, and campaign/directory-review Gateway disposable qualification. The staged pre-create/full ACL contract and its qualification callers are therefore repository-CI qualified at that exact source head.
+
+PR #305 subsequently advanced only by the handover documentation commit `9932241cbbf1929a2c60ce28b8821d00727efdc7`; the source head remains `b27cdb31ce8ffc8c4689c1c69cb5d43ff0c661b7`. PR #305 remains draft/open. This does not qualify production Render startup or authenticated production routes: the live Actor Gateway service has not passed its database privilege assertion, and the two relevant production migrations remain absent from the production ledger. The production migration manifest remains `[]`; no production migration, role/ACL/credential, secret, Render setting, deployment, restart or paid resource changed.
+
+
+### 23 November 2026 — production migration dependency sequence review: startup/cutover cycle identified
+
+Rechecked current PRs, branches, the live pending inventory recorded in PR #305, the current 52-entry `config/pending-migrations.production.json`, the production execution manifest, and the source for the Actor Gateway startup verifier and migration families. This supersedes the older 42/50-entry dependency descriptions in the 15-Nov migration handover; PR #305's exact inventory is 52 entries and its execution manifest remains `[]`.
+
+**Startup contract clarification.** The staged Gateway mode is named `pre_business_capability_create`, not a pre-migration or principal-only mode. It still requires schema USAGE, no direct relation privileges, safe global/schema function default ACLs, all SECURITY DEFINER functions owned by `ghm_schema_owner` with exact `search_path=pg_catalog, ghm, pg_temp`, no PUBLIC/runtime Gateway-function EXECUTE, and the expected 38 Gateway/verifier functions. It excludes only `ghm.gateway_create_business_capability(bigint,bigint,uuid,text,text,jsonb)`; the full stage expects all 39. Three campaign/directory-review operations may be absent under the explicitly tested campaign pre-cutover exception. The principal-only preflight is a separate planner check and is not a service startup mode.
+
+**First non-legacy-cutover prefix.** The first 11 entries in the current ordered pending queue end at `20261110250000_add_gateway_capability_governance`:
+`20261110010000`, `20261110100000`, `20261110120000`, `20261110140000`, `20261110160000`, `20261110210000`, `20261110220000`, `20261110230000`, `20261110233000`, `20261110240000`, `20261110250000`.
+Source review shows this prefix establishes supplier-classification schema/function state, onboarding and relationship read models, storage pending-deletion behavior, capability governance, the Gateway principal guard/schema USAGE, and initial Gateway wrappers. It does not yet provide the complete 38-function startup allow-list. It is only a candidate additive/foundation boundary for dependency analysis, not an approved or execution-ready production batch: it contains behavior/schema changes (including supplier normalization/NOT NULL and a capability hierarchy trigger), and the normal backup, role-authority, migration-plan and operational prerequisites still apply.
+
+**Why the next prefix cannot simply be applied and then followed by Gateway deployment.** The very next migration, `20261110260000_gateway_supplier_classification_cutover`, revokes `ghm_runtime` EXECUTE on the legacy supplier-classification function while its replacement still uses the initial caller-ID assertion. `20261110265000` reconciles the Business profile function contract and `20261110270000` then revokes runtime execution on the legacy Business profile function. The signed database-verifiable replacements arrive later in `20261111030000` and `20261111040000`; registration/self-identity signed replacements arrive in `20261111050000`, with exact request-context binding in `20261111060000`. Those migrations must be treated as one dependency group if the early wrappers/cutovers are retained as currently authored.
+
+The later queue also contains independent service cutovers:
+- `20261111210000` and `20261111220000` remove direct runtime access to external-identity storage and auth entry points; `20261111240000`, `20261111250000`, `20261111260000`, and `20261112040000` revoke QuoteFlow migration/auth runtime functions. These require the isolated Authentication Issuer and the corresponding runtime callers to be deployed and verified; the production Auth Issuer boundary/hosting is not yet ready.
+- `20261112050000` establishes the global function default-privilege policy required by the Gateway verifier; `20261112070000` removes the legacy unsigned Gateway assertion helper; `20261112090000` pins all SECURITY DEFINER paths to the verifier's exact expected value.
+- `20261112080000` installs signed Connect Business provisioning but also revokes the legacy external-mapping helper; Connect provisioning route readiness must be evidenced before that cutover.
+- `20261112140000` / `20261112150000` install signed storage operations and provider-workflow attestation; the storage API/provider path and separate provider-attestation secret custody must be ready before legacy storage access is removed.
+- `20261116170000`, `20261116180000`, and `20261116190000` add the founder-only commercial approval and payment-consent Gateway functions needed by the 38-function pre-create startup allow-list.
+- `20261117010000` and `20261117020000` are explicitly post-deployment revocations with SQL preconditions and handover instructions requiring a running Gateway and authenticated route tests. They must remain after those checks.
+- `20261120010000` and `20261120011000` are a required signed Business Capability create/verifier pair. They enable the 39th function/full startup stage; select/apply them together. The related `20261120012000` direct-write privilege cutover is manual-only and remains separate under PR #303.
+
+**Dependency conclusion.** There is no currently defensible production execution batch that both (a) gets the Gateway to its 38-function `pre_business_capability_create` startup state and (b) guarantees existing production Resource API, Authentication Issuer, Connect, QuoteFlow and storage callers are not cut over before their replacements are live. Ending at the first 11 entries avoids the first supplier/profile legacy-function revocation but cannot start the Gateway. Continuing contiguously installs the complete Gateway set only after crossing multiple legacy runtime revocations and auth/Connect/storage cutovers. Disposable CI success does not resolve this production ordering problem.
+
+The next code-level resolution must be designed on this existing PR #305 workstream, not a new branch: separate replacement-function installation/grants from legacy runtime revocations so the full Gateway ACL can be installed and verified while existing runtime callers still work; keep the existing post-deployment revocations behind explicit, separately reviewed gates. In parallel, map each auth/Connect/QuoteFlow/storage revocation to the exact deployed service and route evidence, and keep those revocations separate until their respective replacements are live. Preserve immutable migration-history rules and do not rewrite any migration that may already have been applied without a verified production-ledger/checksum check. The current production ledger evidence says these 52 are pending, but refresh it immediately before any future execution decision.
+
+**PR/branch reconciliation at this review.** PR #305 remains the active draft workstream; source qualification passed at `b27cdb31ce8ffc8c4689c1c69cb5d43ff0c661b7`, while the current PR head `4900fb2aa616fac593568348d0bc2cfd8a93b7a5` is a handover-only follow-up. PR #298 and #297 remain older overlapping draft alternatives and are not to be revived. PR #303 remains a separate manual-only Business Capability column-privilege cutover; its current head is `d74ce8488a0be8d5f243eff1ed0d88b738b85f08`, while the exact-head CI evidence in its description is for the earlier `3af71a78b86c74864092150c6d036b312cf5ce45`, so do not attribute that historical green run to its current head. No PR was merged or branch created in this review.
+
+No production SQL/migration, ACL/role, secret, Render setting, deployment, restart, payment or paid resource changed. No production batch is approved; `config/production-migration-batches.json` remains `[]`.
+
+
+### 23 November 2026 — migration runner transaction semantics confirm no deployment pause inside a batch
+
+Inspected the exact PR #305 runner and selector source after the dependency review. `src/db/migrate.ts` opens one transaction before resolving/reconciling the live ledger, executes every selected migration in source order, writes each ledger row in that same transaction, and commits once after the selected prefix; any error rolls back the entire selected prefix. The production selector in `src/db/migration-batches.ts` accepts only an exact contiguous prefix of the current pending queue. It currently enforces only two signed-replacement ordering dependencies (supplier and Business profile) plus the 20-Nov signed-create/verifier pair. It does not create a deployment pause or verify service/route readiness.
+
+**Operational consequence:** no selected production batch can pause after an early wrapper migration, deploy/test the Actor Gateway or Authentication Issuer, and then resume later migrations. A prefix that reaches the 38-function pre-create Gateway allow-list crosses earlier legacy revocations (supplier/profile, auth/QuoteFlow, Connect mapping, and storage) and the explicitly post-deployment `20261117010000` / `20261117020000` cutovers before the transaction commits. A shorter prefix ending at `20261110250000` avoids the first supplier/profile cutover, but cannot satisfy Gateway startup and therefore cannot be followed by a Gateway deployment that depends on those later wrappers. The current contiguous-prefix runner therefore has no demonstrated production batch that both reaches Gateway startup readiness and preserves the stated service-deployment-before-revocation gates.
+
+Do not populate the manifest with a guessed 11-entry prefix or the entire 52-entry queue. Do not weaken the SQL preconditions or treat same-transaction ordering as equivalent to a live-service test. A viable next design needs a migration-chain restructuring decision that preserves migration-history/checksum guarantees and creates a real commit/deploy/verify boundary before the legacy revocations. This cannot be achieved by merely adding more selector assertions. Candidate approaches require an explicit architecture review before code: (a) a carefully reviewed forward-only migration reorganization that moves/defer cutover operations into later post-deployment versions while preserving already-applied history across environments; or (b) a redesigned staged migration mechanism that can apply only a dependency-closed additive set without recording skipped earlier migrations as applied, followed by the separately gated revocation phase. The current strict contiguous-prefix invariant and normal ledger out-of-order guard must not be silently bypassed.
+
+No source migrations, runner code, selector, manifest or database were changed in this diagnostic task. No production state changed. The finding and next decision are recorded on the existing PR #305 branch; current head before this handover-only commit was `e8d36c1e798e8c4cf038a252e0dcf63a094eb5ef`.
+
+
+### 23 November 2026 — phased rollout design derived from existing PR #285/#286 patterns
+
+This design follows a fresh review of the current PR #305 head, all open migration/cutover PRs, the branch inventory, the exact 52-entry pending queue, the Actor Gateway privilege verifier, the Resource API ACL-stage model in PR #286, and the older bounded-batch design in PR #285. It is a design decision only; no migration SQL, runner, manifest, or execution authority was changed.
+
+**Existing mechanism reused:** PR #286 already models independently qualified legacy Resource API ACL cutovers as exact function-signature groups and accepts only reviewed combinations of those groups. Its storage-metadata addition proves the pattern can preserve a compatibility ACL state while individual cutovers are deferred. PR #285 also established that a production migration transaction can commit a bounded prefix and stop before the next batch; PR #305 supersedes its older 42-entry inventory and GHM_PRODUCTION_MIGRATION_BATCH interface, so do not revive PR #285 or its old environment variable.
+
+**New finding from the current Gateway verifier:** the current runtime_executable_functions query checks only Actor Gateway assertion/wrapper function names, and unsafe_function_grantees is derived from functions executable by session_user=ghm_actor_gateway. It does not reject ghm_runtime EXECUTE on unrelated legacy function names. The verifier separately rejects PUBLIC EXECUTE on SECURITY DEFINER functions, unsafe SECURITY DEFINER ownership/search_path, unsafe future defaults, Gateway direct relation privileges, and any ghm_runtime grant on Gateway functions. Therefore a tightly scoped, runtime-only compatibility grant on legacy functions can coexist with the Gateway's exact pre-create startup contract, provided no PUBLIC/Gateway/migrator/provider/issuer grants are introduced and the exact SECURITY DEFINER owner/search_path checks pass.
+
+**Candidate three-boundary production choreography:**
+
+1. **Foundation + Gateway installation (batch A).** Apply the existing ordered pending migrations through 20261116190000_add_commercial_consent_payment_prepare_gateway, then a new 20261116195000_restore_approved_legacy_runtime_function_compatibility migration. The first 48 existing entries install the 38-function pre-create Gateway set, schema USAGE, default-function policy, and pinned SECURITY DEFINER search paths. They also contain early legacy revocations (supplier classification, Business profile, selected auth/QuoteFlow operations, and Connect external mapping). The new compatibility migration would restore only the exact EXECUTE TO ghm_runtime grants proven necessary by a source caller inventory and live pre-cutover ACL evidence. It must not restore PUBLIC, direct table/sequence privileges, or grants to ghm_actor_gateway, ghm_migrator, ghm_auth_issuer, or ghm_payment_provider. It must not restore the unsigned assert_actor_gateway(bigint) helper, unused auth entry points, or redundant migrator lookup. If an old runtime caller requires direct table/sequence access rather than an approved SECURITY DEFINER function, batch A is not safe until that caller is migrated; do not restore broad relation access.
+2. **Deploy and verify the Gateway.** After batch A commits, deploy the dedicated existing ghm-actor-gateway service using GHM_ACTOR_GATEWAY_STARTUP_STAGE=pre_business_capability_create. The current 38-function allow-list (with the already-tested campaign-review exception only where applicable) should now be present. Verify its database identity and full ACL assertion, /healthz, authenticated positive/negative routes, signed assertion/HMAC/replay protections, and the Resource API's exact compatibility ACL state. This is a real inter-batch deployment/verification boundary, not a pause inside one transaction.
+3. **Gateway-specific post-deployment revocations (batch B).** Only after the above route evidence, apply exactly 20261117010000_revoke_runtime_business_registration_identity_write and 20261117020000_revoke_runtime_capability_governance. Their SQL preconditions independently check the signed replacement functions, owner/search_path, Gateway EXECUTE and absence of runtime EXECUTE. These migrations are already separate queue entries and must remain a separately selected/committed batch.
+4. **Signed Business Capability create (batch C).** Apply 20261120010000_add_signed_business_capability_create and 20261120011000_allow_signed_business_capability_create_assertion together, as already required by the selector. Then switch/restart the Gateway to GHM_ACTOR_GATEWAY_STARTUP_STAGE=full and prove the 39-function exact allow-list. Do not include PR #303's manual-only direct INSERT/sequence privilege cutover in these batches.
+
+**Service-specific legacy cutovers remain separate.** Batch A's compatibility migration is not a blanket permission restoration. For every early revocation, inspect the current Resource API/Auth Issuer/Connect/QuoteFlow/storage source callers and the exact production grants before deciding whether that one function needs a temporary ghm_runtime grant. The currently known candidates requiring caller-by-caller disposition are:
+- ghm.update_business_supplier_classification(bigint,bigint,boolean)
+- ghm.update_business_profile(bigint,bigint,jsonb)
+- ghm.auth_link_external_identity(text,text,bigint)
+- ghm.auth_bootstrap_external_identity(text,text,text,text)
+- ghm.auth_provision_migration_account(text,text,text,text)
+- ghm.auth_register_quoteflow_migration_reset_enrollment(...)
+- ghm.auth_link_business_external_mapping(text,text,bigint)
+
+These are candidates from migration source, not an approved grant list. Regrant only a signature with a demonstrably live production caller that would otherwise break; obsolete/unused operations remain revoked. The 20261111210000 direct table/sequence revocation remains in force; do not regrant relation privileges to compensate. The 20261111220000 unused auth entry-point revocations, 20261112050000 PUBLIC default-function hardening, 20261112070000 unsigned Gateway helper revocation, and 20261112170000 redundant migrator lookup revocation remain in force. Connect, Auth Issuer, QuoteFlow, and storage-specific old-path revocations are deferred until their own replacement services/routes have been deployed and verified; they need their own later migration IDs and cutover evidence, not an automatic inclusion in batch B.
+
+**Why this is materially safer than the previous options:** it preserves the current strict contiguous-prefix selector and ledger ordering. It uses three actual transaction commits and two deploy/verify boundaries. It avoids rewriting the existing 52 migration files or pretending a single atomic transaction can pause for a service deployment. It keeps only a narrow, explicit runtime compatibility window for caller-proven legacy functions while the Gateway is brought up. It also aligns with PR #286's already-qualified exact ACL-stage model rather than weakening the Gateway's identity or privilege assertions.
+
+**Mandatory qualification before implementation:** (a) refresh the complete production ledger/checksum and exact grants immediately before any future execution decision; (b) reconcile all known persistent qualification ledgers to prove the proposed new migration and unchanged historical migrations are safe, and never rewrite an applied migration; (c) produce a source-backed caller matrix for every candidate function above; (d) prove the compatibility migration grants only the exact allow-listed function signatures to ghm_runtime, and prove Gateway/Resource API startup accept only the intended pre-cutover ACL state; (e) add tests for missing, extra, PUBLIC, Gateway, migrator, and grant-option cases; (f) test batch A, batch B, batch C as separate disposable PostgreSQL transactions with explicit pause/deploy gates between them; (g) verify rollback/recovery and backup prerequisites. If the live caller/grant evidence does not support the narrow compatibility migration, stop and redesign that service cutover rather than granting access speculatively.
+
+**PR/branch disposition:** PR #305 remains the only active migration-batch implementation workstream on feat/production-migration-batches-mainline-20261123. PR #285 is the older five-migration bounded-prefix design; PR #286 is the useful Resource API ACL-stage precedent but remains separate/draft; PR #298/#297 are older overlapping batch alternatives and must not be revived; PR #303 remains the separate manual Business Capability direct-write cutover. No branch or worktree was created. This section is a proposed choreography, not a production batch approval. Keep config/production-migration-batches.json exactly [] until all qualification and owner-authorized execution gates are satisfied.
+
+No production database, migration ledger, SQL, role/ACL, secret, Render setting, service deployment, restart, payment, or paid resource changed.
+
+
+### 23 November 2026 — source-backed compatibility caller matrix: no legacy regrants justified
+
+This task rechecked PR #305 and its current branch, the open GHM PR inventory, the relevant Connect PR #68 and QuoteFlow PR #25 heads/handovers, GHM PR #243 and merged PR #272, the exact source migrations, Resource API route wiring, Auth Issuer ACL verifier, and migration qualification scripts. Current heads at review: PR #305 `2fb6ef2997c69c5ca72607eff7c4326de45fe712`; Connect PR #68 `e0df7f84b10a54f94ff3a74086a87b98c9268102`; QuoteFlow PR #25 `71391d74da34779943743f5dbf1eedc7201db66f`; GHM PR #243 `1246ed74a81b3fc607e6f65f3cd8036bc081ab1b`; Actor Gateway consolidation PR #272 is merged as `4463bbb989f9d1173596f5371663b3e9e7afc0a9`. PR #68 and #25 remain draft/unmerged; do not treat their branches as deployed production evidence.
+
+**Correction to the preceding phased-rollout proposal:** the proposed new `20261116195000_restore_approved_legacy_runtime_function_compatibility` migration is not supported by this source review and must NOT be implemented. None of the seven candidate legacy functions should be re-granted to `ghm_runtime`. The earlier proposal to consider narrow runtime regrants is withdrawn. The existing cutovers are intentional trust-boundary changes, not accidental outages that should be papered over.
+
+| Candidate legacy function | Source-backed caller / active path | Disposition |
+|---|---|---|
+| `ghm.update_business_supplier_classification(bigint,bigint,boolean)` | GHM Resource API `PATCH /api/v1/businesses/:businessId` routes supplier-only changes through `HttpSupplierClassificationGatewayClient` to the Actor Gateway. Gateway uses the signed-assertion `ghm.gateway_update_business_supplier_classification(...)` wrapper, which calls the legacy function as `ghm_schema_owner`. | Keep `ghm_runtime` EXECUTE revoked. No compatibility grant. |
+| `ghm.update_business_profile(bigint,bigint,jsonb)` | Same Resource API PATCH route sends profile changes through `HttpBusinessProfileGatewayClient`; Actor Gateway calls the signed-assertion `ghm.gateway_update_business_profile(...)` wrapper, which invokes the legacy function under its SECURITY DEFINER owner. | Keep `ghm_runtime` EXECUTE revoked. No compatibility grant. |
+| `ghm.auth_link_external_identity(text,text,bigint)` | Used by the QuoteFlow migration reconciliation/provisioning abstractions and qualification tooling, not the normal Connect request path. Connect's active identity adapter is lookup-only via `auth_lookup_external_identity`. The DB qualification explicitly separates `ghm_runtime` from the dedicated migrator and executes migration provisioning under `SET ROLE ghm_schema_owner`. | Operator/migrator-only. Keep runtime revoke; do not restore. Any migration executor must use the controlled migrator/schema-owner route. |
+| `ghm.auth_bootstrap_external_identity(text,text,text,text)` | Historical bootstrap function. The later migration explicitly says new identities remain unmapped until explicitly linked through governed migrator/schema-owner path. No active Connect or QuoteFlow request caller was found. | Keep runtime revoke; no regrant. |
+| `ghm.auth_provision_migration_account(text,text,text,text)` | Explicitly migration/operator capability. Its PostgreSQL qualification uses a distinct migrator connection and `SET ROLE ghm_schema_owner`; the same qualification asserts the `ghm_runtime` role cannot execute it and has no direct identity/mapping table INSERT. | Keep runtime revoke; no regrant. |
+| `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)` | Explicitly records approved migration provenance/enrollment. Its migration and later revoke both classify it as operator/migration-only. The Authentication Issuer reads and completes an already-approved enrollment; it does not register enrollment. | Keep runtime revoke; no regrant. |
+| `ghm.auth_link_business_external_mapping(text,text,bigint)` | Called internally by `ghm.gateway_provision_connect_business(...)`, a SECURITY DEFINER signed Actor Gateway operation. That wrapper creates the Business, membership and mapping atomically; the helper is revoked from runtime, migrator, Gateway, issuer and provider roles. | Keep direct EXECUTE revoked from all application principals. The SECURITY DEFINER wrapper is the sole application path; no compatibility grant. |
+
+**Related auth allow-list clarification.** The Auth Issuer verifier expects its own ten-function allow-list, including `auth_lookup_quoteflow_migration_reset_enrollment` and `auth_complete_quoteflow_migration_reset`. Separately, its explicit `ghm_runtime` auth-function allow-list is exactly two read-only lookup functions: `auth_lookup_external_identity(text,text)` and `auth_lookup_business_external_mapping(text,text)`. The migration-only link/bootstrap/provision/register functions are not in either runtime allow-list. Do not confuse the issuer's separate database principal with `ghm_runtime`, and do not regrant QuoteFlow reset lookup/completion to the Resource API runtime. The reset request/complete HTTP routes exist in the isolated issuer application; their database authority is the issuer role's own allow-list.
+
+**Production evidence limitation:** this is a source-backed caller/disposition matrix, not proof of which legacy callers are presently deployed or which exact ACL rows are currently live. No source code search result was treated as a production route probe. The two existing production observations remain: the Gateway DB privilege assertion currently fails; the relevant early migration rows were absent from the production ledger at the last read-only check. Refresh production ledger and grants before any future rollout decision. Do not restore access based on a source candidate alone.
+
+**Migration rollout consequence:** remove the compatibility-regrant migration from the proposed Batch A design. Batch A must instead be qualified to preserve the intentional revocations and prove all affected production consumers are already on their signed Gateway/issuer/migrator path before the transaction commits. If the deployed Resource API or Connect still relies on any revoked legacy function, the correct remedy is to finish/deploy the relevant signed replacement or explicitly defer that cutover in a forward-only migration design—not to grant the legacy function back to `ghm_runtime`. The current production contiguous-prefix and service-deployment ordering problem remains unresolved; no production batch is approved.
+
+No migration SQL, compatibility grant, runner, selector, manifest, production database, role/ACL, secret, Render setting, service deployment, restart, payment or paid resource changed. PR #305 remains the only active migration-batch implementation workstream; PR #298/#297 remain older overlapping drafts, PR #303 remains separate, and PR #285/#286 remain historical bounded-batch/ACL-stage references. The production execution manifest remains `[]`.
+
+
+### 23 November 2026 — deployed-consumer reconciliation (source vs production)
+
+This pass rechecked the current PR #305 branch/head, all open GHM PRs, GHM/Connect/QuoteFlow branch inventories, the Actor Gateway hosting/production-readiness/Auth Issuer handovers, Connect PRs #68/#70 and QuoteFlow PR #25, plus live Render and Vercel resource/deployment inventories. It is a read-only reconciliation. It supersedes earlier generic statements that a replacement service was merely "not yet deployed" with the exact observed service/deployment state below.
+
+#### A. GHM Resource API and Actor Gateway
+
+| Component | Source state | Render production state | Conclusion |
+|---|---|---|---|
+| GHM Resource API (GHM-Internal-Runtime) | Current GHM main is 93ff3c774ce225760b0e3e2cf99a770b38e8a097 (21 Nov); current main contains the Gateway clients/routes and merged Actor Gateway/Auth Issuer implementation. | Service srv-damupsek1f9s73eq8kkg, branch main, auto-deploy OFF. Latest successful/live deploy is c7cf1ebaf4db5912983bfa45bd42747c0854cfaf from 10 Nov (deploy dep-dbpmv8jrjlhs73abkli0). | Production Resource API is behind current main and predates PR #272's 14 Nov merge. The Gateway-backed profile/supplier paths are source-only relative to this live service; do not assume these replacements are live. |
+| Actor Gateway | PR #272 merged as 4463bbb989f9d1173596f5371663b3e9e7afc0a9; current main contains start:actor-gateway and the signed wrapper clients. | Render service ghm-actor-gateway (srv-dc09scl9el5s73fdgj1g) exists, branch main, auto-deploy OFF, Free plan. Its four recorded deployments all failed. Latest deploy dep-dc0b5lbm8hqs73dh2ds0 checked out commit 0dc1b27c2b7de71c77d071966a9f374e13075e2b; build succeeded, startup exited with stage=database_privileges_assertion, category=database_privileges_rejected. | No successful/live Actor Gateway deployment and no production route verification. The service's attempted commit also predates current GHM main. A Render Free service does not resolve the previously documented no-cost always-on/isolated-host and private-network qualification concerns. |
+| Authentication Issuer | GHM main contains src/auth-issuer/server.ts, the start:auth-issuer script and the isolated issuer app/DB ACL verifier. PR #272's merged description and the Auth Issuer handover record the separate issuer implementation; PR #276/#277 are recorded as merged in the isolation handover. | The current Render service inventory contains no ghm-auth-issuer or equivalent isolated issuer service. The existing ghm-identity-qualification service is an older integration-branch qualification service, not the production Auth Issuer. | Auth Issuer is source-only. Its HTTP login/refresh/password-reset/QuoteFlow-reset completion paths are not proven deployed. Do not point consumers at a guessed URL or co-host it in the existing runtime. |
+| Production database/migrations | Current main contains the signed gateway/issuer migration chain. | Render ghm-db (dpg-dag0sdtbedkc7389vi2g-a) is available. A fresh Render read-only query through the ghm_app_user connector was denied on ghm.ghm_schema_migrations (SQLSTATE 42501); it did not change data. The last successful user-supplied psql snapshot returned zero rows for 20261110210000 and 20261112090000. | Do not treat this task as a refreshed ledger audit. The last successful snapshot still says the initial Gateway guard/schema-usage and search-path migrations were not recorded; refresh through the existing authorized read-only audit identity before any execution decision. |
+
+#### B. Connect
+
+- Connect main is 84d7edb64346f1b698f9b76bcb54d2e653df1292 (10 Nov). package.json on main still includes @supabase/supabase-js.
+- PR #68 (feat/ghm-opportunity-runtime-migration-20261110, head e0df7f84b10a54f94ff3a74086a87b98c9268102) remains open/draft/unmerged. Its package.json also still includes @supabase/supabase-js; this PR is a partial/core GHM migration slice, not proof that the whole Connect app is Supabase-free or deployed.
+- PR #70 (feat/ghm-project-opportunity-cutover, head a9de3f88f1e0ad9e98d53e9c75493be384d520e7) remains open/draft/unmerged. It explicitly depends on GHM PR #299 for the missing Project detail/update API; PR #299 remains open/draft at 94a9d58894d11f0f886203af37cbd096619d447b. Its latest stated CI was still running; do not claim a passing exact-head result.
+- The current Vercel team context lists only the corporate website project. Searching both the ZAID Technologies team and the connected personal scope found no zaid-connect project; repository-linked deployment discovery also reported no linked project, and the deployment/domain lookup returned not found. Thus the exact live Connect deployment SHA and route responses could not be established from the available Vercel account context. The prior Connect handover also records no deployment for the GHM migration branch SHA and Vercel build-rate-limit failures. Do not infer a production deployment from the public hostname or Git branch.
+- Conclusion: Connect's GHM replacement workflows remain draft/source-only in the reviewed PRs; production deployment of those paths is unverified. The current production Connect source/deployment cannot be asserted to have moved to those branches.
+
+#### C. QuoteFlow
+
+- QuoteFlow main is e4b39a8515177ed00791e6be5213765d3f054a7f (19 Oct) and its package.json still includes @supabase/supabase-js.
+- PR #25 (feature/quoteflow-ghm-native-cutover, head 71391d74da34779943743f5dbf1eedc7201db66f) remains open/draft/unmerged. Its branch package.json removes the Supabase SDK and it contains the GHM-native identity adapter, but its own handover says live GHM login/session/managed-Business qualification remains outstanding and depends on the isolated Auth Issuer/Runtime being deployed. Its legal endpoints are also gated by GHM PR #201 and owner-approved documents.
+- The currently distributed APK was withdrawn from the website after the backend switch; the latest separate preview APK build failed at artifact upload and was not a release. No production-signed/device-accepted GHM-native APK is evidenced.
+- Conclusion: QuoteFlow's GHM-native app is source-only; its deployed mainline and currently available app are not evidence of a completed GHM production identity cutover.
+
+#### D. Exact release interpretation and next safe boundary
+
+1. No affected consumer is proven to be running the replacement paths in production. GHM Resource API is on a pre-#272 deploy; Actor Gateway has no live deploy; Auth Issuer has no service; Connect migration PRs are unmerged and Vercel deployment is unverified; QuoteFlow migration PR is unmerged and the release is withdrawn.
+2. Do not execute the legacy revocations yet. This is a positive sequencing decision, not permission to regrant legacy access. Keep the seven legacy revocations intact in source; do not add the proposed compatibility-regrant migration. Before those revocations, the replacement GHM services must be hosted, configured with the approved no-cost topology, and live-qualified; then deploy the Resource API and prove representative Gateway-backed routes; only after GHM endpoints are live can Connect/QuoteFlow be cut over and tested.
+3. The Render Free Gateway attempt does not close the hosting gate. It is an existing failed service, not a qualified production host. The prior no-cost topology assessment and Auth Issuer isolation handover remain applicable: no new paid compute, no co-hosting in the existing Free Resource API, no keepalive schedule, no guessed Worker/Hyperdrive endpoint, and no secrets or database role changes.
+4. PR/worktree discipline: PR #305 remains the sole active migration-batch implementation workstream at head 5c0179918cd7de1aeed30ffbcc4b6fbe976f4981; PR #297/#298 remain overlapping drafts; PR #303 is separate manual-only ACL work. Connect #68/#70 and QuoteFlow #25 remain their existing draft branches; do not create duplicate cutover branches. GHM PR #299 must be resolved before Connect #70 can qualify.
+5. The production batch manifest remains []. No production database, migration ledger, role/ACL, service setting, secret, deployment, DNS, traffic, app data, payment or paid resource was changed.
+
+This is an evidence-based release/deployment matrix, not a claim that the public apps were probed successfully. External web health probes for the Render URLs and Connect domain were inaccessible from the available web path; the Render and Vercel control-plane evidence above is the basis for the status statements.
+
+
+### 23 November 2026 — existing hosting resources and merged Worker/Issuer PRs reconciled
+
+This task rechecked PR #305 and its current branch, the open GHM PR inventory, the existing topology assessment, and merged PRs #272 (Actor Gateway), #276 (isolated Authentication Issuer), and #277 (Worker hardening).
+
+**Corrected hosting picture:** the Actor Gateway Worker and isolated Authentication Issuer implementations are already merged into main; they are not missing source implementations. PR #277's CI proves Worker bundle and local Workerd + disposable Hyperdrive behavior, and its Pages preview deployments succeeded. However, the PR explicitly records that no Cloudflare production resource or route was provisioned and that those disposable tests do not establish live Hyperdrive-to-Render connectivity, production TLS/ACL identity, or production traffic behavior.
+
+**Authentication Issuer cost blocker:** PR #276's exact-source qualification records that the Workers Free Argon2id feasibility test failed GHM's existing password-hashing CPU budget. Do not weaken Argon2id and do not create paid Workers/Render compute under the current constraints.
+
+**Render Actor Gateway status:** the existing `ghm-actor-gateway` Free service still has no successful/live deployment; its latest observed startup failure is `database_privileges_assertion`. The private Render hosting option requires paid compute. Do not treat the failed Free service or Pages previews as a live isolated Gateway.
+
+**Network blocker:** direct Hyperdrive remains no-go because Render Postgres inbound rules are IPv4-only and Hyperdrive's documented shared origin egress has no supported per-origin IPv4-only guarantee. The private Workers VPC path requires a continuously running `cloudflared` connector host. No compliant existing always-on connector resource has been evidenced.
+
+**Decision:** no currently evidenced production hosting path satisfies the no-new-spend, no-new-host, no-keepalive, strict TLS, Argon2id CPU budget and isolation requirements simultaneously. Do not co-host Gateway/Issuer inside the Resource API, weaken password hashing or ACL/TLS checks, create another service/Worker/Hyperdrive/tunnel, or proceed with production migrations/revocations as though these replacements are live. Hold production rollout unless an already-owned compliant compute/network resource or a written vendor-supported no-cost topology changes the evidence.
+
+PR #305 remains the sole active migration-batch implementation workstream, open/draft/unmerged. Its execution manifest remains `[]`; no production batch is authorized. PR #297/#298 remain older overlapping drafts; PR #303 remains separate manual ACL work. No production database, role/ACL, secret, Render setting, Cloudflare resource, service, deployment, DNS, traffic, migration or paid resource was changed.
+
+### 23 November 2026 — existing Render compute inventory exhausted
+
+Rechecked current PR #305 and branch, open PR inventory, topology handover and Render workspace service/database inventory. Inspected exact service details for `zaid-ai-workforce`, `GHM-Internal-Runtime` and `ghm-actor-gateway`.
+
+- `zaid-ai-workforce` (`srv-d9t1la7avr4c73fc46c0`) is a Free public web service in Frankfurt, one instance, auto-deploy off, from `zaidhqdev-sys/ai-workforce` (`runtime`). It is not an always-on resource. Render's official Free-service policy spins down after 15 minutes without inbound HTTP/WebSocket traffic, takes about one minute to wake, may restart at any time, disallows private-network ingress, and says Free instances should not be used for production: https://render.com/docs/free.
+- `GHM-Internal-Runtime` is also Free and is the Resource API. It must not be repurposed to co-host the isolated Gateway/Issuer, and it also has Free-service availability limits.
+- `ghm-actor-gateway` is Free, auto-deploy off, and the existing deploy audit shows no successful deployment. It cannot serve as a qualified always-on/private-network host.
+- `ghm-identity-qualification` is an old integration-branch qualification service, not a production Auth Issuer. PayFast services are sandbox-only and excluded. `ghm-db` is the only production DB and is not compute.
+- No existing private service, worker, paid always-on service or other suitable isolated compute resource exists in the connected Render workspace.
+
+**Decision:** the existing Render inventory is exhausted for the required no-cost topology. Do not repurpose Workforce or Resource API, do not co-host the Gateway/Issuer, and do not use keepalive traffic or schedules. No already-owned compliant always-on host has been evidenced. An independently owned resource outside Render would need explicit owner confirmation and qualification for availability, network/TLS, isolation, CPU/Argon2id, secret custody and operational access before being considered.
+
+No Render service, deployment, configuration, secret, database, role/ACL, migration, DNS, Cloudflare resource, traffic or paid plan was changed. PR #305 remains the active migration-gate branch; production batch manifest remains `[]`.
+
+### 23 November 2026 — production backup catalogue evidence reconciled
+
+Reviewed the owner-supplied PowerShell inspection transcript for the existing Render `ghm-db` / `ghm_db` recovery export at `C:\\Users\\zaidh\\Downloads\\ghm-db-recovery-inspection\\2026-11-23T15_53Z\\ghm_db`.
+
+- The export is a PostgreSQL directory-format archive; `toc.dat` is present.
+- `pg_restore --list` successfully read the archive catalogue and exited with code 0.
+- Archive metadata reports database `ghm_db`, archive creation time 2026-11-23 15:55:39, 760 TOC entries, and source/dump PostgreSQL version 18.7.
+- The catalogue includes the `ghm` schema and its database objects, including tables, sequences, functions, indexes, constraints, triggers, and policies.
+
+**Recovery evidence boundary:** this is positive evidence that the archive exists and its catalogue is readable. It is not a restore test and does not independently prove row-level completeness, role/cluster-global objects, application consistency, or a successful recovery procedure. No restore was attempted and no database was modified. Do not describe this as a restore-verified backup.
+
+**Release decision unchanged:** this backup evidence does not resolve the separately recorded production service-readiness gap. The existing Free `ghm-actor-gateway` deployment is still recorded as failing at `database_privileges_assertion`; the merged Worker/Issuer source and preview qualification do not establish a live production database connection or operational Authentication Issuer. The handover's hold on production migration/revocation rollout therefore remains in force until an already-owned compliant production path is evidenced. Do not create infrastructure, weaken security controls, or treat the backup as authorization to execute migrations.
+
+**PR #305 reconciliation:** current PR #305 head is `5385a810640f8d8cfaff718ea24adde007502c63`; its exact-commit CI run `45271111825` completed successfully. PR #305 remains open/draft. PRs #297 and #298 remain overlapping open/drafts; PR #303 remains separate manual-only Business Capability ACL work. The production batch manifest remains `[]`. No new branch/worktree, CI rerun, production SQL, restore, migration, role/ACL change, credential/secret change, Render/Cloudflare change, deployment, payment action, or paid resource was used for this reconciliation.
+
+### 23 November 2026 — superseded migration PR consolidation
+
+Reviewed current PR metadata, branch ancestry, exact comparison against `main`, and the migration/hosting handover before changing PR state.
+
+- PR #305 remains the sole active production migration-batch implementation. It is based directly on current `main`, is 79 commits ahead / 0 behind at the time of this check, and its latest recorded exact-head CI run `45245920767` passed at `4162100767469019fea0a17337185f1672446215`.
+- PR #297 was closed unmerged. Its branch `feature/explicit-production-migration-batches` is preserved; comparison showed 119 commits ahead / 102 behind `main`. It is superseded and must not be merged or requalified as a release candidate.
+- PR #298 was closed unmerged. Its branch `feat/actor-gateway-production-migration-batches` is preserved; comparison showed 443 commits ahead / 94 behind `main`. It is superseded and must not be merged or requalified as a release candidate.
+- No commits or branches were deleted, rebased, force-updated or merged. Closing the PRs only removes duplicate active review surfaces.
+- PR #303 remains separate manual-only Business Capability column-privilege cutover work; its recorded exact-head CI pass does not authorize production execution.
+- PR #277 (Worker hardening) is already merged into `main` at `0a8bd4406b32b57ad410fab13b69c35a4d2b1370`; the matching workflow run `43656045132` succeeded. Its Worker implementation is source-mainline, but the handover's production Cloudflare/Hyperdrive and Auth Issuer hosting constraints remain unchanged. Do not duplicate that implementation or treat its local Workerd/Hyperdrive tests as live production connectivity.
+- The existing no-cost hosting review remains decisive: no already-owned compliant always-on isolated compute/network path has been evidenced; Free Render services sleep and lack the required private-network/availability guarantees; Workers Free failed the existing Argon2id CPU budget; no Cloudflare production resource/route is provisioned. Do not create services, tunnels, Hyperdrive resources, keepalive schedules, paid resources, or weaken security controls.
+- Production migration execution manifest remains exactly `[]`. No production SQL, migration, role/ACL, secret, Render/Cloudflare setting, deployment, restart, traffic, payment or paid resource was changed in this consolidation.
+
+**Next active workstream:** continue only on PR #305 and the existing mainline implementation. Do not create another migration-batch branch or repeat exact-head CI without a source change. The next useful work must address an already-owned, policy-compliant production hosting/network/issuer path or complete an existing read-only production readiness item; until then, production migrations and legacy revocations remain held.
+
+
+## 2026-11-23 — standing GHM objectives established
+
+Created `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` at commit `ce573539c2d8b2ad90269c96b0dae0bd16daf9f7` on this existing PR #305 branch.
+
+The document establishes the standing direction: move ZAID Technologies products onto GHM; let real Connect and QuoteFlow requirements drive GHM capability improvements; remove Supabase as a target dependency; and measure success by working product workflows rather than PRs, branches or qualification volume.
+
+It makes the pre-task and post-task discipline mandatory:
+- Read the objectives and relevant current handover before each task.
+- Inspect current repository, branches, PRs, implementation and qualification evidence.
+- Reuse existing work and avoid duplicate workstreams or requalifying unchanged commits.
+- After each completed task, update the existing authoritative handover with exact changes, commit/PR, validation, production impact and next action.
+- Preserve the standing cost, infrastructure, production-safety and PayFast constraints.
+
+This is a documentation-only addition on the existing PR #305 branch. It does not authorize or perform production migration, database changes, role/ACL/credential changes, secret or environment changes, deployment, restart, payment action or new spending.
+
+**Next step:** use this objectives document as the governing pre-task checklist, then continue the existing product migration work from the current PR/branch/handover state. Do not create a new branch or parallel workstream for the objectives.
+
+
+## 2026-11-24 — mandatory task gate synchronized to PR #305
+
+The standing objectives were strengthened on `main` at commit `56d64aa5d95bc5e6e25f6f31b22d2699c815b0e4` with an explicit hard-stop execution gate. The PR #305 branch previously contained the earlier objectives version, which would have risked reintroducing the weaker document if the PR were merged.
+
+The exact current `main` version of `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md` has now been synchronized into this existing PR #305 branch. This preserves the mandatory per-task inspection rule and the post-task handover requirement through any future merge.
+
+Repository/PR reconciliation at this task:
+- PR #305 remains the sole active production migration-batch implementation; branch `feat/production-migration-batches-mainline-20261123`.
+- Its prior recorded base was `93ff3c774ce225760b0e3e2cf99a770b38e8a097`; current `main` had advanced through `03d7b6ccf35771c13ed4c0f024bb46fa6a7c793c`, `d0a76c5a9d85641ba5762515b69c899addf7a76f`, and `56d64aa5d95bc5e6e25f6f31b22d2699c815b0e4`. The PR branch is therefore 3 commits behind current main; no rebase, merge, force-push or branch recreation was performed.
+- PR #297 and #298 remain closed/unmerged and their branches preserved. Their old implementation paths are not being reactivated. PR #285 remains a separate open migration-execution implementation and was not merged into this PR; no parallel runner was introduced.
+- PR #305 exact head before this documentation sync: `d8cdcf9828ace115fe4fcfbdf76c26c3d5f33114`. Its exact-head CI run `45276166682` passed both `quality` and `web-quality`.
+- PR #306 is open/draft and adds Business-scoped Customer/Quote API resources. It is not treated as authority to move QuoteFlow's local operational collections into GHM; the owner's local-first operational-data boundary remains controlling.
+
+No production SQL, migration execution, database role/ACL/credential change, secret/environment change, Render setting, service, deployment, restart, payment action, local product data change, new branch/worktree, or paid resource was performed.
+
+### Next actionable step
+
+Use the already-implemented read-only production planner on this existing PR #305 branch against the existing dedicated `ghm_audit_login` connection, after the owner runs it from the existing local validation worktree. The command must verify exact production database/host, strict TLS, `session_user=current_user=ghm_audit_login`, and a read-only transaction. Capture its JSON result without exposing the URL or credentials. The planner must not execute migrations or write the ledger; the committed production batch manifest remains `[]`, and production execution remains unauthorized. Record the resulting evidence here before any further migration decision.
+
+### 24 November 2026 — live production read-only migration planner result
+
+The owner ran the existing `npm run plan:migrations:production` from the existing local validation worktree `C:\\GHM-pr305-ci-20261123`, using the dedicated `ghm_audit_login` connection to Render `ghm-db` / `ghm_db` in Frankfurt. The supplied transcript confirms:
+
+- TypeScript build completed successfully before the planner ran.
+- Planner mode: `READ_ONLY_PLAN_ONLY`; `execution_performed=false`; `sql_migrations_executed=0`.
+- Authority passed: `current_user=session_user=ghm_audit_login`, database `ghm_db`, `transaction_read_only=on`, PostgreSQL `180006`, verified TLS true.
+- Actor Gateway principal preflight passed. The role is LOGIN/NOINHERIT and has no SUPERUSER, CREATEDB, CREATEROLE, REPLICATION or BYPASSRLS attributes. The exact `ghm_db_user` → `ghm_actor_gateway` membership was observed with ADMIN=true, INHERIT=false and SET=false; the planner's role-attribute and exact-membership checks both passed.
+- Source inventory: 147 migrations. Production ledger: 105 rows, comprising 95 current-source applied entries and 10 retained ledger-only historical entries.
+- Checksum reconciliation: 24 canonical matches, 62 supported legacy-CRLF matches and 9 registered historical-exception matches; zero checksum mismatches and zero name mismatches.
+- Retained history: 10/10 verified; no unrecognized ledger-only rows, redundant exceptions or orphaned exceptions.
+- Pending inventory: 52 migrations. Existing legacy allowlist contains 7 entries, has zero malformed entries, but is incomplete: 45 pending migrations are omitted. Therefore `allowlist_pass=false`.
+- Production batch manifest remains exactly `[]`. Planner result: `NO_AUTHORIZED_BATCH`; release gates correctly report `pending_allowlist_complete=false`, `reviewed_batch_selectable=false`, and `production_execution_authorized=false`. Verdict: `PLAN_ONLY_NOT_EXECUTABLE`.
+
+**Interpretation and safety:** the live production ledger and source checksums reconcile cleanly, and the read-only principal preflight passes. This does not authorize a migration batch. Do not simply add all 52 pending migrations to the allowlist or populate the execution manifest. The existing handover's production Actor Gateway/Auth Issuer hosting and live-service readiness gate remains separate and unresolved under the standing no-additional-paid-infrastructure constraint. No production SQL, schema, ledger, role, ACL, credential, secret, Render setting, deployment, restart, payment state or paid resource was changed.
+
+**Evidence precision:** the supplied PowerShell transcript showed the validation worktree at detached `HEAD` and did not include `git rev-parse HEAD`. The remote PR #305 head observed during this reconciliation was `aa40285f4a9f66a42f06713383fa397ed3446fc2`, but the transcript alone does not prove that exact SHA was checked out locally when the planner ran. Preserve that distinction; do not claim exact-source-SHA attribution until the local SHA is captured.
+
+**Repository/PR reconciliation:** PR #305 remains open/draft on `feat/production-migration-batches-mainline-20261123`; the branch's production batch manifest is empty. PRs #297 and #298 are closed/unmerged with their branches preserved. PR #303 remains separate draft/manual-only Business Capability ACL work. PR #285 remains a separate open/draft migration-execution implementation and is not to be merged into or reactivated as a competing runner. No branch, PR disposition, migration source, allowlist or execution manifest was changed by this read-only audit.
+
+**Next action:** do not execute migrations and do not expand the allowlist as a substitute for dependency/security review. Continue from the existing product-first GHM objective and the current no-cost hosting decision; only revisit the migration batch when a compliant already-owned production Gateway/Auth Issuer path and the complete reviewed dependency/authorization sequence are evidenced. No new infrastructure or spending is approved.
+
 ## 2026-11-25 — Render service inventory and Actor Gateway startup reconciliation
 
 Read-only review against the current Render workspace inventory and service logs; no service, environment, database, credential, deployment, or billing changes were made.

@@ -24,7 +24,7 @@ import { PostgresCommercialDocumentApprovalAuthorityReader } from './commercial-
 import { PostgresCommercialDocumentApprovalReader } from './commercial-document-approval-reader';
 import { PostgresCommercialConsentPaymentPreparationReader } from './commercial-consent-payment-preparation-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
-import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from './database-privileges';
+import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges, resolveActorGatewayStartupStage } from './database-privileges';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -47,6 +47,7 @@ const capabilityAssertionSecret = required('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTI
 const commercialPaymentPreparationEnabled = process.env.GHM_COMMERCIAL_PAYMENT_PREPARATION_ENABLED === 'true';
 const commercialLaunchAuthorized = process.env.GHM_COMMERCIAL_LAUNCH_AUTHORIZED === 'true';
 const commercialPaymentProviderCode = process.env.GHM_COMMERCIAL_PAYMENT_PROVIDER?.trim() || 'payfast';
+const actorGatewayStartupStage = resolveActorGatewayStartupStage(process.env.GHM_ACTOR_GATEWAY_STARTUP_STAGE);
 
 const pool = new Pool({
   connectionString: databaseUrl,
@@ -79,6 +80,8 @@ const app = createActorGatewayApp({
   ),
   commercialPaymentPreparationEnabled,
   commercialLaunchAuthorized,
+}, {
+  businessCapabilityCreateEnabled: actorGatewayStartupStage === 'full',
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
@@ -171,7 +174,7 @@ const start = async (): Promise<void> => {
   startupStage = 'database_privileges_query';
   const databasePrivileges = await readActorGatewayDatabasePrivileges(pool);
   startupStage = 'database_privileges_assertion';
-  assertActorGatewayDatabasePrivileges(databasePrivileges);
+  assertActorGatewayDatabasePrivileges(databasePrivileges, actorGatewayStartupStage);
   startupStage = 'http_listen';
   server.listen(port, () => {
     console.log(`GHM Actor Gateway listening on port ${port}`);

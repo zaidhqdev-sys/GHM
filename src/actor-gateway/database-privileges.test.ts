@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
   assertActorGatewayDatabasePrivileges,
+  resolveActorGatewayStartupStage,
+  ACTOR_GATEWAY_BUSINESS_CAPABILITY_CREATE_SIGNATURE,
   type ActorGatewayDatabasePrivileges,
 } from './database-privileges';
 
@@ -153,10 +155,49 @@ test('includes the signed Business Capability create wrapper in the exact Gatewa
     ...leastPrivilege,
     expected_functions: [...leastPrivilege.expected_functions, createSignature],
     executable_functions: leastPrivilege.executable_functions,
-  }), /gateway_function_allow_list_mismatch/);
+  }, 'full'), /gateway_function_allow_list_mismatch/);
   assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
     ...leastPrivilege,
     expected_functions: [...leastPrivilege.expected_functions, createSignature],
     executable_functions: [...leastPrivilege.executable_functions, createSignature],
-  }));
+  }, 'full'));
+});
+
+
+test('pre-create startup stage accepts the reviewed Gateway contract without only the signed create wrapper', () => {
+  const createSignature = ACTOR_GATEWAY_BUSINESS_CAPABILITY_CREATE_SIGNATURE;
+  const expected = [...leastPrivilege.expected_functions, createSignature];
+  assert.equal(resolveActorGatewayStartupStage(undefined), 'pre_business_capability_create');
+  assert.equal(resolveActorGatewayStartupStage('pre_business_capability_create'), 'pre_business_capability_create');
+  assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    expected_functions: expected,
+    executable_functions: leastPrivilege.executable_functions,
+  }, 'pre_business_capability_create'));
+  assert.throws(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    expected_functions: expected,
+    executable_functions: [...leastPrivilege.executable_functions, 'ghm.unreviewed()'],
+  }, 'pre_business_capability_create'), /gateway_function_allow_list_mismatch/);
+});
+
+test('full startup stage requires the signed Business Capability create wrapper', () => {
+  const createSignature = ACTOR_GATEWAY_BUSINESS_CAPABILITY_CREATE_SIGNATURE;
+  const expected = [...leastPrivilege.expected_functions, createSignature];
+  assert.equal(resolveActorGatewayStartupStage('full'), 'full');
+  assert.throws(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    expected_functions: expected,
+    executable_functions: leastPrivilege.executable_functions,
+  }, 'full'), /gateway_function_allow_list_mismatch/);
+  assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    expected_functions: expected,
+    executable_functions: [...leastPrivilege.executable_functions, createSignature],
+  }, 'full'));
+});
+
+test('rejects unknown Actor Gateway startup stages rather than silently selecting a contract', () => {
+  assert.throws(() => resolveActorGatewayStartupStage('partial'), /GHM_ACTOR_GATEWAY_STARTUP_STAGE/);
+  assert.equal(resolveActorGatewayStartupStage(''), 'pre_business_capability_create');
 });
