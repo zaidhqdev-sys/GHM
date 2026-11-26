@@ -225,3 +225,14 @@ Read the existing PR #305 worktree inspection and compared the current `main` do
 - PR #305 remains open/draft. This synchronization does not merge or rebase the PR, change PR disposition, alter migration source/allowlists/manifest, run CI, execute production SQL, or change production database/roles/ACLs/credentials/secrets, Render/Cloudflare settings, services, deployments, payments, or paid resources.
 
 This is documentation-only synchronization on the existing PR #305 branch. No new branch/worktree was created; no existing branch was force-updated.
+
+
+### Synchronization commit and branch-state verification
+
+The documentation synchronization was committed directly to the existing PR branch in three sequential commits:
+
+- Current-state document: `56e8e84579ed3ff099414cd6d08985dd892463f5` (blob `ede5a4f719a5c85d5ae2e8e43c13ab1f128af52a`).
+- Hosting handover reconciliation: `af3f2e779bb4a3b0ef2728999fb85ef4dfce5bcb` (blob `84d3c9c35baef80b7a2a9797ddc2a16a5a9e5075`).
+- This handover update: `5f15ac5cbb098012310c580f8ca8ad2abb16878e` (blob `699fe0a57e1b4dc66c2ac080adcf2a46f5ee6a61`).
+
+Post-write reads confirmed the two new current-state sections, both historical and mainline hosting-handover additions, the objectives document's unchanged blob, and the exact production batch manifest content `[]`. PR #305 remains open and draft. GitHub reports it is not currently mergeable; comparison against `main` reports a diverged history, 90 commits ahead and 8 behind. This task synchronized the relevant documentation content only; it did not merge `main` into the branch, rebase, force-update, merge PR #305, or resolve the remaining branch-history divergence. No CI was run for these documentation-only commits. No production or infrastructure state changed.
