@@ -186,3 +186,29 @@ Conclusion: the two-entry difference is explained by the later signed Business C
 PR #305 remains open and draft, based on main commit `93ff3c774ce225760b0e3e2cf99a770b38e8a097`, with head `a0aa50b593aea887487c1eb1b0529e0c5776507f`; GitHub reported `mergeable=false` at the time of inspection. The production execution manifest remains exactly `[]`. No batch is authorized, and no production SQL or migration was executed.
 
 **Do not repeat:** the 105-row production ledger/checksum reconciliation, the 52-entry allowlist reconciliation on PR #305, the PR #300 signed Business Capability migration checksum comparison, or this 50-vs-52 set comparison unless a specific new source/ledger/head change invalidates the recorded evidence. Next work should first inspect the reason PR #305 is reported non-mergeable and compare current base/head state; do not rerun production audit or migration qualification merely to revisit these completed checks.
+
+## 10. PR #305 synchronization inspection — 2026-11-26
+
+Following the 50-vs-52 inventory comparison, the next read-only task was to identify why PR #305 is currently non-mergeable and compare its head with current `main`.
+
+Verified repository state:
+- Current `main`: `8be9deaa8e007cdc1bbed0bbce95838fa45571a4`.
+- PR #305 branch: `feat/production-migration-batches-mainline-20261123`.
+- PR #305 head at start of this inspection: `64b7d8b1ca30e8e7d26e0703abe63452f8cbe070`.
+- PR #305 base remains `main`, recorded base SHA `93ff3c774ce225760b0e3e2cf99a770b38e8a097`.
+- Compare result: 86 commits ahead / 8 commits behind; merge-base is the recorded base SHA.
+- The eight mainline commits since the merge-base are documentation-only changes to `docs/GHM_CURRENT_STATE.md`, `docs/GHM_OBJECTIVES_AND_WORKING_RULES.md`, and `docs/HANDOVER_2026-11-16_ACTOR_GATEWAY_HOSTING_AND_CREDENTIALS.md`. No migration source or batch-runner code changed in those eight commits.
+- The objectives file has identical blob SHA `1ec460fb070e771c485502dc7d4c65e360c7ab26` on `main` and the PR branch.
+- The Actor Gateway hosting handover differs between branches. Both versions share the original 1,864-line base content, then append different content at the same end-of-file location: `main` adds the 25 November Render service/PORT reconciliation, while PR #305 carries its longer staged-startup implementation and qualification history. This is a likely textual merge-conflict area; exact GitHub conflict diagnostics were not available from the metadata response, so do not label it conclusively as the sole cause.
+- The latest PR #305 check-run query shows a successful Cloudflare Pages preview for documentation commit `64b7d8b`. No quality/web-quality check run is attached to that documentation-only commit. Existing exact-head CI evidence for the unchanged implementation remains recorded in this handover; do not rerun it solely for this documentation commit.
+- PR #305 has no submitted reviews or inline review threads at inspection.
+
+Related PR status rechecked:
+- PR #285 remains open/draft and non-mergeable; it is the separate bounded incremental migration-execution proposal and is not to be merged into PR #305 or revived as a competing implementation.
+- PR #303 remains open/draft and non-mergeable; it is the separate manual Business Capability column-privilege cutover.
+- PR #300 is closed and merged; its signed Business Capability create work is mainline.
+- PRs #297 and #298 remain closed unmerged; their branches are preserved and are not to be reactivated.
+
+No rebase, merge, force-push, branch update, local worktree change, migration, production SQL, database/role/ACL/credential/secret change, Render setting, deployment, payment action or paid resource was performed in this inspection.
+
+**Next safe step:** before synchronizing PR #305 with `main`, inspect the owner's existing local PR #305 worktree and preserve any dirty/untracked work. Then reconcile the two append-only hosting-handover additions without dropping either history, incorporate the mainline documentation-only commits on the existing branch, and verify GitHub mergeability. Do not rebase/force-push, merge the PR, change its draft status, run migrations, or alter the empty production batch manifest as part of that synchronization.
